@@ -208,6 +208,12 @@ erDiagram
     bigint   TARGET_ACCOUNT_ID    "대상 회원. FK 없음"
     varchar  BEFORE_VALUE         "ROLE_CHANGE 의 변경 전 SYSTEM_ROLE"
     varchar  AFTER_VALUE          "ROLE_CHANGE 의 변경 후 SYSTEM_ROLE"
+    varchar  ACTOR_IP              "검증된 접속 주소"
+    bigint   PARTICIPANT_ID
+    varchar  PARTICIPANT_ROLE       "행위 직전 역할"
+    varchar  REASON
+    varchar  RETENTION_POLICY       "적용 규칙·버전"
+    datetime EXPIRES_AT             "저장한 만료 시각; 역할 미상은 NULL"
     datetime CREATED_AT           "행위 시각"
     datetime UPDATED_AT
   }
@@ -235,6 +241,8 @@ erDiagram
     bigint   DONE_BY_ACCOUNT_ID   "첫 회신 캡틴 (FK 없음)"
     varchar  REPLY_CONTENT
     datetime REPLIED_AT           "첫 회신 시각"
+    varchar  RETENTION_POLICY       "적용 규칙·버전"
+    datetime EXPIRES_AT             "저장한 만료 시각"
     varchar  ADMIN_MEMO           "캡틴 전용"
     datetime CREATED_AT           "접수 시각"
     datetime UPDATED_AT

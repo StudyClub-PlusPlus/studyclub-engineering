@@ -4,7 +4,7 @@ import { TableCard } from '@/components/ui';
 import { AccountRoleCell } from '@/features/users/components/AccountRoleCell';
 import { DiscordCell } from '@/features/users/components/DiscordCell';
 import { EmailCell } from '@/features/users/components/EmailCell';
-import { displayName } from '@/features/users/labels';
+import { DORMANCY_DESCRIPTION, displayName } from '@/features/users/labels';
 import type { ApiAdminAccount } from '@/features/users/types';
 
 /** 가입일 — 서버는 UTC ISO 8601 로 준다. */
@@ -53,62 +53,75 @@ export function UsersTable({
   onHideDiscord: (accountId: number) => void;
 }) {
   return (
-    <TableCard>
-      <thead>
-        <tr>
-          <th className='w-[18%] whitespace-nowrap'>이름</th>
-          <th className='w-[26%]'>이메일</th>
-          <th className='w-[14%] whitespace-nowrap'>권한</th>
-          <th className='whitespace-nowrap'>디스코드</th>
-          <th className='whitespace-nowrap'>네비게이터</th>
-          <th className='whitespace-nowrap'>가입일</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((a) => (
-          <tr key={a.id}>
-            <td className='whitespace-nowrap font-semibold'>
-              {displayName(a)}
-              {a.dormant && <span className='ml-1.5 type-label-sm text-fg-muted'>휴면</span>}
-            </td>
-            <td className='max-w-0 text-fg-secondary'>
-              <EmailCell
-                accountId={a.id}
-                displayName={displayName(a)}
-                maskedEmail={a.maskedEmail}
-                revealedEmail={revealed.get(a.id)}
-                onReveal={onReveal}
-                onHide={onHide}
-              />
-            </td>
-            <td>
-              <AccountRoleCell account={a} />
-            </td>
-            <td className='whitespace-nowrap type-label-sm'>
-              <DiscordCell
-                accountId={a.id}
-                displayName={displayName(a)}
-                linked={a.discordLinked}
-                revealedHandle={revealedDiscord.get(a.id)}
-                onReveal={onRevealDiscord}
-                onHide={onHideDiscord}
-              />
-            </td>
-            {/* 스터디 단위 역할이라 이름을 적는다 — 「네비게이터 ✓」만으로는 어느 스터디인지 알 수 없다 */}
-            <td className='whitespace-nowrap type-label-sm text-fg-secondary'>
-              <NavigatorCell studies={a.navigatorOf} />
-            </td>
-            <td className='tnum whitespace-nowrap type-label-sm text-fg-muted'>{fmtDate(a.joinedAt)}</td>
-          </tr>
-        ))}
-        {rows.length === 0 && (
+    <>
+      <p id='user-dormancy-description' className='mb-3 type-label-sm text-fg-muted'>
+        휴면: {DORMANCY_DESCRIPTION}
+      </p>
+      <TableCard>
+        <thead>
           <tr>
-            <td colSpan={6} className='text-center text-fg-muted'>
-              조건에 맞는 유저가 없습니다.
-            </td>
+            <th className='w-[18%] whitespace-nowrap'>이름</th>
+            <th className='w-[26%]'>이메일</th>
+            <th className='w-[14%] whitespace-nowrap'>권한</th>
+            <th className='whitespace-nowrap'>디스코드</th>
+            <th className='whitespace-nowrap'>네비게이터</th>
+            <th className='whitespace-nowrap'>가입일</th>
           </tr>
-        )}
-      </tbody>
-    </TableCard>
+        </thead>
+        <tbody>
+          {rows.map((a) => (
+            <tr key={a.id}>
+              <td className='whitespace-nowrap font-semibold'>
+                {displayName(a)}
+                {a.dormant && (
+                  <span
+                    className='ml-1.5 type-label-sm text-fg-muted'
+                    title={DORMANCY_DESCRIPTION}
+                    aria-describedby='user-dormancy-description'
+                  >
+                    휴면
+                  </span>
+                )}
+              </td>
+              <td className='max-w-0 text-fg-secondary'>
+                <EmailCell
+                  accountId={a.id}
+                  displayName={displayName(a)}
+                  maskedEmail={a.maskedEmail}
+                  revealedEmail={revealed.get(a.id)}
+                  onReveal={onReveal}
+                  onHide={onHide}
+                />
+              </td>
+              <td>
+                <AccountRoleCell account={a} />
+              </td>
+              <td className='whitespace-nowrap type-label-sm'>
+                <DiscordCell
+                  accountId={a.id}
+                  displayName={displayName(a)}
+                  linked={a.discordLinked}
+                  revealedHandle={revealedDiscord.get(a.id)}
+                  onReveal={onRevealDiscord}
+                  onHide={onHideDiscord}
+                />
+              </td>
+              {/* 스터디 단위 역할이라 이름을 적는다 — 「네비게이터 ✓」만으로는 어느 스터디인지 알 수 없다 */}
+              <td className='whitespace-nowrap type-label-sm text-fg-secondary'>
+                <NavigatorCell studies={a.navigatorOf} />
+              </td>
+              <td className='tnum whitespace-nowrap type-label-sm text-fg-muted'>{fmtDate(a.joinedAt)}</td>
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={6} className='text-center text-fg-muted'>
+                조건에 맞는 유저가 없습니다.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </TableCard>
+    </>
   );
 }

@@ -10,10 +10,11 @@ import { getStudyCrew, studies } from '@studyclub/mock';
 import type { MemberRegion, Study } from '@studyclub/types';
 
 import type { AccountRole } from './roles';
+import { isDormant, type DormancyFacts, type RosterPeriod } from './user-dormancy';
 
 export type UserStatus = 'active' | 'dormant';
 
-export type ConsoleUser = {
+export type ConsoleUser = DormancyFacts & {
   id: string;
   name: string;
   email: string;
@@ -28,6 +29,13 @@ export type ConsoleUser = {
   studyIds: string[];
   status: UserStatus;
 };
+
+/** 시연 날짜를 고정해 서버 렌더링·브라우저·새로고침에서 같은 예시를 보여준다. */
+export const USER_ACTIVITY_AS_OF = new Date('2026-10-31T00:00:00Z');
+
+function daysAgo(days: number): string {
+  return new Date(USER_ACTIVITY_AS_OF.getTime() - days * 86_400_000).toISOString();
+}
 
 /** 캡틴 — 운영진 계정. mock operators 와 같은 사람으로 둔다. */
 const CAPTAINS: { id: string; name: string; email: string; region: MemberRegion; joinedAt: string }[] = [
@@ -64,6 +72,9 @@ function buildRoster(): ConsoleUser[] {
       account: 'captain',
       navigatorOf: [],
       studyIds: [],
+      // Alex는 최근 백오피스 로그인, Robin은 200일간 로그인·명부 이력이 없는 캡틴 예시.
+      lastLoginAt: daysAgo(captain.id === 'alex' ? 1 : 200),
+      rosterPeriods: [],
       status: 'active',
     });
   }
@@ -71,9 +82,17 @@ function buildRoster(): ConsoleUser[] {
   for (const study of studies) {
     const { crew } = getStudyCrew(study);
     for (const c of crew) {
+      const period: RosterPeriod = {
+        studyId: study.id,
+        joinedAt: c.appliedAt,
+        ongoing: study.status !== 'closed',
+        // 공용 스터디 mock에는 종료 시각이 없다. 종료일을 지어내 휴면으로 분류하지 않는다.
+        endedAt: null,
+      };
       const found = byEmail.get(c.email);
       if (found) {
-        if (!found.studyIds.includes(study.id)) found.studyIds.push(study.id);
+        found.rosterPeriods?.push(period);
+        if (period.ongoing && !found.studyIds.includes(study.id)) found.studyIds.push(study.id);
         continue;
       }
       const seed = hash(c.email);
@@ -85,16 +104,19 @@ function buildRoster(): ConsoleUser[] {
         account: 'crew',
         navigatorOf: [],
         joinedAt: joinDate(seed),
-        studyIds: [study.id],
+        studyIds: period.ongoing ? [study.id] : [],
+        lastLoginAt: daysAgo(seed % 240),
+        rosterPeriods: [period],
         status: 'active',
       });
     }
   }
 
-  // 승인된 스터디가 하나도 없으면 휴면으로 본다 — 신청만 해 두고 참여하지 않은 계정.
+  for (const example of activityExamples()) byEmail.set(example.email, example);
+
   const rows = [...byEmail.values()].map((m) => ({
     ...m,
-    status: (m.account === 'captain' || m.studyIds.length > 0 ? 'active' : 'dormant') as UserStatus,
+    status: (isDormant(m, USER_ACTIVITY_AS_OF) ? 'dormant' : 'active') as UserStatus,
   }));
 
   // 캡틴 먼저, 그다음 담당 스터디가 있는 사람, 그다음 참여가 많은 순 — 손댈 사람이 위로.
@@ -110,6 +132,46 @@ function buildRoster(): ConsoleUser[] {
 
   rows.sort((a, b) => rank(a) - rank(b) || b.studyIds.length - a.studyIds.length || a.name.localeCompare(b.name));
   return rows;
+}
+
+/** `activity-demo`로 검색하면 비교 가능한 가상 회원들만 모인다. 모두 example.com 주소다. */
+function activityExamples(): ConsoleUser[] {
+  const ongoingStudy = studies.find((study) => study.status === 'ongoing');
+  const completedStudy = studies.find((study) => study.status === 'closed');
+  const period = (endedDaysAgo: number | null, ongoing = false): RosterPeriod => ({
+    studyId: (ongoing ? ongoingStudy : completedStudy)?.id ?? 'activity-example',
+    joinedAt: daysAgo(300),
+    ongoing,
+    endedAt: endedDaysAgo === null ? null : daysAgo(endedDaysAgo),
+  });
+  const examples: { key: string; name: string; facts: Partial<DormancyFacts> }[] = [
+    { key: 'dormant', name: '한가람', facts: {} },
+    { key: 'login', name: '이새봄', facts: { lastLoginAt: daysAgo(1) } },
+    { key: 'completed', name: '정다온', facts: { rosterPeriods: [period(7)] } },
+    { key: 'withdrawn', name: '최한결', facts: { rosterPeriods: [period(30)] } },
+    { key: 'old-completed', name: '김해솔', facts: { rosterPeriods: [period(200)] } },
+    { key: 'new', name: '박새별', facts: { joinedAt: daysAgo(7), lastLoginAt: daysAgo(7) } },
+    { key: 'ongoing', name: '윤이든', facts: { rosterPeriods: [period(null, true)] } },
+    // PAUSED도 스터디가 끝나기 전에는 명부에 계속 속한 것으로 본다.
+    { key: 'paused', name: '서하람', facts: { rosterPeriods: [period(null, true)] } },
+    { key: 'unknown-login', name: '오누리', facts: { lastLoginAt: null } },
+    { key: 'unknown-end', name: '임라온', facts: { rosterPeriods: [period(null)] } },
+  ];
+  return examples.map(({ key, name, facts }) => {
+    const activity = { joinedAt: daysAgo(400), lastLoginAt: daysAgo(200), rosterPeriods: [], ...facts };
+    return {
+      id: `activity-demo-${key}`,
+      name,
+      email: `activity-demo-${key}@example.com`,
+      region: 'KR',
+      account: 'crew',
+      navigatorOf: [],
+      ...activity,
+      joinedAt: activity.joinedAt!.slice(0, 10),
+      studyIds: activity.rosterPeriods?.filter((p) => p.ongoing).map((p) => p.studyId) ?? [],
+      status: 'active',
+    };
+  });
 }
 
 export const consoleUsers: ConsoleUser[] = buildRoster();

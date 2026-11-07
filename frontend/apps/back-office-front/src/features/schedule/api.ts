@@ -4,11 +4,14 @@ import scheduleRepository from './repository';
 import type { Meeting, Person } from '@/features/schedule/meetings';
 import { type ApiGroupMeetings, type MeetingUpdatePayload } from '@/features/schedule/repository';
 import type { MeetingPatch } from '@/features/schedule/store';
-import { wallParts, zonedInstant } from '@/features/schedule/time';
+import { wallParts, zonedInstant, type StudyTz } from '@/features/schedule/time';
 import { studyKeys } from '@/features/studies/queries';
 
 // 일정 탭의 서버 상태 — 응답을 화면 모양으로 바꾸고(`toMeetings` · `toPeople` · `toUpdateBody`), React Query 로 읽고 쓴다.
 // 서버 호출 자체는 `repository.ts` 에 있다.
+
+/** JS getUTCDay() 인덱스(0=일…6=토) → 서버 요일 키. */
+const DOW_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 
 /** 응답 → 표의 회차. 일자 · 시각은 반 시간대 벽시계로 바꾼다. */
 export function toMeetings(res: ApiGroupMeetings): Meeting[] {
@@ -128,6 +131,23 @@ export function useDeleteMeetings(studyId: number, groupId: number) {
   const refetch = useRefetchMeetings(studyId, groupId);
   return useMutation({
     mutationFn: (ids: string[]) => scheduleRepository.deleteMeetings(studyId, groupId, ids.map(Number)),
+    onSettled: refetch,
+  });
+}
+
+/**
+ * 반 스터디 시간 저장 — daysOfWeek(0=일…6=토 → 서버 형식 mon…sun) · timezone 을 PATCH 로 보낸다.
+ * 성공 후 회차 목록을 다시 읽는다 — 시간대가 바뀌면 표의 벽시계가 달라진다.
+ */
+export function useUpdateGroupTime(studyId: number, groupId: number) {
+  const refetch = useRefetchMeetings(studyId, groupId);
+  return useMutation({
+    mutationFn: ({ weekdays, time, tz }: { weekdays: number[]; time: string; tz: StudyTz }) =>
+      scheduleRepository.updateGroupTime(studyId, groupId, {
+        daysOfWeek: weekdays.map((d) => DOW_KEYS[d]!),
+        startTime: time || null,
+        timezone: tz,
+      }),
     onSettled: refetch,
   });
 }

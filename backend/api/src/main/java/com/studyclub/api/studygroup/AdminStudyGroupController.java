@@ -49,7 +49,16 @@ public class AdminStudyGroupController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "반 이름 바꾸기", description = "ADMIN만 호출 가능. 1~20자. 같은 스터디에 같은 이름이면 409.")
+    @Operation(
+            summary = "반 수정",
+            description =
+                    "ADMIN만 호출 가능. 보낸 필드만 반영한다."
+                            + " name: 1~20자, 같은 스터디에 같은 이름이면 409."
+                            + " daysOfWeek: mon~sun 소문자, 1개 이상, null 이면 미정으로 되돌린다."
+                            + " startTime: HH:mm(분반 현지), null 이면 미정으로 되돌린다."
+                            + " timezone 없이 startTime 만 보내면 400."
+                            + " timezone: POL-0006 허용 값(Asia/Seoul · America/New_York · America/Vancouver"
+                            + " · America/Los_Angeles), null 이면 미정(startTime 도 함께 지운다)으로 되돌린다.")
     @PatchMapping("/{groupId}")
     public StudyGroupUpdateResponse update(
             @PathVariable Long studyId,
