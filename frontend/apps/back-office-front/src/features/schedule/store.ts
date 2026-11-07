@@ -7,8 +7,7 @@ import type { ScheduleGroup } from '@/features/schedule/meetings';
  *
  * 반 · 회차 · 킥오프 · 규칙 · 출석은 서버가 정본이다 (`api.ts` · `features/attendance/api.ts`).
  * 스터디 시간 중 weekdays(요일 배열) 만 여기에 남는다 — 참여 명단 GET 응답에 포함되지 않기 때문이다.
- * startTime · timezone 은 서버 반 회차 조회 응답(`studyGroup.startTime · .timezone`)으로 읽는다.
- * TODO(api): 참여 명단 GET 이 daysOfWeek 를 반환하면 이 파일을 지운다.
+ * startTime · timezone · daysOfWeek 는 서버 반 회차 조회 응답(`studyGroup.*`)으로 덮는다(`withServerTz`).
  */
 
 /** 출석 칸 값. 칸이 없으면 미체크. */
@@ -45,8 +44,9 @@ function read(studyId: number): Record<string, StoredTime> {
 }
 
 /**
- * 서버 반(참여 명단 `groups[]`)에 저장소의 요일을 얹는다. 반 ID 는 서버 반 ID 그대로(문자열)다.
- * startTime · timezone 은 회차 목록(`withServerTz`)에서 덮는다.
+ * 서버 반(참여 명단 `groups[]`)으로 초기 그룹을 만든다. 반 ID 는 서버 반 ID 그대로(문자열)다.
+ * weekdays 는 localStorage 에서 읽는다(없으면 빈 배열).
+ * startTime · timezone · daysOfWeek 는 회차 목록(`withServerTz`)에서 덮는다.
  */
 export function groupsFromServer(studyId: number, server: { groupId: number; name: string }[]): ScheduleGroup[] {
   const local = read(studyId);

@@ -211,7 +211,8 @@ public class StudyMeetingService {
                         zone.getId(),
                         startTime,
                         navigatorName,
-                        group.getRules()),
+                        group.getRules(),
+                        group.getDaysOfWeek()),
                 new StudyMeetingListResponse.MeView(myParticipantId, canEdit),
                 candidates,
                 meetingViews);

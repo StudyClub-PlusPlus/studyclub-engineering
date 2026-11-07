@@ -17,6 +17,7 @@ describe('일정 API 전송', () => {
             startTime: null,
             navigatorName: null,
             rules: null,
+            daysOfWeek: null,
           },
           me: { participantId: null, canEdit: true },
           participants: [],
@@ -27,7 +28,7 @@ describe('일정 API 전송', () => {
     vi.stubGlobal('fetch', fetch);
     const signal = new AbortController().signal;
     await expect(repository.fetchMeetings(10, 3, signal)).resolves.toEqual({
-      studyGroup: { id: 3, name: '반', timezone: 'Asia/Seoul', startTime: null, navigatorName: null, rules: null },
+      studyGroup: { id: 3, name: '반', timezone: 'Asia/Seoul', startTime: null, navigatorName: null, rules: null, daysOfWeek: null },
       me: { participantId: null, canEdit: true },
       participants: [],
       meetings: [],
