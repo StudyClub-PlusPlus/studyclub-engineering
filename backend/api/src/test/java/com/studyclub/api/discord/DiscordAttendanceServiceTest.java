@@ -427,6 +427,41 @@ class DiscordAttendanceServiceTest {
     }
 
     @Test
+    @DisplayName("4시간_넘은_진행중_회차는_자동으로_닫고_다음_예정_회차를_시작한다")
+    void 오래된_진행중_회차는_자동으로_닫고_다음_예정_회차를_시작한다() {
+        // 1주차가 열린 채 방치됨 — 2주차 출석이 1주차에 쌓이는 버그 케이스
+        StudyMeeting stale = meeting(1L, GROUP_A, Instant.now().minus(5, ChronoUnit.HOURS), true);
+        StudyMeeting week2 =
+                meeting(2L, GROUP_A, Instant.now().minus(30, ChronoUnit.MINUTES), false);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(stale, week2));
+        givenAccounts();
+
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        // 1주차는 닫히고, 2주차에 출석이 찍혀야 한다
+        assertThat(stale.getEndAt()).isNotNull();
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(g -> assertThat(g.meetingStarted()).isTrue());
+        assertThat(week2.getStartAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("4시간_이내_진행중_회차는_닫지_않는다")
+    void 창_안에_있는_진행중_회차는_닫지_않는다() {
+        StudyMeeting recent = meeting(1L, GROUP_A, Instant.now().minus(3, ChronoUnit.HOURS), true);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(recent));
+        givenAccounts();
+
+        service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(recent.getEndAt()).isNull();
+        assertThat(recent.getStartAt()).isNotNull();
+    }
+
+    @Test
     @DisplayName("연동_안된_유저는_에러가_아니라_unmatched_로_돌려준다")
     void 연동_안된_유저는_에러가_아니라_unmatched_로_돌려준다() {
         givenOneGroupStudy();
