@@ -149,6 +149,14 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     /** 디스코드 연결 해제 차단 — 어느 스터디든 참여 중인 행이 있는가 (AccountDiscordLinkService). */
     boolean existsByAccountIdAndStatusIn(Long accountId, Collection<ParticipantStatus> statuses);
 
+    /** 늦은 연결 role 동기화 — 풀 엔티티 대신 accountId 만 뽑는다 (StudyDiscordLinkService). */
+    @Query(
+            "SELECT DISTINCT p.accountId FROM StudyParticipant p"
+                    + " WHERE p.studyId = :studyId AND p.status IN :statuses")
+    List<Long> findAccountIdsByStudyIdAndStatusIn(
+            @Param("studyId") Long studyId,
+            @Param("statuses") Collection<ParticipantStatus> statuses);
+
     boolean existsByStudyIdAndAccountIdAndStatusIn(
             Long studyId, Long accountId, Collection<ParticipantStatus> statuses);
 

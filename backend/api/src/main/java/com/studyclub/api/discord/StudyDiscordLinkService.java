@@ -2,22 +2,18 @@ package com.studyclub.api.discord;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
-import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.discord.StudyDiscordLink;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.participant.ParticipantStatus;
-import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRepository;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.util.StringUtils;
 
 /**
  * 봇 create-study 를 불러 STUDY_DISCORD_LINK 를 만든다 (specs/discord-study-link/spec.md).
@@ -136,21 +132,12 @@ public class StudyDiscordLinkService {
      */
     private void syncExistingParticipants(
             Long studyId, String discordStudyId, String discordRoleId) {
-        List<StudyParticipant> participants =
-                studyParticipantRepository.findByStudyIdAndStatusIn(studyId, HOLDS_ROLE);
-        if (participants.isEmpty()) {
+        List<Long> accountIds =
+                studyParticipantRepository.findAccountIdsByStudyIdAndStatusIn(studyId, HOLDS_ROLE);
+        if (accountIds.isEmpty()) {
             return;
         }
-        List<Long> accountIds =
-                participants.stream()
-                        .map(StudyParticipant::getAccountId)
-                        .distinct()
-                        .collect(Collectors.toList());
-        List<String> discordUserIds =
-                accountRepository.findAllById(accountIds).stream()
-                        .map(Account::getDiscordId)
-                        .filter(StringUtils::hasText)
-                        .collect(Collectors.toList());
+        List<String> discordUserIds = accountRepository.findDiscordIdsByIdIn(accountIds);
         if (discordUserIds.isEmpty()) {
             log.info("스터디 {} 기존 참여자 중 디스코드 연동 계정 없음", studyId);
             return;
