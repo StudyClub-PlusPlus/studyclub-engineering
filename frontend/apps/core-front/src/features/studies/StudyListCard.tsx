@@ -51,6 +51,7 @@ export function StudyListCard({
       badge={{ label: badge.label, dotClassName: badge.dotClass }}
       summary={t(study.summary, locale)}
       details={details}
+      image={study.image}
       // 카드 전체를 덮는 링크의 클릭이 바깥 div 로 올라온다 — ui 부품을 고치지 않고 여기서 잡는다
       onClick={() =>
         track({
