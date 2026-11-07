@@ -9,6 +9,9 @@ vi.mock('next/headers', () => ({
   }),
 }));
 
+const redirectMock = vi.fn();
+vi.mock('next/navigation', () => ({ redirect: (url: string) => { redirectMock(url); throw new Error('NEXT_REDIRECT'); } }));
+
 const fetchMock = vi.fn<typeof fetch>();
 
 function apiStudy(id: number) {
@@ -48,6 +51,7 @@ const requested = () => fetchMock.mock.calls.map(([input]) => new URL(String(inp
 
 beforeEach(() => {
   fetchMock.mockReset();
+  redirectMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
 });
 
@@ -85,6 +89,20 @@ describe('fetchStudyListPage — 서버가 거르고 정렬한 한 페이지', (
   it('서버가 거절하면 실패하고 전체 조회로 우회하지 않는다', async () => {
     fetchMock.mockResolvedValue(new Response('', { status: 400 }));
     await expect(fetchStudyListPage('offset=0&limit=20')).rejects.toThrow('(400)');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('401 — 세션 만료 시 /login 으로 redirect 한다', async () => {
+    fetchMock.mockResolvedValue(new Response('', { status: 401 }));
+    await expect(fetchStudyListPage('offset=0&limit=20')).rejects.toThrow('NEXT_REDIRECT');
+    expect(redirectMock).toHaveBeenCalledWith('/login');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('403 — 권한 없음 시 /login 으로 redirect 한다', async () => {
+    fetchMock.mockResolvedValue(new Response('', { status: 403 }));
+    await expect(fetchStudyListPage('offset=0&limit=20')).rejects.toThrow('NEXT_REDIRECT');
+    expect(redirectMock).toHaveBeenCalledWith('/login');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
