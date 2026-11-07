@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import type { Locale, Operator, Study } from '@studyclub/types';
+import type { Locale, Study } from '@studyclub/types';
 import { Select } from '@studyclub/ui';
 import { CATEGORY_DISPLAY } from '@studyclub/utils';
 import { Search, X } from 'lucide-react';
@@ -107,11 +107,9 @@ function FilterRow({ children, ...rest }: React.ComponentPropsWithoutRef<'div'>)
 export function StudyBrowser({
   studies: initial,
   locale,
-  leads,
 }: {
   studies?: Study[];
   locale: Locale;
-  leads: Record<string, Operator>;
 }) {
   // 조건은 URL 이 정본이다 — 스터디를 열었다 뒤로 와도 걸어 둔 조건이 그대로다
   const [filters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);

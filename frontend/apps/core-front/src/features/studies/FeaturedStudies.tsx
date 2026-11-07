@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 
-import type { Locale, Operator } from '@studyclub/types';
+import type { Locale } from '@studyclub/types';
 
 import { useStudies } from '@/features/studies/queries';
 import { StudyListCard } from '@/features/studies/StudyListCard';
 import { m, t } from '@/lib/i18n';
 
 /** Featured 스터디 목록 — 서버가 GET /api/studies 로 받은 값을 넘겨받는다 */
-export function FeaturedStudies({ locale, leads }: { locale: Locale; leads: Record<string, Operator> }) {
+export function FeaturedStudies({ locale }: { locale: Locale }) {
   const { data: studies = [] } = useStudies({});
 
   const featured = studies
