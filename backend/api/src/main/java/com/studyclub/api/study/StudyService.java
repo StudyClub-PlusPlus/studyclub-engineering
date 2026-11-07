@@ -98,6 +98,17 @@ public class StudyService {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "recruitDeadline: 모집 마감일은 미래여야 합니다.");
         }
+        if (request.capacity() != null && request.capacity() < 1) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "capacity: 1 이상의 정수여야 합니다.");
+        }
+        if (!isHttpUrlOrBlank(request.discordChannelUrl())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "discordChannelUrl: http(s):// 로 시작하는 주소여야 합니다.");
+        }
+        if (!isHttpUrlOrBlank(request.driveUrl())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "driveUrl: http(s):// 로 시작하는 주소여야 합니다.");
+        }
 
         String trimmedTitle = request.title().trim();
         StudyProgram program = resolveProgram(request, trimmedTitle);
@@ -118,14 +129,25 @@ public class StudyService {
                                 .createdBy(accountId)
                                 .build());
 
-        studyRecruitmentRepository.save(
-                StudyRecruitment.builder()
-                        .studyId(study.getId())
-                        .title(DEFAULT_RECRUITMENT_TITLE)
-                        .description("")
-                        // 모집 시작 시각은 비워 둔다 — 공개(= 모집 시작)할 때 채운다. 채워 두면 신청 폼이 잠긴다
-                        .recruitDeadlineAt(request.recruitDeadline())
-                        .build());
+        if (request.startAt() != null) study.changeStartAt(request.startAt());
+        if (request.discordChannelUrl() != null && !request.discordChannelUrl().isBlank()) {
+            study.changeDiscordChannelUrl(request.discordChannelUrl());
+        }
+        if (request.driveUrl() != null && !request.driveUrl().isBlank()) {
+            study.changeDriveUrl(request.driveUrl());
+        }
+
+        StudyRecruitment recruitment =
+                studyRecruitmentRepository.save(
+                        StudyRecruitment.builder()
+                                .studyId(study.getId())
+                                .title(DEFAULT_RECRUITMENT_TITLE)
+                                .description("")
+                                // 모집 시작 시각은 비워 둔다 — 공개(= 모집 시작)할 때 채운다. 채워 두면 신청 폼이 잠긴다
+                                .recruitDeadlineAt(request.recruitDeadline())
+                                .build());
+        if (request.capacity() != null) recruitment.updateCapacity(request.capacity());
+
         // 신청자가 들어갈 반 — 반을 나눌지는 신청자를 보고 캡틴이 정한다
         studyGroupRepository.save(StudyGroup.defaultOf(study.getId()));
 

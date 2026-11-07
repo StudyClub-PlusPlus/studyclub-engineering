@@ -57,7 +57,7 @@ export function StudyDetailView({ id, locale, initial }: { id: number; locale: L
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(study.category);
   const deadline = toISODate(rec?.deadline);
   const { background, ink } = categoryTint(study.category);
-  const artUrl = categoryArtUrl(study.category);
+  const artUrl = study.image ?? categoryArtUrl(study.category);
   const badge = recruitBadge(study, locale);
   // 목록 카드와 같은 정보를 칸으로 — 같은 개념은 같은 모양(ui 스킬 §3 일관성)
   const facts = [
