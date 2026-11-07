@@ -19,12 +19,12 @@ beforeEach(() => {
 });
 
 describe('알림 탭 — 한 메뉴 두 탭', () => {
-  it('두 탭이 템플릿 → 발송 이력 순으로 서고 각자의 화면으로 이어진다', () => {
+  it('탭이 템플릿 → 발송 이력 → 푸시 보내기 순으로 서고 각자의 화면으로 이어진다', () => {
     render(<NotificationTabs />);
 
     const tabs = screen.getAllByRole('link');
-    expect(tabs.map((t) => t.textContent)).toEqual(['알림 템플릿', '발송 이력']);
-    expect(tabs.map((t) => t.getAttribute('href'))).toEqual(['/notification-templates', '/notifications']);
+    expect(tabs.map((t) => t.textContent)).toEqual(['알림 템플릿', '발송 이력', '푸시 보내기']);
+    expect(tabs.map((t) => t.getAttribute('href'))).toEqual(['/notification-templates', '/notifications', '/web-push']);
   });
 
   it('발송 이력 화면에서는 발송 이력 탭만 현재 탭이다', () => {
