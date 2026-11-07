@@ -284,7 +284,7 @@ export function StudyBrowser({
           className={`grid grid-cols-2 gap-3 transition-opacity sm:gap-4 lg:grid-cols-3 ${loading ? 'opacity-60' : ''}`}
         >
           {studies.map((s, i) => (
-            <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} index={i} />
+            <StudyListCard key={s.id} study={s} locale={locale} index={i} />
           ))}
         </div>
       ) : hasQuery ? (

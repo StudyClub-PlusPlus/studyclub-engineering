@@ -130,10 +130,12 @@ public class StudyService {
                                 .build());
 
         if (request.startAt() != null) study.changeStartAt(request.startAt());
-        if (request.discordChannelUrl() != null) {
+        if (request.discordChannelUrl() != null && !request.discordChannelUrl().isBlank()) {
             study.changeDiscordChannelUrl(request.discordChannelUrl());
         }
-        if (request.driveUrl() != null) study.changeDriveUrl(request.driveUrl());
+        if (request.driveUrl() != null && !request.driveUrl().isBlank()) {
+            study.changeDriveUrl(request.driveUrl());
+        }
 
         StudyRecruitment recruitment =
                 studyRecruitmentRepository.save(
