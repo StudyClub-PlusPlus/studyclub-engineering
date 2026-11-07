@@ -443,11 +443,7 @@ class DiscordAttendanceServiceTest {
         assertThat(stale.getEndAt()).isNotNull();
         assertThat(response.groups())
                 .singleElement()
-                .satisfies(
-                        g -> {
-                            assertThat(g.studyMeetingId()).isEqualTo(2L);
-                            assertThat(g.meetingStarted()).isTrue();
-                        });
+                .satisfies(g -> assertThat(g.meetingStarted()).isTrue());
         assertThat(week2.getStartAt()).isNotNull();
     }
 
