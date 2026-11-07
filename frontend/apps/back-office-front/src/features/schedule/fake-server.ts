@@ -23,6 +23,7 @@ export type FakeState = {
   rules: Record<number, string | null>;
   timezone: Record<number, string>;
   startTime: Record<number, string | null>;
+  daysOfWeek: Record<number, string[] | null>;
   /** `${participantId}:${meetingId}` → 상태 */
   attendance: Record<string, Status>;
   leftAt: Record<number, string>;
@@ -42,6 +43,7 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
     rules: {},
     timezone: {},
     startTime: {},
+    daysOfWeek: {},
     attendance: {},
     leftAt: {},
     ...structuredClone(init),
@@ -70,6 +72,7 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
         startTime: state.startTime[groupId] ?? null,
         navigatorName: null,
         rules: state.rules[groupId] ?? null,
+        daysOfWeek: state.daysOfWeek[groupId] ?? null,
       },
       me: { participantId: null, canEdit: true },
       participants: active(groupId)
@@ -171,10 +174,11 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
       if (!group) return fail(404, '반을 찾을 수 없습니다.');
       if (body.timezone != null) state.timezone[groupId] = body.timezone as string;
       if (body.startTime != null) state.startTime[groupId] = body.startTime as string;
+      if (body.daysOfWeek != null) state.daysOfWeek[groupId] = body.daysOfWeek as string[];
       return ok({
         groupId,
         name: group.name,
-        daysOfWeek: body.daysOfWeek ?? null,
+        daysOfWeek: state.daysOfWeek[groupId] ?? null,
         startTime: state.startTime[groupId] ?? null,
         timezone: state.timezone[groupId] ?? 'Asia/Seoul',
       });

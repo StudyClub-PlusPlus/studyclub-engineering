@@ -190,6 +190,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | studyGroup.startTime | String | Y | 분반 정규 시작 시각, 분반 시간대의 현지 `HH:mm`. 추가 창 시작 시각 기본값(PRD 7-2). `START_AT` 이 비어 있으면 null | 계산: `STUDY_GROUP.START_AT` 을 분반 시간대로 바꾼 시각 |
 | meetings | Array | N | `scheduledAt` 오름차순. 없으면 `[]` | STUDY_MEETING (`STUDY_GROUP_ID` = 분반) |
 | studyGroup.navigatorName | String | Y | 시트 머리의 「네비게이터」. 없으면 null | STUDY_PARTICIPANT(LEADER) → ACCOUNT 닉네임 |
+| studyGroup.daysOfWeek | String[] | Y | 반 정기 요일. `mon`…`sun` 소문자. 미정이면 null | STUDY_GROUP.DAYS_OF_WEEK |
 | studyGroup.rules | String | Y | 스터디 규칙. 없으면 null | STUDY_GROUP.RULES |
 | study.discordChannelUrl | String | Y | 정보 카드 「디스코드」 버튼. 완주한 참여자는 클럽 로비 초대. 없으면 null — 버튼을 두지 않는다 | STUDY.DISCORD_CHANNEL_URL |
 | study.driveUrl | String | Y | 정보 카드 「자료실」 버튼. 없으면 null | STUDY.DRIVE_URL |

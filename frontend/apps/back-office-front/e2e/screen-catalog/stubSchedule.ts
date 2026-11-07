@@ -16,7 +16,7 @@ export async function stubSchedule(page: Page, stateId: string) {
   await page.context().route(/\/api\/admin\/studies\/1\/groups\/\d+\/meetings(?:\?|$)/, (route) => {
     const groupId = Number(new URL(route.request().url()).pathname.split('/')[6]);
     const response: ApiGroupMeetings = {
-      studyGroup: { id: groupId, name: '기본반', timezone: 'Asia/Seoul', startTime: null, navigatorName: null, rules: null },
+      studyGroup: { id: groupId, name: '기본반', timezone: 'Asia/Seoul', startTime: null, navigatorName: null, rules: null, daysOfWeek: null },
       me: { participantId: null, canEdit: true }, participants: [], meetings,
     };
     return route.fulfill({ json: response });

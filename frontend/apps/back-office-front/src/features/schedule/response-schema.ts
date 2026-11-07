@@ -8,6 +8,7 @@ export const apiGroupMeetingsSchema = z.object({
     startTime: z.union([z.null(), z.string()]),
     navigatorName: z.union([z.null(), z.string()]),
     rules: z.union([z.null(), z.string()]),
+    daysOfWeek: z.union([z.null(), z.array(z.string())]),
   }),
   me: z.object({
     participantId: z.union([z.null(), z.number()]),

@@ -21,7 +21,8 @@ public record StudyMeetingListResponse(
             String timezone,
             String startTime,
             String navigatorName,
-            String rules) {}
+            String rules,
+            List<String> daysOfWeek) {}
 
     /** {@code participantId} 는 명부에 없는 (만든) 캡틴이면 null. {@code canEdit} 이 true 면 표를 고칠 수 있게 연다. */
     public record MeView(Long participantId, boolean canEdit) {}
