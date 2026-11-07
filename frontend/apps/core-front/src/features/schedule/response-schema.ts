@@ -38,7 +38,7 @@ export const apiMeetingListSchema = z.object({
       presenter1: z.union([
         z.object({
           participantId: z.number(),
-          name: z.string(),
+          name: z.string().nullable(),
           active: z.boolean(),
         }),
         z.null(),
@@ -46,7 +46,7 @@ export const apiMeetingListSchema = z.object({
       presenter2: z.union([
         z.object({
           participantId: z.number(),
-          name: z.string(),
+          name: z.string().nullable(),
           active: z.boolean(),
         }),
         z.null(),

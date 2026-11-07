@@ -622,6 +622,36 @@ class StudyMeetingIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 반 이동으로 현재 roster에 없는 발표자도 이름을 보완 조회해 반환한다")
+    void presenterMovedToOtherGroupStillShowsName() {
+        StudyMeeting meeting = studyMeetingRepo.findById(futureMeeting.getId()).orElseThrow();
+        meeting.assignPresenters(member.getId(), null);
+        studyMeetingRepo.save(meeting);
+
+        // member를 otherGroup으로 이동 — group roster에서 빠진다
+        jdbcTemplate.update(
+                "UPDATE STUDY_PARTICIPANT SET STUDY_GROUP_ID = ? WHERE ID = ?",
+                otherGroup.getId(),
+                member.getId());
+
+        ResponseEntity<Map> response =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/studies/{studyId}/meetings",
+                        null,
+                        LEADER_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<String, Object>> meetings =
+                (List<Map<String, Object>>) response.getBody().get("meetings");
+        Map<String, Object> presenter1 = (Map<String, Object>) meetings.get(1).get("presenter1");
+        assertThat(presenter1)
+                .containsEntry("participantId", member.getId().intValue())
+                .containsEntry("name", "크루");
+    }
+
+    @Test
     @DisplayName("성공 - 수정에서 발표자 칸은 보낸 칸만 바뀐다. 키가 없으면 그대로, null 이면 비운다")
     void updatesOnlySentPresenterSlots() {
         StudyMeeting meeting = studyMeetingRepo.findById(futureMeeting.getId()).orElseThrow();
