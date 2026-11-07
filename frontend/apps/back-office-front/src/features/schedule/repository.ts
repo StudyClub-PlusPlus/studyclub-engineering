@@ -12,7 +12,7 @@ import { http } from '@/lib/http';
 //
 // 반 ID(`groupId`)는 참여 명단(`GET /api/admin/studies/{id}/participants`)의 `groups[].groupId` 다.
 
-export type ApiPresenter = { participantId: number; name: string; active?: boolean };
+export type ApiPresenter = { participantId: number; name: string | null; active?: boolean };
 
 export type ApiMeeting = {
   id: number;
