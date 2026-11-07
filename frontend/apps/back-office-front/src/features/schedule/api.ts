@@ -34,7 +34,7 @@ export function toPeople(res: ApiGroupMeetings): Person[] {
   const byId = new Map(res.participants.map((p) => [String(p.participantId), p.name]));
   for (const m of res.meetings) {
     for (const p of [m.presenter1, m.presenter2]) {
-      if (p && !byId.has(String(p.participantId))) byId.set(String(p.participantId), p.name);
+      if (p && !byId.has(String(p.participantId))) byId.set(String(p.participantId), p.name ?? '(알 수 없음)');
     }
   }
   return [...byId].map(([id, name]) => ({ id, name }));

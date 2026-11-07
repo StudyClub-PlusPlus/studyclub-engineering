@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -121,7 +123,28 @@ public class StudyMeetingService {
         Map<Long, StudyParticipant> participantById =
                 roster.stream()
                         .collect(Collectors.toMap(StudyParticipant::getId, Function.identity()));
-        Map<Long, String> nameByAccount = nicknames(roster);
+        Map<Long, String> nameByAccount = new HashMap<>(nicknames(roster));
+
+        // 반 이동 후 지난 회차에 발표자로 남아 있는 사람은 현재 roster에 없다.
+        // 없는 presenter를 보완 조회해 name을 채운다.
+        Set<Long> allPresenterIds =
+                meetings.stream()
+                        .flatMap(
+                                m ->
+                                        Stream.of(
+                                                m.getPresenter1ParticipantId(),
+                                                m.getPresenter2ParticipantId()))
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+        Set<Long> missingIds =
+                allPresenterIds.stream()
+                        .filter(id -> !participantById.containsKey(id))
+                        .collect(Collectors.toSet());
+        if (!missingIds.isEmpty()) {
+            List<StudyParticipant> extra = studyParticipantRepository.findAllById(missingIds);
+            extra.forEach(p -> participantById.put(p.getId(), p));
+            nameByAccount.putAll(nicknames(extra));
+        }
 
         Instant now = Instant.now();
         Map<Long, Integer> numbers = MeetingSchedule.numbersOf(meetings);
