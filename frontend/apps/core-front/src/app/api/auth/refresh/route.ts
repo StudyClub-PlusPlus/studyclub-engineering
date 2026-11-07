@@ -39,6 +39,6 @@ export async function POST(req: NextRequest) {
   const data = parsed.data;
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(ACCESS_COOKIE, data.accessToken, accessCookie(data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7));
+  res.cookies.set(ACCESS_COOKIE, data.accessToken, accessCookie(data.accessTokenExpiresIn ?? 60 * 15));
   return res;
 }

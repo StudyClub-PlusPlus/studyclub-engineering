@@ -21,7 +21,7 @@ public class JwtService {
 
     private final SecretKey key;
 
-    public JwtService(@Value("${jwt.secret:local-dev-jwt-secret-change-me}") String secret) {
+    public JwtService(@Value("${jwt.secret}") String secret) {
         this.key = Keys.hmacShaKeyFor(sha256(secret));
     }
 
