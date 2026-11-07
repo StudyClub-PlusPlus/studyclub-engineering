@@ -157,13 +157,11 @@ export function AttendanceTab({
           attendance={attendance}
           onDirtyChange={onDirtyChange}
           onSave={(next, withdrawIds) => {
-            const { updates, cleared } = toUpdates(
+            const { updates } = toUpdates(
               attendance,
               next,
               columns.map((c) => c.id),
             );
-            // 서버는 칸을 비우지 못한다 — 미체크로 되돌린 칸은 저장하지 않고 알린다
-            if (cleared > 0) toast.error(`미체크로 되돌린 ${cleared}칸은 저장할 수 없어 그대로 둡니다.`);
             if (updates.length === 0 && withdrawIds.length === 0) return;
             save.mutate(
               { updates, withdrawals: withdrawIds.map(Number) },

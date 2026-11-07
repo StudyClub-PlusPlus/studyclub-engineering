@@ -32,11 +32,12 @@ export type ApiAttendance = {
   }[];
 };
 
-export type AttendanceUpdate = { meetingId: number; participantId: number; status: ApiAttendanceStatus };
+/** status = null 은 미체크로 되돌리기 — 출석 행 삭제. */
+export type AttendanceUpdate = { meetingId: number; participantId: number; status: ApiAttendanceStatus | null };
 
 export type AttendanceSavePayload = {
   studyGroupId: number;
-  /** 바뀐 칸만. 같은 (회차, 참가자) 쌍이 두 번이면 400. 상태는 필수라 칸을 비우지는 못한다. */
+  /** 바뀐 칸만. 같은 (회차, 참가자) 쌍이 두 번이면 400. status = null 은 미체크 되돌리기(행 삭제). */
   updates: AttendanceUpdate[];
   /** 참여를 중단할 명부 행 ID. 둘 다 비면 400. */
   withdrawals: number[];

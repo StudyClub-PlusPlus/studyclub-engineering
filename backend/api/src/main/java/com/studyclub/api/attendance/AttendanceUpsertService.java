@@ -128,15 +128,26 @@ public class AttendanceUpsertService {
         for (int i = 0; i < upsertRequests.size(); i++) {
             AttendanceUpsertRequest.AttendanceUpsertItem item = upsertRequests.get(i);
             StudyParticipant participant = participantById.get(item.participantId());
-            studyAttendanceRepository.upsertStatus(
-                    participant.getAccountId(),
-                    studyId,
-                    participant.getStudyGroupId(),
-                    item.meetingId(),
-                    validRequestContext.statuses().get(i).name(),
-                    now);
+            AttendanceStatus status = validRequestContext.statuses().get(i);
+            if (status == null) {
+                // null = 미체크로 되돌리기 — 출석 행을 지운다
+                studyAttendanceRepository.deleteByStudyMeetingIdAndAccountId(
+                        item.meetingId(), participant.getAccountId());
+            } else {
+                studyAttendanceRepository.upsertStatus(
+                        participant.getAccountId(),
+                        studyId,
+                        participant.getStudyGroupId(),
+                        item.meetingId(),
+                        status.name(),
+                        now);
+            }
         }
     }
+
+    // ValidRequestContext 의 statuses 는 items 와 1:1 대응. null = 삭제(미체크 되돌리기)
+    private record ValidRequestContext(
+            List<AttendanceStatus> statuses, Set<Long> meetingIds, Set<Long> participantIds) {}
 
     private void validateStudyExists(Long studyId) {
         studyRepository
@@ -162,10 +173,14 @@ public class AttendanceUpsertService {
         Set<Pair<Long, Long>> seenPairs = new HashSet<>();
 
         for (AttendanceUpsertRequest.AttendanceUpsertItem item : updates) {
-            try {
-                statuses.add(AttendanceStatus.from(item.status()));
-            } catch (IllegalArgumentException e) {
-                throw new BusinessException(ErrorCode.INVALID_INPUT, e.getMessage());
+            if (item.status() == null) {
+                statuses.add(null); // null = 삭제(미체크 되돌리기)
+            } else {
+                try {
+                    statuses.add(AttendanceStatus.from(item.status()));
+                } catch (IllegalArgumentException e) {
+                    throw new BusinessException(ErrorCode.INVALID_INPUT, e.getMessage());
+                }
             }
             if (!seenPairs.add(Pair.of(item.meetingId(), item.participantId()))) {
                 throw new BusinessException(
@@ -214,7 +229,4 @@ public class AttendanceUpsertService {
         }
         return participants.stream().collect(Collectors.toMap(StudyParticipant::getId, p -> p));
     }
-
-    private record ValidRequestContext(
-            List<AttendanceStatus> statuses, Set<Long> meetingIds, Set<Long> participantIds) {}
 }
