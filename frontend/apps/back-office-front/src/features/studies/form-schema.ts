@@ -142,10 +142,6 @@ export function formToPayload(form: StudyFormValues, initial: StudyFormValues): 
 /**
  * 등록 바디. 프로그램은 **둘 중 하나만** 보낸다 — 새 프로그램이면 `studyKind`, 기존 클럽의 새 기수면
  * `studyProgramId`. 둘을 함께 보내면 서버가 400 으로 거절한다(종류는 한 번 정하면 못 바꾼다).
- *
- * ⚠️ 등록 API 는 아직 정원·진행 시작일·채널/드라이브 주소를 받지 않는다(`StudyCreateRequest`). 그래서 그
- * 칸들은 **등록 요청에 실리지 않고**, 등록 뒤 정보 탭에서 저장해야 한다 — specs/study-registration-spec.md
- * 10절의 남은 항목이다. 보내도 서버가 조용히 버리므로 아예 싣지 않는다.
  */
 export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
   const payload: StudyCreatePayload = {
@@ -159,6 +155,10 @@ export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
   if (form.description.trim()) payload.description = form.description;
   if (form.schedule.trim()) payload.schedule = form.schedule.trim();
   if (form.timezone) payload.timezone = form.timezone;
+  if (!form.unlimited) payload.capacity = Number(form.capacity.trim());
+  if (form.startAt) payload.startAt = startDateToIso(form.startAt);
+  if (form.discordUrl.trim()) payload.discordChannelUrl = form.discordUrl.trim();
+  if (form.driveUrl.trim()) payload.driveUrl = form.driveUrl.trim();
   if (form.thumbnailFileId !== null) payload.thumbnailFileId = form.thumbnailFileId;
   return payload;
 }
