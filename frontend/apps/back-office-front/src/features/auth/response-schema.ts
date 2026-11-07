@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+export const tokenResponseSchema = z.object({
+  accessToken: z.string().min(1),
+  accessTokenExpiresIn: z.number().optional(),
+});
+
 export const authAccountSchema = z.object({
   id: z.number(),
   role: z.string(),

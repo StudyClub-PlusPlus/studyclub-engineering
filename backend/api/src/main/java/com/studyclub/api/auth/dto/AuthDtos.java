@@ -87,5 +87,5 @@ public final class AuthDtos {
         }
     }
 
-    public record AccessTokenResponse(String accessToken) {}
+    public record AccessTokenResponse(String accessToken, long accessTokenExpiresIn) {}
 }

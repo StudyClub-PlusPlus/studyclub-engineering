@@ -40,11 +40,16 @@ function messageOf(body: unknown, status: number): string {
 }
 
 export async function http<T>(path: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const request: RequestInit = {
     cache: 'no-store',
     credentials: 'include', // 쿠키 인증 — 빼면 전부 401 이다
     ...init,
-  });
+  };
+  let res = await fetch(`${API_BASE}${path}`, request);
+  if (res.status === 401) {
+    const refreshed = await fetch('/api/auth/refresh', { method: 'POST', signal: init?.signal });
+    if (refreshed.ok) res = await fetch(`${API_BASE}${path}`, request);
+  }
   const text = await res.text();
   let body: unknown = null;
   try {

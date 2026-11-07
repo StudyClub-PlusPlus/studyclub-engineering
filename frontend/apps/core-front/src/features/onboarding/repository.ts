@@ -19,5 +19,5 @@ export function completeOnboarding(payload: OnboardingPayload): Promise<Account>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-  }, { refreshOnUnauthorized: true });
+  });
 }

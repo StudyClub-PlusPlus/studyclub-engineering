@@ -12,5 +12,5 @@ export function checkNicknameAvailability(
   return http(`/api/nicknames/availability?${qs.toString()}`, nicknameAvailabilitySchema, {
     method: 'GET',
     signal,
-  }, { refreshOnUnauthorized: true });
+  });
 }
