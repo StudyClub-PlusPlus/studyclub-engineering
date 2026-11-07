@@ -30,7 +30,7 @@ export const apiGroupMeetingsSchema = z.object({
         z.null(),
         z.object({
           participantId: z.number(),
-          name: z.string(),
+          name: z.string().nullable(),
           active: z.union([z.undefined(), z.boolean()]).optional(),
         }),
       ]),
@@ -38,7 +38,7 @@ export const apiGroupMeetingsSchema = z.object({
         z.null(),
         z.object({
           participantId: z.number(),
-          name: z.string(),
+          name: z.string().nullable(),
           active: z.union([z.undefined(), z.boolean()]).optional(),
         }),
       ]),
