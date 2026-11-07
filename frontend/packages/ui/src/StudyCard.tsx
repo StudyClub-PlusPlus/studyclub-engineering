@@ -38,6 +38,8 @@ export interface StudyCardProps extends HTMLAttributes<HTMLDivElement> {
   summary?: ReactNode;
   /** 본문 정보 줄 — 위에서부터 차례로 */
   details?: StudyCardDetail[];
+  /** 스터디 썸네일 URL. 있으면 카테고리 아트 대신 헤더 오른쪽에 표시한다. */
+  image?: string;
 }
 
 export function StudyCard({
@@ -48,11 +50,12 @@ export function StudyCard({
   badge,
   summary,
   details = [],
+  image,
   className,
   ...rest
 }: StudyCardProps) {
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(category);
-  const artUrl = categoryArtUrl(category);
+  const artUrl = image ?? categoryArtUrl(category);
   const { background, ink } = categoryTint(category);
 
   return (
