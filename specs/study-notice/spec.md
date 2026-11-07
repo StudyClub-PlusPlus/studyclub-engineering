@@ -227,7 +227,7 @@ sequenceDiagram
 | items[].discord.skipReason | String | Y | `SKIPPED` 일 때만. `BOT_NOT_CONFIGURED` · `NO_DISCORD_CHANNEL` · `SENDER_NOT_LINKED` · `NO_TEXT_CHANNEL` | STUDY_NOTICE.DISCORD_SKIP_REASON |
 | items[].discord.mentionedCount | Integer | N | 멘션을 요청한 사람 수 (연동한 사람). 봇은 길드를 떠난 사람을 멘션에서 빼고도 204 를 주고 누구를 뺐는지 알려 주지 않으므로, 실제 알림을 받은 수보다 많을 수 있다 | 계산: `DISCORD_MENTIONED = true` 인 수 |
 
-메일을 센 값은 **목록 한 번에 센다** (공지마다 쿼리하지 않는다 — N+1). 공지 여러 건의 `(REFERENCE_ID, RECIPIENT_USER_ID, STATUS)` 를 중복 없이 한 번에 읽어 서버에서 받는 사람별 대표 상태로 줄인다.
+메일을 센 값은 **목록 한 번에 센다** (공지마다 쿼리하지 않는다 — N+1). 공지 여러 건을 한 번의 쿼리로 받는 사람별 대표 상태로 **DB 에서** 줄여 결과별 인원을 센다 — 받는 사람이 많아도 돌아오는 행은 공지당 많아야 셋(대기·완료·실패)이다.
 
 ### Error Responses
 
