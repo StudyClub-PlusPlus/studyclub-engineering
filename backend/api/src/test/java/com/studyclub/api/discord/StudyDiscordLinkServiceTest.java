@@ -3,9 +3,11 @@ package com.studyclub.api.discord;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -17,8 +19,6 @@ import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
-import com.studyclub.domain.participant.ParticipantStatus;
-import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRepository;
@@ -159,15 +159,11 @@ class StudyDiscordLinkServiceTest {
         when(discordBotClient.createStudy("알고리즘 스터디", DISCORD_USER_ID)).thenReturn(CREATED);
         givenStudyStillExists(true);
 
-        StudyParticipant participant = mock(StudyParticipant.class);
-        when(participant.getAccountId()).thenReturn(2L);
-        when(studyParticipantRepository.findByStudyIdAndStatusIn(
-                        STUDY_ID, List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED)))
-                .thenReturn(List.of(participant));
-
-        Account member = mock(Account.class);
-        when(member.getDiscordId()).thenReturn("1327394882193880002");
-        when(accountRepository.findAllById(List.of(2L))).thenReturn(List.of(member));
+        when(studyParticipantRepository.findAccountIdsByStudyIdAndStatusIn(
+                        eq(STUDY_ID), anyCollection()))
+                .thenReturn(List.of(2L));
+        when(accountRepository.findDiscordIdsByIdIn(anyCollection()))
+                .thenReturn(List.of("1327394882193880002"));
         when(discordBotClient.systemUserId()).thenReturn("bot-id");
         when(discordBotClient.assignRole(
                         "bot-id",
@@ -194,15 +190,10 @@ class StudyDiscordLinkServiceTest {
         when(discordBotClient.createStudy("알고리즘 스터디", DISCORD_USER_ID)).thenReturn(CREATED);
         givenStudyStillExists(true);
 
-        StudyParticipant participant = mock(StudyParticipant.class);
-        when(participant.getAccountId()).thenReturn(2L);
-        when(studyParticipantRepository.findByStudyIdAndStatusIn(
-                        STUDY_ID, List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED)))
-                .thenReturn(List.of(participant));
-
-        Account member = mock(Account.class);
-        when(member.getDiscordId()).thenReturn(null);
-        when(accountRepository.findAllById(List.of(2L))).thenReturn(List.of(member));
+        when(studyParticipantRepository.findAccountIdsByStudyIdAndStatusIn(
+                        eq(STUDY_ID), anyCollection()))
+                .thenReturn(List.of(2L));
+        when(accountRepository.findDiscordIdsByIdIn(anyCollection())).thenReturn(List.of());
 
         service.link(ADMIN_ID, STUDY_ID, null);
 
