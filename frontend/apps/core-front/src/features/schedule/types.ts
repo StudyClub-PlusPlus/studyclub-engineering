@@ -23,8 +23,8 @@ export type ApiMeetingList = {
     number: number;
     scheduledAt: string;
     title: string | null;
-    presenter1: { participantId: number; name: string; active: boolean } | null;
-    presenter2: { participantId: number; name: string; active: boolean } | null;
+    presenter1: { participantId: number; name: string | null; active: boolean } | null;
+    presenter2: { participantId: number; name: string | null; active: boolean } | null;
     started: boolean;
   }>;
 };
