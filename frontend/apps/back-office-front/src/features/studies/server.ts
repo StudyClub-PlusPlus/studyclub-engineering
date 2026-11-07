@@ -61,6 +61,8 @@ async function fetchStudyPage(token: string | undefined, query: string): Promise
         await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
         continue;
       }
+      // non-retryable 에러: body 를 소비하지 않고 throw/redirect 하므로 미리 닫는다
+      await response.body?.cancel();
       // 세션 만료(401) 또는 권한 없음(403) — 로그인으로 보낸다
       if (response.status === 401 || response.status === 403) redirect('/login');
       throw new Error('스터디 목록을 불러오지 못했습니다. (' + response.status + ')');
