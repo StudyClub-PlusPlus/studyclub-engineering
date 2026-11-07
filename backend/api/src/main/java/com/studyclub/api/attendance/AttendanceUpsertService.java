@@ -104,6 +104,7 @@ public class AttendanceUpsertService {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "이 경로는 참여 중단(withdrawals)을 받지 않습니다.");
         }
+        // null-status 항목은 출석 행 삭제로 처리되므로 비어 있는 것이 아님 — isEmpty()로 충분
         if (request.updates().isEmpty()) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "updates 와 withdrawals 가 모두 비었습니다.");

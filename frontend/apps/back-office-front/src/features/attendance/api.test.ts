@@ -66,6 +66,15 @@ describe('출석 명부 변환', () => {
       ],
     });
   });
+
+  it('columnIds 밖의 회차는 변경됐어도 updates 에 포함하지 않는다', () => {
+    const saved = { '1': { '11': 'absent' as const, '99': 'late' as const } };
+    const next = { '1': { '11': 'present' as const, '99': 'excused' as const } };
+    // columnIds=['11'] — '99' 의 변경은 무시
+    expect(toUpdates(saved, next, ['11'])).toEqual({
+      updates: [{ meetingId: 11, participantId: 1, status: 'PRESENT' }],
+    });
+  });
 });
 
 describe('회차 수정 본문', () => {

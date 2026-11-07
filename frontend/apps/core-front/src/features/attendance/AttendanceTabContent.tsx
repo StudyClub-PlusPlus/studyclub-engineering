@@ -400,12 +400,16 @@ export function AttendanceTabContent({
     const withdrawals = Array.from(toWithdraw).map(Number);
     // 고친 칸만 보낸다 — 격자 전체를 보내면 그 사이 다른 경로(디스코드 출석 등)로 바뀐 칸을 덮어쓴다.
     // status = null 은 미체크로 되돌리기 — 출석 행을 삭제한다.
+    // 화면에 보이는 회차(meetings)만 순회 — savedCells 에 남은 삭제된 회차 ID 가 오요청에 포함되지 않게.
+    const visibleMids = new Set(meetings.map((m) => m.id));
     const allPids = new Set([...Object.keys(cells), ...Object.keys(savedCells)]);
     const updates: Array<{ participantId: number; meetingId: number; status: string | null }> = [];
     for (const pid of allPids) {
       const savedRow = savedCells[pid] ?? {};
       const currentRow = cells[pid] ?? {};
-      const allMids = new Set([...Object.keys(savedRow), ...Object.keys(currentRow)]);
+      const allMids = new Set(
+        [...Object.keys(savedRow), ...Object.keys(currentRow)].filter((mid) => visibleMids.has(mid)),
+      );
       for (const mid of allMids) {
         const before = savedRow[mid];
         const after = currentRow[mid];

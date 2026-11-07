@@ -165,7 +165,10 @@ export function AttendanceTab({
             if (updates.length === 0 && withdrawIds.length === 0) return;
             save.mutate(
               { updates, withdrawals: withdrawIds.map(Number) },
-              { onError: (err) => toast.error(err.message || '출석부를 저장하지 못했습니다.') },
+              {
+                onSuccess: () => toast.success('출석부를 저장했습니다.'),
+                onError: (err) => toast.error(err.message || '출석부를 저장하지 못했습니다.'),
+              },
             );
           }}
           toolbar={
