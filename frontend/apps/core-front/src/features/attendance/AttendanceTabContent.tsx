@@ -399,18 +399,29 @@ export function AttendanceTabContent({
     setSaving(true);
     const withdrawals = Array.from(toWithdraw).map(Number);
     // 고친 칸만 보낸다 — 격자 전체를 보내면 그 사이 다른 경로(디스코드 출석 등)로 바뀐 칸을 덮어쓴다.
-    // 미체크로 되돌린 칸은 아직 보낼 수 없다(API 가 status 로 네 상태만 받는다). 다시 불러오면 서버 값으로 돌아온다
-    const updates = Object.entries(cells).flatMap(([participantId, entries]) =>
-      Object.entries(entries)
-        .filter(([meetingId, status]) => status && status !== savedCells[participantId]?.[meetingId])
-        .map(([meetingId, status]) => ({
-          participantId: Number(participantId),
-          meetingId: Number(meetingId),
-          status: (status as string).toUpperCase(),
-        })),
-    );
+    // status = null 은 미체크로 되돌리기 — 출석 행을 삭제한다.
+    // 화면에 보이는 회차(meetings)만 순회 — savedCells 에 남은 삭제된 회차 ID 가 오요청에 포함되지 않게.
+    const visibleMids = new Set(meetings.map((m) => m.id));
+    const allPids = new Set([...Object.keys(cells), ...Object.keys(savedCells)]);
+    const updates: Array<{ participantId: number; meetingId: number; status: string | null }> = [];
+    for (const pid of allPids) {
+      const savedRow = savedCells[pid] ?? {};
+      const currentRow = cells[pid] ?? {};
+      const allMids = new Set(
+        [...Object.keys(savedRow), ...Object.keys(currentRow)].filter((mid) => visibleMids.has(mid)),
+      );
+      for (const mid of allMids) {
+        const before = savedRow[mid];
+        const after = currentRow[mid];
+        if (before === after) continue;
+        updates.push({
+          participantId: Number(pid),
+          meetingId: Number(mid),
+          status: after ? (after as string).toUpperCase() : null,
+        });
+      }
+    }
     if (updates.length === 0 && withdrawals.length === 0) {
-      setAnnounce('미체크로 되돌린 칸은 아직 저장할 수 없습니다.');
       setSaving(false);
       return;
     }
