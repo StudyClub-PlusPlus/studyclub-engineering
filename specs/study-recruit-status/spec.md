@@ -166,7 +166,7 @@ recruitmentCapacity != null && 현재 크루 수 >= recruitmentCapacity → RECR
 | 위치 | 덮는 것 |
 |---|---|
 | `domain/.../StudyCohortTest` | 판정 규칙 단위 — 마감 시각 정확히 now / 1초 전 / 경과, 정원 도달·초과, `recruitmentCapacity` null, `DRAFT`·`CLOSED` → null |
-| `api/.../StudyRecruitStatusIntegrationTest` | 목록·상세 응답에 필드가 실제로 실리는지, `REJECTED`·`WITHDRAWN`·`WAITLISTED` 가 정원을 안 차지하는지 |
+| `api/.../StudyRecruitStatusIntegrationTest` | 목록·상세 응답에 필드가 실제로 실리는지, 마감 시각·정원 도달·무제한 정원·`STATUS != OPEN` 케이스 종단 검증 (명부 WITHDRAWN 하차 후 빈자리 오픈 케이스는 `AdminStudyListIntegrationTest`·`AdminStudyQueryIntegrationTest` 참조) |
 
 ## 퍼널·계측
 

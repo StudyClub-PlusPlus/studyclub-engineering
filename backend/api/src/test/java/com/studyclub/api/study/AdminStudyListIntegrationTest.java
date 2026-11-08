@@ -46,6 +46,8 @@ class AdminStudyListIntegrationTest {
     private static final Long CLUB_STUDY_ID = 9603L;
     // 클럽의 다음 기수 — CLUB_STUDY_ID 와 같은 프로그램에 붙는다
     private static final Long NEXT_COHORT_ID = 9604L;
+    // participant 삽입에 사용할 그룹 ID — FK 제약 충족용
+    private static final Long STUDY_GROUP_ID = 9611L;
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
@@ -78,6 +80,8 @@ class AdminStudyListIntegrationTest {
         insertRecruitment(STUDY_ID, 20, now);
         insertRecruitment(DRAFT_STUDY_ID, null, now);
         insertRecruitment(CLUB_STUDY_ID, 15, now);
+        // participant 삽입 테스트를 위한 그룹 — FK 제약 충족
+        insertGroup(STUDY_GROUP_ID, STUDY_ID, now);
     }
 
     @Test
@@ -488,7 +492,7 @@ class AdminStudyListIntegrationTest {
                         + " PARTICIPANT_ROLE, JOINED_AT, CREATED_AT, UPDATED_AT)"
                         + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 accountId,
-                0L,
+                STUDY_GROUP_ID,
                 studyId,
                 status.name(),
                 ParticipantRole.MEMBER.name(),
@@ -533,6 +537,7 @@ class AdminStudyListIntegrationTest {
                 STUDY_ID,
                 DRAFT_STUDY_ID,
                 CLUB_STUDY_ID);
+        jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE ID = ?", STUDY_GROUP_ID);
         jdbcTemplate.update(
                 "DELETE FROM STUDY_RECRUITMENT WHERE STUDY_ID IN (?, ?, ?)",
                 STUDY_ID,
@@ -617,6 +622,17 @@ class AdminStudyListIntegrationTest {
     private long latestRecruitmentId(Long studyId) {
         return jdbcTemplate.queryForObject(
                 "SELECT MAX(ID) FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?", Long.class, studyId);
+    }
+
+    private void insertGroup(Long id, Long studyId, Timestamp now) {
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_GROUP (ID, STUDY_ID, NAME, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?)",
+                id,
+                studyId,
+                "1반",
+                now,
+                now);
     }
 
     private void insertApplication(Long accountId, long recruitmentId, Timestamp now) {
