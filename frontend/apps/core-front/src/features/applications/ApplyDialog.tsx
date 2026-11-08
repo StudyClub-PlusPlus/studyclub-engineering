@@ -19,6 +19,7 @@ import { DiscordNicknameField } from '@/features/applications/DiscordNicknameFie
 import { useStudyApplicationForm, useSubmitApplication } from '@/features/applications/queries';
 import { AVAILABLE_DAYS, makeApplySchema, normalizeSingleLine } from '@/features/applications/schema';
 import { addApplication, getApplication } from '@/features/applications/storage';
+import { getUser, setUser } from '@/features/auth/auth';
 import { getDiscordNickname, getRegion, setDiscordNickname } from '@/features/profile/local-state';
 import { track } from '@/lib/analytics';
 import { ApiError } from '@/lib/http';
@@ -297,6 +298,8 @@ export function ApplyDialog({
     setSubmitError(null);
     const normalizedNick = normalizeSingleLine(draftNick);
     setDiscordNickname(normalizedNick);
+    const user = getUser();
+    if (user) setUser({ ...user, discordNickname: normalizedNick });
 
     track({
       name: 'Study Apply Submitted',
