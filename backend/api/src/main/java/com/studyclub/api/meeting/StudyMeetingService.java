@@ -183,14 +183,14 @@ public class StudyMeetingService {
                                         StudyMeetingListResponse.ParticipantView::name,
                                         Comparator.nullsLast(Comparator.naturalOrder())))
                         .toList();
-        String navigatorName =
+        List<String> navigatorNames =
                 roster.stream()
                         .filter(p -> p.getParticipantRole() == ParticipantRole.LEADER)
                         .filter(p -> StudyCaptainGuard.ROSTER_STATUSES.contains(p.getStatus()))
                         .map(p -> nameByAccount.get(p.getAccountId()))
                         .filter(Objects::nonNull)
-                        .findFirst()
-                        .orElse(null);
+                        .toList();
+        String navigatorName = navigatorNames.isEmpty() ? null : String.join(", ", navigatorNames);
         Long myParticipantId =
                 roster.stream()
                         .filter(p -> p.getAccountId().equals(accountId))
