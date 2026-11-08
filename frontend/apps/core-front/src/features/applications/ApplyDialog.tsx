@@ -297,9 +297,6 @@ export function ApplyDialog({
     setInvalidKey(null);
     setSubmitError(null);
     const normalizedNick = normalizeSingleLine(draftNick);
-    setDiscordNickname(normalizedNick);
-    const user = getUser();
-    if (user) setUser({ ...user, discordNickname: normalizedNick });
 
     track({
       name: 'Study Apply Submitted',
@@ -346,6 +343,10 @@ export function ApplyDialog({
       if (fixedSchedule) reqBody.scheduleAgreed = agreed;
 
       await submitMutation.mutateAsync(reqBody);
+
+      setDiscordNickname(normalizedNick);
+      const user = getUser();
+      if (user) setUser({ ...user, discordNickname: normalizedNick });
 
       addApplication({
         studyId: study.id,
