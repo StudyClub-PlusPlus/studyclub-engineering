@@ -1,6 +1,7 @@
 package com.studyclub.domain.participant;
 
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -17,13 +18,17 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     List<StudyParticipant> findByStudyIdAndStatusIn(
             Long studyId, Collection<ParticipantStatus> statuses);
 
-    /** 진행 중 기수의 ACTIVE 참여 명부. 대시보드 활성 크루·1인당 참여·시간대 분포용 (specs/dashboard/spec.md 2-1). */
+    /**
+     * 진행 중 기수(STATUS=OPEN, START_AT 경과)의 ACTIVE 참여 명부. 대시보드 활성 크루·1인당 참여·시간대 분포용
+     * (specs/dashboard/spec.md 2-1). 결정 5에 따라 OPEN→ONGOING 전환을 당분간 일으키지 않으므로 START_AT 경과로 판단한다.
+     */
     @Query(
             "SELECT p FROM StudyParticipant p, Study s"
                     + " WHERE p.studyId = s.id"
-                    + " AND s.status = com.studyclub.domain.study.StudyStatus.ONGOING"
+                    + " AND s.status = com.studyclub.domain.study.StudyStatus.OPEN"
+                    + " AND s.startAt IS NOT NULL AND s.startAt <= :asOf"
                     + " AND p.status = com.studyclub.domain.participant.ParticipantStatus.ACTIVE")
-    List<StudyParticipant> findActiveInOngoingStudies();
+    List<StudyParticipant> findActiveInStartedOpenStudies(@Param("asOf") Instant asOf);
 
     void deleteByStudyId(Long studyId);
 

@@ -123,6 +123,10 @@ class BackofficeStudyQueryDao implements BackofficeStudyDao {
             conditions.add("(" + HAS_FORM + ") = :hasForm");
             params.put("hasForm", filter.hasApplicationForm() ? 1 : 0);
         }
+        if (Boolean.TRUE.equals(filter.startedOnly())) {
+            conditions.add("s.START_AT IS NOT NULL AND s.START_AT <= :asOf");
+            params.put("asOf", Timestamp.from(asOf));
+        }
         boolean recruitFilter = filter.recruitStatus() != null || filter.recruitFilter() != null;
         if (filter.recruitStatus() != null) {
             conditions.add("s.STATUS = 'OPEN'");

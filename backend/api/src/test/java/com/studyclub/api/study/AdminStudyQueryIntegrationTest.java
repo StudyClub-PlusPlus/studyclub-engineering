@@ -355,7 +355,17 @@ class AdminStudyQueryIntegrationTest {
             BackofficeStudySort sort,
             StudyStatus status) {
         return new BackofficeStudyListFilter(
-                StudyCategory.OTHER, null, status, null, null, null, sort, keyword, form, recruit);
+                StudyCategory.OTHER,
+                null,
+                status,
+                null,
+                null,
+                null,
+                sort,
+                keyword,
+                form,
+                recruit,
+                null);
     }
 
     private List<Long> ids(BackofficeStudyListResponse response) {
