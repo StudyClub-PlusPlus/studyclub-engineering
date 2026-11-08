@@ -14,6 +14,7 @@ export const apiMeetingListSchema = z.object({
     startTime: z.union([z.string(), z.null()]),
     navigatorName: z.union([z.string(), z.null()]),
     rules: z.union([z.string(), z.null()]),
+    daysOfWeek: z.array(z.string()).nullable().optional(),
   }),
   me: z.object({
     participantId: z.union([z.number(), z.null()]),
