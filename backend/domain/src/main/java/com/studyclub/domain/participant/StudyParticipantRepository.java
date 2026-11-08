@@ -58,6 +58,13 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     /** 한 기수 안 여러 반 동시 소속은 금지라 많아야 하나다. 회차 관리 화면이 분반을 지정하지 않았을 때 쓴다. */
     Optional<StudyParticipant> findFirstByStudyIdAndAccountId(Long studyId, Long accountId);
 
+    /**
+     * 활성 명부 행의 분반 — WITHDRAWN·COMPLETED 를 건너뛴다. 재합류(다른 반) 시 구 행을 무시하기 위해 status 필터를 적용한다. 한 기수 안 활성
+     * 소속은 하나이므로 findFirst 가 고유하다.
+     */
+    Optional<StudyParticipant> findFirstByStudyIdAndAccountIdAndStatusIn(
+            Long studyId, Long accountId, Collection<ParticipantStatus> statuses);
+
     /** 분반 안 내 명부 행 — (ACCOUNT_ID, STUDY_GROUP_ID) 가 유일하다. 회차 보기·발표 신청 판정에 쓴다. */
     Optional<StudyParticipant> findByStudyGroupIdAndAccountId(Long studyGroupId, Long accountId);
 

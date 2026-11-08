@@ -478,8 +478,8 @@ export function ScheduleTab({
       const isLeft = Boolean(p.left || p.active === false || withdrawnIds.has(pid));
       return {
         id: pid,
-        name: p.name,
-        displayName: p.name,
+        name: p.name ?? '(알 수 없음)',
+        displayName: p.name ?? '(알 수 없음)',
         discordNickname: p.discordNickname ?? null,
         me: pid === myId,
         left: isLeft,

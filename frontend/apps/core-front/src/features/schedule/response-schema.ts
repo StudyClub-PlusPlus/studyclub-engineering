@@ -22,7 +22,7 @@ export const apiMeetingListSchema = z.object({
   participants: z.array(
     z.object({
       participantId: z.number(),
-      name: z.string(),
+      name: z.string().nullable(),
       discordNickname: z.union([z.string(), z.null()]).optional(),
       left: z.boolean().optional(),
       active: z.boolean().optional(),
