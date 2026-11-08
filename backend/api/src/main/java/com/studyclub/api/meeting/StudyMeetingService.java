@@ -124,6 +124,7 @@ public class StudyMeetingService {
                 roster.stream()
                         .collect(Collectors.toMap(StudyParticipant::getId, Function.identity()));
         Map<Long, String> nameByAccount = new HashMap<>(nicknames(roster));
+        Map<Long, String> discordNicknameByAccount = new HashMap<>(discordNicknames(roster));
 
         // 반 이동 후 지난 회차에 발표자로 남아 있는 사람은 현재 roster에 없다.
         // 없는 presenter를 보완 조회해 name을 채운다.
@@ -174,7 +175,9 @@ public class StudyMeetingService {
                         .map(
                                 p ->
                                         new StudyMeetingListResponse.ParticipantView(
-                                                p.getId(), nameByAccount.get(p.getAccountId())))
+                                                p.getId(),
+                                                nameByAccount.get(p.getAccountId()),
+                                                discordNicknameByAccount.get(p.getAccountId())))
                         .sorted(
                                 Comparator.comparing(
                                         StudyMeetingListResponse.ParticipantView::name,
@@ -507,6 +510,13 @@ public class StudyMeetingService {
         return accountRepository.findAllById(accountIds).stream()
                 .filter(a -> a.getNickname() != null)
                 .collect(Collectors.toMap(Account::getId, Account::getNickname));
+    }
+
+    private Map<Long, String> discordNicknames(List<StudyParticipant> roster) {
+        List<Long> accountIds = roster.stream().map(StudyParticipant::getAccountId).toList();
+        return accountRepository.findAllById(accountIds).stream()
+                .filter(a -> a.getDiscordNickname() != null)
+                .collect(Collectors.toMap(Account::getId, Account::getDiscordNickname));
     }
 
     private StudyMeeting find(List<StudyMeeting> meetings, Long meetingId) {
