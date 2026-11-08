@@ -72,7 +72,7 @@
 
 - path `studyId` 필수.
 - 통과: 그 스터디의 **어느 `STUDY_GROUP`이든** 네비게이터인 경우.
-- 대상: 스터디 정보 수정, 신청 폼 저장 등 — 분반에 묶이지 않는 API.
+- 대상: 스터디 정보 수정 등 — 분반에 묶이지 않는 API. (신청 폼 저장 사용자 사이트 경로는 2026-11-07 삭제됨)
 
 #### 분반 단위 (출석 등)
 
@@ -122,7 +122,7 @@
 | 화면 | Method | Path | 범위 | 지금 | 이번 |
 |------|--------|------|------|------|------|
 | 스터디 수정 | PATCH | `/api/studies/{studyId}` | **스터디** | `assertCaptainOrNavigator` | **스터디 단위** 어노테이션, Guard 호출 **제거** |
-| 신청 폼 저장 | PUT | `/api/studies/{studyId}/application-form` | **스터디** | 동일 | **스터디 단위** + `@RequireOnboarding`, Guard 호출 **제거** |
+| 신청 폼 저장 | PUT | `/api/studies/{studyId}/application-form` | **스터디** | 동일 | **삭제 완료 (2026-11-07)** — 아래 각주 참고 |
 | 신청 폼 조회 | GET | 동일 | — | 공개/편집 분기 | **변경 없음** (어노테이션 **금지** — [위 주의](#신청-폼-get--공개-분기-주의)) |
 | 출석 upsert | POST | `/api/studies/{studyId}/attendances` | **분반** | LEADER(스터디 전체, 캡틴 미포함) | **분반 단위** + `@RequireOnboarding`, 인라인 검사 **제거**. 캡틴 통과 · **타 분반 네비게이터 403** |
 | 출석 명부 | GET | 동일 (`studyGroupId` query) | **분반** | 인증만 | **분반 단위** + `@RequireOnboarding` — 캡틴 또는 **그 `studyGroupId` 네비게이터만** |
