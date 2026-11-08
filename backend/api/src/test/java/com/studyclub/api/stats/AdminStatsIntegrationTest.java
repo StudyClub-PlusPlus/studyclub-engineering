@@ -27,7 +27,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-/** 대시보드 stats API — 권한·핵심 집계·모집 보드 신청서 수 기준. specs/dashboard/spec.md */
+/** 대시보드 stats API — 권한·핵심 집계·모집 보드 명부 기준. specs/dashboard/spec.md */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 class AdminStatsIntegrationTest {
@@ -39,6 +39,7 @@ class AdminStatsIntegrationTest {
     private static final Long ONGOING_STUDY = 9801L;
     private static final Long OPEN_STUDY = 9802L;
     private static final Long GROUP_ID = 9811L;
+    private static final Long OPEN_STUDY_GROUP_ID = 9812L;
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
@@ -68,7 +69,8 @@ class AdminStatsIntegrationTest {
         insertParticipant(CREW_A, ONGOING_STUDY, GROUP_ID, ParticipantStatus.ACTIVE, now);
         insertParticipant(CREW_B, ONGOING_STUDY, GROUP_ID, ParticipantStatus.ACTIVE, now);
         insertRecruitment(OPEN_STUDY, 1, Instant.now().plus(2, ChronoUnit.DAYS), now);
-        insertApplication(CREW_A, latestRecruitmentId(OPEN_STUDY), now);
+        insertGroup(OPEN_STUDY_GROUP_ID, OPEN_STUDY, now);
+        insertParticipant(CREW_A, OPEN_STUDY, OPEN_STUDY_GROUP_ID, ParticipantStatus.ACTIVE, now);
     }
 
     @Test
@@ -188,7 +190,7 @@ class AdminStatsIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - study-board RECRUITMENT 는 신청서 수로 정원 마감·CLOSING_SOON")
+    @DisplayName("성공 - study-board RECRUITMENT 는 명부 기준으로 정원 마감·CLOSING_SOON (결정 D4-A)")
     void recruitmentBoardCapacityAndClosingSoon() {
         var response =
                 rest.exchange(
@@ -332,7 +334,8 @@ class AdminStatsIntegrationTest {
                 ONGOING_STUDY,
                 OPEN_STUDY);
         jdbcTemplate.update("DELETE FROM STUDY_MEETING WHERE STUDY_GROUP_ID = ?", GROUP_ID);
-        jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE ID = ?", GROUP_ID);
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_GROUP WHERE ID IN (?, ?)", GROUP_ID, OPEN_STUDY_GROUP_ID);
         jdbcTemplate.update(
                 "DELETE FROM STUDY_RECRUITMENT WHERE STUDY_ID IN (?, ?)",
                 ONGOING_STUDY,
@@ -435,22 +438,6 @@ class AdminStatsIntegrationTest {
                 Timestamp.from(Instant.now().minusSeconds(3600)),
                 Timestamp.from(deadline),
                 capacity,
-                now,
-                now);
-    }
-
-    private long latestRecruitmentId(Long studyId) {
-        return jdbcTemplate.queryForObject(
-                "SELECT MAX(ID) FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?", Long.class, studyId);
-    }
-
-    private void insertApplication(Long accountId, long recruitmentId, Timestamp now) {
-        jdbcTemplate.update(
-                "INSERT INTO STUDY_APPLICATION (ACCOUNT_ID, RECRUITMENT_ID, FORM_ANSWER,"
-                        + " CREATED_AT, UPDATED_AT) VALUES (?, ?, CAST(? AS JSON), ?, ?)",
-                accountId,
-                recruitmentId,
-                "{\"discordNickname\":\"n\"}",
                 now,
                 now);
     }

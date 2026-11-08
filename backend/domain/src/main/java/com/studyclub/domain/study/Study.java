@@ -160,30 +160,26 @@ public class Study extends BaseEntity {
      * <p>{@code recruitDeadlineAt == null} 은 상시 모집이라 시각으로는 마감되지 않고, {@code recruitmentCapacity ==
      * null} 은 무제한이라 정원으로도 마감되지 않는다.
      *
-     * <p>신청 수는 STUDY_APPLICATION 애그리거트 소관이라 밖에서 받는다. 정원과 같은 회차끼리 비교해야 하므로 최신 모집 회차의 신청 수 ({@code
-     * StudyApplicationRepository.countByRecruitmentIdIn}) 를 넘긴다.
+     * <p>정원을 차지하는 인원은 STUDY_PARTICIPANT 애그리거트 소관이라 밖에서 받는다. 현재 ACTIVE 명부({@code
+     * StudyParticipantRepository.countCapacityHoldersByStudyIds}) 를 넘긴다 (결정 D4-A).
      *
      * <p>{@code recruitDeadlineAt} · {@code recruitmentCapacity} 는 STUDY_RECRUITMENT 에서 가져온 값이다.
      */
     public RecruitStatus recruitStatus(
-            long applicantCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
-        return recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity, Instant.now());
+            long crewCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
+        return recruitStatus(crewCount, recruitDeadlineAt, recruitmentCapacity, Instant.now());
     }
 
     /**
      * {@link #recruitStatus(long, Instant, Integer)} 와 같되 마감 판정에 {@code asOf} 를 쓴다 — 대시보드 집계 기준 시각.
      */
     public RecruitStatus recruitStatus(
-            long applicantCount,
-            Instant recruitDeadlineAt,
-            Integer recruitmentCapacity,
-            Instant asOf) {
+            long crewCount, Instant recruitDeadlineAt, Integer recruitmentCapacity, Instant asOf) {
         if (status != StudyStatus.OPEN) {
             return null;
         }
         boolean deadlinePassed = recruitDeadlineAt != null && !asOf.isBefore(recruitDeadlineAt);
-        boolean capacityReached =
-                recruitmentCapacity != null && applicantCount >= recruitmentCapacity;
+        boolean capacityReached = recruitmentCapacity != null && crewCount >= recruitmentCapacity;
         return (deadlinePassed || capacityReached)
                 ? RecruitStatus.RECRUIT_CLOSED
                 : RecruitStatus.RECRUITING;
@@ -196,7 +192,7 @@ public class Study extends BaseEntity {
      * RECRUITING}) → 나머지는 종료. 시작 전인데 모집이 마감된 스터디는 신청할 수 없으니 종료로 본다.
      */
     public StudyPhase phase(
-            long applicantCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
+            long crewCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
         if (status == StudyStatus.DRAFT) {
             return null;
         }
@@ -207,7 +203,7 @@ public class Study extends BaseEntity {
         if (startAt != null && !now.isBefore(startAt)) {
             return StudyPhase.ONGOING;
         }
-        return recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity)
+        return recruitStatus(crewCount, recruitDeadlineAt, recruitmentCapacity)
                         == RecruitStatus.RECRUITING
                 ? StudyPhase.RECRUITING
                 : StudyPhase.CLOSED;
