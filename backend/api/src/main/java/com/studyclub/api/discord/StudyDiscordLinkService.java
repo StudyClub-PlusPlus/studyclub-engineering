@@ -5,8 +5,11 @@ import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.discord.StudyDiscordLink;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
+import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRepository;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,11 +25,15 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class StudyDiscordLinkService {
 
     private static final Logger log = LoggerFactory.getLogger(StudyDiscordLinkService.class);
+    private static final List<ParticipantStatus> HOLDS_ROLE =
+            List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED);
+    private static final int ROLE_BATCH_SIZE = 100;
 
     private final DiscordBotClient discordBotClient;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
     private final StudyRepository studyRepository;
     private final AccountRepository accountRepository;
+    private final StudyParticipantRepository studyParticipantRepository;
     private final TransactionTemplate transactionTemplate;
 
     public StudyDiscordLinkService(
@@ -34,11 +41,13 @@ public class StudyDiscordLinkService {
             StudyDiscordLinkRepository studyDiscordLinkRepository,
             StudyRepository studyRepository,
             AccountRepository accountRepository,
+            StudyParticipantRepository studyParticipantRepository,
             TransactionTemplate transactionTemplate) {
         this.discordBotClient = discordBotClient;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
         this.studyRepository = studyRepository;
         this.accountRepository = accountRepository;
+        this.studyParticipantRepository = studyParticipantRepository;
         this.transactionTemplate = transactionTemplate;
     }
 
@@ -109,7 +118,41 @@ public class StudyDiscordLinkService {
                 studyId,
                 created.discordStudyId(),
                 created.discordRoleId());
+        try {
+            syncExistingParticipants(studyId, created.discordStudyId(), created.discordRoleId());
+        } catch (RuntimeException e) {
+            log.warn("스터디 {} 기존 참여자 role 부여 실패 ({}), 손으로 맞춘다", studyId, e.getClass().getName());
+        }
         return new StudyDiscordLinkResponse(created.discordStudyId(), created.discordRoleId());
+    }
+
+    /**
+     * 연결 직후 이미 ACTIVE·PAUSED 인 참여자에게 디스코드 role 을 부여한다. 늦게 연결된 스터디에서 기존 참여자가 음성 채널에 들어가지 못하는 문제를
+     * 해소한다. 실패해도 던지지 않는다 — 연결은 이미 저장됐고, 어긋난 role 은 손으로 맞춘다.
+     */
+    private void syncExistingParticipants(
+            Long studyId, String discordStudyId, String discordRoleId) {
+        List<Long> accountIds =
+                studyParticipantRepository.findAccountIdsByStudyIdAndStatusIn(studyId, HOLDS_ROLE);
+        if (accountIds.isEmpty()) {
+            return;
+        }
+        List<String> discordUserIds = accountRepository.findDiscordIdsByIdIn(accountIds);
+        if (discordUserIds.isEmpty()) {
+            log.info("스터디 {} 기존 참여자 중 디스코드 연동 계정 없음", studyId);
+            return;
+        }
+        String requesterId = discordBotClient.systemUserId();
+        for (int i = 0; i < discordUserIds.size(); i += ROLE_BATCH_SIZE) {
+            List<String> batch =
+                    discordUserIds.subList(i, Math.min(i + ROLE_BATCH_SIZE, discordUserIds.size()));
+            DiscordBotClient.RoleChangeResult result =
+                    discordBotClient.assignRole(requesterId, discordRoleId, discordStudyId, batch);
+            if (!result.failed().isEmpty()) {
+                log.warn("스터디 {} 기존 참여자 role 부여 일부 실패, 손으로 맞춘다: {}", studyId, result.failed());
+            }
+        }
+        log.info("스터디 {} 기존 참여자 {} 명 디스코드 role 부여", studyId, discordUserIds.size());
     }
 
     /**

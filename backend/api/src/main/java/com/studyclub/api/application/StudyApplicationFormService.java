@@ -75,13 +75,6 @@ public class StudyApplicationFormService {
         return toResponse(study);
     }
 
-    /** 사용자 사이트 저장 — 권한은 {@code @RequireCaptainOrNavigator}. */
-    @Transactional
-    public StudyApplicationFormResponse replaceFormFromSite(
-            Long studyId, Long accountId, StudyApplicationFormRequest request) {
-        return replace(studyId, request);
-    }
-
     /** 백오피스 저장 — 권한은 {@code @RequireAdmin}. */
     @Transactional
     public StudyApplicationFormResponse replaceFormFromBackOffice(

@@ -63,6 +63,18 @@ class JwtAuthFilterTest {
     }
 
     @Test
+    @DisplayName("실패 - refresh 토큰은 access 토큰으로 쓸 수 없다")
+    void rejectsRefreshToken() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader(
+                "Authorization", "Bearer " + jwtService.issueRefresh("42", "a@example.com"));
+
+        filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
     @DisplayName("실패 - 깨진 토큰이면 인증 없이 지나간다")
     void ignoresInvalidToken() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();

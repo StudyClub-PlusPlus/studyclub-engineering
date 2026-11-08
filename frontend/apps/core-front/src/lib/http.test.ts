@@ -85,10 +85,10 @@ describe('direct account requests', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it('does not change the refresh policy of other requests', async () => {
-    fetchMock.mockResolvedValueOnce(json({}, 401));
+  it('also refreshes on 401 for direct http() calls', async () => {
+    fetchMock.mockResolvedValueOnce(json({}, 401)).mockResolvedValueOnce(json({}, 401));
     await expect(http('/api/me', z.null())).rejects.toMatchObject({ status: 401 });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 

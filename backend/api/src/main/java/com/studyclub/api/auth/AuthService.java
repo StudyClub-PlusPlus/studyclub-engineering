@@ -89,7 +89,7 @@ public class AuthService {
         Claims c;
         Long accountId;
         try {
-            c = jwtService.parse(refreshToken);
+            c = jwtService.parseRefresh(refreshToken);
             accountId = Long.valueOf(c.getSubject());
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
@@ -99,7 +99,8 @@ public class AuthService {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
         }
         return new AccessTokenResponse(
-                jwtService.issueAccess(c.getSubject(), c.get("email", String.class)));
+                jwtService.issueAccess(c.getSubject(), c.get("email", String.class)),
+                jwtService.accessTtlSeconds());
     }
 
     private AuthResponse issueFor(Account account, String suggestedNickname) {
