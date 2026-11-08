@@ -26,6 +26,8 @@ export type SessionUser = {
   role: string;
   timeZone?: string | null;
   onboardingCompletedAt?: string | null;
+  /** 신청 폼 디스코드 서버 별명 사전 입력용. 미입력이면 null (share D6). */
+  discordNickname?: string | null;
 };
 
 /** 브라우저에서 구글 OAuth authorize URL (팝업으로 연다). */
