@@ -4,7 +4,8 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
-import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
@@ -34,7 +35,7 @@ public class BackofficeStudyListService {
     private static final Logger log = LoggerFactory.getLogger(BackofficeStudyListService.class);
 
     private final BackofficeStudyDao backofficeStudyDao;
-    private final StudyApplicationRepository studyApplicationRepository;
+    private final StudyParticipantRepository studyParticipantRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyProgramRepository studyProgramRepository;
     private final AccountRepository accountRepository;
@@ -42,13 +43,13 @@ public class BackofficeStudyListService {
 
     public BackofficeStudyListService(
             BackofficeStudyDao backofficeStudyDao,
-            StudyApplicationRepository studyApplicationRepository,
+            StudyParticipantRepository studyParticipantRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyProgramRepository studyProgramRepository,
             AccountRepository accountRepository,
             ObjectMapper objectMapper) {
         this.backofficeStudyDao = backofficeStudyDao;
-        this.studyApplicationRepository = studyApplicationRepository;
+        this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyProgramRepository = studyProgramRepository;
         this.accountRepository = accountRepository;
@@ -106,15 +107,12 @@ public class BackofficeStudyListService {
                                 Collectors.toMap(
                                         StudyRecruitment::getStudyId, r -> r, (a, b) -> a));
 
-        List<Long> recruitmentIds =
-                latestRecruitments.values().stream().map(StudyRecruitment::getId).toList();
-        Map<Long, Long> applicationsByRecruitmentId =
-                recruitmentIds.isEmpty()
-                        ? Map.of()
-                        : studyApplicationRepository.countByRecruitmentIdIn(recruitmentIds).stream()
-                                .collect(
-                                        Collectors.toMap(
-                                                row -> (Long) row[0], row -> (Long) row[1]));
+        // 정원을 차지하는 인원 — 명부 ACTIVE 중 정원 역할 (결정 D4-A, study-recruit-status/spec.md)
+        Map<Long, Long> crewCounts =
+                studyParticipantRepository
+                        .countCapacityHoldersByStudyIds(studyIds, ParticipantRole.CAPACITY_ROLES)
+                        .stream()
+                        .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
 
         Map<Long, StudyProgram> programs =
                 studyProgramRepository
@@ -147,11 +145,7 @@ public class BackofficeStudyListService {
                                             : null;
                             Instant deadline =
                                     recruitment != null ? recruitment.getRecruitDeadlineAt() : null;
-                            long applicants =
-                                    recruitment == null
-                                            ? 0L
-                                            : applicationsByRecruitmentId.getOrDefault(
-                                                    recruitment.getId(), 0L);
+                            long applicants = crewCounts.getOrDefault(study.getId(), 0L);
                             return new BackofficeStudyListResponse.StudySummary(
                                     study.getId(),
                                     study.getProgramId(),

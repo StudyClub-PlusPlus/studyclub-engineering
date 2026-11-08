@@ -20,17 +20,22 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 class BackofficeStudyQueryDao implements BackofficeStudyDao {
-    private static final String APPLICANTS =
-            "(SELECT COUNT(a.ID) FROM STUDY_APPLICATION a WHERE a.RECRUITMENT_ID = r.ID)";
+    // 정원을 차지하는 인원 — 명부 ACTIVE 중 정원 역할 (결정 D4-A, study-recruit-status/spec.md).
+    // Study.recruitStatus() 에 crewCount 로 넘기는 값과 같은 기준이다.
+    private static final String CREW_COUNT =
+            "(SELECT COUNT(p.ID) FROM STUDY_PARTICIPANT p"
+                    + " WHERE p.STUDY_ID = s.ID"
+                    + " AND p.STATUS = 'ACTIVE'"
+                    + " AND p.PARTICIPANT_ROLE IN ('MEMBER', 'LEADER'))";
 
-    // Study.recruitStatus()의 조회 조건. 최신 모집 회차의 모든 신청서를 세며 계정/명부로 거르지 않는다.
+    // Study.recruitStatus()의 조회 조건. 명부 ACTIVE 인원을 세며 신청서 수를 쓰지 않는다 (결정 D4-A).
     // OPEN의 null 마감·null 정원·모집 회차 없음도 기존 엔티티와 동일하게 처리한다.
     // 정책 변경 시 AdminStudyQueryIntegrationTest의 엔티티 대비 검증도 함께 유지한다.
     private static final String RECRUITING =
             "(s.STATUS = 'OPEN'"
                     + " AND (r.RECRUIT_DEADLINE_AT IS NULL OR r.RECRUIT_DEADLINE_AT > :asOf)"
                     + " AND (r.RECRUITMENT_CAPACITY IS NULL OR "
-                    + APPLICANTS
+                    + CREW_COUNT
                     + " < r.RECRUITMENT_CAPACITY))";
 
     private static final String RECRUIT_ORDER = "CASE WHEN " + RECRUITING + " THEN 0 ELSE 1 END";
@@ -213,7 +218,7 @@ class BackofficeStudyQueryDao implements BackofficeStudyDao {
                     case "RECRUIT_START" -> "r.START_AT";
                     case "RECRUIT_END" -> "r.RECRUIT_DEADLINE_AT";
                     case "RECRUIT" -> RECRUIT_ORDER;
-                    case "APPLICANTS" -> APPLICANTS;
+                    case "APPLICANTS" -> CREW_COUNT;
                     case "START_AT" -> "s.START_AT";
                     case "FORM" -> HAS_FORM;
                     case "VISIBILITY" -> "CASE WHEN s.STATUS = 'DRAFT' THEN 0 ELSE 1 END";

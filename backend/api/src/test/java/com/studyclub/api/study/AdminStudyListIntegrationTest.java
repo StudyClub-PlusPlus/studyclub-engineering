@@ -303,13 +303,12 @@ class AdminStudyListIntegrationTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    @DisplayName("성공 - 최신 모집 회차 신청서 수가 정원에 닿으면 recruitStatus 는 RECRUIT_CLOSED 다")
-    void recruitClosedWhenApplicationsReachCapacity() {
+    @DisplayName("성공 - 명부 ACTIVE 가 정원에 닿으면 recruitStatus 는 RECRUIT_CLOSED 다 (결정 D4-A)")
+    void recruitClosedWhenRosterReachesCapacity() {
         Timestamp now = Timestamp.from(Instant.now());
         setCapacity(STUDY_ID, 2);
-        long recruitmentId = latestRecruitmentId(STUDY_ID);
-        insertApplication(ADMIN_ID, recruitmentId, now);
-        insertApplication(MEMBER_ID, recruitmentId, now);
+        insertParticipant(ADMIN_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
+        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
 
         Map<String, Object> study = itemById(listStudies(), STUDY_ID);
 
@@ -319,12 +318,12 @@ class AdminStudyListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 명부 ACTIVE 만으로는 정원을 채우지 않는다 — 신청서 수 기준이다")
-    void activeRosterDoesNotCloseRecruitmentAlone() {
+    @DisplayName("성공 - 명부 WITHDRAWN 은 정원을 채우지 않는다 — 하차 후 빈자리가 열린다 (결정 D4-A)")
+    void withdrawnRosterDoesNotFillCapacity() {
         Timestamp now = Timestamp.from(Instant.now());
         setCapacity(STUDY_ID, 2);
-        insertParticipant(ADMIN_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
-        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
+        insertParticipant(ADMIN_ID, STUDY_ID, ParticipantStatus.WITHDRAWN, now);
+        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.WITHDRAWN, now);
 
         Map<String, Object> study = itemById(listStudies(), STUDY_ID);
 
