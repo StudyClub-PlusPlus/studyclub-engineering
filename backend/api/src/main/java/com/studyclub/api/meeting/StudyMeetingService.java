@@ -522,16 +522,22 @@ public class StudyMeetingService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다."));
     }
 
-    // 분반을 안 주면 이 스터디의 내 명부 행이 속한 분반 — 명부에 없는 캡틴은 분반을 골라 와야 한다
+    // 분반을 안 주면 이 스터디의 내 명부 행이 속한 분반 — 명부에 없는 캡틴은 분반을 골라 와야 한다.
+    // WITHDRAWN/COMPLETED 행을 건너뛰어 재합류(다른 반) 크루가 구 반 ID 를 받지 않도록 한다.
+    // 활성 네비게이터는 항상 ACTIVE/PAUSED 행이 있으므로 orElseThrow 에 도달하지 않는다.
     private Long myGroupId(Long accountId, Long studyId) {
         account(accountId);
         return studyParticipantRepository
-                .findFirstByStudyIdAndAccountId(studyId, accountId)
+                .findFirstByStudyIdAndAccountIdAndStatusIn(
+                        studyId, accountId, StudyCaptainGuard.ROSTER_STATUSES)
                 .map(StudyParticipant::getStudyGroupId)
                 .orElseThrow(
                         () ->
-                                new BusinessException(
-                                        ErrorCode.INVALID_INPUT, "studyGroupId 를 지정해 주세요."));
+                                studyCaptainGuard.isCaptainOrNavigator(accountId, studyId)
+                                        ? new BusinessException(
+                                                ErrorCode.INVALID_INPUT, "studyGroupId 를 지정해 주세요.")
+                                        : new BusinessException(
+                                                ErrorCode.FORBIDDEN, VIEW_FORBIDDEN));
     }
 
     private void account(Long accountId) {
