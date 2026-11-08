@@ -55,8 +55,15 @@ class AdminStatsIntegrationTest {
         insertAccount(CREW_B, "crew-b@example.com", SystemRole.MEMBER, "America/New_York", now);
 
         // 제목을 AAA 로 시작해 보드 미리보기(최대 4건) 정렬에서 항상 앞에 오게 한다
-        insertStudy(ONGOING_STUDY, "AAA 대시보드 진행중", "ALGORITHM", "ONGOING", now);
-        insertStudy(OPEN_STUDY, "AAA 대시보드 모집중", "SOFTWARE", "OPEN", now);
+        // 결정 5: OPEN→ONGOING 전환 없이 START_AT 경과로 진행 중 판정 — OPEN + 과거 START_AT 으로 세팅
+        insertStudy(
+                ONGOING_STUDY,
+                "AAA 대시보드 진행중",
+                "ALGORITHM",
+                "OPEN",
+                Timestamp.from(Instant.now().minus(1, ChronoUnit.DAYS)),
+                now);
+        insertStudy(OPEN_STUDY, "AAA 대시보드 모집중", "SOFTWARE", "OPEN", null, now);
         insertGroup(GROUP_ID, ONGOING_STUDY, now);
         insertParticipant(CREW_A, ONGOING_STUDY, GROUP_ID, ParticipantStatus.ACTIVE, now);
         insertParticipant(CREW_B, ONGOING_STUDY, GROUP_ID, ParticipantStatus.ACTIVE, now);
@@ -140,27 +147,21 @@ class AdminStatsIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 진행중 보드는 전체 목록의 첫 최대 4건과 같은 DB 정렬을 쓴다")
-    void ongoingBoardMatchesAdminListOrder() {
+    @DisplayName("성공 - 진행중 보드는 START_AT 경과 OPEN 스터디만 표시한다 (결정 5)")
+    void ongoingBoardShowsStartedOpenOnly() {
         var board =
                 rest.exchange(
                         "/api/admin/stats/study-board?view=ONGOING",
                         HttpMethod.GET,
                         auth(ADMIN_ID),
                         Map.class);
-        var list =
-                rest.exchange(
-                        "/api/admin/studies?status=ONGOING&sort=TITLE_ASC&offset=0&limit=20",
-                        HttpMethod.GET,
-                        auth(ADMIN_ID),
-                        Map.class);
 
         assertThat(board.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(list.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(studyIds(board.getBody()))
-                .isEqualTo(studyIds(list.getBody()).stream().limit(4).toList());
-        assertThat(((Number) board.getBody().get("total")).longValue())
-                .isEqualTo(((Number) list.getBody().get("total")).longValue());
+        List<Long> ids = studyIds(board.getBody());
+        // ONGOING_STUDY: STATUS=OPEN, START_AT 과거 → 보드에 포함
+        assertThat(ids).contains(ONGOING_STUDY);
+        // OPEN_STUDY: STATUS=OPEN, START_AT 없음 → 보드에 미포함
+        assertThat(ids).doesNotContain(OPEN_STUDY);
     }
 
     @Test
@@ -364,6 +365,16 @@ class AdminStatsIntegrationTest {
     }
 
     private void insertStudy(Long id, String title, String category, String status, Timestamp now) {
+        insertStudy(id, title, category, status, null, now);
+    }
+
+    private void insertStudy(
+            Long id,
+            String title,
+            String category,
+            String status,
+            Timestamp startAt,
+            Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
                         + " VALUES (?, ?, 'STUDY', ?, ?)",
@@ -373,13 +384,14 @@ class AdminStatsIntegrationTest {
                 now);
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, CATEGORY, STATUS,"
-                        + " CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        + " START_AT, CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 id,
                 id,
                 title,
                 "요약",
                 category,
                 status,
+                startAt,
                 now,
                 now);
     }
