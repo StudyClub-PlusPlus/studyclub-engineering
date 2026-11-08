@@ -108,6 +108,7 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
       participants: people.map((p) => ({
         participantId: p.participantId,
         displayName: p.nickname,
+        discordNickname: p.discordNickname,
         participantRole: p.participantRole,
         captain: p.captain,
         participantStatus: p.status,
