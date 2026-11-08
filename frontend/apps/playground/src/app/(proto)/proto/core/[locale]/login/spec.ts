@@ -5,10 +5,8 @@ export const SPEC: ScreenSpec = {
   scope: 'login',
   screen: 'Google 로그인',
   notes: [
-    'Notion PRD: https://app.notion.com/p/benkang/1f683feabad3839b996781bd773ec465',
-    'playground 전용 Google 응답 시뮬레이션. 실제 인증 창·API 요청·토큰·회원 생성 없음.',
-    '상단 검토 도구에서 신규·온보딩 미완료·기존 회원·인증 취소·실패를 선택한다. 기존 회원은 온보딩을 건너뛴다.',
-    '실서비스 연동 시 이메일 미확인(SOCIAL_LOGIN_EMAIL_REQUIRED)·계정 연결 필요(ACCOUNT_LINK_REQUIRED)는 로그인 단계에서 별도로 처리한다. 이 PR은 전체 OAuth 예외 구현을 포함하지 않는다.',
+    '미리보기에서는 실제 Google 인증이나 회원 생성을 하지 않는다.',
+    '상단에서 신규·가입 미완료·기존 회원·인증 취소·실패 상태를 선택한다. 가입을 마친 회원은 온보딩을 건너뛴다.',
   ],
   entries: [
     {
