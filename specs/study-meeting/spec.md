@@ -134,7 +134,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 | 이름 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| studyGroupId | Long | N | 분반 ID. 없으면 이 스터디에서 내 명부 행(`STUDY_PARTICIPANT`, 역할 무관)이 속한 분반 — 한 기수 안 여러 반 동시 소속은 금지라 하나로 정해진다. 명부에 없는 캡틴은 필수 → 없으면 400. 정한 분반에 대해 권한 판정은 그대로 한다 |
+| studyGroupId | Long | N | 분반 ID. 없으면 이 스터디에서 내 활성 명부 행(`STUDY_PARTICIPANT STATUS IN (ACTIVE, PAUSED)`, 역할 무관)이 속한 분반 — 한 기수 안 활성 소속은 하나. 반 이동 후 이전 WITHDRAWN 행은 무시된다. 명부에 없는 캡틴은 필수 → 없으면 400. 정한 분반에 대해 권한 판정은 그대로 한다 |
 
 ### Request Body
 
@@ -196,11 +196,11 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | study.driveUrl | String | Y | 정보 카드 「자료실」 버튼. 없으면 null | STUDY.DRIVE_URL |
 | me.participantId | Long | Y | 내 명부 행. 명부에 없는 캡틴은 null | STUDY_PARTICIPANT.ID |
 | me.canEdit | Boolean | N | true 면 네비게이터·캡틴 — 화면이 표를 고칠 수 있게 연다 | 계산: 위 「권한 판정」 고치기 |
-| participants | Array | N | 발표자 드롭다운 후보. 그 분반 활성 참여자, 이름순 | STUDY_PARTICIPANT `STATUS IN (ACTIVE, PAUSED)` |
+| participants | Array | N | 발표자 드롭다운 후보. 그 분반 활성 참여자, 이름순. `name` 은 디스코드 닉네임이 없는 계정에서 null — 화면은 「(알 수 없음)」 | STUDY_PARTICIPANT `STATUS IN (ACTIVE, PAUSED)` |
 | meetings[].id | Long | N | | STUDY_MEETING.ID |
 | meetings[].type | String | N | `KICKOFF` · `REGULAR` | STUDY_MEETING.MEETING_TYPE |
 | meetings[].number | Int | N | 회차 번호. 킥오프는 0 | 계산: 정규 회차를 `SCHEDULED_AT` 오름차순으로 센 순번 (1부터) |
-| meetings[].presenter1 · presenter2 | Object | Y | `{ participantId, name, active }`. 비었으면 null. 킥오프는 늘 null. `active=false` 면 참여를 중단한 사람 — 화면은 「이름 (참여 종료)」 | STUDY_MEETING.PRESENTER1·2_PARTICIPANT_ID → STUDY_PARTICIPANT |
+| meetings[].presenter1 · presenter2 | Object | Y | `{ participantId, name, active }`. 비었으면 null. 킥오프는 늘 null. `active=false` 면 참여를 중단한 사람 — 화면은 「이름 (참여 종료)」. `name` 은 null 가능 — 반 이동 등으로 현 명부에 없을 때; 화면은 「(알 수 없음)」 | STUDY_MEETING.PRESENTER1·2_PARTICIPANT_ID → STUDY_PARTICIPANT |
 | study.id · study.title | Long · String | N | 지면 머리의 스터디 이름 | STUDY.ID · STUDY.TITLE |
 | meetings[].scheduledAt | String | N | UTC ISO 8601 | STUDY_MEETING.SCHEDULED_AT |
 | meetings[].title | String | Y | 없으면 null — 화면은 「—」 | STUDY_MEETING.TITLE |
