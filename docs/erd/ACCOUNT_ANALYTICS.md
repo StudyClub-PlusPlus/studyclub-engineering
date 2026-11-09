@@ -21,4 +21,4 @@
 
 GA4가 모든 식별자의 삭제를 접수하고 Amplitude가 완료되면 활성 회원의 식별자와 Amplitude 요청 시각을 비운다. 회원번호·중단 시각·상태는 유지해 다시 로그인해도 분석을 켜지 않는다. 탈퇴 회원은 행을 삭제한다. 이는 로컬 정리 조건이며 GA4 실제 완료 확인과는 다르다. GA4 REQUESTED를 DONE으로 자동 변환하지 않는다.
 
-마이그레이션: V56. API·정책은 [분석 스펙](../../specs/analytics/spec.md), 실행 방법은 [운영 문서](../analytics-privacy.md).
+마이그레이션: V57. API·정책은 [분석 스펙](../../specs/analytics/spec.md), 실행 방법은 [운영 문서](../analytics-privacy.md).
