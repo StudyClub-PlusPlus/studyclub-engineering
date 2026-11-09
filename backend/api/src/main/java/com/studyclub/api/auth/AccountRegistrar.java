@@ -1,5 +1,6 @@
 package com.studyclub.api.auth;
 
+import com.studyclub.api.analytics.AnalyticsPrivacyService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -20,12 +21,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AccountRegistrar {
 
+    private final AnalyticsPrivacyService analyticsPrivacy;
     private final AccountRepository accountRepository;
     private final AccountIdentityRepository accountIdentityRepository;
 
     public AccountRegistrar(
             AccountRepository accountRepository,
-            AccountIdentityRepository accountIdentityRepository) {
+            AccountIdentityRepository accountIdentityRepository,
+            AnalyticsPrivacyService analyticsPrivacy) {
+        this.analyticsPrivacy = analyticsPrivacy;
         this.accountRepository = accountRepository;
         this.accountIdentityRepository = accountIdentityRepository;
     }
@@ -68,6 +72,7 @@ public class AccountRegistrar {
                 accountRepository.save(
                         new Account(
                                 email, uniqueTemporaryNickname(), u.picture(), SystemRole.MEMBER));
+        analyticsPrivacy.initialize(account.getId());
         // PROVIDER_EMAIL 은 제공자가 준 원본 그대로. 정규화값은 ACCOUNT.EMAIL 에 있다.
         accountIdentityRepository.save(
                 new AccountIdentity(

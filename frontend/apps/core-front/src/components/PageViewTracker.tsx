@@ -4,6 +4,7 @@ import { usePathname, useParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 
 import { track, identifyUser, type PageName } from '@/lib/analytics';
+import { useAnalyticsAllowed } from '@/lib/use-analytics-allowed';
 
 /** 경로 → page_name. 다른 화면으로 곧장 넘기는 경로(`/my/joined/{id}` 등)는 null — 도착한 화면에서 센다. */
 export function pathToPageName(path: string): PageName | null {
@@ -31,12 +32,14 @@ export function pathToPageName(path: string): PageName | null {
 }
 
 export function PageViewTracker() {
+  const allowed = useAnalyticsAllowed();
   const pathname = usePathname();
   const params = useParams();
   const locale = (params?.locale as string) ?? 'ko';
   const identifiedLocale = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!allowed) return;
     if (identifiedLocale.current !== locale) {
       identifiedLocale.current = locale;
       identifyUser({ user_locale: locale as 'ko' | 'en' });
@@ -85,7 +88,7 @@ export function PageViewTracker() {
       observer.disconnect();
       clearTimeout(fallback);
     };
-  }, [pathname, locale]);
+  }, [pathname, locale, allowed]);
 
   return null;
 }

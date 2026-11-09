@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 class AmplitudeClientTest {
 
     @Test
-    @DisplayName("회원 번호를 user_id 로, 결정적 insert_id 와 공통 속성을 붙여 보낸다")
+    @DisplayName("HMAC 분석 ID를 user_id 로, 결정적 insert_id 와 공통 속성을 붙여 보낸다")
     void 이벤트_한_건을_보낸다() throws Exception {
         List<String> bodies = new ArrayList<>();
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -38,16 +38,16 @@ class AmplitudeClientTest {
 
             client.send(
                     "User Signed Up",
-                    42L,
-                    "user_signed_up_account_42",
+                    "v1_" + "a".repeat(64),
+                    "user_signed_up_v1_" + "a".repeat(64),
                     Instant.ofEpochMilli(1000),
                     Map.of("method", "google"));
 
             assertThat(bodies).hasSize(1);
             String body = bodies.get(0);
-            assertThat(body).contains("\"user_id\":\"42\"");
+            assertThat(body).contains("\"user_id\":\"v1_" + "a".repeat(64) + "\"");
             assertThat(body).contains("\"event_type\":\"User Signed Up\"");
-            assertThat(body).contains("\"insert_id\":\"user_signed_up_account_42\"");
+            assertThat(body).contains("\"insert_id\":\"user_signed_up_v1_" + "a".repeat(64) + "\"");
             assertThat(body).contains("\"time\":1000");
             assertThat(body).contains("\"service\":\"studyclub\"").contains("\"env\":\"stage\"");
             assertThat(body).contains("\"min_id_length\":1");
@@ -65,14 +65,14 @@ class AmplitudeClientTest {
                         () -> {
                             off.send(
                                     "Activated",
-                                    1L,
+                                    "v1_" + "c".repeat(64),
                                     "activated_account_1",
                                     Instant.now(),
                                     Map.of());
                             new AmplitudeClient("k", "production", "http://127.0.0.1:1/x")
                                     .send(
                                             "Activated",
-                                            1L,
+                                            "v1_" + "c".repeat(64),
                                             "activated_account_1",
                                             Instant.now(),
                                             Map.of());

@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 import { sessionUserSchema } from './response-schema';
+import { optOutAnalyticsLocally, suspendAnalytics } from '@/lib/analytics-privacy-state';
 import { API_BASE } from '@/lib/http';
 
 // core-front 인증 — 구글 로그인(팝업) + 세션(localStorage + 쿠키).
 // 세션키 prefix 는 앱별 상수(core=sc_) — BO(bo_)와 격리해 localhost 쿠키 domain 공유 오염 방지.
 // (zapp back-office-google-login spec 의 세션키 격리 함정 이식)
-
 
 export const STORAGE_PREFIX = 'sc_';
 
@@ -84,6 +84,7 @@ export function getUser(): SessionUser | null {
 export const USER_CHANGED_EVENT = 'sc:user-changed';
 
 export function setUser(user: SessionUser): void {
+  suspendAnalytics();
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
   window.dispatchEvent(new Event(USER_CHANGED_EVENT));
@@ -110,6 +111,7 @@ export function setSuggestedNickname(value: string | null): void {
 }
 
 export function clearSession(): void {
+  suspendAnalytics();
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(USER_KEY);
   setSuggestedNickname(null);
@@ -152,7 +154,9 @@ export async function deleteAccount(reason: LeaveReason | null): Promise<DeleteA
   }
 
   if (!res.ok) {
-    const parsed = z.object({ errorCode: z.string().optional(), errorMessage: z.string().optional() }).safeParse(await res.json().catch(() => null));
+    const parsed = z
+      .object({ errorCode: z.string().optional(), errorMessage: z.string().optional() })
+      .safeParse(await res.json().catch(() => null));
     const data = parsed.success ? parsed.data : {};
     // 이미 탈퇴 처리된 계정(NOT_FOUND) — 서버는 끝났는데 응답만 못 받았거나 다른 탭에서 먼저 탈퇴한 경우다.
     // 오류로 막아 두면 토큰이 남은 사용자가 재시도해도 영원히 정리되지 않으므로 성공과 같이 세션을 정리한다.
@@ -165,6 +169,7 @@ export async function deleteAccount(reason: LeaveReason | null): Promise<DeleteA
     }
   }
 
+  optOutAnalyticsLocally();
   await logout();
   return { ok: true };
 }

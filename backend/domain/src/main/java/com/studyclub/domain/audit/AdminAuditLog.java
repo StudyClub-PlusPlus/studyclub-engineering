@@ -113,7 +113,7 @@ public class AdminAuditLog extends BaseEntity {
                         ? RetentionPolicy.AUDIT_ACCESS_V1
                         : RetentionPolicy.AUDIT_ACCESS_TWO_YEARS_V1;
         return switch (action) {
-            case EMAIL_REVEAL, DISCORD_REVEAL -> accessPolicy;
+            case EMAIL_REVEAL, DISCORD_REVEAL, ANALYTICS_OPT_OUT -> accessPolicy;
             case WITHDRAW ->
                     participantRole == null
                             ? RetentionPolicy.AUDIT_WITHDRAW_UNCLASSIFIED_V1
@@ -166,6 +166,15 @@ public class AdminAuditLog extends BaseEntity {
         this.targetAccountId = targetAccountId;
         this.beforeValue = beforeValue;
         this.afterValue = afterValue;
+    }
+
+    public static AdminAuditLog analyticsOptOut(Long actorId, Long targetId, Long feedbackId) {
+        return new AdminAuditLog(
+                actorId,
+                AdminAuditAction.ANALYTICS_OPT_OUT,
+                targetId,
+                null,
+                String.valueOf(feedbackId));
     }
 
     /** 이메일 원본 보기. 바뀌는 값이 없어 BEFORE/AFTER 는 비운다. */
