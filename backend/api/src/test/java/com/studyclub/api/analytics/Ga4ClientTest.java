@@ -13,22 +13,27 @@ class Ga4ClientTest {
 
     @Test
     @DisplayName(
-            "브라우저 client_id 와 회원 번호 user_id, engagement_time_msec 를 싣는다. 모양이 틀린 client_id 는 합성으로")
+            "브라우저 client_id 와 HMAC 분석 ID user_id, engagement_time_msec 를 싣는다. 모양이 틀린 client_id 는 합성으로")
     void 페이로드() {
         Map<String, Object> body =
-                Ga4Client.payload("sign_up", 42L, "123.456", Map.of("method", "google"));
+                Ga4Client.payload(
+                        "sign_up", "v1_" + "a".repeat(64), "123.456", Map.of("method", "google"));
 
-        assertThat(body).containsEntry("client_id", "123.456").containsEntry("user_id", "42");
+        assertThat(body)
+                .containsEntry("client_id", "123.456")
+                .containsEntry("user_id", "v1_" + "a".repeat(64));
         @SuppressWarnings("unchecked")
         Map<String, Object> event = ((List<Map<String, Object>>) body.get("events")).get(0);
         assertThat(event).containsEntry("name", "sign_up");
         assertThat(event.get("params"))
                 .isEqualTo(Map.of("method", "google", "engagement_time_msec", 1));
 
-        assertThat(Ga4Client.payload("activated", 7L, null, Map.of()))
-                .containsEntry("client_id", "srv.7");
-        assertThat(Ga4Client.payload("sign_up", 7L, "GA1.1.x\"}", Map.of()))
-                .containsEntry("client_id", "srv.7");
+        assertThat(Ga4Client.payload("activated", "v1_" + "b".repeat(64), null, Map.of()))
+                .containsEntry(
+                        "client_id", AnalyticsIdentity.serverClientId("v1_" + "b".repeat(64)));
+        assertThat(Ga4Client.payload("sign_up", "v1_" + "b".repeat(64), "GA1.1.x\"}", Map.of()))
+                .containsEntry(
+                        "client_id", AnalyticsIdentity.serverClientId("v1_" + "b".repeat(64)));
     }
 
     @Test
@@ -39,7 +44,7 @@ class Ga4ClientTest {
         assertThatCode(
                         () ->
                                 new Ga4Client("G-TEST", "s", "http://127.0.0.1:1/x")
-                                        .send("sign_up", 1L, null, Map.of()))
+                                        .send("sign_up", "v1_" + "c".repeat(64), null, Map.of()))
                 .doesNotThrowAnyException();
     }
 }

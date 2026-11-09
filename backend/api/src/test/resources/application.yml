@@ -47,5 +47,8 @@ upload:
   cleanup:
     enabled: false
 
+analytics:
+  deletion:
+    enabled: false
 cleanup:
   enabled: false

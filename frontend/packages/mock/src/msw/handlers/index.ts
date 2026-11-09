@@ -1,3 +1,4 @@
+import { analyticsHandlers } from "./analytics";
 import { registerHandlers, type MockHandlerGroup } from "../utils";
 import { accountsHandlers } from "./accounts";
 import { adminStatsHandlers } from "./admin-stats";
@@ -10,23 +11,42 @@ import { notificationTemplatesHandlers } from "./notification-templates";
 import { notificationsHandlers } from "./notifications";
 import { adminParticipantsHandlers } from "./participants";
 import { rolePermissionsHandlers } from "./role-permissions";
-import { studiesHandlers, adminStudiesHandlers, adminStudyProgramsHandlers } from "./studies";
+import {
+  studiesHandlers,
+  adminStudiesHandlers,
+  adminStudyProgramsHandlers,
+} from "./studies";
 
 export { registerHandlers, type MockHandlerGroup } from "../utils";
-export { studiesHandlers, adminStudiesHandlers, adminStudyProgramsHandlers } from "./studies";
+export {
+  studiesHandlers,
+  adminStudiesHandlers,
+  adminStudyProgramsHandlers,
+} from "./studies";
 export { accountsHandlers, mockAdminAccounts } from "./accounts";
 export { adminStatsHandlers } from "./admin-stats";
-export { meDiscordHandlers, discordLinkHandlers, MOCK_DISCORD_LINKED_KEY } from "./discord";
-export { rolePermissionsHandlers, mockRolePermissions } from "./role-permissions";
+export {
+  meDiscordHandlers,
+  discordLinkHandlers,
+  MOCK_DISCORD_LINKED_KEY,
+} from "./discord";
+export {
+  rolePermissionsHandlers,
+  mockRolePermissions,
+} from "./role-permissions";
 export { meStudiesHandlers } from "./me";
 export { studyMeetingsHandlers } from "./meetings";
 export { attendanceHandlers } from "./attendance";
 export { adminParticipantsHandlers } from "./participants";
-export { notificationTemplatesHandlers, mockNotificationTemplates } from "./notification-templates";
+export {
+  notificationTemplatesHandlers,
+  mockNotificationTemplates,
+} from "./notification-templates";
 export { notificationsHandlers, resetMockNotifications } from "./notifications";
 export { studyNoticesHandlers, resetMockNotices } from "./notices";
 
 export const mockHandlerGroups: MockHandlerGroup[] = [
+  analyticsHandlers,
   studiesHandlers,
   adminStudiesHandlers,
   adminStudyProgramsHandlers,

@@ -10,6 +10,7 @@ import {
   isConfigured,
   setLoginMethod,
   setSuggestedNickname,
+  getUser,
   setUser,
 } from '@/features/auth/auth';
 import {
@@ -20,6 +21,7 @@ import {
 } from '@/features/auth/login-errors';
 import { exchangeSocialLogin } from '@/features/auth/repository';
 import { track } from '@/lib/analytics';
+import { afterAnalyticsReady } from '@/lib/analytics-privacy-state';
 
 type Provider = 'google' | 'apple';
 const PROVIDER_LABEL = { google: 'Google', apple: 'Apple' } as const;
@@ -68,14 +70,23 @@ function LoginForm() {
             setSuggestedNickname(null);
           }
           if (!account.onboardingCompletedAt) {
-            track({ name: 'Auth Login Completed', props: { is_new_user: true, next_path: next } });
+            afterAnalyticsReady(
+              () => getUser()?.id === account.id,
+              () => track({ name: 'Auth Login Completed', props: { is_new_user: true, next_path: next } }),
+            );
             router.replace(`/${locale}/onboarding?next=${encodeURIComponent(next)}`);
             return;
           }
         }
-        track({ name: 'Auth Login Completed', props: { is_new_user: false, next_path: next } });
-        // 가입(온보딩)을 마친 회원의 로그인만 센다 — 새 회원은 온보딩 완료가 `User Signed Up` 이다
-        track({ name: 'User Logged In', props: { method: provider } });
+        // 서버가 같은 계정의 분석 허용을 확인한 뒤 로그인 이벤트를 보낸다.
+        if (data.account)
+          afterAnalyticsReady(
+            () => getUser()?.id === data.account?.id,
+            () => {
+              track({ name: 'Auth Login Completed', props: { is_new_user: false, next_path: next } });
+              track({ name: 'User Logged In', props: { method: provider } });
+            },
+          );
         router.replace(next);
       } catch (e) {
         track({ name: 'Auth Login Failed', props: { error_message: String(e), http_status: httpStatus } });
