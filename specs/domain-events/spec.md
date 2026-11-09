@@ -62,6 +62,8 @@ ops 알림처럼 잃어도 되는 부수효과에 맞다. 잃으면 안 되는 �
 | `study_notice.sent` | `StudyNoticeSent` (domain.notice) | 네비게이터·담당 캡틴이 반 공지를 보냄 — 공지 1건마다 1개 ([study-notice](../study-notice/spec.md)) | `study_notice` · noticeId · 보낸 사람 | `noticeId` · `studyId` · `studyGroupId` · `senderAccountId` · `sendEmail` · `sendDiscord` · `recipientCount` (제목·본문·주소는 싣지 않는다) | `StudyNoticeEmailListener` (`BEFORE_COMMIT`, 동기 — 받는 사람마다 메일 행 생성) · `StudyNoticeDiscordListener` (`@Async`, 로비 채널에 글 + 멘션). ops 알림은 보내지 않는다 |
 | `feedback.replied` | `FeedbackReplied` (domain.feedback) | 캡틴의 첫 회신 저장. 회신 수정은 발행하지 않는다 ([feedback](../feedback/spec.md#회신-알림)) | `feedback` · feedbackId · 답변한 캡틴 | `feedbackId` · `accountId`(제출자). 답변·주소·닉네임은 싣지 않는다 | `FeedbackReplyEmailListener` (`BEFORE_COMMIT`, 동기 — 회신과 같은 트랜잭션에 메일 예약. 실패하면 회신도 롤백). ops 알림 없음 |
 
+| `analytics.deletion_requested` | `AnalyticsDeletionRequested` (domain.analytics) | 분석 중단 또는 탈퇴 트랜잭션 | `account_analytics` · accountId | `accountId` · `readyAt`. 외부 식별자는 싣지 않음 | `AnalyticsDeletionListener` (`AFTER_COMMIT`, 기존 cleanup 스케줄러에 첫 실행 예약). 유실 시 분석 행을 일일 cleanup이 회수. ops 알림 없음 |
+
 가입 이벤트는 새로 만들지 않고 기존 `UserRegisteredEvent` 를 그대로 쓴다 — 같은 사실에 이벤트가 둘이면 구독자가 어느 쪽을 들을지 갈린다.
 
 ## 이벤트로 옮길 후보 (아직 직접 호출)

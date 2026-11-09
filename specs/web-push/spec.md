@@ -32,7 +32,7 @@
 | PUT | `/api/me/web-push-subscription` | 이 기기 구독. 본문은 `{endpoint, keys:{p256dh, auth}}` (브라우저 `subscription.toJSON()` 그대로). 같은 주소면 덮어쓴다. 204 | O (`@RequireOnboarding`) | 구현완료 |
 | DELETE | `/api/me/web-push-subscription` | `{endpoint}`. 내 구독이 아니거나 없으면 아무것도 안 하고 204 | O (`@RequireOnboarding`) | 구현완료 |
 | GET | `/api/admin/web-push` | `{enabled, subscriptions, accounts, mySubscriptions}` | O (`@RequireAdmin`) | 구현완료 |
-| POST | `/api/admin/web-push/send` | `{audience: SELF\|ALL, title(≤60), body(≤200), url?}` → 202 `{queued}`. 받을 기기가 없으면 409 | O (`@RequireAdmin`) | 구현완료 |
+| POST | `/api/admin/web-push/send` | `{audience: SELF 또는 ALL, title(≤60), body(≤200), url?}` → 202 `{queued}`. 받을 기기가 없으면 409 | O (`@RequireAdmin`) | 구현완료 |
 
 ### 판정·검증
 

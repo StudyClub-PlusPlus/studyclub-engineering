@@ -2,6 +2,7 @@ import type { StudyStatus } from '@studyclub/types';
 import { z } from 'zod';
 
 import { amplitude, analyticsEnabled, COMMON_PROPS, IS_PRODUCTION } from './amplitude';
+import { analyticsAllowed, analyticsUserId, analyticsClientId } from './analytics-privacy-state';
 
 // ─── Shared shapes ────────────────────────────────────────────────────────────
 
@@ -189,16 +190,17 @@ function clarity(...args: unknown[]): void {
 }
 
 export function track(event: AnalyticsEvent): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !analyticsAllowed()) return;
   const ga = GA4_EVENT[event.name];
   if (ga) window.gtag?.('event', ga, { ...COMMON_PROPS, ...event.props });
+  if (event.name === 'Page Viewed') window.gtag?.('event', 'page_view', { ...COMMON_PROPS, ...event.props });
   if (!analyticsEnabled) return;
   amplitude.track(event.name, event.props ?? {});
 }
 
 /** 같은 탭 세션에서 한 번만 보낸다 (새로고침·뒤로가기로 중복되는 노출 이벤트용). */
 export function trackOncePerSession(event: AnalyticsEvent, key: string = event.name): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !analyticsAllowed()) return;
   const k = `sc_tracked:${key}`;
   try {
     if (sessionStorage.getItem(k)) return;
@@ -217,7 +219,7 @@ const FIRST_TOUCH_KEY = 'sc_first_touch';
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
 
 export function captureFirstTouch(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !analyticsAllowed()) return;
   try {
     if (localStorage.getItem(FIRST_TOUCH_KEY)) return;
     const qs = new URLSearchParams(window.location.search);
@@ -244,7 +246,7 @@ function readFirstTouch(): Record<string, string> {
   }
 }
 
-function clearFirstTouch(): void {
+export function clearFirstTouch(): void {
   try {
     localStorage.removeItem(FIRST_TOUCH_KEY);
   } catch {
@@ -256,12 +258,14 @@ function clearFirstTouch(): void {
 export function readGaClientId(
   cookie: string = typeof document === 'undefined' ? '' : document.cookie,
 ): string | undefined {
+  if (!analyticsAllowed()) return undefined;
+  if (analyticsClientId()) return analyticsClientId();
   return /(?:^|;\s*)_ga=GA\d+\.\d+\.(\d+\.\d+)/.exec(cookie)?.[1];
 }
 
 /** 가입 완료 지점 — 첫 유입을 유저 속성에 setOnce 로 남기고 `User Signed Up` 을 보낸다. */
 export function trackSignUp(method: 'google' | 'apple' = 'google'): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !analyticsAllowed()) return;
   if (analyticsEnabled) {
     const identifyObj = new amplitude.Identify();
     for (const [k, v] of Object.entries(readFirstTouch())) identifyObj.setOnce(k, v);
@@ -271,7 +275,7 @@ export function trackSignUp(method: 'google' | 'apple' = 'google'): void {
 }
 
 export function identifyUser(properties: Partial<UserProperties>): void {
-  if (typeof window === 'undefined' || !analyticsEnabled) return;
+  if (typeof window === 'undefined' || !analyticsEnabled || !analyticsAllowed()) return;
   const identifyObj = new amplitude.Identify();
   (Object.entries(properties) as [string, string | number | boolean][]).forEach(([key, value]) => {
     if (value !== undefined) identifyObj.set(key, value);
@@ -280,7 +284,7 @@ export function identifyUser(properties: Partial<UserProperties>): void {
 }
 
 /**
- * 세션 회원을 Amplitude user_id 로 맞춘다. 이메일·이름은 보내지 않는다 — 회원 번호만.
+ * 세션 회원을 서버가 내려준 HMAC 분석 ID로 맞춘다. Clarity는 기존 식별 방식을 유지한다.
  * 로그아웃하면 reset() 으로 기기 id 까지 새로 받아, 같은 브라우저의 다음 사람과 이어지지 않게 한다.
  */
 export function syncAnalyticsUser(
@@ -294,6 +298,10 @@ export function syncAnalyticsUser(
     clarity('set', 'env', COMMON_PROPS.env);
   }
   if (!analyticsEnabled) return;
+  if (!analyticsAllowed()) {
+    amplitude.setOptOut(true);
+    return;
+  }
   if (!user) {
     if (amplitude.getUserId()) {
       amplitude.reset();
@@ -301,7 +309,8 @@ export function syncAnalyticsUser(
     }
     return;
   }
-  const userId = String(user.id);
+  const userId = analyticsUserId();
+  if (!userId) return;
   if (amplitude.getUserId() !== userId) amplitude.setUserId(userId);
   identifyUser({
     is_onboarding_complete: Boolean(user.onboardingCompletedAt),

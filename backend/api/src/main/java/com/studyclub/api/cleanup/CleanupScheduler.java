@@ -1,5 +1,6 @@
 package com.studyclub.api.cleanup;
 
+import com.studyclub.api.analytics.AnalyticsDeletionCleanup;
 import com.studyclub.api.audit.AuditRetentionService;
 import com.studyclub.api.feedback.FeedbackRetentionService;
 import com.studyclub.api.upload.UploadService;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(value = "cleanup.enabled", matchIfMissing = true)
 public class CleanupScheduler {
+    private final AnalyticsDeletionCleanup analytics;
+    private final boolean analyticsEnabled;
     private final CleanupRunner runner;
     private final FeedbackRetentionService feedback;
     private final UploadService storage;
@@ -23,12 +26,16 @@ public class CleanupScheduler {
 
     public CleanupScheduler(
             CleanupRunner runner,
+            AnalyticsDeletionCleanup analytics,
+            @Value("${analytics.deletion.enabled:true}") boolean analyticsEnabled,
             FeedbackRetentionService feedback,
             UploadService storage,
             AuditRetentionService audit,
             @Value("${feedback.retention.enabled:true}") boolean feedbackEnabled,
             @Value("${upload.cleanup.enabled:true}") boolean storageEnabled,
             @Value("${audit.retention.enabled:true}") boolean auditEnabled) {
+        this.analytics = analytics;
+        this.analyticsEnabled = analyticsEnabled;
         this.runner = runner;
         this.feedback = feedback;
         this.storage = storage;
@@ -39,6 +46,7 @@ public class CleanupScheduler {
         runner.register("feedback", feedbackEnabled);
         runner.register("storage", storageEnabled);
         runner.register("audit", auditEnabled);
+        runner.register("analytics", analyticsEnabled);
     }
 
     @Scheduled(
@@ -64,5 +72,13 @@ public class CleanupScheduler {
             initialDelayString = "${cleanup.initial-delay-ms:60000}")
     public void audit() {
         if (auditEnabled) runner.run("audit", () -> audit.cleanUp(Instant.now()));
+    }
+
+    @Scheduled(
+            scheduler = "dataCleanupScheduler",
+            fixedDelayString = "${cleanup.fixed-delay-ms:86400000}",
+            initialDelayString = "${cleanup.initial-delay-ms:60000}")
+    public void analytics() {
+        if (analyticsEnabled) runner.run("analytics", () -> analytics.cleanUp(Instant.now()));
     }
 }

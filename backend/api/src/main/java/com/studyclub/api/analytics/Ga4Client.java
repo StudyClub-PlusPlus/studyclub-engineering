@@ -19,7 +19,7 @@ import org.springframework.web.client.RestClient;
  *
  * <ul>
  *   <li>{@code GA4_MEASUREMENT_ID} · {@code GA4_API_SECRET} 중 하나라도 비면 아무것도 하지 않는다
- *   <li>client_id = 브라우저 {@code _ga} 쿠키 값(프론트가 실어 보낸 것). 없거나 모양이 틀리면 {@code srv.<회원 번호>} — 이 경우 유입
+ *   <li>client_id = 브라우저 {@code _ga} 쿠키 값(프론트가 실어 보낸 것). 없거나 모양이 틀리면 HMAC 분석 ID로 만든 숫자형 값 — 이 경우 유입
  *       귀속이 안 된다
  *   <li>던지지 않는다 — 3초 타임아웃, 실패는 warn 로그만. PII 는 params 에 넣지 않는다
  * </ul>
@@ -54,7 +54,8 @@ public class Ga4Client {
     }
 
     /** {@code gaClientId} 는 null 이어도 된다 — 그때는 합성 client_id. */
-    public void send(String name, Long accountId, String gaClientId, Map<String, Object> params) {
+    public void send(
+            String name, String analyticsId, String gaClientId, Map<String, Object> params) {
         if (!enabled()) {
             return;
         }
@@ -63,7 +64,7 @@ public class Ga4Client {
                     .post()
                     .uri(endpoint + "?measurement_id={m}&api_secret={s}", measurementId, apiSecret)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(payload(name, accountId, gaClientId, params))
+                    .body(payload(name, analyticsId, gaClientId, params))
                     .retrieve()
                     .toBodilessEntity();
         } catch (RuntimeException e) {
@@ -73,7 +74,7 @@ public class Ga4Client {
     }
 
     static Map<String, Object> payload(
-            String name, Long accountId, String gaClientId, Map<String, Object> params) {
+            String name, String analyticsId, String gaClientId, Map<String, Object> params) {
         Map<String, Object> p = new LinkedHashMap<>();
         if (params != null) {
             p.putAll(params);
@@ -82,10 +83,10 @@ public class Ga4Client {
         String clientId =
                 gaClientId != null && CLIENT_ID.matcher(gaClientId).matches()
                         ? gaClientId
-                        : "srv." + accountId;
+                        : AnalyticsIdentity.serverClientId(analyticsId);
         return Map.of(
                 "client_id", clientId,
-                "user_id", String.valueOf(accountId),
+                "user_id", analyticsId,
                 "events", List.of(Map.of("name", name, "params", p)));
     }
 }
