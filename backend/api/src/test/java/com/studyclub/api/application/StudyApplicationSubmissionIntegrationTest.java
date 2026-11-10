@@ -466,8 +466,8 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 모집 마감일이 없는 옛 데이터에는 신청할 수 없다")
-    void rejectsRecruitmentWithoutDeadline() {
+    @DisplayName("성공 - 모집 마감일이 없는 상시 모집에는 신청할 수 있다")
+    void acceptsRecruitmentWithoutDeadline() {
         jdbcTemplate.update(
                 "UPDATE STUDY_RECRUITMENT SET RECRUIT_DEADLINE_AT = NULL WHERE ID = ?",
                 RECRUITMENT_ID);
@@ -476,11 +476,9 @@ class StudyApplicationSubmissionIntegrationTest {
                 rest.postForEntity(
                         "/api/studies/" + STUDY_ID + "/applications",
                         authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
-                        Map.class);
+                        Void.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody()).containsEntry("errorMessage", "모집이 마감되었습니다.");
-        assertThat(applicationCount()).isZero();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
 
     @Test
