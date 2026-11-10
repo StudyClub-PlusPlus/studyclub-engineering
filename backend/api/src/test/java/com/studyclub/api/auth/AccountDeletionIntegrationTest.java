@@ -12,6 +12,8 @@ import com.studyclub.domain.account.AccountLeaveReasonRepository;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.ConsentType;
 import com.studyclub.domain.account.Issuer;
+import com.studyclub.domain.account.RefreshToken;
+import com.studyclub.domain.account.RefreshTokenRepository;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
@@ -78,6 +80,7 @@ class AccountDeletionIntegrationTest {
     @Autowired NotificationRepository notificationRepository;
     @Autowired NotificationCreationService notificationCreationService;
     @Autowired DeletedEvents deletedEvents;
+    @Autowired RefreshTokenRepository refreshTokenRepository;
 
     @BeforeEach
     void useModernHttpClient() {
@@ -412,6 +415,11 @@ class AccountDeletionIntegrationTest {
     void refreshTokenIsRejectedAfterDeletion() {
         Account account = seedAccount();
         String refreshToken = jwt.issueRefresh(String.valueOf(account.getId()), account.getEmail());
+        refreshTokenRepository.save(
+                new RefreshToken(
+                        JwtService.tokenHash(refreshToken),
+                        account.getId(),
+                        Instant.now().plusSeconds(jwt.refreshTtlSeconds())));
         Map<String, String> body = Map.of("refreshToken", refreshToken);
 
         var before = rest.postForEntity("/auth/refresh", body, Map.class);
