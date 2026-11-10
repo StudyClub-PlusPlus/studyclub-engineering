@@ -89,7 +89,7 @@ public class AuthService {
         }
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public AccessTokenResponse refresh(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "refreshToken 이 필요합니다.");

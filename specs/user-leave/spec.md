@@ -69,6 +69,7 @@
 4. 아래를 **한 트랜잭션**으로 처리한다 — 하나만 지워지고 하나는 남는 중간 상태를 두지 않는다:
    - `ACCOUNT_LEAVE_REASON` 1행 insert (`reason`, `createdAt=now`). accountId 는 담지 않는다.
    - `ACCOUNT_IDENTITY` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 `UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID)` 에 걸려 [완료 기준 6](#완료-기준)이 깨진다).
+   - `REFRESH_TOKEN` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (발급된 refresh token 무효화 — 탈퇴 후 남은 token 으로 새 access token 을 발급받는 경로를 차단한다).
    - `STUDY_PARTICIPANT` WHERE `ACCOUNT_ID=accountId` 전부 `STATUS=DELETED` + `LEFT_AT=now` 로 전환 (물리 삭제 아님 — 지우면 `STUDY_ATTENDANCE` 가 갈 곳을 잃어 출석률 집계에서 전체 이력이 빠진다). 이 사람이 맡고 있던 네비게이터 자리가 사라진다. 공동 네비게이터가 없었다면 그 스터디는 네비게이터가 없는 상태가 되고, 있었다면 그 사람만 남는다 — 어느 쪽이든 시스템은 구분하지 않고 똑같이 처리한다.
    - `STUDY_BOOKMARK` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).
    - `STUDY_PROPOSAL_INTEREST` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).

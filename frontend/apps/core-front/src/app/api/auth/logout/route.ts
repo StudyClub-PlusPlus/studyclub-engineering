@@ -11,13 +11,17 @@ export async function POST(req: NextRequest) {
   const refreshToken = req.cookies.get(REFRESH_COOKIE)?.value;
   if (refreshToken) {
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
+      const res = await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
       });
-    } catch {
+      if (!res.ok) {
+        console.warn('[logout] backend token revocation failed', res.status);
+      }
+    } catch (err) {
       // 백엔드 호출 실패해도 쿠키는 지운다 — 클라이언트 세션은 이미 정리됨
+      console.warn('[logout] backend token revocation error', err);
     }
   }
   const res = NextResponse.json({ ok: true });
