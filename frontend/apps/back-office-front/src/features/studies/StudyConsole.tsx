@@ -61,6 +61,10 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   const displayTz = useDisplayTimeZone();
   // 출석부 회차 머리의 시간대 — 반을 바꿔도 남는다. POL-0006: 브라우저 시간대 → 서울
   const [zone, setZone] = useState<string>(() => displayTz);
+  // SSR→클라이언트 전환 후 displayTz가 바뀌면(서울 고정 → 브라우저 시간대) zone을 맞춘다.
+  useEffect(() => {
+    setZone(displayTz);
+  }, [displayTz]);
   /** 출석 탭의 「회차 추가하러 가기」로 넘어왔으면 일정 탭에서 회차 추가 창을 바로 연다. */
   const [addOnOpen, setAddOnOpen] = useState(false);
   const startedAdding = useCallback(() => setAddOnOpen(false), []);
