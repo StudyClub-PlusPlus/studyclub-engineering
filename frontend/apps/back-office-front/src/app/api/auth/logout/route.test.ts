@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { NextRequest } from 'next/server';
+
 import { afterEach, expect, it, vi } from 'vitest';
 
 afterEach(() => {
