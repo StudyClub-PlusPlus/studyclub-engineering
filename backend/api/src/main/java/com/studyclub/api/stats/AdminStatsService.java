@@ -229,7 +229,11 @@ public class AdminStatsService {
         for (Study study : studies) {
             long[] pair = counts.computeIfAbsent(study.getCategory(), c -> new long[2]);
             pair[1]++; // total
-            if (study.getStatus() == StudyStatus.ONGOING) {
+            // 결정 5: OPEN→ONGOING 전환을 당분간 일으키지 않으므로 START_AT 경과로 진행 중을 판단한다.
+            if (study.getStatus() == StudyStatus.ONGOING
+                    || (study.getStatus() == StudyStatus.OPEN
+                            && study.getStartAt() != null
+                            && !asOf.isBefore(study.getStartAt()))) {
                 pair[0]++;
             }
         }
@@ -245,16 +249,21 @@ public class AdminStatsService {
     }
 
     private StudyBoardResponse ongoingBoard(Instant asOf, ZoneId zone, int limit) {
+        // 결정 5: OPEN→ONGOING 전환을 당분간 일으키지 않으므로 START_AT 경과로 진행 중을 판단한다.
         BackofficeStudyListResponse page =
                 backofficeStudyListService.getStudies(
                         new BackofficeStudyListFilter(
                                 null,
                                 null,
-                                StudyStatus.ONGOING,
+                                StudyStatus.OPEN,
                                 null,
                                 null,
                                 null,
-                                BackofficeStudySort.TITLE_ASC),
+                                BackofficeStudySort.TITLE_ASC,
+                                null,
+                                null,
+                                null,
+                                true),
                         0,
                         limit,
                         asOf);
@@ -336,7 +345,8 @@ public class AdminStatsService {
     }
 
     private ActiveCrewStats activeCrewStats() {
-        List<StudyParticipant> actives = studyParticipantRepository.findActiveInOngoingStudies();
+        List<StudyParticipant> actives =
+                studyParticipantRepository.findActiveInStartedOpenStudies(Instant.now());
         Set<String> enrollments =
                 actives.stream()
                         .map(p -> p.getAccountId() + ":" + p.getStudyId())

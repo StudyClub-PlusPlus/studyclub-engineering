@@ -37,4 +37,8 @@ public record StudyCreateRequest(
         Long thumbnailFileId,
         Instant recruitDeadline,
         String schedule,
-        StudyTimezone timezone) {}
+        StudyTimezone timezone,
+        Integer capacity,
+        Instant startAt,
+        @Size(max = 2048) String discordChannelUrl,
+        @Size(max = 2048) String driveUrl) {}

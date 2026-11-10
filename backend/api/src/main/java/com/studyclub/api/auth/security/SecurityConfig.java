@@ -114,7 +114,8 @@ public class SecurityConfig {
                                                 "/scalar",
                                                 "/scalar/**",
                                                 "/auth/social-login",
-                                                "/auth/refresh")
+                                                "/auth/refresh",
+                                                "/auth/logout")
                                         .permitAll()
                                         .requestMatchers(
                                                 HttpMethod.GET, "/api/studies/*/application-form")

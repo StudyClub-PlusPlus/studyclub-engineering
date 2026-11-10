@@ -7,9 +7,13 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.RefreshToken;
+import com.studyclub.domain.account.RefreshTokenRepository;
 import io.jsonwebtoken.Claims;
+import java.time.Instant;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -22,18 +26,21 @@ public class AuthService {
     private final GoogleOAuthClient googleOAuthClient;
     private final AppleOAuthClient appleOAuthClient;
     private final JwtService jwtService;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     public AuthService(
             AccountRepository accountRepository,
             AccountRegistrar accountRegistrar,
             GoogleOAuthClient googleOAuthClient,
             AppleOAuthClient appleOAuthClient,
-            JwtService jwtService) {
+            JwtService jwtService,
+            RefreshTokenRepository refreshTokenRepository) {
         this.accountRepository = accountRepository;
         this.accountRegistrar = accountRegistrar;
         this.googleOAuthClient = googleOAuthClient;
         this.appleOAuthClient = appleOAuthClient;
         this.jwtService = jwtService;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     // @Transactional 없음 — findOrRegister 가 실패한 트랜잭션을 버리고 새로 열어 재시도해야 한다.
@@ -82,6 +89,7 @@ public class AuthService {
         }
     }
 
+    @Transactional(readOnly = true)
     public AccessTokenResponse refresh(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "refreshToken 이 필요합니다.");
@@ -89,9 +97,14 @@ public class AuthService {
         Claims c;
         Long accountId;
         try {
-            c = jwtService.parse(refreshToken);
+            c = jwtService.parseRefresh(refreshToken);
             accountId = Long.valueOf(c.getSubject());
         } catch (RuntimeException e) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
+        }
+        // 로그아웃·탈퇴로 무효화된 토큰은 DB 에 행이 없다.
+        String hash = JwtService.tokenHash(refreshToken);
+        if (!refreshTokenRepository.findByTokenHash(hash).isPresent()) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
         }
         // 탈퇴한 계정의 refresh token 은 서명·만료가 유효해도 새 access token 을 받지 못하게 한다.
@@ -99,14 +112,31 @@ public class AuthService {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
         }
         return new AccessTokenResponse(
-                jwtService.issueAccess(c.getSubject(), c.get("email", String.class)));
+                jwtService.issueAccess(c.getSubject(), c.get("email", String.class)),
+                jwtService.accessTtlSeconds());
+    }
+
+    /**
+     * 로그아웃 — refresh token 을 DB 에서 삭제해 무효화한다. 토큰이 이미 없거나 파싱 불가인 경우는 조용히 넘긴다 (멱등). 쿠키 삭제는
+     * 호출자(Next.js route)가 담당한다.
+     */
+    @Transactional
+    public void logout(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return;
+        }
+        refreshTokenRepository.deleteByTokenHash(JwtService.tokenHash(refreshToken));
     }
 
     private AuthResponse issueFor(Account account, String suggestedNickname) {
         String sub = String.valueOf(account.getId());
+        String refreshToken = jwtService.issueRefresh(sub, account.getEmail());
+        Instant expiresAt = Instant.now().plusSeconds(jwtService.refreshTtlSeconds());
+        refreshTokenRepository.save(
+                new RefreshToken(JwtService.tokenHash(refreshToken), account.getId(), expiresAt));
         return new AuthResponse(
                 jwtService.issueAccess(sub, account.getEmail()),
-                jwtService.issueRefresh(sub, account.getEmail()),
+                refreshToken,
                 jwtService.accessTtlSeconds(),
                 jwtService.refreshTtlSeconds(),
                 toView(account),

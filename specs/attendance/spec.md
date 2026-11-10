@@ -63,7 +63,7 @@ STUDY_ATTENDANCE {
 
 - **Method**: GET
 - **Path**: `/api/me/studies/{studyId}/attendances` (크루·네비게이터·캡틴) / `/api/admin/studies/{studyId}/attendances` (캡틴 전용)
-- **인증**: 필요 (Bearer) — `/api/me`: 그 분반의 활성 참여자(크루 포함, 조회만) · 네비게이터 · 캡틴. 다른 분반은 403. `/api/admin`: 캡틴(SYSTEM_ROLE=ADMIN)만. 참여자 이름은 닉네임만 내린다 — 이메일·디스코드 ID 는 내리지 않는다 — **바뀜 (2026-10-18, [share D6](../../docs/share/2026-10-18-schedule-attendance-feedback.md)): 디스코드 닉네임(`discordNickname`)도 내린다. 이 줄은 BE 가 스펙을 고칠 때 바꾼다**
+- **인증**: 필요 (Bearer) — `/api/me`: 그 분반의 활성 참여자(크루 포함, 조회만) · 네비게이터 · 캡틴. 다른 분반은 403. `/api/admin`: 캡틴(SYSTEM_ROLE=ADMIN)만. 참여자 이름(`displayName`)과 디스코드 서버 별명(`discordNickname`)을 내린다 — 이메일·디스코드 계정 ID 는 내리지 않는다 (share D6)
 - **설명**: 지정한 그룹의 명부(모든 회차 × 해당 그룹 참가자)를 기본으로 반환. `meetingId` 쿼리 파라미터로 특정 회차 하나만 필터링 가능 — 응답 구조는 동일, 내용만 좁아짐
 
 ### Path Parameters
@@ -139,6 +139,7 @@ STUDY_ATTENDANCE {
     {
       "participantId": 10,
       "displayName": "수아",
+      "discordNickname": "수아/SWE/서울",
       "attendances": [
         { "meetingId": 1, "status": "PRESENT" },
         { "meetingId": 2, "status": "LATE" }
@@ -159,7 +160,8 @@ STUDY_ATTENDANCE {
 | meetings[].id | Long | N | 미팅 ID | STUDY_MEETING.ID |
 | meetings[].scheduledAt | String | N | 예정 시각 (ISO 8601) | STUDY_MEETING.SCHEDULED_AT |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
-| participants[].displayName | String | N | | ACCOUNT.NICKNAME |
+| participants[].displayName | String | N | 사이트 닉네임 | ACCOUNT.NICKNAME |
+| participants[].discordNickname | String | Y | 디스코드 서버 별명. 연동 안 했거나 회원 탈퇴면 null (share D6) | ACCOUNT.DISCORD_NICKNAME |
 | participants[].participantRole | String | N | `LEADER` · `MEMBER`. 스터디 일정 출석부의 이름 옆 역할 칩(네비게이터) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | participants[].captain | Boolean | N | 그 스터디를 만든 캡틴이면 true — 이름 옆 「캡틴」 칩. 다른 캡틴(ADMIN)이 참여했으면 false(크루) | 계산: `STUDY.CREATED_BY = ACCOUNT_ID` |
 | participants[].participantStatus | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` · `COMPLETED` · `DELETED`. `WITHDRAWN`·`DELETED` 행은 `includeWithdrawn=true`일 때만 응답에 포함된다. 화면은 흐린 이름 + 칩, 맨 아래 줄 | STUDY_PARTICIPANT.STATUS |
@@ -254,7 +256,7 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 | updates | array | Y | 1개 이상. 빈 배열 → 400. **`withdrawals` 가 있으면 빈 배열이어도 된다** (두 경로 모두) |
 | updates[].meetingId | Long | Y | studyId에 속한 StudyMeeting.id여야 함 → 아니면 400 |
 | updates[].participantId | Long | Y | studyId에 속한 StudyParticipant.id여야 함 → 아니면 400 |
-| updates[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED`. 허용값 외 → 400 |
+| updates[].status | String | **nullable** | `PRESENT \| LATE \| ABSENT \| EXCUSED` 또는 **`null`**. `null` = 해당 출석 행 삭제(미체크 되돌리기). 허용값 외 문자열 → 400 |
 | updates[] 내 (meetingId, participantId) 중복 | — | — | 금지 → 400 |
 
 > **`withdrawals[]` (2026-10-20 구현)** — 사용자 사이트 경로(`/api/me/…`)는 요청에 `withdrawals[]`(참여 중단할 명부 행 ID)를 받아, 출석부 「저장」 한 번에 출석과 참여 중단을 같은 트랜잭션으로 반영한다. 「`updates` 빈 배열 → 400」은 「`updates` · `withdrawals` 가 모두 비면 400」이 된다. `withdrawals` 를 보내지 않는 호출은 지금과 같다. ~~백오피스 경로(`/api/admin/…`)는 `withdrawals` 가 오면 400.~~ → **바뀜 (2026-10-23 기획 결정)**: 백오피스 경로도 `withdrawals[]` 를 받는다. 중단은 **담당 캡틴**만, 대상은 크루 · 네비게이터. `withdrawals` 없이 출석만 고치는 것은 지금처럼 캡틴 누구나. 필드 · 권한 · 대상 제한은 [참여 중단 스펙](../study-participant/spec.md).
@@ -268,8 +270,9 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 각 `updates[]` 항목마다:
 
 1. `participantId`로 `account_id`를 조회한다.
-2. `(study_meeting_id, account_id)` 에 `INSERT ... ON DUPLICATE KEY UPDATE STATUS` 한 문장으로 쓴다 — 없으면 생성, 있으면 status 만 교체.
-3. 배치 전체를 하나의 트랜잭션으로 묶음 (all-or-nothing).
+2. `updates[].status` 가 **`null`** 이면 `(study_meeting_id, account_id)` 행을 **DELETE** 한다 — 미체크 상태로 되돌리기. 행이 없으면 no-op.
+3. `status` 가 non-null 이면 `(study_meeting_id, account_id)` 에 `INSERT ... ON DUPLICATE KEY UPDATE STATUS` 한 문장으로 쓴다 — 없으면 생성, 있으면 status 만 교체.
+4. 배치 전체를 하나의 트랜잭션으로 묶음 (all-or-nothing).
 
 > 갱신: 2026-10-02 — 「기존 row 조회 → 있으면 update, 없으면 insert」 를 한 문장 upsert 로 바꿨다. 조회와 저장을 나누면 MySQL REPEATABLE READ 에서 조회가 트랜잭션 스냅샷을 읽어, 그 사이 다른 요청(디스코드 출석·다른 upsert)이 만든 행을 못 보고 다시 INSERT 하다 unique 위반 → 500 이 났다. 한 문장이면 DB 가 최신 행으로 판정해 충돌 자체가 없다 (디스코드 출석 `markPresent` 와 같은 방식). 회차 삭제와의 경합은 [회차 스펙 「잠금」](../study-meeting/spec.md#잠금).
 
@@ -281,7 +284,7 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | updates가 빈 배열 |
+| 400 | INVALID_INPUT | `updates` 와 `withdrawals` 가 모두 빈 배열 |
 | 403 | FORBIDDEN | 캡틴(SYSTEM_ROLE=ADMIN)이 아님 · `withdrawals` 가 있는데 담당 캡틴이 아님 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
 | 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |

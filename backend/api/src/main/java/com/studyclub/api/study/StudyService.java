@@ -10,6 +10,7 @@ import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.notice.StudyNoticeRepository;
+import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.storage.StoragePurpose;
 import com.studyclub.domain.study.Study;
@@ -98,6 +99,17 @@ public class StudyService {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "recruitDeadline: 모집 마감일은 미래여야 합니다.");
         }
+        if (request.capacity() != null && request.capacity() < 1) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "capacity: 1 이상의 정수여야 합니다.");
+        }
+        if (!isHttpUrlOrBlank(request.discordChannelUrl())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "discordChannelUrl: http(s):// 로 시작하는 주소여야 합니다.");
+        }
+        if (!isHttpUrlOrBlank(request.driveUrl())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "driveUrl: http(s):// 로 시작하는 주소여야 합니다.");
+        }
 
         String trimmedTitle = request.title().trim();
         StudyProgram program = resolveProgram(request, trimmedTitle);
@@ -118,14 +130,25 @@ public class StudyService {
                                 .createdBy(accountId)
                                 .build());
 
-        studyRecruitmentRepository.save(
-                StudyRecruitment.builder()
-                        .studyId(study.getId())
-                        .title(DEFAULT_RECRUITMENT_TITLE)
-                        .description("")
-                        // 모집 시작 시각은 비워 둔다 — 공개(= 모집 시작)할 때 채운다. 채워 두면 신청 폼이 잠긴다
-                        .recruitDeadlineAt(request.recruitDeadline())
-                        .build());
+        if (request.startAt() != null) study.changeStartAt(request.startAt());
+        if (request.discordChannelUrl() != null && !request.discordChannelUrl().isBlank()) {
+            study.changeDiscordChannelUrl(request.discordChannelUrl());
+        }
+        if (request.driveUrl() != null && !request.driveUrl().isBlank()) {
+            study.changeDriveUrl(request.driveUrl());
+        }
+
+        StudyRecruitment recruitment =
+                studyRecruitmentRepository.save(
+                        StudyRecruitment.builder()
+                                .studyId(study.getId())
+                                .title(DEFAULT_RECRUITMENT_TITLE)
+                                .description("")
+                                // 모집 시작 시각은 비워 둔다 — 공개(= 모집 시작)할 때 채운다. 채워 두면 신청 폼이 잠긴다
+                                .recruitDeadlineAt(request.recruitDeadline())
+                                .build());
+        if (request.capacity() != null) recruitment.updateCapacity(request.capacity());
+
         // 신청자가 들어갈 반 — 반을 나눌지는 신청자를 보고 캡틴이 정한다
         studyGroupRepository.save(StudyGroup.defaultOf(study.getId()));
 
@@ -353,7 +376,7 @@ public class StudyService {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.NOT_FOUND, "스터디 프로그램을 찾을 수 없습니다.")),
-                applicantCount(latestRecruitment),
+                crewCount(study),
                 recruitDeadlineAt,
                 recruitmentCapacity,
                 studyDiscordLinkRepository.existsByStudyId(study.getId()));
@@ -404,13 +427,11 @@ public class StudyService {
         return value == null || value.isBlank() || HTTP_URL.matcher(value.trim()).matches();
     }
 
-    /** 최신 모집 회차의 STUDY_APPLICATION 수 — 목록과 동일한 기준 (study-recruit-status/spec.md:46). */
-    private long applicantCount(StudyRecruitment latestRecruitment) {
-        if (latestRecruitment == null) {
-            return 0;
-        }
-        return studyApplicationRepository
-                .countByRecruitmentIdIn(List.of(latestRecruitment.getId()))
+    /** 명부 ACTIVE 중 정원 역할 인원 — 목록과 동일한 기준 (결정 D4-A, study-recruit-status/spec.md). */
+    private long crewCount(Study study) {
+        return studyParticipantRepository
+                .countCapacityHoldersByStudyIds(
+                        List.of(study.getId()), ParticipantRole.CAPACITY_ROLES)
                 .stream()
                 .findFirst()
                 .map(row -> (Long) row[1])

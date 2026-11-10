@@ -72,7 +72,7 @@
 
 - path `studyId` 필수.
 - 통과: 그 스터디의 **어느 `STUDY_GROUP`이든** 네비게이터인 경우.
-- 대상: 스터디 정보 수정, 신청 폼 저장 등 — 분반에 묶이지 않는 API.
+- 대상: 스터디 정보 수정 등 — 분반에 묶이지 않는 API. (신청 폼 저장 사용자 사이트 경로는 2026-11-07 삭제됨)
 
 #### 분반 단위 (출석 등)
 
@@ -122,12 +122,12 @@
 | 화면 | Method | Path | 범위 | 지금 | 이번 |
 |------|--------|------|------|------|------|
 | 스터디 수정 | PATCH | `/api/studies/{studyId}` | **스터디** | `assertCaptainOrNavigator` | **스터디 단위** 어노테이션, Guard 호출 **제거** |
-| 신청 폼 저장 | PUT | `/api/studies/{studyId}/application-form` | **스터디** | 동일 | **스터디 단위** + `@RequireOnboarding`, Guard 호출 **제거** |
+| 신청 폼 저장 | PUT | `/api/studies/{studyId}/application-form` | **스터디** | 동일 | **삭제 완료 (2026-11-07)** — 아래 각주 참고 |
 | 신청 폼 조회 | GET | 동일 | — | 공개/편집 분기 | **변경 없음** (어노테이션 **금지** — [위 주의](#신청-폼-get--공개-분기-주의)) |
 | 출석 upsert | POST | `/api/studies/{studyId}/attendances` | **분반** | LEADER(스터디 전체, 캡틴 미포함) | **분반 단위** + `@RequireOnboarding`, 인라인 검사 **제거**. 캡틴 통과 · **타 분반 네비게이터 403** |
 | 출석 명부 | GET | 동일 (`studyGroupId` query) | **분반** | 인증만 | **분반 단위** + `@RequireOnboarding` — 캡틴 또는 **그 `studyGroupId` 네비게이터만** |
 
-> **후속 (2026-10-04 기획 확정)** — 네비게이터는 신청 폼을 고치지 못하고 백오피스에도 들어오지 못한다. 그래서 위 `PUT /api/studies/{studyId}/application-form`(네비게이터용 사용자 사이트 경로)은 폐기 예정이고, 백오피스 `PUT /api/admin/studies/{studyId}/application-form` 은 `@RequireAdmin` 에 더해 **이 기수 담당 캡틴**(스터디를 생성한 캡틴 — `STUDY.CREATED_BY = 나`, NULL 이면 캡틴 누구나)만 통과시켜야 한다. 사용자 사이트 `PUT` 은 지운다 (2026-10-07). 백오피스 신청 폼 조회·신청 결과 조회는 지금처럼 캡틴 누구나. 근거: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md) · [신청 스펙](../study-application/spec.md)
+> **완료 (2026-10-04 기획 확정 → 2026-11-07 삭제)** — 네비게이터는 신청 폼을 고치지 못한다. `PUT /api/studies/{studyId}/application-form`(사용자 사이트 경로) 삭제 완료. 백오피스 `PUT /api/admin/studies/{studyId}/application-form` 은 `@RequireAdmin`(캡틴만) 유지. 근거: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
 
 ### C. 회원 전용 · 온보딩
 

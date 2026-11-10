@@ -16,7 +16,9 @@ public record BackofficeStudyListFilter(
         BackofficeStudySort sort,
         String keyword,
         Boolean hasApplicationForm,
-        AdminStudyRecruitFilter recruitFilter) {
+        AdminStudyRecruitFilter recruitFilter,
+        /** true 이면 START_AT 이 asOf 이하인 행만 — 대시보드 진행 중 보드에서 사용 (결정 5). */
+        Boolean startedOnly) {
 
     public BackofficeStudyListFilter(
             StudyCategory category,
@@ -34,6 +36,7 @@ public record BackofficeStudyListFilter(
                 visibility,
                 recruitStatus,
                 sort,
+                null,
                 null,
                 null,
                 null);

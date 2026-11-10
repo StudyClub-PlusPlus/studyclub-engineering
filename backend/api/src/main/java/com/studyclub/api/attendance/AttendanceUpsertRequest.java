@@ -27,6 +27,7 @@ public record AttendanceUpsertRequest(
         return !withdrawals.isEmpty();
     }
 
+    /** {@code status = null} 은 출석 행 삭제 — 미체크로 되돌리기. */
     public record AttendanceUpsertItem(
-            @NotNull Long meetingId, @NotNull Long participantId, @NotNull String status) {}
+            @NotNull Long meetingId, @NotNull Long participantId, String status) {}
 }

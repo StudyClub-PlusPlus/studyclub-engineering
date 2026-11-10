@@ -14,6 +14,7 @@ import {
   useGroupMeetings,
   useSaveRules,
   useSetKickoff,
+  useUpdateGroupTime,
   useUpdateMeetings,
 } from '@/features/schedule/api';
 import { distinctNames, useCrew } from '@/features/schedule/crew';
@@ -23,7 +24,6 @@ import { useScheduleGroups, withServerTz } from '@/features/schedule/groups';
 import { GroupTimeDialog } from '@/features/schedule/GroupTimeDialog';
 import { groupTimeLabel, hasTime } from '@/features/schedule/meetings';
 import { ScheduleTable } from '@/features/schedule/ScheduleTable';
-import { saveGroupTime } from '@/features/schedule/store';
 import { zonedInstant } from '@/features/schedule/time';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
@@ -58,11 +58,8 @@ export function ScheduleTab({
   onStartedAdding?: () => void;
 }) {
   const studyId = detail.id;
-  /** 스터디 시간은 localStorage 라 렌더 트리거가 없다 — 바꿀 때마다 올려 다시 읽는다. */
-  const [rev, setRev] = useState(0);
-
   // 신청자 탭에서 만든 서버 반 — 둘 이상이면 반 칩이 선다
-  const { groups, error: groupsError } = useScheduleGroups(studyId, rev);
+  const { groups, error: groupsError } = useScheduleGroups(studyId);
   const picked = groups.find((g) => g.id === groupId) ?? groups[0];
   const serverGroupId = picked ? Number(picked.id) : undefined;
   const query = useGroupMeetings(studyId, serverGroupId);
@@ -108,6 +105,7 @@ export function ScheduleTab({
   const deleteMeetings = useDeleteMeetings(studyId, writeGroupId);
   const saveRules = useSaveRules(studyId, writeGroupId);
   const setKickoff = useSetKickoff(studyId, writeGroupId);
+  const updateGroupTime = useUpdateGroupTime(studyId, writeGroupId);
   /** 서버가 막으면(403 · 409 · 400) 그 문구를 그대로 띄운다 — 표는 다시 읽어 서버 값으로 돌아간다. */
   const onError = (fallback: string) => (err: Error) => toast.error(err.message || fallback);
 
@@ -191,9 +189,11 @@ export function ScheduleTab({
           group={group}
           onClose={() => setTimeOpen(false)}
           onSave={(time) => {
-            saveGroupTime(studyId, group.id, time);
             setTimeOpen(false);
-            setRev((n) => n + 1);
+            updateGroupTime.mutate(
+              { weekdays: time.weekdays, time: time.time, tz: time.tz },
+              { onError: onError('스터디 시간을 저장하지 못했습니다.') },
+            );
           }}
         />
       )}

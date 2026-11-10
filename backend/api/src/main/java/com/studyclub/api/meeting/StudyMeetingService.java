@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -121,7 +123,29 @@ public class StudyMeetingService {
         Map<Long, StudyParticipant> participantById =
                 roster.stream()
                         .collect(Collectors.toMap(StudyParticipant::getId, Function.identity()));
-        Map<Long, String> nameByAccount = nicknames(roster);
+        Map<Long, String> nameByAccount = new HashMap<>(nicknames(roster));
+        Map<Long, String> discordNicknameByAccount = new HashMap<>(discordNicknames(roster));
+
+        // 반 이동 후 지난 회차에 발표자로 남아 있는 사람은 현재 roster에 없다.
+        // 없는 presenter를 보완 조회해 name을 채운다.
+        Set<Long> allPresenterIds =
+                meetings.stream()
+                        .flatMap(
+                                m ->
+                                        Stream.of(
+                                                m.getPresenter1ParticipantId(),
+                                                m.getPresenter2ParticipantId()))
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+        Set<Long> missingIds =
+                allPresenterIds.stream()
+                        .filter(id -> !participantById.containsKey(id))
+                        .collect(Collectors.toSet());
+        if (!missingIds.isEmpty()) {
+            List<StudyParticipant> extra = studyParticipantRepository.findAllById(missingIds);
+            extra.forEach(p -> participantById.put(p.getId(), p));
+            nameByAccount.putAll(nicknames(extra));
+        }
 
         Instant now = Instant.now();
         Map<Long, Integer> numbers = MeetingSchedule.numbersOf(meetings);
@@ -151,20 +175,22 @@ public class StudyMeetingService {
                         .map(
                                 p ->
                                         new StudyMeetingListResponse.ParticipantView(
-                                                p.getId(), nameByAccount.get(p.getAccountId())))
+                                                p.getId(),
+                                                nameByAccount.get(p.getAccountId()),
+                                                discordNicknameByAccount.get(p.getAccountId())))
                         .sorted(
                                 Comparator.comparing(
                                         StudyMeetingListResponse.ParticipantView::name,
                                         Comparator.nullsLast(Comparator.naturalOrder())))
                         .toList();
-        String navigatorName =
+        List<String> navigatorNames =
                 roster.stream()
                         .filter(p -> p.getParticipantRole() == ParticipantRole.LEADER)
                         .filter(p -> StudyCaptainGuard.ROSTER_STATUSES.contains(p.getStatus()))
                         .map(p -> nameByAccount.get(p.getAccountId()))
                         .filter(Objects::nonNull)
-                        .findFirst()
-                        .orElse(null);
+                        .toList();
+        String navigatorName = navigatorNames.isEmpty() ? null : String.join(", ", navigatorNames);
         Long myParticipantId =
                 roster.stream()
                         .filter(p -> p.getAccountId().equals(accountId))
@@ -188,7 +214,8 @@ public class StudyMeetingService {
                         zone.getId(),
                         startTime,
                         navigatorName,
-                        group.getRules()),
+                        group.getRules(),
+                        group.getDaysOfWeek()),
                 new StudyMeetingListResponse.MeView(myParticipantId, canEdit),
                 candidates,
                 meetingViews);
@@ -485,6 +512,13 @@ public class StudyMeetingService {
                 .collect(Collectors.toMap(Account::getId, Account::getNickname));
     }
 
+    private Map<Long, String> discordNicknames(List<StudyParticipant> roster) {
+        List<Long> accountIds = roster.stream().map(StudyParticipant::getAccountId).toList();
+        return accountRepository.findAllById(accountIds).stream()
+                .filter(a -> a.getDiscordNickname() != null)
+                .collect(Collectors.toMap(Account::getId, Account::getDiscordNickname));
+    }
+
     private StudyMeeting find(List<StudyMeeting> meetings, Long meetingId) {
         return meetings.stream()
                 .filter(m -> m.getId().equals(meetingId))
@@ -498,16 +532,22 @@ public class StudyMeetingService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다."));
     }
 
-    // 분반을 안 주면 이 스터디의 내 명부 행이 속한 분반 — 명부에 없는 캡틴은 분반을 골라 와야 한다
+    // 분반을 안 주면 이 스터디의 내 명부 행이 속한 분반 — 명부에 없는 캡틴은 분반을 골라 와야 한다.
+    // WITHDRAWN/COMPLETED 행을 건너뛰어 재합류(다른 반) 크루가 구 반 ID 를 받지 않도록 한다.
+    // 활성 네비게이터는 항상 ACTIVE/PAUSED 행이 있으므로 orElseThrow 에 도달하지 않는다.
     private Long myGroupId(Long accountId, Long studyId) {
         account(accountId);
         return studyParticipantRepository
-                .findFirstByStudyIdAndAccountId(studyId, accountId)
+                .findFirstByStudyIdAndAccountIdAndStatusIn(
+                        studyId, accountId, StudyCaptainGuard.ROSTER_STATUSES)
                 .map(StudyParticipant::getStudyGroupId)
                 .orElseThrow(
                         () ->
-                                new BusinessException(
-                                        ErrorCode.INVALID_INPUT, "studyGroupId 를 지정해 주세요."));
+                                studyCaptainGuard.isCaptainOrNavigator(accountId, studyId)
+                                        ? new BusinessException(
+                                                ErrorCode.INVALID_INPUT, "studyGroupId 를 지정해 주세요.")
+                                        : new BusinessException(
+                                                ErrorCode.FORBIDDEN, VIEW_FORBIDDEN));
     }
 
     private void account(Long accountId) {

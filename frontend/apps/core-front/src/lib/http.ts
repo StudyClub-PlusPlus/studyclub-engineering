@@ -52,7 +52,6 @@ export async function http<T>(
   path: string,
   schema: z.ZodType<T>,
   init?: RequestInit,
-  options?: { refreshOnUnauthorized?: boolean },
 ): Promise<T> {
   const headers = new Headers(init?.headers);
   const nickname = currentClientNickname();
@@ -66,8 +65,7 @@ export async function http<T>(
     headers,
   };
   let res = await fetch(`${API_BASE}${path}`, request);
-  // 가입·닉네임 확인에서 사용하던 갱신 정책. 다른 요청은 명시적으로 선택할 때만 적용한다.
-  if (res.status === 401 && options?.refreshOnUnauthorized) {
+  if (res.status === 401) {
     const refreshed = await fetch('/api/auth/refresh', { method: 'POST', signal: init?.signal });
     if (refreshed.ok) res = await fetch(`${API_BASE}${path}`, request);
   }
