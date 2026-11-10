@@ -14,6 +14,7 @@ import com.studyclub.domain.account.AccountLeaveReasonRepository;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.Issuer;
 import com.studyclub.domain.account.LeaveReason;
+import com.studyclub.domain.account.RefreshTokenRepository;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
@@ -93,6 +94,7 @@ public class AccountDeletionService {
     private final AdminAuditRecorder auditRecorder;
     private final AppleOAuthClient appleOAuthClient;
     private final ApplicationEventPublisher eventPublisher;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional
     public void deleteAccount(Long accountId, LeaveReason reason) {
@@ -116,6 +118,9 @@ public class AccountDeletionService {
 
         // 로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID) 에 걸린다.
         accountIdentityRepository.deleteByAccountId(accountId);
+
+        // refresh token 무효화 — 탈퇴 후 남은 토큰으로 재로그인하지 못하게 한다.
+        refreshTokenRepository.deleteByAccountId(accountId);
 
         // 동의 이력 파기 — DB cascade 는 Flyway 로 만든 스키마에만 있어서 코드로 명시적으로 지운다.
         accountConsentRepository.deleteByAccountId(accountId);

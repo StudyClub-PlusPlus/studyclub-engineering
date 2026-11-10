@@ -1,11 +1,24 @@
-import { NextResponse } from 'next/server';
+// BO 로그아웃 — refresh token 을 서버에서 무효화하고 httpOnly 쿠키를 제거.
+import { NextRequest, NextResponse } from 'next/server';
 
 import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/features/auth/auth';
 import { clearAccess, clearRefresh } from '@/lib/cookies';
 
-// BO 로그아웃 — httpOnly access·refresh 쿠키를 서버측에서 제거.
+const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const refreshToken = req.cookies.get(REFRESH_COOKIE)?.value;
+  if (refreshToken) {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+    } catch {
+      // 백엔드 호출 실패해도 쿠키는 지운다 — 클라이언트 세션은 이미 정리됨
+    }
+  }
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ACCESS_COOKIE, '', clearAccess);
   res.cookies.set(REFRESH_COOKIE, '', clearRefresh);

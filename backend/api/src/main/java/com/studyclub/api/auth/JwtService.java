@@ -75,9 +75,23 @@ public class JwtService {
                 .compact();
     }
 
+    /** refresh token 의 SHA-256 해시 — 16진수 소문자 64자. DB 저장·조회 키로 쓴다. */
+    public static String tokenHash(String token) {
+        byte[] digest = sha256bytes(token.getBytes(StandardCharsets.UTF_8));
+        StringBuilder sb = new StringBuilder(64);
+        for (byte b : digest) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
     private static byte[] sha256(String s) {
+        return sha256bytes(s.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static byte[] sha256bytes(byte[] input) {
         try {
-            return MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8));
+            return MessageDigest.getInstance("SHA-256").digest(input);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }
