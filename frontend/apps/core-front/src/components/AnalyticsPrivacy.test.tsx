@@ -37,6 +37,7 @@ import {
   hasLocalAnalyticsOptOut,
   suspendAnalytics,
 } from '@/lib/analytics-privacy-state';
+import { ApiError } from '@/lib/http';
 
 describe('서버 상태를 따르는 브라우저 분석', () => {
   beforeEach(() => {
@@ -76,6 +77,36 @@ describe('서버 상태를 따르는 브라우저 분석', () => {
     expect(analyticsAllowed()).toBe(false);
     expect(mocks.init).not.toHaveBeenCalled();
   });
+  it('인증 만료는 영구 거부로 저장하지 않고 재로그인 후 허용 상태를 다시 조회한다', async () => {
+    mocks.load.mockRejectedValueOnce(new ApiError(401, '로그인 만료'));
+    render(<AnalyticsPrivacy />);
+    await waitFor(() => expect(mocks.load).toHaveBeenCalledTimes(1));
+    expect(analyticsAllowed()).toBe(false);
+    expect(hasLocalAnalyticsOptOut()).toBe(false);
+    expect(mocks.init).not.toHaveBeenCalled();
+    act(() => window.dispatchEvent(new Event('test-user-changed')));
+    await waitFor(() => expect(analyticsAllowed()).toBe(true));
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+    expect(hasLocalAnalyticsOptOut()).toBe(false);
+  });
+  it('재로그인 후 서버가 실제 중단 상태를 반환하면 계속 수집하지 않는다', async () => {
+    mocks.load.mockRejectedValueOnce(new ApiError(401, '로그인 만료'));
+    render(<AnalyticsPrivacy />);
+    await waitFor(() => expect(mocks.load).toHaveBeenCalledTimes(1));
+    mocks.load.mockResolvedValue({ userId: null, enabled: false, optedOutAt: '2026-11-08T00:00:00Z' });
+    act(() => window.dispatchEvent(new Event('test-user-changed')));
+    await waitFor(() => expect(hasLocalAnalyticsOptOut()).toBe(true));
+    expect(analyticsAllowed()).toBe(false);
+    expect(mocks.init).not.toHaveBeenCalled();
+  });
+  it('회원이 삭제된 응답은 브라우저 중단 상태로 유지한다', async () => {
+    mocks.load.mockRejectedValueOnce(new ApiError(404, '회원 없음'));
+    render(<AnalyticsPrivacy />);
+    await waitFor(() => expect(hasLocalAnalyticsOptOut()).toBe(true));
+    act(() => window.dispatchEvent(new Event('test-user-changed')));
+    expect(mocks.load).toHaveBeenCalledTimes(1);
+    expect(analyticsAllowed()).toBe(false);
+  });
   it('문의 처리 후 상태 갱신으로 중단하며 로그아웃해도 재개하지 않는다', async () => {
     render(<AnalyticsPrivacy />);
     await waitFor(() => expect(analyticsAllowed()).toBe(true));
@@ -86,6 +117,11 @@ describe('서버 상태를 따르는 브라우저 분석', () => {
     act(() => window.dispatchEvent(new Event('test-user-changed')));
     expect(analyticsAllowed()).toBe(false);
     expect(mocks.setOptOut).toHaveBeenLastCalledWith(true);
+    const previousRequests = mocks.load.mock.calls.length;
+    mocks.user = { id: 42 };
+    act(() => window.dispatchEvent(new Event('test-user-changed')));
+    expect(mocks.load).toHaveBeenCalledTimes(previousRequests);
+    expect(analyticsAllowed()).toBe(false);
   });
   it('늦게 돌아온 이전 계정의 허용 응답으로 새 계정의 중단을 덮지 않는다', async () => {
     let resolve!: (v: unknown) => void;

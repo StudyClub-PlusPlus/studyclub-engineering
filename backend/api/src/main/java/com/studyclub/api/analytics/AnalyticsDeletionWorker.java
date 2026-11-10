@@ -78,8 +78,14 @@ public class AnalyticsDeletionWorker {
         }
         try {
             if (target.amplitude() == AnalyticsDeletionStatus.NOT_REQUESTED) {
-                String ids = gateway.submitAmplitude(target.userId());
-                apply(target, AnalyticsProvider.AMPLITUDE, p -> p.amplitudeRequested(ids, now));
+                Optional<String> ids = gateway.submitAmplitude(target.userId());
+                apply(
+                        target,
+                        AnalyticsProvider.AMPLITUDE,
+                        p -> {
+                            if (ids.isPresent()) p.amplitudeRequested(ids.get(), now);
+                            else p.amplitudeNotFound(now);
+                        });
             } else if (target.amplitude() == AnalyticsDeletionStatus.REQUESTED
                     && gateway.amplitudeDone(
                             target.amplitudeIds(), target.amplitudeRequestedAt())) {
@@ -136,7 +142,6 @@ public class AnalyticsDeletionWorker {
                         ? "HTTP_" + response.getStatusCode().value()
                         : Set.of(
                                                 "DELETION_NOT_CONFIGURED",
-                                                "USER_NOT_FOUND",
                                                 "INVALID_DELETION_RESPONSE",
                                                 "DELETION_INTERRUPTED")
                                         .contains(e.getMessage() == null ? "" : e.getMessage())
