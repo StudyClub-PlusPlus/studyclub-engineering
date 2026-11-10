@@ -25,7 +25,7 @@ public interface StudyRecruitmentRepository extends JpaRepository<StudyRecruitme
             "SELECT recruitment FROM StudyRecruitment recruitment "
                     + "WHERE recruitment.studyId = :studyId "
                     + "AND recruitment.startAt <= CURRENT_TIMESTAMP "
-                    + "AND recruitment.recruitDeadlineAt > CURRENT_TIMESTAMP "
+                    + "AND (recruitment.recruitDeadlineAt IS NULL OR recruitment.recruitDeadlineAt > CURRENT_TIMESTAMP) "
                     + "ORDER BY recruitment.startAt DESC, recruitment.id DESC")
     List<StudyRecruitment> findOpenByStudyIdOrderByStartAtDesc(@Param("studyId") Long studyId);
 

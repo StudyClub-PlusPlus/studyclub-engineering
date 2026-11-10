@@ -35,12 +35,15 @@ class StudyListJpqlDao implements StudyListDao {
                     + " (SELECT MAX(r2.id) FROM StudyRecruitment r2 WHERE r2.studyId = s.id))";
 
     /**
-     * 현재 모집 회차의 신청 수 — 정원과 같은 회차끼리 비교한다. 서비스(StudyListService·StudyService)가 응답 phase 를 계산할 때 쓰는 값과
-     * 같아야 필터·정렬이 카드와 어긋나지 않는다 (study-recruit-status/spec.md).
+     * 정원을 차지하는 현재 명부 인원 — ACTIVE + 정원 역할(MEMBER·LEADER). 서비스(StudyListService)가 응답 phase 를 계산할 때 쓰는
+     * 값과 같아야 필터·정렬이 카드와 어긋나지 않는다 (study-recruit-status/spec.md 결정 D4-A).
      */
-    private static final String CURRENT_APPLICATION_COUNT =
-            "(SELECT COUNT(a) FROM StudyApplication a WHERE a.recruitmentId ="
-                    + " (SELECT MAX(r3.id) FROM StudyRecruitment r3 WHERE r3.studyId = s.id))";
+    private static final String CURRENT_CREW_COUNT =
+            "(SELECT COUNT(p) FROM StudyParticipant p WHERE p.studyId = s.id"
+                    + " AND p.status = com.studyclub.domain.participant.ParticipantStatus.ACTIVE"
+                    + " AND p.participantRole IN ("
+                    + "com.studyclub.domain.participant.ParticipantRole.MEMBER,"
+                    + "com.studyclub.domain.participant.ParticipantRole.LEADER))";
 
     /** 단계 등수 — 0 모집 중 · 1 진행 중 · 2 종료. {@link StudyPhase} 선언 순서와 같다. */
     private static final String PHASE_RANK =
@@ -56,7 +59,7 @@ class StudyListJpqlDao implements StudyListDao {
                     + "   AND ("
                     + CURRENT_CAPACITY
                     + " IS NULL OR "
-                    + CURRENT_APPLICATION_COUNT
+                    + CURRENT_CREW_COUNT
                     + " < "
                     + CURRENT_CAPACITY
                     + ") THEN 0"
