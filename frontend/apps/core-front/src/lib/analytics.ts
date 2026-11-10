@@ -1,7 +1,7 @@
 import type { StudyStatus } from '@studyclub/types';
 import { z } from 'zod';
 
-import { amplitude, analyticsEnabled, COMMON_PROPS, IS_PRODUCTION } from './amplitude';
+import { amplitude, analyticsEnabled, COMMON_PROPS } from './amplitude';
 import { analyticsAllowed, analyticsUserId, analyticsClientId } from './analytics-privacy-state';
 
 // ─── Shared shapes ────────────────────────────────────────────────────────────
@@ -167,26 +167,10 @@ const GA4_EVENT: Partial<Record<AnalyticsEvent['name'], string>> = {
 };
 
 type Gtag = (...args: unknown[]) => void;
-type Clarity = ((...args: unknown[]) => void) & { q?: unknown[][] };
 declare global {
   interface Window {
     gtag?: Gtag;
-    clarity?: Clarity;
   }
-}
-
-const clarityEnabled = IS_PRODUCTION && Boolean(process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID);
-
-/** 스크립트가 아직 안 떴어도 큐에 쌓아 둔다 — Clarity 스니펫이 같은 큐(window.clarity.q)를 이어받는다. */
-function clarity(...args: unknown[]): void {
-  if (!clarityEnabled) return;
-  if (!window.clarity) {
-    const stub: Clarity = (...a: unknown[]) => {
-      (stub.q ??= []).push(a);
-    };
-    window.clarity = stub;
-  }
-  window.clarity(...args);
 }
 
 export function track(event: AnalyticsEvent): void {
@@ -284,19 +268,13 @@ export function identifyUser(properties: Partial<UserProperties>): void {
 }
 
 /**
- * 세션 회원을 서버가 내려준 HMAC 분석 ID로 맞춘다. Clarity는 기존 식별 방식을 유지한다.
+ * Amplitude 세션 회원을 서버가 내려준 HMAC 분석 ID로 맞춘다. Clarity는 lib/clarity가 담당한다.
  * 로그아웃하면 reset() 으로 기기 id 까지 새로 받아, 같은 브라우저의 다음 사람과 이어지지 않게 한다.
  */
 export function syncAnalyticsUser(
   user: { id: number; timeZone?: string | null; onboardingCompletedAt?: string | null } | null,
 ): void {
   if (typeof window === 'undefined') return;
-  // Clarity: 회원 번호만 custom id 로 (friendly name 에 이름·이메일 금지)
-  if (user) {
-    clarity('identify', String(user.id));
-    clarity('set', 'service', COMMON_PROPS.service);
-    clarity('set', 'env', COMMON_PROPS.env);
-  }
   if (!analyticsEnabled) return;
   if (!analyticsAllowed()) {
     amplitude.setOptOut(true);
