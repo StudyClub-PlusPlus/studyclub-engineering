@@ -30,12 +30,14 @@ import com.studyclub.domain.proposal.StudyProposalRepository;
 import com.studyclub.domain.proposal.StudyProposalStatus;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
+import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.notification.Notification;
 import com.studyclub.notification.NotificationChannel;
 import com.studyclub.notification.NotificationCreationService;
 import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -81,6 +83,8 @@ class AccountDeletionIntegrationTest {
     @Autowired NotificationCreationService notificationCreationService;
     @Autowired DeletedEvents deletedEvents;
     @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired StudyRepository studyRepository;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void useModernHttpClient() {
@@ -473,6 +477,60 @@ class AccountDeletionIntegrationTest {
 
         StudyMeeting reloaded = studyMeetingRepository.findById(meeting.getId()).orElseThrow();
         assertThat(reloaded.getPresenter1ParticipantId()).isNull();
+    }
+
+    @Test
+    @DisplayName("성공 - 탈퇴한 캡틴이 만든 스터디의 CREATED_BY 가 null 로 초기화돼 다른 캡틴이 담당 캡틴 전용 기능을 쓸 수 있다")
+    void deletionClearsCreatedByOnOwnedStudies() {
+        Account captain = seedAccount();
+        Long captainId = captain.getId();
+
+        // 탈퇴할 캡틴이 만든 스터디 2개, 다른 계정이 만든 스터디 1개 삽입
+        Long studyA = 9901L;
+        Long studyB = 9902L;
+        Long studyOther = 9903L;
+        Account other = seedAccount();
+        insertStudyWithCreatedBy(studyA, captainId);
+        insertStudyWithCreatedBy(studyB, captainId);
+        insertStudyWithCreatedBy(studyOther, other.getId());
+
+        rest.exchange("/api/me", HttpMethod.DELETE, authenticatedBody(captain, null), Void.class);
+
+        // 탈퇴한 계정이 만든 스터디 → CREATED_BY = null
+        assertThat(studyRepository.findById(studyA))
+                .hasValueSatisfying(s -> assertThat(s.getCreatedBy()).isNull());
+        assertThat(studyRepository.findById(studyB))
+                .hasValueSatisfying(s -> assertThat(s.getCreatedBy()).isNull());
+        // 다른 계정이 만든 스터디 → 그대로
+        assertThat(studyRepository.findById(studyOther))
+                .hasValueSatisfying(s -> assertThat(s.getCreatedBy()).isEqualTo(other.getId()));
+
+        // 정리
+        jdbcTemplate.update("DELETE FROM STUDY WHERE ID IN (?, ?, ?)", studyA, studyB, studyOther);
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PROGRAM WHERE ID IN (?, ?, ?)", studyA, studyB, studyOther);
+    }
+
+    private void insertStudyWithCreatedBy(Long id, Long createdBy) {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, 'STUDY', ?, ?)",
+                id,
+                "테스트 스터디 " + id,
+                now,
+                now);
+        jdbcTemplate.update(
+                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, CATEGORY, STATUS,"
+                        + " CREATED_BY, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, 'ALGORITHM', 'OPEN', ?, ?, ?)",
+                id,
+                id,
+                "테스트 스터디 " + id,
+                "요약",
+                createdBy,
+                now,
+                now);
     }
 
     /** 요청은 서버 스레드에서 처리돼 {@code @RecordApplicationEvents} 로는 못 잡는다 — 커밋 뒤 구독자로 받는다. */

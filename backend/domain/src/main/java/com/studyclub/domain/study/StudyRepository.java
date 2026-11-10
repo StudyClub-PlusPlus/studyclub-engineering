@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -25,6 +26,14 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Study s where s.id = :id")
     Optional<Study> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * 계정 탈퇴 시 담당 캡틴 필드를 비운다 — {@code CREATED_BY = null} 이면 ADMIN 누구나 담당 캡틴으로 인정된다
+     * (StudyCaptainGuard.isOwnerCaptain).
+     */
+    @Modifying
+    @Query("UPDATE Study s SET s.createdBy = null WHERE s.createdBy = :accountId")
+    void clearCreatedBy(@Param("accountId") Long accountId);
 
     /** 프로그램별 가장 최근(id 가 큰) 스터디를 가져온다. */
     @Query(
