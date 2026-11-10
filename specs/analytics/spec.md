@@ -22,8 +22,8 @@
 ## 식별
 
 - `user_id` = `ACCOUNT_ANALYTICS.ANALYTICS_USER_ID`. 서버 HMAC-SHA256으로 한 번 생성·저장하고 프론트·서버가 같은 값을 쓴다
-- 분석 ID는 `키버전_64자리 hex`. 회원번호·비밀키 원문은 분석 도구로 보내지 않는다. Clarity는 이번 변경 범위 밖이다.
-- 이메일·이름·닉네임은 user_id 에도, Clarity 에도 넣지 않는다. Clarity 는 `identify(회원 번호)` + 태그 `service`·`env`
+- 분석 ID는 `키버전_64자리 hex`. 회원번호·비밀키 원문은 분석 도구로 보내지 않는다. Clarity에도 같은 HMAC 분석 ID를 사용한다.
+- 이메일·이름·닉네임은 user_id 에도, Clarity 에도 넣지 않는다. Clarity는 허용 확인 후 `identify(분석 ID)` + 태그 `service`·`env`를 적용한다.
 - 로그아웃하면 Amplitude `reset()` (기기 id 새로) + 첫 유입 기록 삭제
 
 ## 공통 속성 (모든 이벤트)
@@ -85,7 +85,7 @@
 
 ### 범위와 저장
 
-- GA4·Amplitude만 적용. Clarity와 사용자·관리자 문의 UI는 변경하지 않는다. 플레이그라운드 버튼·시연 데이터는 제거한다.
+- 수집 중단은 GA4·Amplitude·Clarity에 적용하며 기존 기록 삭제는 GA4·Amplitude만 연동한다. 사용자·관리자 문의 UI는 변경하지 않는다. 플레이그라운드 버튼·시연 데이터는 제거한다.
 - ACCOUNT는 변경하지 않는다. ACCOUNT_ANALYTICS 한 테이블에 HMAC ID, OPTED_OUT_AT, GA_CLIENT_IDS, GA4_DELETION_STATUS, AMPLITUDE_DELETION_STATUS, AMPLITUDE_DELETION_IDS, AMPLITUDE_DELETION_REQUESTED_AT 및 공통 생성·수정 시각을 저장한다.
 - 별도 삭제 작업 테이블, KEY_VERSION, DELETION_REQUEST_ID, 탈퇴 여부, NEXT_ATTEMPT_AT은 두지 않는다. HMAC 키 버전은 ID 접두어·서버 설정으로만 관리한다.
 - 키 미설정 시 회원 분석을 끄며 원문 회원번호로 우회하지 않는다. 기존 실사용자 이관은 필요 없다.
@@ -109,6 +109,8 @@
 ### 전송과 삭제 실행
 
 - 서버는 전송 직전에 계정·분석 상태를 검사한다. 브라우저는 최초 조회 전 전송하지 않고 활성 탭 30초 갱신·45초 허용 유효기간·포커스/인증 변경 때 상태를 다시 확인한다. 실패 시 중단한다.
+- Clarity는 허용 전 태그를 로드하지 않고, 비동기 로딩 완료 후 최신 상태를 다시 확인해 필요하면 즉시 stop한다. 식별자는 대기열에 넣지 않으며 HMAC만 사용한다. 일시 중단 후 재개할 때 이전 비동기 identify 완료를 기다려 계정이 섞이지 않게 한다. GPC도 존중한다.
+- Clarity stop은 이전 버퍼의 마지막 전송을 수행할 수 있다. 신규 수집 중단과 이전 전송/기록 삭제를 구분한다. Cookie Consent API만으로 수집 중단을 구현하지 않는다. Clarity의 기존 기록 삭제·삭제 상태는 이번 범위에 없다.
 - 다른 기기에는 동기화 시차가 있다. 초기 삭제 요청은 커밋 직후 기존 정리 스케줄러에 등록하고, 열린 탭의 전송 유효기간을 고려해 90초 뒤 실행한다. 30일 대기는 없다. 메모리 예약이 재시작으로 사라져도 DB 상태를 일일 정리가 회수한다.
 - 탈퇴 시 수집 중단을 저장하고 ACCOUNT만 삭제한다. 커밋 후 이벤트로 삭제를 시작하며 롤백 시 실행하지 않는다.
 - 기존 cleanup 주기(시작 60초 후, 이후 작업 종료부터 24시간)로 탈퇴 또는 OPTED_OUT_AT이 있는 회원을 키 순서로 나누어 확인한다. 회원별 다음 실행 시각은 저장하지 않는다.

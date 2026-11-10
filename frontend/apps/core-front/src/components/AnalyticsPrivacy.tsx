@@ -17,6 +17,7 @@ import {
   suspendAnalytics,
   ANALYTICS_OPTOUT_KEY,
 } from '@/lib/analytics-privacy-state';
+import { connectClarity } from '@/lib/clarity';
 import { ApiError } from '@/lib/http';
 
 const pageVisible = () => document.visibilityState !== 'hidden';
@@ -25,6 +26,7 @@ const GA_ENABLED = IS_PRODUCTION && Boolean(process.env.NEXT_PUBLIC_GA_MEASUREME
 
 export function AnalyticsPrivacy() {
   useEffect(() => {
+    const disconnectClarity = connectClarity();
     let disposed = false;
     let revision = 0;
     let running = false;
@@ -45,8 +47,6 @@ export function AnalyticsPrivacy() {
       const user = getUser();
       const current = () => !disposed && ticket === revision && getUser()?.id === user?.id;
       try {
-        // Clarity는 기존 동작을 유지한다. GA4·Amplitude만 이 상태로 제어한다.
-        syncAnalyticsUser(user);
         if (hasLocalAnalyticsOptOut()) {
           suspendAnalytics();
           return;
@@ -126,6 +126,7 @@ export function AnalyticsPrivacy() {
       unsubscribe();
       suspendAnalytics();
       stop();
+      disconnectClarity();
       window.removeEventListener(USER_CHANGED_EVENT, changed);
       window.removeEventListener('storage', storage);
       window.removeEventListener('focus', visible);
