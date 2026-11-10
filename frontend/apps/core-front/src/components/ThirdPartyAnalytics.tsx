@@ -14,12 +14,11 @@ import {
 import { useAnalyticsAllowed } from '@/lib/use-analytics-allowed';
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 
 /**
- * GA4 · Microsoft Clarity — production 빌드에서만, 키가 있을 때만 로드한다.
+ * GA4 — production 빌드에서만, 키가 있을 때만 로드한다.
  * GA4는 허용 상태 확인 뒤 로드한다. 페이지 조회는 PageViewTracker가 한 번씩 보낸다.
- * Clarity identify·태그는 lib/analytics 의 syncAnalyticsUser 가 붙인다.
+ * Clarity의 로딩·중단·식별자는 lib/clarity가 분석 허용 상태에 맞춰 제어한다.
  */
 let configuredOwner: string | undefined;
 function configureGa() {
@@ -59,11 +58,6 @@ export function ThirdPartyAnalytics() {
             configureGa();
           }}
         />
-      )}
-      {CLARITY_ID && (
-        <Script id='clarity-init' strategy='afterInteractive'>
-          {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${CLARITY_ID}");`}
-        </Script>
       )}
     </>
   );
