@@ -11,6 +11,7 @@ import { useDeleteStudy, useUpdateStudy } from '@/features/studies/queries';
 import { StudyDiscordLinkDialog } from '@/features/studies/StudyDiscordLinkDialog';
 import { StudyForm, useStudyForm } from '@/features/studies/StudyForm';
 import type { ApiStudyDetail } from '@/features/studies/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /**
  * 정보 탭.
@@ -27,7 +28,8 @@ export function StudyInfoTab({
   onSavingChange?: (saving: boolean) => void;
 }) {
   const router = useRouter();
-  const initial = useMemo(() => detailToForm(detail), [detail]);
+  const displayTz = useDisplayTimeZone();
+  const initial = useMemo(() => detailToForm(detail, displayTz), [detail, displayTz]);
   const {
     value: form,
     errors,
@@ -72,7 +74,7 @@ export function StudyInfoTab({
     if (busy || !dirty) return;
     setSaveError(null);
 
-    update.mutate(formToPayload(form, initial), {
+    update.mutate(formToPayload(form, initial, displayTz), {
       onSuccess: () => {
         setSaved(true);
         // 상세는 React Query, 목록은 서버 컴포넌트이므로 양쪽 캐시를 갱신한다.

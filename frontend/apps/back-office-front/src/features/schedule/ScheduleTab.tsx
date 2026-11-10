@@ -26,6 +26,7 @@ import { groupTimeLabel, hasTime } from '@/features/schedule/meetings';
 import { ScheduleTable } from '@/features/schedule/ScheduleTable';
 import { zonedInstant } from '@/features/schedule/time';
 import type { ApiStudyDetail } from '@/features/studies/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /**
  * 일정 탭 — 반마다 회차를 만들고 고친다. 명세: playground `console/studies/[id]/spec.ts` 의 `SCHEDULE_SPEC`.
@@ -98,7 +99,8 @@ export function ScheduleTab({
   const onTableDirty = useCallback((d: boolean) => setTableDirty(d), []);
   const onRulesDirty = useCallback((d: boolean) => setRulesDirty(d), []);
 
-  const tz = group?.time.tz ?? 'Asia/Seoul';
+  const displayTz = useDisplayTimeZone();
+  const tz = group?.time.tz ?? displayTz;
   const writeGroupId = serverGroupId ?? 0;
   const addMeetings = useAddMeetings(studyId, writeGroupId, tz);
   const updateMeetings = useUpdateMeetings(studyId, writeGroupId, tz);

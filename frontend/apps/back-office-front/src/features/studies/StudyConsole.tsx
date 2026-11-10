@@ -16,6 +16,7 @@ import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
 import { participantKeys, useParticipants } from '@/features/participants/queries';
 import { ScheduleTab } from '@/features/schedule/ScheduleTab';
 import { DISPLAY_ZONES } from '@/features/schedule/time';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 import { useStudiesListHref } from '@/features/studies/list-return';
 import { NextCohortButton } from '@/features/studies/NextCohortButton';
 import { PublishSwitch } from '@/features/studies/PublishSwitch';
@@ -57,8 +58,9 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   const [dirty, setDirty] = useState(false);
   // 고른 반 — 일정 탭과 출석 탭이 같이 쓴다. 비면 첫 반
   const [groupId, setGroupId] = useState('');
-  // 출석부 회차 머리의 시간대 — 반을 바꿔도 남는다. 처음엔 KST
-  const [zone, setZone] = useState<string>(DISPLAY_ZONES[0].iana);
+  const displayTz = useDisplayTimeZone();
+  // 출석부 회차 머리의 시간대 — 반을 바꿔도 남는다. POL-0006: 브라우저 시간대 → 서울
+  const [zone, setZone] = useState<string>(() => displayTz);
   /** 출석 탭의 「회차 추가하러 가기」로 넘어왔으면 일정 탭에서 회차 추가 창을 바로 연다. */
   const [addOnOpen, setAddOnOpen] = useState(false);
   const startedAdding = useCallback(() => setAddOnOpen(false), []);
@@ -161,7 +163,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   const participantCount = participantQuery.data?.participantCount;
   const open = detail.recruitStatus === 'RECRUITING';
   const deadline = detail.recruitDeadlineAt
-    ? new Date(detail.recruitDeadlineAt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
+    ? new Date(detail.recruitDeadlineAt).toLocaleDateString('sv-SE', { timeZone: displayTz })
     : null;
   // 목록에 걸어 둔 필터 · 페이지로 돌아간다
   const listHref = useStudiesListHref();
