@@ -67,6 +67,41 @@ class AnalyticsPrivacyTest {
     }
 
     @Test
+    @DisplayName("대상 없음은 첫 확인 후 24시간이 지나 다시 확인될 때만 완료한다")
+    void confirmAbsence() {
+        var p = new AccountAnalytics(42L);
+        Instant now = Instant.parse("2026-11-10T00:00:00Z");
+        p.assignIdentity("protected");
+        p.optOut(now);
+        p.amplitudeNotFound(now);
+        p.amplitudeNotFound(now.plusSeconds(86399));
+        assertThat(p.getAmplitudeDeletionRequestedAt()).isEqualTo(now);
+        assertThat(p.getAmplitudeDeletionStatus()).isEqualTo(AnalyticsDeletionStatus.NOT_REQUESTED);
+        p.amplitudeNotFound(now.plusSeconds(86400));
+        assertThat(p.getAmplitudeDeletionStatus()).isEqualTo(AnalyticsDeletionStatus.DONE);
+        assertThat(p.canReleaseIdentifiers()).isFalse();
+        p.ga4Requested();
+        p.clearIdentifiersAfterDeletion();
+        assertThat(p.getAnalyticsUserId()).isNull();
+        assertThat(p.getAmplitudeDeletionRequestedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("대상 없음 뒤 실제 삭제가 접수되면 새 요청 시각을 쓰고 완료 확인을 기다린다")
+    void dataArrivesAfterAbsentResponse() {
+        var p = new AccountAnalytics(42L);
+        Instant now = Instant.parse("2026-11-10T00:00:00Z");
+        p.assignIdentity("protected");
+        p.optOut(now);
+        p.amplitudeNotFound(now);
+        p.amplitudeRequested("[123]", now.plusSeconds(86400));
+        p.amplitudeNotFound(now.plusSeconds(172800));
+        assertThat(p.getAmplitudeDeletionStatus()).isEqualTo(AnalyticsDeletionStatus.REQUESTED);
+        assertThat(p.getAmplitudeDeletionRequestedAt()).isEqualTo(now.plusSeconds(86400));
+        assertThat(p.getAmplitudeDeletionIds()).isEqualTo("[123]");
+    }
+
+    @Test
     @DisplayName("식별자를 만든 적이 없는 회원은 외부 삭제를 요청할 필요가 없다")
     void neverCollected() {
         var p = new AccountAnalytics(42L);

@@ -83,7 +83,7 @@ class AnalyticsDeletionGatewayTest {
     void amplitudeContract() {
         response =
                 "[{\"day\":\"2026-11-09\",\"status\":\"scheduled\",\"amplitude_ids\":[{\"amplitude_id\":123,\"requested_on_day\":\"2026-11-08\"},{\"amplitude_id\":456,\"requested_on_day\":\"2026-11-08\"}]}]";
-        String reference = gateway.submitAmplitude("protected-id");
+        String reference = gateway.submitAmplitude("protected-id").orElseThrow();
         Instant requestedAt = Instant.parse("2026-11-08T00:00:00Z");
         Map<?, ?> payload = json.readValue(bodies.getFirst(), Map.class);
         assertThat(payload.get("user_ids")).isEqualTo(List.of("protected-id"));
@@ -102,13 +102,28 @@ class AnalyticsDeletionGatewayTest {
     }
 
     @Test
-    @DisplayName("대상 없음과 권한 실패를 삭제 완료로 오인하지 않는다")
+    @DisplayName("성공 응답의 대상 없음은 요청한 ID가 일치할 때만 인정한다")
     void failuresNotCompletion() {
         response = "{\"invalid_ids\":{\"user_ids\":[\"protected-id\"]}}";
-        assertThatThrownBy(() -> gateway.submitAmplitude("protected-id"))
-                .hasMessage("USER_NOT_FOUND");
+        assertThat(gateway.submitAmplitude("protected-id")).isEmpty();
+        response = "[{\"invalid_ids\":[\"protected-id\"]}]";
+        assertThat(gateway.submitAmplitude("protected-id")).isEmpty();
+        for (String invalid :
+                List.of(
+                        "{}",
+                        "[]",
+                        "null",
+                        "{\"amplitude_ids\":[]}",
+                        "{\"invalid_ids\":{\"user_ids\":[\"someone-else\"]}}",
+                        "{\"invalid_ids\":{\"amplitude_ids\":[\"protected-id\"]}}",
+                        "{\"amplitude_ids\":[\"bad\"],\"invalid_ids\":[\"protected-id\"]}",
+                        "{\"amplitude_ids\":{},\"invalid_ids\":[\"protected-id\"]}")) {
+            response = invalid;
+            assertThatThrownBy(() -> gateway.submitAmplitude("protected-id"))
+                    .hasMessage("INVALID_DELETION_RESPONSE");
+        }
         responseStatus = 403;
-        response = "{}";
+        response = "{\"invalid_ids\":{\"user_ids\":[\"protected-id\"]}}";
         assertThatThrownBy(() -> gateway.submitAmplitude("protected-id"))
                 .isInstanceOf(org.springframework.web.client.HttpClientErrorException.class);
     }

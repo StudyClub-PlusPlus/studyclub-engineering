@@ -193,7 +193,7 @@ class AnalyticsPrivacyIntegrationTest {
                                                     .TransactionSynchronizationManager
                                                     .isActualTransactionActive())
                                     .isFalse();
-                            return "[123]";
+                            return Optional.of("[123]");
                         });
         worker.process(a.getId(), ready.minusSeconds(1));
         verifyNoInteractions(gateway);
@@ -228,12 +228,90 @@ class AnalyticsPrivacyIntegrationTest {
         String id = privacy.current(a.getId()).userId();
         deletion.deleteAccount(a.getId(), LeaveReason.OTHER);
         Instant ready = profiles.findById(a.getId()).orElseThrow().deletionReadyAt();
-        when(gateway.submitAmplitude(id)).thenReturn("[456]");
+        when(gateway.submitAmplitude(id)).thenReturn(Optional.of("[456]"));
         worker.process(a.getId(), ready);
         assertThat(profiles.existsById(a.getId())).isTrue();
         when(gateway.amplitudeDone(eq("[456]"), any())).thenReturn(true);
         worker.process(a.getId(), ready.plusSeconds(86400));
         assertThat(profiles.existsById(a.getId())).isFalse();
+    }
+
+    @Test
+    @DisplayName("Amplitude 기록이 없는 탈퇴 회원도 24시간 뒤 재확인하면 자동 정리한다")
+    void withdrawnWithoutAmplitudeData() {
+        Account a = account(SystemRole.MEMBER);
+        String id = privacy.current(a.getId()).userId();
+        deletion.deleteAccount(a.getId(), LeaveReason.OTHER);
+        Instant ready = profiles.findById(a.getId()).orElseThrow().deletionReadyAt();
+        when(gateway.submitAmplitude(id)).thenReturn(Optional.empty());
+        assertThat(worker.process(a.getId(), ready).failed()).isZero();
+        var p = profiles.findById(a.getId()).orElseThrow();
+        Instant firstAbsence = p.getAmplitudeDeletionRequestedAt();
+        assertThat(p.getAmplitudeDeletionStatus()).isEqualTo(AnalyticsDeletionStatus.NOT_REQUESTED);
+        assertThat(p.getAnalyticsUserId()).isEqualTo(id);
+        worker.process(a.getId(), firstAbsence.plusSeconds(86399));
+        assertThat(profiles.existsById(a.getId())).isTrue();
+        worker.process(a.getId(), firstAbsence.plusSeconds(86400));
+        assertThat(profiles.existsById(a.getId())).isFalse();
+        verify(gateway, times(3)).submitAmplitude(id);
+        verify(gateway, never()).amplitudeDone(any(), any());
+    }
+
+    @Test
+    @DisplayName("대상 없음 재확인 중 오류는 완료가 아니며 늦게 발견된 데이터는 정상 삭제한다")
+    void absentThenFailureThenData() {
+        Account a = account(SystemRole.MEMBER);
+        String id = privacy.current(a.getId()).userId();
+        deletion.deleteAccount(a.getId(), LeaveReason.OTHER);
+        Instant ready = profiles.findById(a.getId()).orElseThrow().deletionReadyAt();
+        when(gateway.submitAmplitude(id))
+                .thenReturn(Optional.empty())
+                .thenThrow(new IllegalStateException("DELETION_NOT_CONFIGURED"))
+                .thenReturn(Optional.of("[789]"));
+        worker.process(a.getId(), ready);
+        Instant firstAbsence =
+                profiles.findById(a.getId()).orElseThrow().getAmplitudeDeletionRequestedAt();
+        assertThat(worker.process(a.getId(), firstAbsence.plusSeconds(86400)).failed())
+                .isEqualTo(1);
+        assertThat(profiles.findById(a.getId()).orElseThrow().getAmplitudeDeletionStatus())
+                .isEqualTo(AnalyticsDeletionStatus.NOT_REQUESTED);
+        Instant submittedAt = firstAbsence.plusSeconds(172800);
+        worker.process(a.getId(), submittedAt);
+        var p = profiles.findById(a.getId()).orElseThrow();
+        assertThat(p.getAmplitudeDeletionStatus()).isEqualTo(AnalyticsDeletionStatus.REQUESTED);
+        assertThat(p.getAmplitudeDeletionRequestedAt()).isEqualTo(submittedAt);
+        when(gateway.amplitudeDone("[789]", submittedAt)).thenReturn(true);
+        worker.process(a.getId(), submittedAt.plusSeconds(86400));
+        assertThat(profiles.existsById(a.getId())).isFalse();
+    }
+
+    @Test
+    @DisplayName("대상 없는 중단 회원은 GA 접수까지 기다리고 식별자만 비워 거부를 유지한다")
+    void absentOptedOutMemberWaitsForGa4() {
+        Account a = account(SystemRole.MEMBER), admin = account(SystemRole.ADMIN);
+        String id = privacy.current(a.getId()).userId();
+        privacy.optOut(admin.getId(), inquiry(a).getId());
+        Instant ready = profiles.findById(a.getId()).orElseThrow().deletionReadyAt();
+        when(gateway.submitAmplitude(id)).thenReturn(Optional.empty());
+        doThrow(new IllegalStateException("DELETION_NOT_CONFIGURED"))
+                .doThrow(new IllegalStateException("DELETION_NOT_CONFIGURED"))
+                .doNothing()
+                .when(gateway)
+                .submitGa4(eq(id), anyList());
+        worker.process(a.getId(), ready);
+        Instant firstAbsence =
+                profiles.findById(a.getId()).orElseThrow().getAmplitudeDeletionRequestedAt();
+        worker.process(a.getId(), firstAbsence.plusSeconds(86400));
+        var waiting = profiles.findById(a.getId()).orElseThrow();
+        assertThat(waiting.getAmplitudeDeletionStatus()).isEqualTo(AnalyticsDeletionStatus.DONE);
+        assertThat(waiting.getAnalyticsUserId()).isEqualTo(id);
+        worker.process(a.getId(), firstAbsence.plusSeconds(172800));
+        assertThat(accounts.existsById(a.getId())).isTrue();
+        var completed = profiles.findById(a.getId()).orElseThrow();
+        assertThat(completed.getAnalyticsUserId()).isNull();
+        assertThat(completed.getOptedOutAt()).isNotNull();
+        assertThat(privacy.current(a.getId()).enabled()).isFalse();
+        verify(gateway, times(2)).submitAmplitude(id);
     }
 
     @Test

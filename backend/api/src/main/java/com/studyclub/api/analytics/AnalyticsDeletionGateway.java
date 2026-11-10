@@ -69,7 +69,8 @@ public class AnalyticsDeletionGateway {
         Instant.parse(time);
     }
 
-    public String submitAmplitude(String userId) {
+    /** empty는 요청한 userId가 invalid_ids에 명시된 성공 응답에만 사용한다. */
+    public Optional<String> submitAmplitude(String userId) {
         requireAmplitude();
         amplitudeSlot();
         Object response =
@@ -91,8 +92,20 @@ public class AnalyticsDeletionGateway {
                         .body(Object.class);
         List<String> ids =
                 rows(response).stream().flatMap(row -> ids(row).stream()).distinct().toList();
-        if (ids.isEmpty()) throw new IllegalStateException("USER_NOT_FOUND");
-        return json.writeValueAsString(ids);
+        if (!ids.isEmpty()) return Optional.of(json.writeValueAsString(ids));
+        boolean absent =
+                rows(response).stream()
+                        .anyMatch(
+                                row -> {
+                                    Object invalid = row.get("invalid_ids");
+                                    Object users =
+                                            invalid instanceof Map<?, ?> map
+                                                    ? map.get("user_ids")
+                                                    : invalid;
+                                    return users instanceof List<?> list && list.contains(userId);
+                                });
+        if (absent) return Optional.empty();
+        throw new IllegalStateException("INVALID_DELETION_RESPONSE");
     }
 
     public boolean amplitudeDone(String reference, Instant requestedAt) {
@@ -157,11 +170,16 @@ public class AnalyticsDeletionGateway {
     }
 
     private static List<String> ids(Map<?, ?> row) {
-        if (!(row.get("amplitude_ids") instanceof List<?> list)) return List.of();
+        Object value = row.get("amplitude_ids");
+        if (value == null) return List.of();
+        if (!(value instanceof List<?> list))
+            throw new IllegalStateException("INVALID_DELETION_RESPONSE");
         List<String> result = new ArrayList<>();
         for (Object item : list) {
             Object id = item instanceof Map<?, ?> m ? m.get("amplitude_id") : item;
-            if (id != null && String.valueOf(id).matches("[0-9]+")) result.add(String.valueOf(id));
+            if (id == null || !String.valueOf(id).matches("[0-9]+"))
+                throw new IllegalStateException("INVALID_DELETION_RESPONSE");
+            result.add(String.valueOf(id));
         }
         return result;
     }

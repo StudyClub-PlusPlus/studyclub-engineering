@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AccountAnalytics extends BaseEntity {
     public static final long COLLECTION_DRAIN_SECONDS = 90;
+    public static final long AMPLITUDE_ABSENCE_CONFIRMATION_SECONDS = 86400;
 
     @Id
     @Column(name = "ACCOUNT_ID")
@@ -94,6 +95,18 @@ public class AccountAnalytics extends BaseEntity {
             throw new IllegalStateException("Deletion not requested");
         amplitudeDeletionStatus = AnalyticsDeletionStatus.DONE;
         amplitudeDeletionIds = null;
+    }
+
+    /** 지연 수신을 고려해 첫 '대상 없음' 요청부터 24시간 뒤 재확인해야 완료한다. */
+    public void amplitudeNotFound(Instant now) {
+        if (amplitudeDeletionStatus != AnalyticsDeletionStatus.NOT_REQUESTED) return;
+        Objects.requireNonNull(now);
+        if (amplitudeDeletionRequestedAt == null) {
+            amplitudeDeletionRequestedAt = now;
+        } else if (!now.isBefore(
+                amplitudeDeletionRequestedAt.plusSeconds(AMPLITUDE_ABSENCE_CONFIRMATION_SECONDS))) {
+            amplitudeDeletionStatus = AnalyticsDeletionStatus.DONE;
+        }
     }
 
     /** GA의 모든 식별자 접수와 Amplitude 완료 이후 로컬 식별자를 정리한다. GA 실제 완료를 뜻하지 않는다. */
