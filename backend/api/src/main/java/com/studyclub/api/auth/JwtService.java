@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -67,6 +68,7 @@ public class JwtService {
         Date now = new Date();
         return Jwts.builder()
                 .subject(subject)
+                .id(UUID.randomUUID().toString())
                 .claim("email", email)
                 .claim("type", type)
                 .issuedAt(now)
