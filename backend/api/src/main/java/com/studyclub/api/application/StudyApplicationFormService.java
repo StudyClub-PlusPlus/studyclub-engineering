@@ -75,27 +75,28 @@ public class StudyApplicationFormService {
         return toResponse(study);
     }
 
-    /** 백오피스 저장 — 권한은 {@code @RequireAdmin}. */
+    /** 백오피스 저장 — 권한은 {@code @RequireAdmin}. 담당 캡틴({@code STUDY.CREATED_BY})만, NULL 이면 캡틴 누구나. */
     @Transactional
     public StudyApplicationFormResponse replaceFormFromBackOffice(
             Long studyId, Long accountId, StudyApplicationFormRequest request) {
-        return replace(studyId, request);
-    }
-
-    /** 저장 자체는 어느 화면에서 왔든 같다 — 권한만 위에서 갈린다. */
-    private StudyApplicationFormResponse replace(
-            Long studyId, StudyApplicationFormRequest request) {
         Study study =
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        assertUnlocked(studyId);
+        studyCaptainGuard.assertOwnerCaptain(
+                accountId, study.getCreatedBy(), "담당 캡틴만 신청 폼을 수정할 수 있습니다.");
+        return replace(study, request);
+    }
+
+    /** 저장 자체는 어느 화면에서 왔든 같다 — 권한만 위에서 갈린다. */
+    private StudyApplicationFormResponse replace(Study study, StudyApplicationFormRequest request) {
+        assertUnlocked(study.getId());
 
         NormalizedApplicationForm form = normalize(request);
         try {
             study.replaceApplicationForm(objectMapper.writeValueAsString(form));
         } catch (JacksonException e) {
-            log.error("신청 폼 직렬화 실패 — studyId={}", studyId, e);
+            log.error("신청 폼 직렬화 실패 — studyId={}", study.getId(), e);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
         return toResponse(study);
