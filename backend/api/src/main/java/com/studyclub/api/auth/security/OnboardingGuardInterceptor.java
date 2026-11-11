@@ -54,10 +54,6 @@ public class OnboardingGuardInterceptor implements HandlerInterceptor {
     }
 
     private boolean requiresOnboarding(HandlerMethod handlerMethod) {
-        if (handlerMethod.hasMethodAnnotation(RequireAdmin.class)
-                || handlerMethod.getBeanType().isAnnotationPresent(RequireAdmin.class)) {
-            return false;
-        }
         return handlerMethod.hasMethodAnnotation(RequireOnboarding.class)
                 || handlerMethod.getBeanType().isAnnotationPresent(RequireOnboarding.class);
     }

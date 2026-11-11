@@ -1,7 +1,6 @@
 package com.studyclub.api.attendance;
 
 import com.studyclub.api.auth.security.RequireAdmin;
-import com.studyclub.api.auth.security.RequireOnboarding;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,7 +37,6 @@ public class AdminAttendanceController {
             summary = "출석 명부 조회",
             description = "지정한 분반의 명부. 캡틴(SYSTEM_ROLE=ADMIN)만 (specs/authz-guards).")
     @SecurityRequirement(name = "bearerAuth")
-    @RequireOnboarding
     @GetMapping
     public ResponseEntity<AttendanceResponse> getAttendances(
             @PathVariable Long studyId,
@@ -57,7 +55,6 @@ public class AdminAttendanceController {
                             + " withdrawals(명부 행 ID)가 있으면 같은 트랜잭션에서 참여를 중단한다 — 담당 캡틴만, 크루 · 네비게이터"
                             + " (specs/study-participant).")
     @SecurityRequirement(name = "bearerAuth")
-    @RequireOnboarding
     @PostMapping
     public ResponseEntity<Void> upsertAttendances(
             @PathVariable Long studyId, @RequestBody @Valid AttendanceUpsertRequest request) {
