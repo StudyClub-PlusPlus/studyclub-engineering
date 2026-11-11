@@ -37,6 +37,9 @@ export function mapToStudy(api: ApiStudy): Study {
     },
     category,
     timezone: api.timezone === 'BOTH' ? 'both' : (api.timezone ?? undefined),
+    // startAt 은 ISO 타임스탬프 그대로 둔다 — 화면이 사용자 시간대로 변환한다(POL-0006).
+    // date 는 하위 호환용으로 유지하되 StudiesTable 은 startAt 을 직접 쓴다.
+    startAt: api.startAt ?? undefined,
     date: api.startAt?.slice(0, 10),
     published: lifecycleStatus !== 'DRAFT',
     applicantCount: api.currentApplicants,

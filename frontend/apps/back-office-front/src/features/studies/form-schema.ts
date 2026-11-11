@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { ApiStudyDetail, StudyCreatePayload, StudyUpdatePayload } from '@/features/studies/types';
+import { zonedDate, zonedEndOfDayIso, zonedMidnightIso } from '@/lib/zoned-date';
 
 /** create = 등록(프로그램을 고른다) · edit = 정보 탭(읽기 전용) · next = 클럽의 「다음 기수 만들기」(프로그램이 정해져 있다) */
 export type FormMode = 'create' | 'edit' | 'next';
@@ -69,25 +70,33 @@ export const EMPTY_FORM: StudyFormValues = {
 };
 
 /**
- * 날짜는 **KST 벽시계**로 읽고 쓴다. UTC 로 자르면 한국 오전 9시 이전 값이 하루 앞당겨 보인다.
- * 운영 콘솔은 한국 운영진이 쓰므로 기준을 KST 하나로 둔다.
+ * ISO 타임스탬프를 폼 입력 날짜(`yyyy-mm-dd`)로 변환한다.
+ * POL-0006: 사용자 시간대(브라우저 → 서울) 기준.
  */
-function toKstDate(iso: string | null): string {
+function toDisplayDate(iso: string | null, tz: string): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+  return zonedDate(iso, tz) ?? '';
 }
 
-/** 마감일은 그날 끝까지 받는다 — 「10월 1일 마감」이면 10월 1일에도 신청할 수 있어야 한다. */
-function deadlineToIso(date: string): string {
-  return new Date(`${date}T23:59:59+09:00`).toISOString();
+/**
+ * 마감일은 그날 끝까지 받는다 — 「10월 1일 마감」이면 10월 1일에도 신청할 수 있어야 한다.
+ * POL-0006: 사용자가 입력한 날짜를 그 시간대의 23:59:59 로 변환한다.
+ */
+function deadlineToIso(date: string, tz: string): string {
+  return zonedEndOfDayIso(date, tz);
 }
 
-function startDateToIso(date: string): string {
-  return new Date(`${date}T00:00:00+09:00`).toISOString();
+/** POL-0006: 사용자가 입력한 날짜를 그 시간대의 자정(00:00:00)으로 변환한다. */
+function startDateToIso(date: string, tz: string): string {
+  return zonedMidnightIso(date, tz);
 }
 
-/** 기존 스터디를 폼 값으로 되돌린다. 화면에 보이는 값과 폼 값이 같아야 편집이 성립한다. */
-export function detailToForm(d: ApiStudyDetail): StudyFormValues {
+/**
+ * 기존 스터디를 폼 값으로 되돌린다. 화면에 보이는 값과 폼 값이 같아야 편집이 성립한다.
+ *
+ * @param tz POL-0006 표시 시간대 — `useDisplayTimeZone()` 결과를 넘긴다.
+ */
+export function detailToForm(d: ApiStudyDetail, tz: string): StudyFormValues {
   return {
     programMode: 'existing',
     programId: String(d.programId),
@@ -97,12 +106,12 @@ export function detailToForm(d: ApiStudyDetail): StudyFormValues {
     summary: d.oneLineSummary,
     description: d.description ?? '',
     category: d.category,
-    deadline: toKstDate(d.recruitDeadlineAt),
+    deadline: toDisplayDate(d.recruitDeadlineAt, tz),
     capacity: d.capacity == null ? '' : String(d.capacity),
     unlimited: d.capacity == null,
     schedule: d.schedule ?? '',
     timezone: d.timezone ?? '',
-    startAt: toKstDate(d.startAt),
+    startAt: toDisplayDate(d.startAt, tz),
     discordUrl: d.discordChannelUrl ?? '',
     driveUrl: d.driveUrl ?? '',
     thumbnailUrl: d.thumbnailUrl ?? '',
@@ -116,7 +125,10 @@ export function detailToForm(d: ApiStudyDetail): StudyFormValues {
  * 전부 보내면 이미 마감이 지난 스터디의 다른 칸을 고칠 때 지난 마감일이 함께 가서 서버가
  * 「마감일은 미래여야 합니다」로 거절한다. 비운 칸은 `null` 로 보내 서버 값도 비운다.
  */
-export function formToPayload(form: StudyFormValues, initial: StudyFormValues): StudyUpdatePayload {
+/**
+ * @param tz POL-0006 표시 시간대 — `useDisplayTimeZone()` 결과를 넘긴다.
+ */
+export function formToPayload(form: StudyFormValues, initial: StudyFormValues, tz: string): StudyUpdatePayload {
   const p: StudyUpdatePayload = {};
   const changed = (key: keyof StudyFormValues) => form[key] !== initial[key];
 
@@ -126,11 +138,11 @@ export function formToPayload(form: StudyFormValues, initial: StudyFormValues): 
   if (changed('category')) p.category = form.category;
   if (changed('schedule')) p.schedule = form.schedule.trim();
   if (changed('timezone')) p.timezone = form.timezone || null;
-  if (changed('deadline')) p.recruitDeadline = deadlineToIso(form.deadline);
+  if (changed('deadline')) p.recruitDeadline = deadlineToIso(form.deadline, tz);
   if (changed('capacity') || changed('unlimited')) {
     p.capacity = form.unlimited ? null : Number(form.capacity.trim());
   }
-  if (changed('startAt')) p.startAt = form.startAt ? startDateToIso(form.startAt) : null;
+  if (changed('startAt')) p.startAt = form.startAt ? startDateToIso(form.startAt, tz) : null;
   if (changed('discordUrl')) p.discordChannelUrl = form.discordUrl.trim() || null;
   if (changed('driveUrl')) p.driveUrl = form.driveUrl.trim() || null;
   // 새로 올렸으면 그 번호, 있던 것을 지웠으면 null — 그대로면 보내지 않는다 (같은 번호를 두 번 연결하면 400)
@@ -143,12 +155,15 @@ export function formToPayload(form: StudyFormValues, initial: StudyFormValues): 
  * 등록 바디. 프로그램은 **둘 중 하나만** 보낸다 — 새 프로그램이면 `studyKind`, 기존 클럽의 새 기수면
  * `studyProgramId`. 둘을 함께 보내면 서버가 400 으로 거절한다(종류는 한 번 정하면 못 바꾼다).
  */
-export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
+/**
+ * @param tz POL-0006 표시 시간대 — `useDisplayTimeZone()` 결과를 넘긴다.
+ */
+export function formToCreatePayload(form: StudyFormValues, tz: string): StudyCreatePayload {
   const payload: StudyCreatePayload = {
     title: form.title.trim(),
     oneLineSummary: form.summary.trim(),
     category: form.category,
-    recruitDeadline: deadlineToIso(form.deadline),
+    recruitDeadline: deadlineToIso(form.deadline, tz),
   };
   if (form.programMode === 'existing') payload.studyProgramId = Number(form.programId);
   else payload.studyKind = form.kind;
@@ -156,7 +171,7 @@ export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
   if (form.schedule.trim()) payload.schedule = form.schedule.trim();
   if (form.timezone) payload.timezone = form.timezone;
   if (!form.unlimited) payload.capacity = Number(form.capacity.trim());
-  if (form.startAt) payload.startAt = startDateToIso(form.startAt);
+  if (form.startAt) payload.startAt = startDateToIso(form.startAt, tz);
   if (form.discordUrl.trim()) payload.discordChannelUrl = form.discordUrl.trim();
   if (form.driveUrl.trim()) payload.driveUrl = form.driveUrl.trim();
   if (form.thumbnailFileId !== null) payload.thumbnailFileId = form.thumbnailFileId;
