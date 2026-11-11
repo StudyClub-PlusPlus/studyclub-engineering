@@ -1,5 +1,6 @@
 package com.studyclub.api.auth;
 
+import com.studyclub.api.analytics.AnalyticsPrivacyService;
 import com.studyclub.api.audit.AdminAuditRecorder;
 import com.studyclub.api.upload.UploadService;
 import com.studyclub.common.error.BusinessException;
@@ -97,6 +98,7 @@ public class AccountDeletionService {
     private final ApplicationEventPublisher eventPublisher;
     private final RefreshTokenRepository refreshTokenRepository;
     private final StudyRepository studyRepository;
+    private final AnalyticsPrivacyService analyticsPrivacy;
 
     @Transactional
     public void deleteAccount(Long accountId, LeaveReason reason) {
@@ -174,6 +176,7 @@ public class AccountDeletionService {
         }
 
         // 계정·프로필 삭제.
+        analyticsPrivacy.onAccountDeletion(accountId);
         accountRepository.delete(account);
         // 사진 파일 — 주소만 지우면 파일이 공개 주소에 남는다. 이 계정의 프로필 사진 · 문의 첨부 · 연결 안 된 파일을 DELETING 으로 찜하고
         // 커밋 뒤 저장소에서 지운다. 지우기에 실패해도 탈퇴는 성공이고, 행이 남아 정리 배치가 다시 지운다 (specs/user-leave/spec.md 5단계).

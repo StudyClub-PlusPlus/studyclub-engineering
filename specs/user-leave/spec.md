@@ -462,6 +462,12 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 - Playground는 예시 회원 데이터·연동 상태·세션을 초기화하며 실제 `DELETE /api/me`를 호출하지 않음.
 
 
+## GA4·Amplitude·Clarity 개인정보 처리
+
+[분석 스펙](../analytics/spec.md#분석-개인정보-관리-2026-11-08)을 따른다. 문의 UI는 유지하고 ADMIN 전용 중단 API를 사용한다. 기존 관리자 문의 상세 응답에는 식별자 원문 없는 `analytics` 상태를 추가한다.
+탈퇴 트랜잭션에서 ACCOUNT_ANALYTICS에 중단을 저장하고 계정만 삭제한다. 외부 삭제는 커밋 뒤 시작하며 실패·진행 조회는 기존 일일 cleanup이 처리한다. GA4 전체 접수와 Amplitude 완료 후 탈퇴 회원의 분석 행을 제거한다. GA4 접수를 실제 삭제 완료로 표시하지 않는다.
+탈퇴 성공 뒤 브라우저에 저장하는 기존 중단 설정으로 Clarity도 신규 수집을 멈춘다. 로그아웃·새로고침 뒤에도 해당 브라우저는 중단 상태를 유지한다. Clarity의 기존 기록 삭제는 연동하지 않으며 별도 삭제 상태를 추가하지 않는다.
+
 ## 탈퇴에 따른 권한 말소 감사 기록 (2026-10-31)
 
 기존 `ACCOUNT_LEAVE_REASON`은 계정 ID 없는 탈퇴 사유 집계로 유지한다. 별도로 `ADMIN_AUDIT_LOG`에 본인을 행위자·대상으로 캡틴 권한 말소 `ACCOUNT_ROLE_REVOKE`를 남긴다. ACTIVE/PAUSED 네비게이터 참여는 행마다 `PARTICIPANT_REVOKE`를 남긴다. 이미 중단·완료된 참여는 중복 기록하지 않는다. IP·이전 역할·참여 ID·`REASON=ACCOUNT_DELETION`을 담고 생성일부터 3년 보관한다. 저장 실패 시 탈퇴 DB 변경도 롤백한다. [공통 정리 스펙](../data-retention/spec.md).
