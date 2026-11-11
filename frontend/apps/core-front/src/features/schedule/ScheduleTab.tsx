@@ -842,6 +842,11 @@ export function ScheduleTab({
             ]);
             setAdding(false);
             setRevision((n) => n + 1);
+            setNotice(
+              scheduledAts.length === 1
+                ? '회차가 추가됐습니다. 위쪽 「저장」을 눌러야 반영됩니다.'
+                : `회차 ${scheduledAts.length}개가 추가됐습니다. 위쪽 「저장」을 눌러야 반영됩니다.`,
+            );
           }}
         />
       )}
@@ -886,6 +891,7 @@ export function ScheduleTab({
                           setDrafts({});
                           setIncompleteWalls({});
                           setPendingAdds([]);
+                          setNotice(null);
                         }}
                       >
                         변경 취소
@@ -995,7 +1001,12 @@ export function ScheduleTab({
                           )}
                         </td>
                       )}
-                      <td className='px-4 py-3 text-center font-semibold'>{m.no === 0 ? '0' : `${m.no}`}</td>
+                      <td className='px-4 py-3 text-center font-semibold'>
+                        {m.no === 0 ? '0' : `${m.no}`}
+                        {pendingIds.has(m.id) && (
+                          <span className='block text-[10px] font-normal text-warning-700'>저장 전</span>
+                        )}
+                      </td>
                       <td className='px-2 py-3 text-center'>
                         {editable ? (
                           <Input
