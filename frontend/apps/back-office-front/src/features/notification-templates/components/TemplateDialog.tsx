@@ -242,7 +242,7 @@ function TemplateEditor({
             ))}
           </Select>
           {moveWarning && (
-            <p role='status' className='-mt-2 type-body-sm text-danger-fg'>
+            <p role='alert' className='-mt-2 type-body-sm text-danger-fg'>
               {moveWarning}
             </p>
           )}

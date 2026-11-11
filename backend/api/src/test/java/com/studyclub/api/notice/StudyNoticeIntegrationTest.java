@@ -914,6 +914,26 @@ class StudyNoticeIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 한 통이 실패면 다른 한 통이 대기여도 실패로 센다 (실패가 먼저), 처리 중은 대기로 센다")
+    void listPrefersFailedOverPendingAndCountsProcessingAsPending() {
+        NotificationTemplate second = secondNoticeTemplate();
+        post(collection(), sendBody("첫 공지", "본문", List.of("EMAIL"), member, paused), LEADER_ID);
+        Long firstTemplateId = firstNoticeTemplateIdOtherThan(second.getId());
+
+        // member: 실패 + 대기 → 실패 1명 / paused: 처리 중 + 완료 → 대기 1명
+        markMail(MEMBER_ID, firstTemplateId, "FAILED");
+        markMail(PAUSED_ID, firstTemplateId, "PROCESSING");
+        markMail(PAUSED_ID, second.getId(), "SENT");
+
+        Map<String, Object> email = emailCountsOfFirstItem();
+
+        assertThat(email)
+                .containsEntry("pending", 1)
+                .containsEntry("sent", 0)
+                .containsEntry("failed", 1);
+    }
+
+    @Test
     @DisplayName("성공 - 탈퇴로 취소된 사람은 템플릿이 둘이어도 세지 않는다")
     void listSkipsCancelledRecipients() {
         NotificationTemplate second = secondNoticeTemplate();

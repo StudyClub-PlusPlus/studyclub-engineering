@@ -33,7 +33,9 @@ import { rememberStudiesListSearch } from '@/features/studies/list-return';
 import { PublishConfirmDialog, type PublishTarget } from '@/features/studies/PublishConfirmDialog';
 import { STATUS_LABEL, tx } from '@/lib/l10n';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 import { useUrlState } from '@/lib/use-url-state';
+import { zonedDate } from '@/lib/zoned-date';
 import './studies-table.css';
 
 /**
@@ -331,8 +333,8 @@ function StatusTooltip({
   );
 }
 
-function displayDate(value?: string) {
-  return toISODate(value) ?? '—';
+function displayDate(value: string | undefined, tz: string) {
+  return zonedDate(value, tz) ?? toISODate(value) ?? '—';
 }
 
 export function StudiesTable({ list }: { list: StudyListData }) {
@@ -388,6 +390,7 @@ export function StudiesTable({ list }: { list: StudyListData }) {
     }
   };
 
+  const displayTz = useDisplayTimeZone();
   const rows = list.studies;
   const headerSort = headerSortOf(sort);
   /** 열 이름을 누른다 — 오름차순, 다시 누르면 내림차순 (PRD 9). 정렬을 바꾸면 1페이지로 */
@@ -520,10 +523,10 @@ export function StudiesTable({ list }: { list: StudyListData }) {
                       {s.timezone ? TIMEZONE_LABEL[s.timezone] : <span className='text-fg-muted'>미정</span>}
                     </td>
                     <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
-                      {displayDate(s.recruitment?.start)}
+                      {displayDate(s.recruitment?.start, displayTz)}
                     </td>
                     <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
-                      {displayDate(s.recruitment?.deadline)}
+                      {displayDate(s.recruitment?.deadline, displayTz)}
                     </td>
                     <td>
                       <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
@@ -536,7 +539,7 @@ export function StudiesTable({ list }: { list: StudyListData }) {
                       <span className='text-fg-muted'>{capacity === undefined ? ' · 제한 없음' : `/${capacity}`}</span>
                     </td>
                     <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
-                      {toISODate(s.date) ?? '미정'}
+                      {zonedDate(s.startAt, displayTz) ?? toISODate(s.date) ?? '미정'}
                     </td>
                     <td
                       className='whitespace-nowrap text-center type-body-sm'

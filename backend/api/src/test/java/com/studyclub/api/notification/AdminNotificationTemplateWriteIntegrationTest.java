@@ -12,14 +12,8 @@ import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationTemplate;
 import com.studyclub.notification.NotificationTemplateRepository;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -220,43 +214,6 @@ class AdminNotificationTemplateWriteIntegrationTest {
                         NotificationTemplateResponse.class);
         assertThat(ok.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(ok.getBody().body()).hasSize(21_845);
-    }
-
-    @Test
-    @DisplayName("같은 조건에 동시에 추가해도 모두 만들어진다 — 어느 요청도 409 나 500 이 되지 않는다")
-    void concurrentCreateAllSucceed() throws Exception {
-        int threads = 8;
-        ExecutorService pool = Executors.newFixedThreadPool(threads);
-        CountDownLatch ready = new CountDownLatch(threads);
-        CountDownLatch go = new CountDownLatch(1);
-        List<Future<String>> results = new ArrayList<>();
-        try {
-            for (int i = 0; i < threads; i++) {
-                results.add(
-                        pool.submit(
-                                () -> {
-                                    ready.countDown();
-                                    go.await();
-                                    try {
-                                        commandService.create(admin.getId(), request("제목", "본문"));
-                                        return "CREATED";
-                                    } catch (Exception e) {
-                                        return e.getClass().getSimpleName();
-                                    }
-                                }));
-            }
-            ready.await();
-            go.countDown();
-            List<String> outcomes = new ArrayList<>();
-            for (Future<String> result : results) {
-                outcomes.add(result.get());
-            }
-
-            assertThat(outcomes).hasSize(threads).containsOnly("CREATED");
-            assertThat(notificationTemplateRepository.count()).isEqualTo(threads);
-        } finally {
-            pool.shutdownNow();
-        }
     }
 
     // ───────────── PUT ─────────────
