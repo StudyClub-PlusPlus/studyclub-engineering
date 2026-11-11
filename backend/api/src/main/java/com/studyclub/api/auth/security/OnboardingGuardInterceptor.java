@@ -4,6 +4,7 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.SystemRole;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
@@ -47,6 +48,9 @@ public class OnboardingGuardInterceptor implements HandlerInterceptor {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
+        if (account.getSystemRole() == SystemRole.ADMIN) {
+            return true;
+        }
         if (account.getOnboardingCompletedAt() == null) {
             throw new BusinessException(ErrorCode.ONBOARDING_REQUIRED);
         }
@@ -54,6 +58,10 @@ public class OnboardingGuardInterceptor implements HandlerInterceptor {
     }
 
     private boolean requiresOnboarding(HandlerMethod handlerMethod) {
+        if (handlerMethod.hasMethodAnnotation(RequireAdmin.class)
+                || handlerMethod.getBeanType().isAnnotationPresent(RequireAdmin.class)) {
+            return false;
+        }
         return handlerMethod.hasMethodAnnotation(RequireOnboarding.class)
                 || handlerMethod.getBeanType().isAnnotationPresent(RequireOnboarding.class);
     }
