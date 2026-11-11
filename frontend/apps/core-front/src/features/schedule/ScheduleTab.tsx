@@ -1004,7 +1004,7 @@ export function ScheduleTab({
                       <td className='px-4 py-3 text-center font-semibold'>
                         {m.no === 0 ? '0' : `${m.no}`}
                         {pendingIds.has(m.id) && (
-                          <span className='block text-[10px] font-normal text-warning-700'>저장 전</span>
+                          <span className='block text-xs font-normal text-warning-700'>저장 전</span>
                         )}
                       </td>
                       <td className='px-2 py-3 text-center'>
