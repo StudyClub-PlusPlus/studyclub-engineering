@@ -62,6 +62,15 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!anyDirty) return;
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [anyDirty]);
+
+  useEffect(() => {
+    if (!anyDirty) return;
     function onClick(e: MouseEvent) {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
       const el = (e.target as Element | null)?.closest?.('a[href]');
