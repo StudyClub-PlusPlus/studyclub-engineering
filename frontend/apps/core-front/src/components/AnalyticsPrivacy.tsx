@@ -92,7 +92,9 @@ export function AnalyticsPrivacy() {
         syncAnalyticsUser(user);
       } catch (error) {
         if (!current()) return;
-        if (user && error instanceof ApiError && (error.status === 401 || error.status === 404))
+        // 인증 만료(401)는 일시 중단한다. 재로그인 후 서버의 실제 거부 설정을 다시 확인해야 한다.
+        // 계정이 사라진 응답(404)은 탈퇴한 브라우저의 중단 상태로 유지한다.
+        if (user && error instanceof ApiError && error.status === 404)
           optOutAnalyticsLocally();
         else suspendAnalytics();
       } finally {
