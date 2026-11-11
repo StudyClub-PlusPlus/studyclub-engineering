@@ -182,6 +182,8 @@ type Person = {
   leftAt: string | null;
   manageable: boolean;
   withdrawable: boolean;
+  /** 서버가 계산한 출석률 (0–1 소수). 편집 중이 아닐 때 이 값을 그대로 보여 준다. */
+  attendanceRate: number | null;
 };
 
 type Meeting = {
@@ -255,6 +257,7 @@ export function AttendanceTabContent({
         leftAt: p.leftAt,
         manageable: p.participantStatus === 'ACTIVE',
         withdrawable: !me && !p.captain && p.participantRole?.toLowerCase() !== 'leader',
+        attendanceRate: p.attendanceRate,
       };
     })
     .sort((a, b) => {
@@ -628,7 +631,15 @@ export function AttendanceTabContent({
           const counted = row
             ? Object.fromEntries(Object.entries(row).filter(([id]) => !kickoffIds.has(id) && !goneIds.has(id)))
             : undefined;
-          const rate = calcRate(counted, new Set());
+          // 저장 상태(변경 없음)이면 서버 출석률을 그대로 쓴다 — 화면이 직접 계산하면 편입 전 회차·시작 전 출석·지각이
+          // 포함되어 백오피스 값과 어긋난다. 편집 중이면 미리보기를 위해 직접 계산하되, 아직 시작하지 않은 회차는 뺀다.
+          const upcomingIds = new Set(meetings.filter((m) => Date.parse(m.scheduledAt) > Date.now()).map((m) => m.id));
+          const rate =
+            pendingCount === 0
+              ? p.attendanceRate != null
+                ? Math.round(p.attendanceRate * 100)
+                : undefined
+              : calcRate(counted, upcomingIds);
           const pending = withdrawIds.includes(p.id);
 
           return (
