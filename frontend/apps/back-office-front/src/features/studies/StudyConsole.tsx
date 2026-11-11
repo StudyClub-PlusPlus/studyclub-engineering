@@ -15,13 +15,12 @@ import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupC
 import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
 import { participantKeys, useParticipants } from '@/features/participants/queries';
 import { ScheduleTab } from '@/features/schedule/ScheduleTab';
-import { DISPLAY_ZONES } from '@/features/schedule/time';
-import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 import { useStudiesListHref } from '@/features/studies/list-return';
 import { NextCohortButton } from '@/features/studies/NextCohortButton';
 import { PublishSwitch } from '@/features/studies/PublishSwitch';
 import { StudyInfoTab } from '@/features/studies/StudyInfoTab';
 import { CATEGORY_OPTIONS, STATUS_LABEL, type ApiStudyDetail } from '@/features/studies/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 import { useUrlState } from '@/lib/use-url-state';
 
 const TABS = [
