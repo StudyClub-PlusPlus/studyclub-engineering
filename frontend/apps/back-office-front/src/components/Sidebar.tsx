@@ -17,7 +17,7 @@ const NAV = [
   // 크루가 보낸 문의 · 개선 의견 · 오류 신고.
   { href: '/feedbacks', label: '문의·오류 신고', icon: MessageSquare },
   // 알림 템플릿과 발송 이력은 한 메뉴의 두 탭이다 — 어느 쪽 화면에 있어도 「알림」이 활성이다
-  { href: '/notifications', label: '알림', icon: Mail, also: ['/notification-templates'] },
+  { href: '/notifications', label: '알림', icon: Mail, also: ['/notification-templates', '/web-push'] },
   // 사이트 전체 공지(캡틴이 올린다). 네비게이터의 반 공지(알림)와는 다른 메뉴다
   { href: '/notices', label: '공지', icon: Megaphone },
 ];

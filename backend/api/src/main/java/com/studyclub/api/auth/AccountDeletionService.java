@@ -38,6 +38,7 @@ import com.studyclub.notification.Notification;
 import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
+import com.studyclub.notification.webpush.WebPushSubscriptionService;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -88,6 +89,7 @@ public class AccountDeletionService {
     private final StudyProposalInterestRepository studyProposalInterestRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final NotificationRepository notificationRepository;
+    private final WebPushSubscriptionService webPushSubscriptionService;
     private final StudyNoticeRepository studyNoticeRepository;
     private final FeedbackImageRepository feedbackImageRepository;
     private final ObjectMapper objectMapper;
@@ -153,6 +155,9 @@ public class AccountDeletionService {
 
         // 알림 이력 — 이메일 원문·닉네임 스냅샷만 비식별화하고 행(발송 이력)은 남긴다.
         redactNotifications(accountId);
+
+        // 웹 푸시 구독 — 탈퇴한 사람의 기기로 더는 보내지 않는다 (specs/web-push/spec.md).
+        webPushSubscriptionService.deleteAllOf(accountId);
 
         // 이 계정이 보낸 공지 — 받은 사람들의 메일 행에서 보낸 사람 이름을 비식별화한다 (specs/study-notice/spec.md).
         redactSentNoticeMails(accountId);

@@ -48,6 +48,12 @@ notification:
     local: http://localhost:4700
     stage: https://stage.studyclub.life
     production: https://studyclub.life
+  # 웹 푸시 VAPID 키 (specs/web-push/spec.md). 비어 있으면 웹 푸시가 꺼진다 — 구독 버튼도 안 보인다.
+  # 키 만들기: npx web-push generate-vapid-keys. 값은 시크릿 저장소에만 둔다(PUBLIC 레포).
+  web-push:
+    public-key: ${WEB_PUSH_VAPID_PUBLIC_KEY:}
+    private-key: ${WEB_PUSH_VAPID_PRIVATE_KEY:}
+    subject: ${WEB_PUSH_VAPID_SUBJECT:}
   polling:
     fixed-delay-ms: ${NOTIFICATION_POLLING_FIXED_DELAY_MS:30000}
     batch-size: ${NOTIFICATION_POLLING_BATCH_SIZE:100}
