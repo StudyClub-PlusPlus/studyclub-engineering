@@ -5,6 +5,7 @@ import type { Locale, Site } from '@studyclub/types';
 import { ArrowUpRight } from 'lucide-react';
 
 import { SocialIcons } from './SocialLinks';
+import { FEATURES } from '@/lib/features';
 import { m, t } from '@/lib/i18n';
 
 
@@ -48,9 +49,11 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
             <Link href={`/${locale}/studies`} className='hover:text-(--color-fg)'>
               {m('nav.studies', locale)}
             </Link>
-            <Link href={`/${locale}/events`} className='hover:text-(--color-fg)'>
-              {m('nav.events', locale)}
-            </Link>
+            {FEATURES.EVENTS && (
+              <Link href={`/${locale}/events`} className='hover:text-(--color-fg)'>
+                {m('nav.events', locale)}
+              </Link>
+            )}
             <Link href={`/${locale}/guide`} className='hover:text-(--color-fg)'>
               {m('nav.guide', locale)}
             </Link>

@@ -7,12 +7,14 @@ import type { Metadata } from 'next';
 
 import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@/features/events/content';
 import { getEvent, getEvents } from '@/features/events/server';
+import { FEATURES } from '@/lib/features';
 import { m, t } from '@/lib/i18n';
 import { JsonLd, breadcrumbJsonLd, eventJsonLd } from '@/lib/jsonld';
 import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@/lib/layout';
 import { SITE_URL, pageMetadata } from '@/lib/seo';
 
 export async function generateStaticParams() {
+  if (!FEATURES.EVENTS) return [];
   const events = await getEvents();
   return events.map((e) => ({ id: e.id }));
 }
@@ -50,6 +52,7 @@ export async function generateMetadata({
 }
 
 export default async function EventDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
+  if (!FEATURES.EVENTS) notFound();
   const { locale, id } = await params;
   const event = await getEvent(id);
   if (!event) notFound();
