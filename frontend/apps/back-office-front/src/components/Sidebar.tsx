@@ -4,15 +4,23 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { BookOpen, LayoutDashboard, LogOut, Mail, Megaphone, MessageSquare, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, LayoutDashboard, LogOut, Mail, Megaphone, MessageSquare, Users } from 'lucide-react';
 
 import { getUser, logout, type SessionUser } from '@/features/auth/auth';
+import { FEATURES } from '@/lib/features';
 
-const NAV = [
+const NAV: Array<{
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number }>;
+  exact?: boolean;
+  also?: string[];
+  feature?: keyof typeof FEATURES;
+}> = [
   { href: '/', label: '대시보드', icon: LayoutDashboard, exact: true },
   { href: '/studies', label: '스터디', icon: BookOpen },
-  // TODO(api): 행사 API 가 없어 메뉴를 숨겼다. API 연결 후 아래 줄 주석 해제
-  // { href: '/events', label: '행사', icon: CalendarDays },
+  // feature 플래그가 false 이면 렌더에서 숨긴다 (FEATURES.EVENTS = true 로 바꾸면 메뉴 노출)
+  { href: '/events', label: '행사', icon: CalendarDays, feature: 'EVENTS' },
   // 스터디원 + 운영진을 "유저" 하나로 통합 (실제 DB 유저 표시)
   { href: '/users', label: '유저', icon: Users },
   // 크루가 보낸 문의 · 개선 의견 · 오류 신고.
@@ -52,6 +60,7 @@ export function Sidebar() {
       </div>
       <nav className='flex flex-1 flex-col gap-0.5 p-3'>
         {NAV.map((item) => {
+          if (item.feature && !FEATURES[item.feature]) return null;
           const active = item.exact
             ? pathname === item.href
             : [item.href, ...(item.also ?? [])].some((prefix) => pathname.startsWith(prefix));
