@@ -1,0 +1,40 @@
+/* /++ 크레딧 — 아케이드 톤. 이 화면에서만 쓰는 글꼴·애니메이션 */
+.credits-root {
+  background-color: #fff9ee;
+  background-image: radial-gradient(#e9dfc9 1px, transparent 1px);
+  background-size: 16px 16px;
+  color: #282a43;
+}
+.font-pixel {
+  font-family: var(--font-pixel), monospace;
+}
+.font-dot {
+  font-family: var(--font-dot), sans-serif;
+}
+@keyframes credits-eq {
+  0%,
+  100% {
+    height: 6px;
+  }
+  50% {
+    height: 22px;
+  }
+}
+@keyframes credits-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.credits-blink {
+  animation: credits-blink 1s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .credits-root * {
+    animation: none !important;
+  }
+}
