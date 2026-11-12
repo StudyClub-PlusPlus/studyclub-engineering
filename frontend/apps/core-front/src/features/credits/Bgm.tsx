@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { COMBO_FLAG } from './PlusPlusCombo';
-
 // 직접 만든 8비트 루프 — 외부 음원이 아니라 WebAudio 로 그 자리에서 합성한다(저작권 문제 없음).
 // 리드(사각파) + 베이스(삼각파), 140 BPM 8분음표 4마디.
 const BPM = 140;
@@ -30,12 +28,13 @@ function useChiptune() {
   };
 
   const start = async () => {
-    if (ctxRef.current) return true;
+    // 이미 만든 컨텍스트가 있으면 실제로 소리가 나는지로 답한다 (재생 시도가 겹쳐도 성공으로 착각하지 않게)
+    if (ctxRef.current) return ctxRef.current.state === 'running';
     const ctx = new AudioContext();
     ctxRef.current = ctx;
     await ctx.resume().catch(() => {});
     if (ctx.state !== 'running') {
-      // 사용자 동작 없이 왔으면 브라우저가 막는다 — 재생 버튼을 기다린다
+      // 사용자 동작 없이 왔으면 브라우저가 막는다 — 첫 동작(Bgm 의 리스너)에서 다시 시도한다
       ctx.close();
       ctxRef.current = null;
       return false;
@@ -78,19 +77,33 @@ function useChiptune() {
 
 export function Bgm() {
   const { playing, start, stop } = useChiptune();
+  const [blocked, setBlocked] = useState(false);
 
+  // 들어오면 바로 튼다. 브라우저가 소리 자동재생을 막으면 화면 어디든 첫 동작(누르기·키·스크롤)에서 튼다.
+  // 직접 일시정지한 적이 있으면(OFF_KEY) 틀지 않는다.
   useEffect(() => {
-    let combo = false;
     let off = false;
     try {
-      combo = sessionStorage.getItem(COMBO_FLAG) === '1';
-      sessionStorage.removeItem(COMBO_FLAG);
       off = localStorage.getItem(OFF_KEY) === '1';
     } catch {
       // 저장소가 막힌 브라우저(사생활 보호 모드)면 기억만 못 한다
     }
-    if (combo && !off) void start();
-    // start 는 매 렌더 새로 만들어지지만 처음 한 번만 시도하면 된다
+    if (off) return;
+    const EVENTS = ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'] as const;
+    const onFirst = () => {
+      void start().then((ok) => {
+        if (!ok) return;
+        setBlocked(false);
+        EVENTS.forEach((e) => window.removeEventListener(e, onFirst));
+      });
+    };
+    void start().then((ok) => {
+      if (ok) return;
+      setBlocked(true);
+      EVENTS.forEach((e) => window.addEventListener(e, onFirst, { passive: true }));
+    });
+    return () => EVENTS.forEach((e) => window.removeEventListener(e, onFirst));
+    // start 는 매 렌더 새로 만들어지지만 처음 한 번만 걸면 된다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -101,6 +114,7 @@ export function Bgm() {
     } catch {
       // 저장소가 막힌 브라우저(사생활 보호 모드)면 기억만 못 한다
     }
+    setBlocked(false);
     if (playing) stop();
     else void start();
   };
@@ -118,7 +132,9 @@ export function Bgm() {
       </div>
       <div className='flex min-w-0 flex-col gap-0.5'>
         <div className='font-pixel text-[9px] text-[#3A4BB0]'>{playing ? 'NOW PLAYING' : 'PAUSED'}</div>
-        <div className='text-[13px] font-medium'>스터디클럽 테마 · 8비트 오리지널</div>
+        <div className='text-[13px] font-medium'>
+          {blocked ? '아무 곳이나 누르면 BGM 이 나와요' : '스터디클럽 테마 · 8비트 오리지널'}
+        </div>
       </div>
       <button
         type='button'
