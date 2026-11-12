@@ -7,6 +7,7 @@ import { MobileNav } from '@/components/MobileNav';
 import { MyStudiesLink } from '@/components/MyStudiesLink';
 import { NavAuth } from '@/components/NavAuth';
 import { NavLinks } from '@/components/NavLinks';
+import { FEATURES } from '@/lib/features';
 import { m } from '@/lib/i18n';
 
 export function SiteHeader({
@@ -21,7 +22,7 @@ export function SiteHeader({
   const other: Locale = locale === 'ko' ? 'en' : 'ko';
   const links = [
     { href: `/${locale}/studies`, label: m('nav.studies', locale) },
-    { href: `/${locale}/events`, label: m('nav.events', locale) },
+    ...(FEATURES.EVENTS ? [{ href: `/${locale}/events`, label: m('nav.events', locale) }] : []),
     { href: `/${locale}/guide`, label: m('nav.guide', locale) },
     { href: `/${locale}/notices`, label: m('nav.notices', locale) },
     { href: `/${locale}/about`, label: m('nav.about', locale) },
