@@ -51,7 +51,8 @@ export function mapToStudy(api: ApiStudy): Study {
       // 모집 상태는 서버 판정 그대로 — core-front/src/lib/api.ts 와 같은 방식
       status: api.recruitStatus === 'RECRUITING' ? 'open' : 'closed',
       form_url: undefined,
-      start: api.recruitmentStartAt?.slice(0, 10),
+      // startAt 과 같이 ISO 타임스탬프 그대로 둔다 — displayDate(zonedDate)가 사용자 시간대로 변환한다(POL-0006).
+      start: api.recruitmentStartAt ?? undefined,
       // 시각까지 둔다 — 모집 마감순은 같은 날 안에서도 마감 시각으로 가른다(서버 정렬과 같게). 날짜만 쓰는 곳은 toISODate 로 자른다
       deadline: api.recruitDeadlineAt ?? undefined,
       capacity: api.recruitmentCapacity ?? undefined,
