@@ -2,8 +2,8 @@ import { PageHeader } from '@/components/ui';
 
 export const metadata = { title: '행사' };
 
-// TODO(api): POST/GET/PATCH/DELETE /api/events 가 붙으면 EventCreateButton · EventsTable · EventDialog 를 복원한다.
-// 그 전까지는 화면을 열어 두되 저장 기능은 노출하지 않는다.
+// TODO(api): POST/GET/PATCH/DELETE /api/events 준비되면 EventCreateButton · EventsTable · EventDialog 를 복원하고
+// FEATURES.EVENTS = true 로 바꿔 사이드바 메뉴를 노출한다.
 export default function EventsAdmin() {
   return (
     <div>
