@@ -120,19 +120,19 @@ export function Bgm() {
   };
 
   return (
-    <div className='flex items-center gap-3 border-[3px] border-[#282A43] bg-[#FFF9EE] py-1.5 pr-2 pl-3.5'>
+    <div className='flex items-center gap-3 border-[3px] border-[var(--color-ink)] bg-[var(--arcade-paper)] py-1.5 pr-2 pl-3.5'>
       <div className='flex h-6 w-[30px] items-end gap-[3px]' aria-hidden='true'>
         {[0, 0.2, 0.4, 0.1, 0.3].map((d) => (
           <div
             key={d}
-            className='w-1 bg-[#3A4BB0]'
+            className='w-1 bg-[var(--arcade-blue-deep)]'
             style={playing ? { animation: `credits-eq 0.8s ${d}s infinite ease-in-out`, height: 12 } : { height: 4 }}
           />
         ))}
       </div>
       <div className='flex min-w-0 flex-col gap-0.5'>
-        <div className='font-pixel text-[9px] text-[#3A4BB0]'>{playing ? 'NOW PLAYING' : 'PAUSED'}</div>
-        <div className='text-[13px] font-medium'>
+        <div className='font-pixel text-[length:var(--arcade-fs-9)] text-[var(--arcade-blue-deep)]'>{playing ? 'NOW PLAYING' : 'PAUSED'}</div>
+        <div className='text-[length:var(--arcade-fs-13)] font-medium'>
           {blocked ? '아무 곳이나 누르면 BGM 이 나와요' : '스터디클럽 테마 · 8비트 오리지널'}
         </div>
       </div>
@@ -140,15 +140,15 @@ export function Bgm() {
         type='button'
         onClick={toggle}
         aria-label={playing ? 'BGM 일시정지' : 'BGM 재생'}
-        className='flex size-11 cursor-pointer items-center justify-center border-[3px] border-[#282A43] bg-[#FF805C] p-0 shadow-[3px_3px_0_#282A43] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none'
+        className='flex size-11 cursor-pointer items-center justify-center border-[3px] border-[var(--color-ink)] bg-[var(--color-highlight)] p-0 shadow-[3px_3px_0_#282A43] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none'
       >
         {playing ? (
-          <svg width='18' height='18' viewBox='0 0 24 24' fill='#282A43' aria-hidden='true'>
+          <svg width='18' height='18' viewBox='0 0 24 24' fill='var(--color-ink)' aria-hidden='true'>
             <rect x='5' y='4' width='5' height='16' />
             <rect x='14' y='4' width='5' height='16' />
           </svg>
         ) : (
-          <svg width='18' height='18' viewBox='0 0 24 24' fill='#282A43' aria-hidden='true'>
+          <svg width='18' height='18' viewBox='0 0 24 24' fill='var(--color-ink)' aria-hidden='true'>
             <path d='M6 4l14 8-14 8z' />
           </svg>
         )}

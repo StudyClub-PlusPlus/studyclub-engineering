@@ -1,3 +1,41 @@
+/* 아케이드 토큰 — 이 화면 전용. 브랜드와 같은 색은 전역 토큰(var(--color-…))을 쓰고, 여기엔 이 화면에만 있는 색·글자 크기만 둔다 */
+:root {
+  --arcade-blue-deep: #3A4BB0;
+  --arcade-blue-ink: #2F3C8F;
+  --arcade-ink-soft: #4A4C63;
+  --arcade-ink-muted: #5A5C70;
+  --arcade-gold: #F4B740;
+  --arcade-gold-soft: #FFE7A0;
+  --arcade-gold-bg: #FFF3D1;
+  --arcade-gold-ink: #9A6A00;
+  --arcade-gold-deep: #6E4E00;
+  --arcade-green-deep: #1F5A3A;
+  --arcade-green-soft: #9FD8B5;
+  --arcade-orange-bg: #FFE9E2;
+  --arcade-orange-deep: #C2410C;
+  --arcade-orange-ink: #8A3416;
+  --arcade-purple-bg: #F3E8FF;
+  --arcade-purple-ink: #5B2A86;
+  --arcade-paper: #FFF9EE;
+  --arcade-paper-dim: #EFE7D6;
+  --arcade-paper-line: #E2D8C2;
+  --arcade-paper-edge: #D8CDB4;
+  --arcade-fs-8: 8px;
+  --arcade-fs-9: 9px;
+  --arcade-fs-10: 10px;
+  --arcade-fs-11: 11px;
+  --arcade-fs-13: 13px;
+  --arcade-fs-15: 15px;
+  --arcade-fs-22: 22px;
+  --arcade-fs-28: 28px;
+  --arcade-fs-34: 34px;
+  --arcade-fs-40: 40px;
+  --arcade-fs-48: 48px;
+  --arcade-fs-56: 56px;
+  --arcade-fs-60: 60px;
+  --arcade-fs-72: 72px;
+}
+
 /* /++ 크레딧 — 아케이드 톤. 이 화면에서만 쓰는 글꼴·애니메이션 */
 .credits-root {
   background-color: #fff9ee;
