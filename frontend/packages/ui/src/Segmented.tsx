@@ -55,7 +55,7 @@ export function Segmented<T extends string = string>({
 
   const trackRadius = shape === 'pill' ? 'rounded-pill' : 'rounded-control';
   const itemRadius = shape === 'pill' ? 'rounded-pill' : 'rounded-control';
-  const itemPadding = size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-sm';
+  const itemPadding = size === 'sm' ? 'px-2.5 py-1 type-label-lg' : 'px-3.5 py-1.5 type-label-lg';
 
   return (
     <div
@@ -80,7 +80,7 @@ export function Segmented<T extends string = string>({
             aria-selected={active}
             onClick={() => handleClick(opt.value, opt.disabled)}
             className={cx(
-              'inline-flex items-center justify-center gap-1.5 font-medium transition-all duration-fast focus-visible:outline-none focus-visible:shadow-(--ring)',
+              'inline-flex items-center justify-center gap-1.5 font-semibold transition-all duration-fast focus-visible:outline-none focus-visible:shadow-(--ring)',
               itemRadius,
               itemPadding,
               fullWidth && 'flex-1',

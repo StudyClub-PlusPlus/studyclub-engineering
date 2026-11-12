@@ -32,14 +32,14 @@ export function EventRow({ event, locale }: { event: StudyclubEvent; locale: Loc
         className='flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-1.5 text-center'
         style={{ background: 'var(--color-brand-subtle)', color: 'var(--color-brand)' }}
       >
-        {mon && <span className='text-[10px] font-semibold'>{mon}</span>}
-        <span className='text-lg font-bold leading-none'>{day}</span>
-        {year && <span className='mt-0.5 text-[9px] font-medium opacity-70'>{year}</span>}
+        {mon && <span className='type-label-sm'>{mon}</span>}
+        <span className='type-title-md'>{day}</span>
+        {year && <span className='mt-0.5 type-label-sm opacity-70'>{year}</span>}
       </div>
 
       {/* 본문 */}
       <div className='min-w-0 flex-1'>
-        <div className='flex items-center gap-2 text-[11px] text-(--color-fg-faint)'>
+        <div className='flex items-center gap-2 type-label-sm text-(--color-fg-faint)'>
           <span
             className='rounded-full px-2 py-0.5 font-semibold'
             style={{ color: 'var(--color-brand)', background: 'var(--color-brand-subtle)' }}
@@ -53,8 +53,8 @@ export function EventRow({ event, locale }: { event: StudyclubEvent; locale: Loc
             </span>
           )}
         </div>
-        <h3 className='mt-1 truncate text-[15px] font-semibold leading-snug'>{t(event.title, locale)}</h3>
-        <p className='truncate text-[13px] text-(--color-fg-muted)'>{t(event.summary, locale)}</p>
+        <h3 className='mt-1 truncate type-title-md'>{t(event.title, locale)}</h3>
+        <p className='truncate type-body-sm text-(--color-fg-muted)'>{t(event.summary, locale)}</p>
       </div>
 
       <ChevronRight

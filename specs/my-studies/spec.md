@@ -185,3 +185,10 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 - [NEEDS CLARIFICATION] 회차 예정 길이. 컬럼이 없어 120분으로 본다(프로토 가정). 반·스터디마다 다르면 예정 종료 컬럼이 필요하다
 - 공개 상세 `GET /api/studies/{id}` 도 같은 규칙으로 막았다 — 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 `discordChannelUrl`·`driveUrl` 을 채운다 ([docs/share/2026-09-30-study-detail-private-urls.md](../../docs/share/2026-09-30-study-detail-private-urls.md))
 - [NEEDS CLARIFICATION] 회차 번호 컬럼(`MEETING_NO`)이 생기면 `sequence` 소스를 바꾼다. 지금은 예정 시각 순번이라 회차를 중간에 추가하면 뒤 번호가 밀린다
+
+## 퍼널·계측
+
+- 단계: 재방문
+- 화면 조회는 공통 `Page Viewed` (`page_name`=`my_studies` · `study_room_schedule` · `study_room_attendance` · `study_room_notice`, 스터디룸은 `study_id` 함께)
+- 이벤트 (front): 정보 카드 「디스코드」 버튼에 `Study Discord Opened{study_id}`. 발표 신청은 [study-meeting](../study-meeting/spec.md)
+- A/B 없음

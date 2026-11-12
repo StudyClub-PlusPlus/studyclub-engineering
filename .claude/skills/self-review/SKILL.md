@@ -1,6 +1,6 @@
 ---
 name: self-review
-description: "PR self-review 를 3단계(quick/standard/deep)로 병렬 에이전트 실행하고 .workspace/{PR번호}/ 에 리뷰 파일을 남긴다."
+description: "PR self-review 를 3단계(quick/standard/deep)로 병렬 에이전트 실행하고 .workspace/{PR번호}/ 에 리뷰 파일을 남긴다. 치명적 결함은 바로 고치고 specs/{도메인}/spec.md 와 구현의 정합성도 맞춘다. PR 을 올리기 전이나 PR 템플릿의 셀프 리뷰 항목을 채울 때 쓴다. 「셀프 리뷰」「self-review」「PR 전에 리뷰해줘」「내 변경 리뷰」「/self-review deep」"
 ---
 
 # /self-review — PR Self Review
@@ -45,8 +45,9 @@ PR 번호가 있으면 `{PR번호}`, 없으면 브랜치명을 폴더명으로 �
 ```bash
 # PR 이 있으면 PR diff
 gh pr diff {PR번호} --name-only
-# 없으면 main 대비 diff (untracked 포함)
-git diff main --name-only && git ls-files --others --exclude-standard
+# 없으면 beta(기능 PR 의 대상) 와의 분기점 대비 diff (untracked 포함)
+git fetch origin beta
+git diff "$(git merge-base origin/beta HEAD)" --name-only && git ls-files --others --exclude-standard
 ```
 
 ### 3단계: 병렬 에이전트 리뷰
@@ -93,12 +94,12 @@ PR 번호: {PR번호}
 - 에러 핸들링: catch 없는 외부 호출, 빈 catch 블록
 - 네이밍: 의도를 숨기는 이름
 - 하드코딩 매직 넘버
-- 판정 위치 ([규약](../../docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다)):
+- 판정 위치 ([규약](../../../docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다)):
   - FE — 서버가 줄 수 있는 판정(모집 상태·정원·가능 여부·비율)을 날짜·숫자로 다시 계산한다 → 응답 필드를 쓰거나, 없으면 `// TODO(api)` 로 요청
   - FE — `packages/mock` 공유 판정 함수에 축(시작일·정원·인원)을 더한다 → 다른 앱까지 바뀐다
-- 파일 이름 ([규약](../../docs/frontend-development-guide/project-structure.md#파일-배치-규칙--기능-옆에-둔다)):
+- 파일 이름 ([규약](../../../docs/frontend-development-guide/project-structure.md#파일-배치-규칙--기능-옆에-둔다)):
   - FE — 컴포넌트가 아닌 파일(훅·유틸)을 camelCase(`useXxx.ts`)로 만든다 → kebab-case(`use-xxx.ts`)
-- 목록 상태 위치 ([규약](../../docs/frontend-development-guide/api-integration.md#필터검색페이지는-url-에)):
+- 목록 상태 위치 ([규약](../../../docs/frontend-development-guide/api-integration.md#필터검색페이지는-url-에)):
   - FE — 목록의 탭·필터·검색어·페이지를 `useState` 로 든다 → URL 쿼리(`useSearchParams` + `router.replace`)로. 새로고침·뒤로 가기에 조건이 사라진다
   - FE — 개인정보(이메일 원본 등)를 URL 에 싣는다
   - BE — 화면이 쓸 판정을 응답에 안 넣고 재료만 준다 / 같은 판정을 엔드포인트마다 다른 쿼리로 센다
@@ -118,8 +119,8 @@ which codex 2>/dev/null
 ```
 
 Codex 가 있으면:
-- 각 에이전트 대신 `codex` 를 호출하여 파일별 리뷰를 실행한다
-- `codex "Review this file for {레벨} level issues: {파일경로}"` 형태
+- 각 에이전트 대신 `codex exec` 를 호출하여 파일별 리뷰를 실행한다 (`codex "…"` 는 대화형 TUI 를 띄워 멈춘다)
+- `codex exec "Review this file for {레벨} level issues: {파일경로}"` 형태
 - Codex 결과를 파싱해서 동일한 partial 파일 형식으로 저장한다
 - Codex 가 없으면 위의 Agent 방식으로 폴백한다
 

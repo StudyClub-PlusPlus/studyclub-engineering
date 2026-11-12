@@ -112,9 +112,13 @@ public class AttendanceService {
                 participants.stream()
                         .map(StudyParticipant::getAccountId)
                         .collect(Collectors.toSet());
+        List<Account> accounts = accountRepository.findAllById(accountIds);
         Map<Long, String> nicknames =
-                accountRepository.findAllById(accountIds).stream()
-                        .collect(Collectors.toMap(Account::getId, Account::getNickname));
+                accounts.stream().collect(Collectors.toMap(Account::getId, Account::getNickname));
+        Map<Long, String> discordNicknames =
+                accounts.stream()
+                        .filter(a -> a.getDiscordNickname() != null)
+                        .collect(Collectors.toMap(Account::getId, Account::getDiscordNickname));
 
         Instant now = Instant.now();
         double totalNumerator = 0;
@@ -149,6 +153,7 @@ public class AttendanceService {
                     new AttendanceResponse.ParticipantAttendance(
                             p.getId(),
                             nicknames.getOrDefault(p.getAccountId(), DELETED_ACCOUNT_NICKNAME),
+                            discordNicknames.get(p.getAccountId()),
                             p.getParticipantRole().name(),
                             captain,
                             p.getStatus().name(),

@@ -48,11 +48,24 @@ class SesMailClientTest {
         }
     }
 
+    @Test
+    @DisplayName("답장 주소를 설정하면 Reply-To 로 싣고, 비우면 싣지 않는다")
+    void replyTo() {
+        assertThat(sendAndCapture("welcome-notify", "본문", "contact@example.com").replyToAddresses())
+                .containsExactly("contact@example.com");
+        assertThat(sendAndCapture("welcome-notify", "본문", "").replyToAddresses()).isEmpty();
+    }
+
     private SendEmailRequest sendAndCapture(String configurationSetName) {
         return sendAndCapture(configurationSetName, "홍길동님 환영합니다.");
     }
 
     private SendEmailRequest sendAndCapture(String configurationSetName, String body) {
+        return sendAndCapture(configurationSetName, body, null);
+    }
+
+    private SendEmailRequest sendAndCapture(
+            String configurationSetName, String body, String replyTo) {
         SesClient sesClient = mock(SesClient.class);
         SesClientBuilder builder = mock(SesClientBuilder.class, RETURNS_SELF);
         when(builder.build()).thenReturn(sesClient);
@@ -63,7 +76,8 @@ class SesMailClientTest {
                         "notify@example.com",
                         "test-access-key",
                         "test-secret-key",
-                        configurationSetName);
+                        configurationSetName,
+                        replyTo);
         SesMailClient mailClient =
                 new SesMailClient(new MailProperties(null, null, account, null, null));
 

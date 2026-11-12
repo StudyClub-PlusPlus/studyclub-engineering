@@ -64,14 +64,20 @@ public class DiscordBotClient {
         return StringUtils.hasText(botUrl) && StringUtils.hasText(apiKey);
     }
 
+    /** 시스템 아이디로 부를 수 있는가 — {@code DISCORD_BOT_ID} 가 설정돼 있다. */
+    public boolean canCallAsSystem() {
+        return botId != null && !botId.isBlank();
+    }
+
     /**
-     * 사람 대신 백엔드가 부를 때의 {@code requesterId}(시스템 아이디). 봇 자신의 유저 ID 인 {@code DISCORD_BOT_ID} 다. 비어 있으면
-     * 던진다 — 봇은 health 를 뺀 모든 요청에 이 헤더를 요구한다.
+     * 사람 대신 백엔드가 부를 때의 {@code requesterId}(시스템 아이디). 봇 자신의 유저 ID 인 {@code DISCORD_CONFIG_BOT_ID} 다.
+     * 비어 있으면 던진다 — 봇은 health 를 뺀 모든 요청에 이 헤더를 요구한다.
      */
     public String systemUserId() {
         if (!StringUtils.hasText(botId)) {
             throw new BusinessException(
-                    ErrorCode.EXTERNAL_SERVICE_ERROR, "디스코드 봇 ID 가 설정되지 않았습니다 (DISCORD_BOT_ID).");
+                    ErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "디스코드 봇 ID 가 설정되지 않았습니다 (DISCORD_CONFIG_BOT_ID).");
         }
         return botId;
     }
@@ -88,6 +94,8 @@ public class DiscordBotClient {
                         "create-study",
                         "스터디 생성",
                         idempotencyKey,
+                        discordUserId,
+                        null,
                         () -> {
                             try {
                                 return request(
@@ -101,7 +109,6 @@ public class DiscordBotClient {
                                         .body(CreatedStudy.class);
                             } catch (HttpClientErrorException.Conflict e) {
                                 String detail = e.getResponseBodyAsString();
-                                log.warn("create-study {}: 봇 409 {}", idempotencyKey, detail);
                                 // 봇의 409 는 이름 중복만이 아니다 — 길드 설정이 없어도 409 다 (detail 로 구분,
                                 // create-study.md). 설정 문제에 "이름을 바꾸라" 고 안내하면 고칠 수 없는 걸 고치라는 말이 된다
                                 if (!detail.contains("with this name")) {
@@ -121,6 +128,10 @@ public class DiscordBotClient {
             log.error("create-study {}: 봇 응답의 ID 가 snowflake 가 아니다 {}", idempotencyKey, created);
             throw invalidResponse();
         }
+        log.info(
+                "op=create-study discordStudyId={} discordRoleId={}",
+                created.discordStudyId(),
+                created.discordRoleId());
         return created;
     }
 
@@ -135,6 +146,8 @@ public class DiscordBotClient {
                         "get-study-channels",
                         "채널 조회",
                         requestId,
+                        requesterId,
+                        discordStudyId,
                         () ->
                                 request(
                                                 HttpMethod.GET,
@@ -255,6 +268,8 @@ public class DiscordBotClient {
                 "send-message",
                 "메시지 전송",
                 idempotencyKey,
+                requesterId,
+                discordStudyId,
                 () ->
                         request(
                                         HttpMethod.POST,
@@ -306,6 +321,8 @@ public class DiscordBotClient {
                         op,
                         action,
                         idempotencyKey,
+                        requesterId,
+                        discordStudyId,
                         () ->
                                 request(method, requesterId, idempotencyKey, path, uriVariables)
                                         .contentType(MediaType.APPLICATION_JSON)
@@ -331,6 +348,8 @@ public class DiscordBotClient {
                 op,
                 action,
                 idempotencyKey,
+                requesterId,
+                null,
                 () ->
                         request(HttpMethod.POST, requesterId, idempotencyKey, path)
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -359,38 +378,79 @@ public class DiscordBotClient {
     }
 
     /**
-     * 설정을 확인하고 호출한 뒤, 실패를 {@link BusinessException} 으로 바꾼다. {@code call} 이 던진 {@link
-     * BusinessException} 은 그대로 나간다.
+     * 설정을 확인하고 호출한 뒤, 결과를 로깅하고 실패를 {@link BusinessException} 으로 바꾼다. {@code call} 이 던진 {@link
+     * BusinessException} 은 로깅 후 그대로 나간다.
      *
-     * @param op 로그용 엔드포인트 이름 (문서 파일 이름)
+     * <p>성공: INFO {@code op={} requester={} studyId={} status=ok elapsedMs={}}
+     *
+     * <p>실패: WARN {@code op={} requester={} studyId={} status=failure
+     * reason={HTTP-상태|에러코드|봇_응답없음|요청생성_오류} elapsedMs={}}
+     *
+     * @param op 로그·에러 메시지에 실을 엔드포인트 이름 (문서 파일 이름)
      * @param action 에러 메시지에 실을 한글 이름
      * @param requestId 로그로 시도를 묶는 ID. 상태를 바꾸는 요청이면 {@code Idempotency-Key} 와 같은 값이다
+     * @param requesterId 호출 주체의 디스코드 유저 ID ({@code X-Discord-User-ID})
+     * @param discordStudyId 대상 스터디 ID. 없으면 null
      */
-    private <T> T execute(String op, String action, String requestId, Supplier<T> call) {
+    private <T> T execute(
+            String op,
+            String action,
+            String requestId,
+            String requesterId,
+            String discordStudyId,
+            Supplier<T> call) {
         if (!isConfigured()) {
             throw new BusinessException(
                     ErrorCode.EXTERNAL_SERVICE_ERROR,
                     "디스코드 봇이 설정되지 않았습니다 (DISCORD_BOT_URL/DISCORD_API_KEY).");
         }
+        long start = System.currentTimeMillis();
         try {
-            return call.get();
+            T result = call.get();
+            log.info(
+                    "op={} requester={} studyId={} status=ok elapsedMs={}",
+                    op,
+                    requesterId,
+                    discordStudyId,
+                    System.currentTimeMillis() - start);
+            return result;
+        } catch (BusinessException e) {
+            log.warn(
+                    "op={} requester={} studyId={} status=failure reason={} elapsedMs={}",
+                    op,
+                    requesterId,
+                    discordStudyId,
+                    e.errorCode(),
+                    System.currentTimeMillis() - start);
+            throw e;
         } catch (RestClientResponseException e) {
             // 봇 detail 에는 길드·역할 ID 같은 봇 내부 사정이 들어 있다. 응답에는 싣지 않고 로그에만 남긴다
             log.warn(
-                    "{} {}: 봇 {} {}",
+                    "op={} requester={} studyId={} status=failure reason=HTTP-{} elapsedMs={}",
                     op,
-                    requestId,
+                    requesterId,
+                    discordStudyId,
                     e.getStatusCode().value(),
-                    e.getResponseBodyAsString());
+                    System.currentTimeMillis() - start);
             throw new BusinessException(
                     ErrorCode.EXTERNAL_SERVICE_ERROR,
                     "디스코드 봇이 " + action + " 요청을 거절했습니다 (" + e.getStatusCode().value() + ").");
         } catch (RestClientException e) {
-            log.warn("{} {}: 봇 호출 실패 {}", op, requestId, e.getMessage());
+            log.warn(
+                    "op={} requester={} studyId={} status=failure reason=봇_응답없음 elapsedMs={}",
+                    op,
+                    requesterId,
+                    discordStudyId,
+                    System.currentTimeMillis() - start);
             throw new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR, "디스코드 봇과 통신하지 못했습니다.");
         } catch (IllegalArgumentException e) {
             // 헤더 값이 잘못되면(키 끝의 개행 등) JDK 가 값을 통째로 메시지에 실어 던진다. 메시지를 버려야 키가 로그에 남지 않는다
-            log.warn("{} {}: 요청을 만들지 못했다 ({})", op, requestId, e.getClass().getName());
+            log.warn(
+                    "op={} requester={} studyId={} status=failure reason=요청생성_오류 elapsedMs={}",
+                    op,
+                    requesterId,
+                    discordStudyId,
+                    System.currentTimeMillis() - start);
             throw new BusinessException(
                     ErrorCode.EXTERNAL_SERVICE_ERROR,
                     "디스코드 봇 요청을 만들지 못했습니다 (DISCORD_API_KEY 형식 확인).");

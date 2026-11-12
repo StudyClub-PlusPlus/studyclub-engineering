@@ -52,6 +52,7 @@
   /* ---- Border & focus ---- */
   --color-border:             #E2E1E9;
   --color-border-strong:      #8D90A3;
+  --color-button-secondary-border: #CBCFE5;
   --color-border-interactive: #7A8BD8;
   --color-focus-ring:         #7183DA;
 
@@ -139,20 +140,20 @@
   /* ---- Typography ---- */
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
                "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", "D2Coding", "Pretendard", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", "D2Coding", "Pretendard Variable", "Pretendard", ui-monospace, monospace;
 
-  /* Type scale (px / line-height / letter-spacing / weight) — ratio ≈1.2 */
-  --text-xs:   0.75rem;  --text-xs--line-height: 1rem;      --text-xs--letter-spacing: 0.01em;   --text-xs--font-weight: 500;
-  --text-sm:   0.875rem; --text-sm--line-height: 1.25rem;   --text-sm--letter-spacing: 0.005em;  --text-sm--font-weight: 400;
-  --text-base: 1rem;     --text-base--line-height: 1.625rem;--text-base--letter-spacing: 0em;    --text-base--font-weight: 400;
-  --text-lg:   1.125rem; --text-lg--line-height: 1.75rem;   --text-lg--letter-spacing: -0.005em; --text-lg--font-weight: 400;
-  --text-xl:   1.25rem;  --text-xl--line-height: 1.75rem;   --text-xl--letter-spacing: -0.01em;  --text-xl--font-weight: 600;
-  --text-2xl:  1.5rem;   --text-2xl--line-height: 2rem;     --text-2xl--letter-spacing: -0.015em;--text-2xl--font-weight: 600;
-  --text-3xl:  1.875rem; --text-3xl--line-height: 2.375rem; --text-3xl--letter-spacing: -0.02em; --text-3xl--font-weight: 700;
-  --text-4xl:  2.25rem;  --text-4xl--line-height: 2.75rem;  --text-4xl--letter-spacing: -0.02em; --text-4xl--font-weight: 700;
-  --text-5xl:  3rem;     --text-5xl--line-height: 3.5rem;   --text-5xl--letter-spacing: -0.025em;--text-5xl--font-weight: 800;
-  --text-6xl:  3.75rem;  --text-6xl--line-height: 4.125rem; --text-6xl--letter-spacing: -0.03em; --text-6xl--font-weight: 800;
-  --text-7xl:  4.5rem;   --text-7xl--line-height: 4.75rem;  --text-7xl--letter-spacing: -0.03em; --text-7xl--font-weight: 800;
+  /* Legacy size aliases. New UI selects content roles in typography.css. */
+  --text-xs:   0.75rem;  --text-xs--line-height: 1.125rem; --text-xs--letter-spacing: 0.005em; --text-xs--font-weight: 500;
+  --text-sm:   0.875rem; --text-sm--line-height: 1.375rem; --text-sm--letter-spacing: 0; --text-sm--font-weight: 400;
+  --text-base: 1rem; --text-base--line-height: 1.6875rem; --text-base--letter-spacing: 0; --text-base--font-weight: 400;
+  --text-lg:   1.125rem; --text-lg--line-height: 1.875rem; --text-lg--letter-spacing: 0; --text-lg--font-weight: 400;
+  --text-xl:   1.25rem; --text-xl--line-height: 1.875rem; --text-xl--letter-spacing: -0.01em; --text-xl--font-weight: 600;
+  --text-2xl:  1.5rem; --text-2xl--line-height: 2.125rem; --text-2xl--letter-spacing: -0.015em; --text-2xl--font-weight: 600;
+  --text-3xl:  1.75rem; --text-3xl--line-height: 2.375rem; --text-3xl--letter-spacing: -0.02em; --text-3xl--font-weight: 600;
+  --text-4xl:  2.25rem; --text-4xl--line-height: 2.875rem; --text-4xl--letter-spacing: -0.025em; --text-4xl--font-weight: 600;
+  --text-5xl:  2.75rem; --text-5xl--line-height: 3.25rem; --text-5xl--letter-spacing: -0.03em; --text-5xl--font-weight: 500;
+  --text-6xl:  3.5rem; --text-6xl--line-height: 4rem; --text-6xl--letter-spacing: -0.035em; --text-6xl--font-weight: 500;
+  --text-7xl:  var(--text-6xl); --text-7xl--line-height: 4rem; --text-7xl--letter-spacing: -0.035em; --text-7xl--font-weight: 500;
 
   /* ---- Spacing base : 4px (8pt grid). p-1=4px, p-2=8px ... ---- */
   --spacing: 0.25rem;
@@ -170,7 +171,10 @@
   /* ---- Radius (semantic, 컴포넌트 권장값) ----
      비-inline @theme 에 두어 rounded-control/-card 유틸이 var()를 참조 →
      console.css 에서 :root 로 덮어쓰면 유틸까지 함께 바뀝니다. */
-  --radius-control: 8px;  /* 버튼·입력·셀렉트 */
+  --radius-control: 8px;  /* 입력·셀렉트. 버튼은 radius-button-* 사용 */
+  --radius-button-sm: 8px;
+  --radius-button-md: 9px;
+  --radius-button-lg: 10px;
   --radius-chip:    8px;  /* 필터칩·태그 */
   --radius-card:    16px;
   --radius-modal:   24px;
@@ -184,6 +188,8 @@
   --shadow-xl: 0 8px 16px rgba(23,25,35,.08), 0 24px 56px rgba(23,25,35,.16);
   --shadow-card: 0 16px 40px var(--color-shadow-tint);
   --shadow-focus-ring: 0 0 0 3px var(--color-focus-ring);
+  --color-danger-shadow-tint: rgba(169, 71, 64, 0.18);
+  --shadow-danger-hover: 0 7px 16px var(--color-danger-shadow-tint);
 
   /* ---- Motion ---- */
   --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
@@ -208,6 +214,7 @@
   --color-brand-subtle:       var(--color-primary-light);
   --color-brand-subtle-hover: var(--color-primary-light);
   --color-on-brand:           var(--color-on-primary);
+  --color-logo-accent:        #FF805C; /* 로고 워드마크 Club 오렌지 — 로고 전용, UI 강조색으로 쓰지 않는다 */
 
   /* Text */
   --color-fg:             var(--color-ink);

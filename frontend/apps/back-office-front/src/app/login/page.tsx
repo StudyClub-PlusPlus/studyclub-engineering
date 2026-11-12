@@ -3,7 +3,8 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import { buildGoogleAuthUrl, isConfigured, setUser } from '@/lib/auth';
+import { buildGoogleAuthUrl, isConfigured, setUser } from '@/features/auth/auth';
+import { loginResponseSchema } from '@/features/auth/response-schema';
 
 // useSearchParams() 는 next build 프리렌더 시 Suspense 경계가 필요.
 export default function BackOfficeLoginPage() {
@@ -49,7 +50,13 @@ function BackOfficeLoginForm() {
           }
           throw new Error(data?.errorMessage ?? data?.message ?? `로그인 실패 (${res.status})`);
         }
-        if (data.account) setUser(data.account);
+        const { account } = loginResponseSchema.parse(data);
+        setUser({
+          ...account,
+          email: account.email ?? '',
+          nickname: account.nickname ?? null,
+          picture: account.picture ?? null,
+        });
         router.replace(next);
       } catch (e) {
         setError(e instanceof Error ? e.message : '로그인 중 오류가 발생했습니다.');
@@ -95,14 +102,14 @@ function BackOfficeLoginForm() {
   return (
     <div className='grid min-h-[70vh] place-items-center px-6'>
       <div className='w-full max-w-sm rounded-2xl border border-[var(--color-border,#e5e5e5)] bg-white p-8 text-center shadow-sm'>
-        <h1 className='text-lg font-bold tracking-tight'>Back Office 로그인</h1>
-        <p className='mt-2 text-xs text-neutral-500'>허용된 운영자 계정만 접근할 수 있습니다.</p>
+        <h1 className='type-headline-md'>Back Office 로그인</h1>
+        <p className='mt-2 type-label-sm text-neutral-500'>허용된 운영자 계정만 접근할 수 있습니다.</p>
 
         <button
           type='button'
           onClick={startLogin}
           disabled={loading}
-          className='mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-bg px-4 py-3 text-sm font-semibold text-fg shadow-sm transition hover:bg-surface-1 disabled:opacity-60'
+          className='mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-bg px-4 py-3 type-label-lg text-fg shadow-sm transition hover:bg-surface-1 disabled:opacity-60'
         >
           <svg width='18' height='18' viewBox='0 0 24 24' aria-hidden>
             <path
@@ -122,7 +129,7 @@ function BackOfficeLoginForm() {
           {loading ? '로그인 처리 중…' : 'Google 계정으로 로그인'}
         </button>
 
-        {error && <p className='mt-4 text-sm text-danger-fg'>{error}</p>}
+        {error && <p className='mt-4 type-body-sm text-danger-fg'>{error}</p>}
       </div>
     </div>
   );

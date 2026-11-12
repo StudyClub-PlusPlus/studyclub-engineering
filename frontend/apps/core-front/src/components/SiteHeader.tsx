@@ -1,11 +1,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import type { Locale } from '@studyclub/types';
+
 import { MobileNav } from '@/components/MobileNav';
 import { MyStudiesLink } from '@/components/MyStudiesLink';
 import { NavAuth } from '@/components/NavAuth';
 import { NavLinks } from '@/components/NavLinks';
-import type { Locale } from '@/lib/content';
+import { FEATURES } from '@/lib/features';
 import { m } from '@/lib/i18n';
 
 export function SiteHeader({
@@ -20,7 +22,7 @@ export function SiteHeader({
   const other: Locale = locale === 'ko' ? 'en' : 'ko';
   const links = [
     { href: `/${locale}/studies`, label: m('nav.studies', locale) },
-    { href: `/${locale}/events`, label: m('nav.events', locale) },
+    ...(FEATURES.EVENTS ? [{ href: `/${locale}/events`, label: m('nav.events', locale) }] : []),
     { href: `/${locale}/guide`, label: m('nav.guide', locale) },
     { href: `/${locale}/notices`, label: m('nav.notices', locale) },
     { href: `/${locale}/about`, label: m('nav.about', locale) },
@@ -30,9 +32,11 @@ export function SiteHeader({
   return (
     <header className='sticky top-0 z-30 border-b border-(--color-border) bg-[color-mix(in_srgb,var(--color-bg)_82%,transparent)] backdrop-blur-md'>
       <div className='mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6 md:gap-7'>
-        <Link href={`/${locale}`} className='flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight'>
+        <Link href={`/${locale}`} className='flex shrink-0 items-center gap-2 type-title-md'>
           <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
-          StudyClub
+          <span>
+            Study<span className='text-logo-accent'>Club</span>
+          </span>
         </Link>
 
         <NavLinks links={links} mentoring={mentoring} />
@@ -40,7 +44,7 @@ export function SiteHeader({
         <div className='ml-auto flex items-center gap-2 sm:gap-3'>
           <Link
             href={`/${other}`}
-            className='rounded-full px-2 py-1 text-xs font-semibold text-(--color-fg-muted) transition-colors hover:bg-(--color-surface-subtle) hover:text-(--color-fg)'
+            className='rounded-full px-2 py-1 type-label-sm text-(--color-fg-muted) transition-colors hover:bg-(--color-surface-subtle) hover:text-(--color-fg)'
           >
             {other.toUpperCase()}
           </Link>
@@ -48,8 +52,9 @@ export function SiteHeader({
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='hidden rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors sm:block'
-            style={{ background: 'var(--color-brand)' }}
+            className='sc-button hidden type-label-lg sm:inline-flex'
+            data-variant='tertiary'
+            data-size='md'
           >
             {m('nav.join', locale)}
           </a>

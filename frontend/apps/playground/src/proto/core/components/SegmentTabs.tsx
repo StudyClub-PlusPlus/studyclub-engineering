@@ -31,7 +31,7 @@ export function SegmentTabs<T extends string>({
             role='tab'
             aria-selected={on}
             onClick={() => onChange(o.key)}
-            className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${
+            className={`whitespace-nowrap rounded-pill px-4 py-1.5 type-label-lg transition-colors ${
               on ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
             }`}
           >

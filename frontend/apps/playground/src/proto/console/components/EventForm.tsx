@@ -1,7 +1,7 @@
 'use client';
 
 import { tx, EVENT_TYPE_LABEL } from '@console/lib/l10n';
-import type { StudyclubEvent } from '@studyclub/mock';
+import type { StudyclubEvent } from '@studyclub/types';
 import { Input, Select } from '@studyclub/ui';
 
 /**

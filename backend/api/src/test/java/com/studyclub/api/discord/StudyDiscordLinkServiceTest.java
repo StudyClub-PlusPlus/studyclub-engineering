@@ -3,8 +3,11 @@ package com.studyclub.api.discord;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -16,8 +19,10 @@ import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRepository;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +47,7 @@ class StudyDiscordLinkServiceTest {
     @Mock StudyDiscordLinkRepository studyDiscordLinkRepository;
     @Mock StudyRepository studyRepository;
     @Mock AccountRepository accountRepository;
+    @Mock StudyParticipantRepository studyParticipantRepository;
     @Mock TransactionTemplate transactionTemplate;
 
     @InjectMocks StudyDiscordLinkService service;
@@ -143,6 +149,55 @@ class StudyDiscordLinkServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.NOT_FOUND);
         verify(studyDiscordLinkRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("연결_후_기존_참여자에게_디스코드_role_을_부여한다")
+    void 연결_후_기존_참여자에게_디스코드_role_을_부여한다() {
+        givenStudy("알고리즘 스터디");
+        givenAccount(DISCORD_USER_ID);
+        when(discordBotClient.createStudy("알고리즘 스터디", DISCORD_USER_ID)).thenReturn(CREATED);
+        givenStudyStillExists(true);
+
+        when(studyParticipantRepository.findAccountIdsByStudyIdAndStatusIn(
+                        eq(STUDY_ID), anyCollection()))
+                .thenReturn(List.of(2L));
+        when(accountRepository.findDiscordIdsByIdIn(anyCollection()))
+                .thenReturn(List.of("1327394882193880002"));
+        when(discordBotClient.systemUserId()).thenReturn("bot-id");
+        when(discordBotClient.assignRole(
+                        "bot-id",
+                        CREATED.discordRoleId(),
+                        CREATED.discordStudyId(),
+                        List.of("1327394882193880002")))
+                .thenReturn(new DiscordBotClient.RoleChangeResult(1, List.of()));
+
+        service.link(ADMIN_ID, STUDY_ID, null);
+
+        verify(discordBotClient)
+                .assignRole(
+                        "bot-id",
+                        CREATED.discordRoleId(),
+                        CREATED.discordStudyId(),
+                        List.of("1327394882193880002"));
+    }
+
+    @Test
+    @DisplayName("기존_참여자_중_디스코드_미연동_계정은_role_부여를_건너뛴다")
+    void 기존_참여자_중_디스코드_미연동_계정은_role_부여를_건너뛴다() {
+        givenStudy("알고리즘 스터디");
+        givenAccount(DISCORD_USER_ID);
+        when(discordBotClient.createStudy("알고리즘 스터디", DISCORD_USER_ID)).thenReturn(CREATED);
+        givenStudyStillExists(true);
+
+        when(studyParticipantRepository.findAccountIdsByStudyIdAndStatusIn(
+                        eq(STUDY_ID), anyCollection()))
+                .thenReturn(List.of(2L));
+        when(accountRepository.findDiscordIdsByIdIn(anyCollection())).thenReturn(List.of());
+
+        service.link(ADMIN_ID, STUDY_ID, null);
+
+        verify(discordBotClient, never()).assignRole(any(), any(), any(), anyList());
     }
 
     /** 저장 직전 잠금 재확인. 트랜잭션 템플릿은 콜백을 그대로 실행한다. */

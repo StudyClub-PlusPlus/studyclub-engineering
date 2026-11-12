@@ -1,14 +1,16 @@
+import { analyticsHandlers } from "./analytics";
 import { registerHandlers, type MockHandlerGroup } from "../utils";
 import { accountsHandlers } from "./accounts";
 import { adminStatsHandlers } from "./admin-stats";
+import { attendanceHandlers } from "./attendance";
 import { meDiscordHandlers, discordLinkHandlers } from "./discord";
-import { notificationTemplatesHandlers } from "./notification-templates";
-import { notificationsHandlers } from "./notifications";
-import { rolePermissionsHandlers } from "./role-permissions";
 import { meStudiesHandlers } from "./me";
 import { studyMeetingsHandlers } from "./meetings";
-import { attendanceHandlers } from "./attendance";
+import { studyNoticesHandlers } from "./notices";
+import { notificationTemplatesHandlers } from "./notification-templates";
+import { notificationsHandlers } from "./notifications";
 import { adminParticipantsHandlers } from "./participants";
+import { rolePermissionsHandlers } from "./role-permissions";
 import {
   studiesHandlers,
   adminStudiesHandlers,
@@ -41,8 +43,10 @@ export {
   mockNotificationTemplates,
 } from "./notification-templates";
 export { notificationsHandlers, resetMockNotifications } from "./notifications";
+export { studyNoticesHandlers, resetMockNotices } from "./notices";
 
 export const mockHandlerGroups: MockHandlerGroup[] = [
+  analyticsHandlers,
   studiesHandlers,
   adminStudiesHandlers,
   adminStudyProgramsHandlers,
@@ -52,6 +56,7 @@ export const mockHandlerGroups: MockHandlerGroup[] = [
   rolePermissionsHandlers,
   meStudiesHandlers,
   studyMeetingsHandlers,
+  studyNoticesHandlers,
   attendanceHandlers,
   adminParticipantsHandlers,
   notificationTemplatesHandlers,

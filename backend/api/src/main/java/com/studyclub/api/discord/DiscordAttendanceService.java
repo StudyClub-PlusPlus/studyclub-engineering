@@ -11,6 +11,7 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.MeetingSchedule;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import java.time.Duration;
@@ -44,6 +45,9 @@ public class DiscordAttendanceService {
 
     /** 예정 회차를 자동으로 시작시켜 줄 여유 폭. 운영 정책이라 스키마와 무관하다. */
     static final Duration MEETING_PICK_WINDOW = Duration.ofHours(2);
+
+    /** 진행 중 회차로 인정하는 최대 경과 시간. 이 창을 넘긴 회차는 오래전에 끝난 것으로 보고 자동으로 닫는다. */
+    static final Duration MEETING_CLOSE_WINDOW = Duration.ofHours(4);
 
     private static final Set<ParticipantRole> LEADER_ROLES = EnumSet.of(ParticipantRole.LEADER);
 
@@ -187,7 +191,12 @@ public class DiscordAttendanceService {
             }
             groups.add(
                     new DiscordAttendanceResponse.MarkedGroup(
-                            groupId, meetingId, picked.get().started(), marked));
+                            groupId,
+                            picked.get().number(),
+                            picked.get().meeting().getMeetingType().name(),
+                            picked.get().meeting().getTitle(),
+                            picked.get().started(),
+                            marked));
         }
 
         return new DiscordAttendanceResponse(
@@ -203,6 +212,19 @@ public class DiscordAttendanceService {
         List<StudyMeeting> meetings =
                 studyMeetingRepository.findByStudyGroupIdForUpdate(studyGroupId);
         Instant now = Instant.now();
+        Map<Long, Integer> numbers = MeetingSchedule.numbersOf(meetings);
+
+        // 4시간 이상 열려 있는 회차는 오래전에 끝난 것으로 보고 닫는다.
+        // END_AT 이 없어서 영원히 「진행 중」에 걸려 2주차 이후 출석이 1주차에 쌓이는 버그를 막는다
+        // (finding:studyclub-audit-p0-2).
+        meetings.stream()
+                .filter(StudyMeeting::isInProgress)
+                .filter(
+                        m ->
+                                Duration.between(m.getStartAt(), now)
+                                                .compareTo(MEETING_CLOSE_WINDOW)
+                                        > 0)
+                .forEach(m -> m.end(now));
 
         // 후보가 여럿이어도 거절하지 않는다. 한 스터디가 보이스 채널을 두 개 쓰고 각각 세션이 열려 있는 건
         // 깨진 데이터가 아니라 정상 운영이다 (2026-09-24 #111 리뷰, 김민정). 가장 최근에 시작한 회차 =
@@ -212,7 +234,9 @@ public class DiscordAttendanceService {
                         .filter(StudyMeeting::isInProgress)
                         .max(Comparator.comparing(StudyMeeting::getStartAt));
         if (inProgress.isPresent()) {
-            return Optional.of(new PickedMeeting(inProgress.get(), false));
+            return Optional.of(
+                    new PickedMeeting(
+                            inProgress.get(), false, numbers.get(inProgress.get().getId())));
         }
 
         // 시작할 회차도 같은 규칙 — 예정 시각이 지금에 가장 가까운 것.
@@ -229,7 +253,7 @@ public class DiscordAttendanceService {
 
         StudyMeeting meeting = startable.get();
         meeting.start(now);
-        return Optional.of(new PickedMeeting(meeting, true));
+        return Optional.of(new PickedMeeting(meeting, true, numbers.get(meeting.getId())));
     }
 
     private boolean withinWindow(Instant scheduledAt, Instant now) {
@@ -250,5 +274,5 @@ public class DiscordAttendanceService {
             List<String> notParticipant,
             Map<String, Long> accountIdByDiscordId) {}
 
-    private record PickedMeeting(StudyMeeting meeting, boolean started) {}
+    private record PickedMeeting(StudyMeeting meeting, boolean started, int number) {}
 }

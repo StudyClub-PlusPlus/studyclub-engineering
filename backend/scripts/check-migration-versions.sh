@@ -94,6 +94,47 @@ if [ -s "$TMP/dups" ]; then
   fail=1
 fi
 
+# 3) 운영 main에서 업데이트할 수 있어야 한다. 빈 DB 검사는 뒤늦게 추가한 낮은 버전을 놓친다.
+# CI는 최신 main을 읽고, 로컬은 이미 받은 origin/main 또는 명시한 기준 ref를 쓴다.
+baseline_ref="${MIGRATION_BASELINE_REF:-}"
+if [ -z "$baseline_ref" ] && [ "${GITHUB_ACTIONS:-}" = true ]; then
+  git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main || exit 1
+  baseline_ref=origin/main
+elif [ -z "$baseline_ref" ] && git rev-parse --verify origin/main >/dev/null 2>&1; then
+  baseline_ref=origin/main
+fi
+
+if [ -n "$baseline_ref" ]; then
+  if ! git rev-parse --verify "$baseline_ref^{commit}" >/dev/null 2>&1; then
+    echo "✕ 마이그레이션 기준 ref를 찾을 수 없다: $baseline_ref" >&2
+    exit 1
+  fi
+  git ls-tree -r --name-only "$baseline_ref" -- backend \
+    | grep -E '/src/main/resources/db/migration/V[0-9]+__[^/]+\.sql$' \
+    > "$TMP/baseline-files" || true
+  if [ ! -s "$TMP/baseline-files" ]; then
+    echo "✕ 기준 ref에 마이그레이션이 없다: $baseline_ref" >&2
+    exit 1
+  fi
+  baseline_latest=$(sed -E 's|.*/V([0-9]+)__.*|\1|' "$TMP/baseline-files" | sort -n | tail -1)
+  while IFS= read -r f; do
+    git show "$baseline_ref:$f" > "$TMP/baseline.sql" || exit 1
+    if [ ! -f "$f" ] || ! cmp -s "$TMP/baseline.sql" "$f"; then
+      echo "✕ 운영 마이그레이션을 변경·삭제할 수 없다: $f ($baseline_ref)" >&2
+      fail=1
+    fi
+  done < "$TMP/baseline-files"
+  while IFS= read -r f; do
+    if grep -Fqx "$f" "$TMP/baseline-files"; then continue; fi
+    n=$(basename "$f" | sed -E 's/^V([^_]*)__.*/\1/')
+    case "$n" in '' | *[!0-9]*) continue ;; esac
+    if [ "$n" -le "$baseline_latest" ]; then
+      echo "✕ 새 마이그레이션은 운영 최신 V${baseline_latest}보다 커야 한다: $f" >&2
+      fail=1
+    fi
+  done < "$TMP/files"
+fi
+
 if [ "$fail" != 0 ]; then
   echo >&2
   echo "git 충돌이 없었다고 안전한 게 아니다 — Flyway 는 파일명을 안 본다." >&2

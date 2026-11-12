@@ -14,18 +14,19 @@ import {
   useGroupMeetings,
   useSaveRules,
   useSetKickoff,
+  useUpdateGroupTime,
   useUpdateMeetings,
-} from './api';
-import { distinctNames, useCrew } from './crew';
-import { GroupInfoCard } from './GroupInfoCard';
-import { GroupPicker } from './GroupPicker';
-import { useScheduleGroups, withServerTz } from './groups';
-import { GroupTimeDialog } from './GroupTimeDialog';
-import { groupTimeLabel, hasTime } from './meetings';
-import { ScheduleTable } from './ScheduleTable';
-import { saveGroupTime } from './store';
-import { zonedInstant } from './time';
+} from '@/features/schedule/api';
+import { distinctNames, useCrew } from '@/features/schedule/crew';
+import { GroupInfoCard } from '@/features/schedule/GroupInfoCard';
+import { GroupPicker } from '@/features/schedule/GroupPicker';
+import { useScheduleGroups, withServerTz } from '@/features/schedule/groups';
+import { GroupTimeDialog } from '@/features/schedule/GroupTimeDialog';
+import { groupTimeLabel, hasTime } from '@/features/schedule/meetings';
+import { ScheduleTable } from '@/features/schedule/ScheduleTable';
+import { zonedInstant } from '@/features/schedule/time';
 import type { ApiStudyDetail } from '@/features/studies/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /**
  * 일정 탭 — 반마다 회차를 만들고 고친다. 명세: playground `console/studies/[id]/spec.ts` 의 `SCHEDULE_SPEC`.
@@ -58,11 +59,8 @@ export function ScheduleTab({
   onStartedAdding?: () => void;
 }) {
   const studyId = detail.id;
-  /** 스터디 시간은 localStorage 라 렌더 트리거가 없다 — 바꿀 때마다 올려 다시 읽는다. */
-  const [rev, setRev] = useState(0);
-
   // 신청자 탭에서 만든 서버 반 — 둘 이상이면 반 칩이 선다
-  const { groups, error: groupsError } = useScheduleGroups(studyId, rev);
+  const { groups, error: groupsError } = useScheduleGroups(studyId);
   const picked = groups.find((g) => g.id === groupId) ?? groups[0];
   const serverGroupId = picked ? Number(picked.id) : undefined;
   const query = useGroupMeetings(studyId, serverGroupId);
@@ -101,20 +99,22 @@ export function ScheduleTab({
   const onTableDirty = useCallback((d: boolean) => setTableDirty(d), []);
   const onRulesDirty = useCallback((d: boolean) => setRulesDirty(d), []);
 
-  const tz = group?.time.tz ?? 'Asia/Seoul';
+  const displayTz = useDisplayTimeZone();
+  const tz = group?.time.tz ?? displayTz;
   const writeGroupId = serverGroupId ?? 0;
   const addMeetings = useAddMeetings(studyId, writeGroupId, tz);
   const updateMeetings = useUpdateMeetings(studyId, writeGroupId, tz);
   const deleteMeetings = useDeleteMeetings(studyId, writeGroupId);
   const saveRules = useSaveRules(studyId, writeGroupId);
   const setKickoff = useSetKickoff(studyId, writeGroupId);
+  const updateGroupTime = useUpdateGroupTime(studyId, writeGroupId);
   /** 서버가 막으면(403 · 409 · 400) 그 문구를 그대로 띄운다 — 표는 다시 읽어 서버 값으로 돌아간다. */
   const onError = (fallback: string) => (err: Error) => toast.error(err.message || fallback);
 
   // 반 목록(참여 명단)을 못 읽으면 빈 화면이 아니라 그 사실을 말한다
   if (!group) {
     return groupsError ? (
-      <p role='alert' className='card px-6 py-10 text-center text-sm text-fg-muted'>
+      <p role='alert' className='card px-6 py-10 text-center type-body-sm text-fg-muted'>
         {groupsError.message || '반 목록을 불러오지 못했습니다.'}
       </p>
     ) : null;
@@ -123,7 +123,7 @@ export function ScheduleTab({
     return (
       <div>
         <GroupPicker groups={groups} groupId={group.id} onPick={(id) => guard(() => onGroup(id))} />
-        <p role={query.isError ? 'alert' : 'status'} className='card px-6 py-10 text-center text-sm text-fg-muted'>
+        <p role={query.isError ? 'alert' : 'status'} className='card px-6 py-10 text-center type-body-sm text-fg-muted'>
           {query.isError ? query.error.message : '회차를 불러오는 중입니다.'}
         </p>
       </div>
@@ -137,8 +137,8 @@ export function ScheduleTab({
       {noTime ? (
         // 막 만든 반 — 언제 모일지 정해야 회차와 출석부가 생긴다
         <div className='card px-6 py-10 text-center'>
-          <p className='text-sm font-semibold text-fg'>아직 이 반의 스터디 시간이 없습니다.</p>
-          <p className='mt-1.5 text-sm text-fg-muted'>
+          <p className='type-label-lg text-fg'>아직 이 반의 스터디 시간이 없습니다.</p>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>
             요일 · 시각을 정한 뒤 일정 표의 「회차 추가」로 회차를 만듭니다. 그 요일 · 시각이 매주 반복으로 채워집니다.
           </p>
           <Button size='sm' className='mt-4' leadingIcon={<CalendarPlus size={15} />} onClick={() => setTimeOpen(true)}>
@@ -191,9 +191,11 @@ export function ScheduleTab({
           group={group}
           onClose={() => setTimeOpen(false)}
           onSave={(time) => {
-            saveGroupTime(studyId, group.id, time);
             setTimeOpen(false);
-            setRev((n) => n + 1);
+            updateGroupTime.mutate(
+              { weekdays: time.weekdays, time: time.time, tz: time.tz },
+              { onError: onError('스터디 시간을 저장하지 못했습니다.') },
+            );
           }}
         />
       )}

@@ -225,7 +225,7 @@ def test_send_alert_message_without_configuration_conflicts(missing, tmp_path):
     response = _post(_client(_bot(FakeGuild()), tmp_path, **{missing: None}))
 
     assert response.status_code == 409
-    assert missing.upper() in response.json()["detail"]
+    assert f"DISCORD_CONFIG_{missing.upper()}" in response.json()["detail"]
 
 
 def test_send_alert_message_with_unknown_guild_is_not_found(tmp_path):

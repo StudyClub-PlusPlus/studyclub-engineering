@@ -81,6 +81,10 @@ class StudyThumbnailIntegrationTest {
                         thumbnailFileId,
                         Instant.now().plus(7, ChronoUnit.DAYS),
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null));
     }
 

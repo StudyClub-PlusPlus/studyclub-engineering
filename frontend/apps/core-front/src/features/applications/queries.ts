@@ -1,21 +1,8 @@
 // 크루 스터디 신청 — 신청 폼 조회·내 신청 상태 조회·신청서 제출. 키·fetcher·훅을 한곳에. 브라우저가 백엔드를 직접 부른다.
-import type { ApiStudyApplicationForm } from '@studyclub/mock/msw';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { http } from '@/lib/http';
-
-export type ApiMyApplication = {
-  applied: boolean;
-  applicationId: number | null;
-  submittedAt: string | null;
-};
-
-export type SubmitApplicationPayload = {
-  discordNickname: string;
-  availableDays: string[];
-  scheduleAgreed?: boolean;
-  answers: Record<string, string | string[]>;
-};
+import { getApplicationForm, getMyApplication, submitApplication } from './repository';
+import type { ApiMyApplication, SubmitApplicationPayload } from './types';
 
 export const applicationKeys = {
   all: ['applications'] as const,
@@ -30,7 +17,7 @@ export const applicationKeys = {
 export function useStudyApplicationForm(studyId: number, enabled = true) {
   return useQuery({
     queryKey: applicationKeys.form(studyId),
-    queryFn: () => http<ApiStudyApplicationForm>(`/api/studies/${studyId}/application-form`),
+    queryFn: () => getApplicationForm(studyId),
     enabled: enabled && studyId > 0,
     staleTime: 60 * 1000,
     retry: false,
@@ -44,7 +31,7 @@ export function useStudyApplicationForm(studyId: number, enabled = true) {
 export function useMyApplication(studyId: number, enabled = true) {
   return useQuery({
     queryKey: applicationKeys.my(studyId),
-    queryFn: () => http<ApiMyApplication>(`/api/studies/${studyId}/applications/me`),
+    queryFn: () => getMyApplication(studyId),
     enabled: enabled && studyId > 0,
     staleTime: 60 * 1000,
     retry: false,
@@ -60,11 +47,7 @@ export function useSubmitApplication(studyId: number) {
 
   return useMutation({
     mutationFn: (payload: SubmitApplicationPayload) =>
-      http<null>(`/api/studies/${studyId}/applications`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
+      submitApplication(studyId, payload),
     onSuccess: () => {
       // 신청 완료 시 내 신청 여부 캐시를 즉시 '신청 완료' 상태로 반영
       queryClient.setQueryData<ApiMyApplication>(applicationKeys.my(studyId), {

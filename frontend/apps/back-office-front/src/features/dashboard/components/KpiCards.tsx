@@ -38,7 +38,7 @@ function valueOf<T>(field: Field<T>, format: (value: T) => ReactNode): ReactNode
       </>
     );
   }
-  if (field.status === 'error') return <span className='text-sm font-medium text-fg-muted'>{LOAD_FAILED}</span>;
+  if (field.status === 'error') return <span className='type-label-lg text-fg-muted'>{LOAD_FAILED}</span>;
   return field.value === null ? '—' : format(field.value);
 }
 
@@ -58,7 +58,7 @@ function AttendanceDelta({ comparison }: { comparison: ApiAttendanceComparison |
   const color = tone === 'up' ? 'text-success-fg' : tone === 'down' ? 'text-danger-fg' : 'text-fg-muted';
   const word = tone === 'up' ? '상승' : tone === 'down' ? '하락' : '변화 없음';
   return (
-    <span className={`tnum text-sm font-bold ${color}`} title='전주 대비'>
+    <span className={`tnum type-label-lg ${color}`} title='전주 대비'>
       <span aria-hidden='true'>{text}</span>
       <span className='sr-only'>
         전주 대비 {text.replace(/[▲▼–]/g, '')} {word}

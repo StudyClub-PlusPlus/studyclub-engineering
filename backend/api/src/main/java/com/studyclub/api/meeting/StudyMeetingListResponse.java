@@ -21,13 +21,14 @@ public record StudyMeetingListResponse(
             String timezone,
             String startTime,
             String navigatorName,
-            String rules) {}
+            String rules,
+            List<String> daysOfWeek) {}
 
     /** {@code participantId} 는 명부에 없는 (만든) 캡틴이면 null. {@code canEdit} 이 true 면 표를 고칠 수 있게 연다. */
     public record MeView(Long participantId, boolean canEdit) {}
 
-    /** 발표자 드롭다운 후보 — 그 분반 활성 참여자, 이름순. */
-    public record ParticipantView(Long participantId, String name) {}
+    /** 발표자 드롭다운 후보 — 그 분반 활성 참여자, 이름순. {@code discordNickname} 은 연동 안 했으면 null (share D6). */
+    public record ParticipantView(Long participantId, String name, String discordNickname) {}
 
     /** 발표자 칸. {@code active} 가 false 면 참여를 중단한 사람 — 화면은 「이름 (참여 종료)」. */
     public record PresenterView(Long participantId, String name, boolean active) {}

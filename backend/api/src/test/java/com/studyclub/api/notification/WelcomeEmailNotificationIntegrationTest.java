@@ -64,12 +64,12 @@ class WelcomeEmailNotificationIntegrationTest {
     /** Flyway 가 꺼진 테스트 환경(H2, ddl-auto=create-drop)이라 마이그레이션이 시딩하는 웰컴메일 템플릿이 없다 — 직접 심는다. */
     @BeforeEach
     void seedWelcomeEmailTemplateIfMissing() {
-        boolean exists =
+        boolean missing =
                 notificationTemplateRepository
-                        .findByEventTypeAndChannel(
+                        .findAllByEventTypeAndChannelOrderByIdAsc(
                                 NotificationEventType.USER_REGISTERED, NotificationChannel.EMAIL)
-                        .isPresent();
-        if (!exists) {
+                        .isEmpty();
+        if (missing) {
             notificationTemplateRepository.save(
                     new NotificationTemplate(
                             NotificationEventType.USER_REGISTERED,
@@ -130,6 +130,56 @@ class WelcomeEmailNotificationIntegrationTest {
         assertThat(notification.getRecipientValue()).isEqualTo(account.getEmail());
         assertThat(notification.getStatus()).isEqualTo(NotificationStatus.PENDING);
         assertThat(notification.getPayload()).containsEntry("nickname", nickname);
+    }
+
+    @Test
+    @DisplayName("같은 조건에 템플릿이 둘이면 가입 한 번에 알림 행이 둘 생긴다 — 템플릿마다 한 행, 닉네임 스냅샷은 같다")
+    void onboardingCompletion_createsOneRowPerTemplate() {
+        NotificationTemplate second =
+                notificationTemplateRepository.save(
+                        new NotificationTemplate(
+                                NotificationEventType.USER_REGISTERED,
+                                NotificationChannel.EMAIL,
+                                "첫 스터디를 찾아보세요",
+                                "안녕하세요, {{nickname}}님."));
+        try {
+            String nickname = "n" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+            Account account = seedUnonboardedAccount();
+
+            ResponseEntity<Map> response =
+                    testRestTemplate.exchange(
+                            "/accounts/onboarding",
+                            HttpMethod.POST,
+                            authenticatedBody(
+                                    account,
+                                    Map.of(
+                                            "age14Confirmed", true,
+                                            "termsOfServiceAgreed", true,
+                                            "privacyPolicyAgreed", true,
+                                            "marketingAgreed", false,
+                                            "nickname", nickname,
+                                            "timeZone", "Asia/Seoul")),
+                            Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+            List<Notification> notifications =
+                    notificationRepository.findAllByOrderByCreatedAtDesc().stream()
+                            .filter(n -> account.getId().equals(n.getRecipientUserId()))
+                            .toList();
+            assertThat(notifications).hasSize(2);
+            assertThat(notifications.stream().map(Notification::getTemplateId).distinct())
+                    .hasSize(2)
+                    .contains(second.getId());
+            assertThat(notifications)
+                    .allSatisfy(
+                            n -> {
+                                assertThat(n.getStatus()).isEqualTo(NotificationStatus.PENDING);
+                                assertThat(n.getRecipientValue()).isEqualTo(account.getEmail());
+                                assertThat(n.getPayload()).containsEntry("nickname", nickname);
+                            });
+        } finally {
+            notificationTemplateRepository.deleteById(second.getId());
+        }
     }
 
     @Test

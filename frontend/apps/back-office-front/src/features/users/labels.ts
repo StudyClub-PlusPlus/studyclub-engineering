@@ -32,7 +32,6 @@ export const TAB_OPTIONS: { value: UserRole; label: string }[] = [
 export const BLOCKED_REASON_MESSAGE: Record<RoleChangeBlockedReason, string> = {
   CANNOT_CHANGE_OWN_ROLE: '자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요.',
   LAST_ADMIN_REQUIRED: '마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요.',
-  DISCORD_LINK_REQUIRED: '디스코드를 연동한 회원만 캡틴이 될 수 있습니다.',
 };
 
 /**
@@ -52,3 +51,5 @@ export function displayName(account: Pick<ApiAdminAccount, 'name' | 'maskedEmail
   if (account.name) return account.name;
   return account.maskedEmail.split('@')[0] || account.maskedEmail;
 }
+
+export const DORMANCY_DESCRIPTION = '최근 180일간 스터디 참여 및 로그인 기록이 없는 회원';

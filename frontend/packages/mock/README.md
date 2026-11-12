@@ -1,6 +1,6 @@
 # @studyclub/mock
 
-StudyClub 모노레포의 공유 목 데이터 + 도메인 타입/상수/유틸 + MSW(Mock Service Worker) 계층 패키지입니다.
+StudyClub 모노레포의 공유 목 데이터 + MSW(Mock Service Worker) 계층 패키지입니다. 공용 타입과 함수는 `@studyclub/types`, `@studyclub/utils`에 있습니다.
 
 ## 디렉토리 구조
 
@@ -9,23 +9,11 @@ frontend/packages/mock/
 ├── package.json
 ├── tsconfig.json
 └── src/
-    ├── index.ts                     # 패키지 최상위 진입점 (types, data re-export)
-    ├── types.ts                     # 하위 호환성을 위한 types, constants, utils 통합 export
+    ├── index.ts                     # mock 데이터·설정 진입점
     │
     ├── constants/                   # 상수 정의
-    │   ├── study.ts                 # 카테고리 표시명, 신청 폼 템플릿 등
+    │   ├── study.ts                 # 예시 신청 폼 템플릿
     │   ├── community.ts
-    │   └── index.ts
-    │
-    ├── types/                       # 도메인 모델 인터페이스/타입 정의
-    │   ├── study.ts                 # Study, StudyProgram, Recruitment 등
-    │   ├── crew.ts
-    │   ├── community.ts
-    │   └── index.ts
-    │
-    ├── utils/                       # 날짜/텍스트 포맷팅 등 유틸 함수
-    │   ├── study.ts
-    │   ├── crew.ts
     │   └── index.ts
     │
     ├── data/                        # 순수 Mock 데이터 소스
@@ -84,5 +72,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
 - **스터디**: `src/data/studies/` (`recruiting.ts`, `ongoing.ts`, `closed-*.ts`)
 - **크루(멤버·운영진)**: `src/data/crew.ts`
 - **커뮤니티(행사·공지·사이트정보)**: `src/data/community.ts`
-- **타입 및 상수**: `src/types/`, `src/constants/`
+- **공용 타입·함수·상수**: `../types/src/`, `../utils/src/`
+- **예시 신청 폼·사이트 설정**: `src/constants/`
 - **MSW 핸들러 및 API DTO**: `src/msw/handlers/`, `src/msw/data.ts`
+
+### 공용 코드의 소유권
+
+- `@studyclub/types`: `Locale`, `L10n`, 스터디·참여자·커뮤니티 모델 타입. 실행 코드나 mock 데이터에 의존하지 않는다.
+- `@studyclub/utils`: 날짜 변환, 스터디 표시 상태, 출석 계산, 카테고리·지역 상수, 브라우저 JSON 저장소, 옛 도메인 리다이렉트. 공용 타입과 Zod를 참조한다.
+- `@studyclub/mock`: 예시 데이터·신청 폼·사이트 설정과 MSW 핸들러. 공용 타입·함수를 재수출하지 않는다. MSW 응답 DTO·변환 코드는 현재 `mock/msw`에 유지한다.
+- 인증, HTTP, 쿠키 정책, React 훅 등 앱 동작에 의존하는 코드는 각 앱에 둔다.
+
+```ts
+import type { Locale, L10n, Study } from '@studyclub/types';
+import { readJSON, toISODate, CATEGORY_DISPLAY } from '@studyclub/utils';
+import { studies } from '@studyclub/mock';
+```

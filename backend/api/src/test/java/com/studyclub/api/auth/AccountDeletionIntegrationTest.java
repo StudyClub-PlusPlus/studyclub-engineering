@@ -5,12 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountConsent;
 import com.studyclub.domain.account.AccountConsentRepository;
+import com.studyclub.domain.account.AccountDeleted;
 import com.studyclub.domain.account.AccountIdentity;
 import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.AccountLeaveReasonRepository;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.ConsentType;
 import com.studyclub.domain.account.Issuer;
+import com.studyclub.domain.account.RefreshToken;
+import com.studyclub.domain.account.RefreshTokenRepository;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
@@ -27,17 +30,20 @@ import com.studyclub.domain.proposal.StudyProposalRepository;
 import com.studyclub.domain.proposal.StudyProposalStatus;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
+import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.notification.Notification;
 import com.studyclub.notification.NotificationChannel;
 import com.studyclub.notification.NotificationCreationService;
 import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,11 +51,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * DELETE /api/me — 성공 1건 + 실패 코어 (testing-guide.md). specs/user-leave/spec.md 의 처리 순서를 그대로 검증한다.
@@ -72,6 +81,10 @@ class AccountDeletionIntegrationTest {
     @Autowired StudyApplicationRepository studyApplicationRepository;
     @Autowired NotificationRepository notificationRepository;
     @Autowired NotificationCreationService notificationCreationService;
+    @Autowired DeletedEvents deletedEvents;
+    @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired StudyRepository studyRepository;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void useModernHttpClient() {
@@ -120,6 +133,20 @@ class AccountDeletionIntegrationTest {
                         .participantRole(ParticipantRole.LEADER)
                         .joinedAt(Instant.now())
                         .build());
+        // 운영자 알림 대상 — PAUSED 는 명부에 남아 있어 싣고, 이미 하차한 WITHDRAWN 은 뺀다.
+        for (ParticipantStatus status :
+                List.of(ParticipantStatus.PAUSED, ParticipantStatus.WITHDRAWN)) {
+            Long studyId = status == ParticipantStatus.PAUSED ? 9004L : 9005L;
+            studyParticipantRepository.save(
+                    StudyParticipant.builder()
+                            .accountId(accountId)
+                            .studyGroupId(studyId)
+                            .studyId(studyId)
+                            .status(status)
+                            .participantRole(ParticipantRole.MEMBER)
+                            .joinedAt(Instant.now())
+                            .build());
+        }
         studyBookmarkRepository.save(
                 StudyBookmark.builder().accountId(accountId).studyId(9002L).build());
 
@@ -231,6 +258,54 @@ class AccountDeletionIntegrationTest {
         assertThat(reloadedNotification.getRecipientValue()).isNotEqualTo(account.getEmail());
         assertThat(reloadedNotification.getPayload().get("nickname")).isNull();
         assertThat(reloadedNotification.getStatus()).isEqualTo(NotificationStatus.CANCELLED);
+
+        // 운영자 알림용 이벤트 — 지우기 전 계정 값과 명부에 있던 스터디를 싣는다.
+        assertThat(deletedEvents.received)
+                .filteredOn(e -> e.accountId().equals(accountId))
+                .singleElement()
+                .satisfies(
+                        e -> {
+                            assertThat(e.nickname()).isEqualTo(account.getNickname());
+                            assertThat(e.discordUserId()).isNull();
+                            assertThat(e.studyIds()).containsExactlyInAnyOrder(9001L, 9004L);
+                            assertThat(e.navigator()).isTrue();
+                        });
+    }
+
+    @Test
+    @DisplayName("성공 - 같은 조건에 템플릿이 여럿이라 한 사람에게 알림 행이 여러 개여도 모두 비식별화되고 PENDING 은 모두 취소된다")
+    void deletesAccountRedactsEveryNotificationRowOfTheRecipient() {
+        Account account = seedAccount();
+        Long accountId = account.getId();
+        Notification firstTemplateRow = pendingWelcome(account, 1L);
+        Notification secondTemplateRow = pendingWelcome(account, 2L);
+
+        var response =
+                rest.exchange(
+                        "/api/me",
+                        HttpMethod.DELETE,
+                        authenticatedBody(account, Map.of("reason", "NO_DESIRED_STUDY")),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        for (Notification row : List.of(firstTemplateRow, secondTemplateRow)) {
+            Notification reloaded = notificationRepository.findById(row.getId()).orElseThrow();
+            assertThat(reloaded.getRecipientValue()).isNotEqualTo(account.getEmail());
+            assertThat(reloaded.getPayload().get("nickname")).isNull();
+            assertThat(reloaded.getStatus()).isEqualTo(NotificationStatus.CANCELLED);
+            assertThat(reloaded.getRecipientUserId()).isEqualTo(accountId);
+        }
+    }
+
+    private Notification pendingWelcome(Account account, Long templateId) {
+        return notificationRepository.save(
+                Notification.pendingImmediate(
+                        NotificationEventType.USER_REGISTERED,
+                        NotificationChannel.EMAIL,
+                        account.getEmail(),
+                        account.getId(),
+                        templateId,
+                        Map.of("nickname", account.getNickname())));
     }
 
     @Test
@@ -344,6 +419,11 @@ class AccountDeletionIntegrationTest {
     void refreshTokenIsRejectedAfterDeletion() {
         Account account = seedAccount();
         String refreshToken = jwt.issueRefresh(String.valueOf(account.getId()), account.getEmail());
+        refreshTokenRepository.save(
+                new RefreshToken(
+                        JwtService.tokenHash(refreshToken),
+                        account.getId(),
+                        Instant.now().plusSeconds(jwt.refreshTtlSeconds())));
         Map<String, String> body = Map.of("refreshToken", refreshToken);
 
         var before = rest.postForEntity("/auth/refresh", body, Map.class);
@@ -397,5 +477,77 @@ class AccountDeletionIntegrationTest {
 
         StudyMeeting reloaded = studyMeetingRepository.findById(meeting.getId()).orElseThrow();
         assertThat(reloaded.getPresenter1ParticipantId()).isNull();
+    }
+
+    @Test
+    @DisplayName("성공 - 탈퇴한 캡틴이 만든 스터디의 CREATED_BY 가 null 로 초기화돼 다른 캡틴이 담당 캡틴 전용 기능을 쓸 수 있다")
+    void deletionClearsCreatedByOnOwnedStudies() {
+        Account captain = seedAccount();
+        Long captainId = captain.getId();
+
+        // 탈퇴할 캡틴이 만든 스터디 2개, 다른 계정이 만든 스터디 1개 삽입
+        Long studyA = 9901L;
+        Long studyB = 9902L;
+        Long studyOther = 9903L;
+        Account other = seedAccount();
+        insertStudyWithCreatedBy(studyA, captainId);
+        insertStudyWithCreatedBy(studyB, captainId);
+        insertStudyWithCreatedBy(studyOther, other.getId());
+
+        rest.exchange("/api/me", HttpMethod.DELETE, authenticatedBody(captain, null), Void.class);
+
+        // 탈퇴한 계정이 만든 스터디 → CREATED_BY = null
+        assertThat(studyRepository.findById(studyA))
+                .hasValueSatisfying(s -> assertThat(s.getCreatedBy()).isNull());
+        assertThat(studyRepository.findById(studyB))
+                .hasValueSatisfying(s -> assertThat(s.getCreatedBy()).isNull());
+        // 다른 계정이 만든 스터디 → 그대로
+        assertThat(studyRepository.findById(studyOther))
+                .hasValueSatisfying(s -> assertThat(s.getCreatedBy()).isEqualTo(other.getId()));
+
+        // 정리
+        jdbcTemplate.update("DELETE FROM STUDY WHERE ID IN (?, ?, ?)", studyA, studyB, studyOther);
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PROGRAM WHERE ID IN (?, ?, ?)", studyA, studyB, studyOther);
+    }
+
+    private void insertStudyWithCreatedBy(Long id, Long createdBy) {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, 'STUDY', ?, ?)",
+                id,
+                "테스트 스터디 " + id,
+                now,
+                now);
+        jdbcTemplate.update(
+                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, CATEGORY, STATUS,"
+                        + " CREATED_BY, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, 'ALGORITHM', 'OPEN', ?, ?, ?)",
+                id,
+                id,
+                "테스트 스터디 " + id,
+                "요약",
+                createdBy,
+                now,
+                now);
+    }
+
+    /** 요청은 서버 스레드에서 처리돼 {@code @RecordApplicationEvents} 로는 못 잡는다 — 커밋 뒤 구독자로 받는다. */
+    @TestConfiguration
+    static class EventCapture {
+        @Bean
+        DeletedEvents deletedEvents() {
+            return new DeletedEvents();
+        }
+    }
+
+    static class DeletedEvents {
+        final List<AccountDeleted> received = new CopyOnWriteArrayList<>();
+
+        @TransactionalEventListener
+        void on(AccountDeleted event) {
+            received.add(event);
+        }
     }
 }

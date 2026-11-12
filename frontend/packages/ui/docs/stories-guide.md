@@ -20,7 +20,7 @@ packages/ui/src/
 모든 stories 파일은 **`meta` export default + named Story export** 패턴을 따른다.
 
 ```tsx
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { MyComponent } from './MyComponent';
 
 // ① meta — 컴포넌트 정보 + 공통 args

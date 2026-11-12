@@ -137,5 +137,47 @@ export const adminParticipantsHandlers = mockClient.createHandlerGroup(
         },
       ],
     },
+    {
+      method: "PATCH",
+      path: "/:id/participants",
+      presets: [
+        {
+          label: "성공 (반 · 역할 반영)",
+          status: 200,
+          // 바꾼 값을 CREW 에 남긴다. 저장 뒤 다시 불러와도 그대로 보이게 (새로고침하면 초기화).
+          response: async ({ request }: MockResolveContext) => {
+            const { changes } = (await request.json()) as {
+              changes: {
+                participantId: number;
+                groupId?: number;
+                participantRole?: "LEADER" | "MEMBER";
+              }[];
+            };
+            return {
+              participants: changes.map((c) => {
+                const row = CREW.find((p) => p.participantId === c.participantId);
+                if (row) {
+                  row.groupId = c.groupId ?? row.groupId;
+                  row.participantRole = c.participantRole ?? row.participantRole;
+                }
+                return {
+                  participantId: c.participantId,
+                  participantRole: row?.participantRole ?? c.participantRole,
+                  groupId: row?.groupId ?? c.groupId,
+                };
+              }),
+            };
+          },
+        },
+        {
+          label: "비활성 크루 거절",
+          status: 409,
+          response: {
+            errorCode: "PARTICIPANT_NOT_ACTIVE",
+            errorMessage: "participantId 4: 활성 상태의 크루만 변경할 수 있습니다.",
+          },
+        },
+      ],
+    },
   ],
 );

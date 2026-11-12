@@ -46,6 +46,8 @@ class AdminStudyListIntegrationTest {
     private static final Long CLUB_STUDY_ID = 9603L;
     // 클럽의 다음 기수 — CLUB_STUDY_ID 와 같은 프로그램에 붙는다
     private static final Long NEXT_COHORT_ID = 9604L;
+    // participant 삽입에 사용할 그룹 ID — FK 제약 충족용
+    private static final Long STUDY_GROUP_ID = 9611L;
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
@@ -78,6 +80,8 @@ class AdminStudyListIntegrationTest {
         insertRecruitment(STUDY_ID, 20, now);
         insertRecruitment(DRAFT_STUDY_ID, null, now);
         insertRecruitment(CLUB_STUDY_ID, 15, now);
+        // participant 삽입 테스트를 위한 그룹 — FK 제약 충족
+        insertGroup(STUDY_GROUP_ID, STUDY_ID, now);
     }
 
     @Test
@@ -96,8 +100,9 @@ class AdminStudyListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 응답에 제목·상태·카테고리·종류·모집정원이 조립된다")
+    @DisplayName("성공 - 응답에 제목·상태·카테고리·종류·모집정원·작성자가 조립된다. 시간대는 고른 값 그대로(없으면 null)")
     void responseFieldsAreAssembled() {
+        jdbcTemplate.update("UPDATE STUDY SET CREATED_BY = ? WHERE ID = ?", ADMIN_ID, STUDY_ID);
         var response =
                 rest.exchange(
                         "/api/admin/studies",
@@ -115,9 +120,13 @@ class AdminStudyListIntegrationTest {
                 .containsEntry("recruitmentCapacity", 20)
                 .containsEntry("hasApplicationForm", true)
                 .containsKeys("recruitmentStartAt", "recruitDeadlineAt")
+                .containsEntry("authorNickname", "studylist_" + ADMIN_ID)
+                .containsEntry("timezone", null)
                 .doesNotContainKey("leaderNickname");
 
         Map<String, Object> draft = itemById(response.getBody(), DRAFT_STUDY_ID);
+        // 작성자가 기록되지 않은 스터디 — 화면은 「—」
+        assertThat(draft).containsEntry("authorNickname", null);
         assertThat(draft).containsEntry("hasApplicationForm", false);
     }
 
@@ -298,13 +307,12 @@ class AdminStudyListIntegrationTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    @DisplayName("성공 - 최신 모집 회차 신청서 수가 정원에 닿으면 recruitStatus 는 RECRUIT_CLOSED 다")
-    void recruitClosedWhenApplicationsReachCapacity() {
+    @DisplayName("성공 - 명부 ACTIVE 가 정원에 닿으면 recruitStatus 는 RECRUIT_CLOSED 다 (결정 D4-A)")
+    void recruitClosedWhenRosterReachesCapacity() {
         Timestamp now = Timestamp.from(Instant.now());
         setCapacity(STUDY_ID, 2);
-        long recruitmentId = latestRecruitmentId(STUDY_ID);
-        insertApplication(ADMIN_ID, recruitmentId, now);
-        insertApplication(MEMBER_ID, recruitmentId, now);
+        insertParticipant(ADMIN_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
+        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
 
         Map<String, Object> study = itemById(listStudies(), STUDY_ID);
 
@@ -314,12 +322,12 @@ class AdminStudyListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 명부 ACTIVE 만으로는 정원을 채우지 않는다 — 신청서 수 기준이다")
-    void activeRosterDoesNotCloseRecruitmentAlone() {
+    @DisplayName("성공 - 명부 WITHDRAWN 은 정원을 채우지 않는다 — 하차 후 빈자리가 열린다 (결정 D4-A)")
+    void withdrawnRosterDoesNotFillCapacity() {
         Timestamp now = Timestamp.from(Instant.now());
         setCapacity(STUDY_ID, 2);
-        insertParticipant(ADMIN_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
-        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
+        insertParticipant(ADMIN_ID, STUDY_ID, ParticipantStatus.WITHDRAWN, now);
+        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.WITHDRAWN, now);
 
         Map<String, Object> study = itemById(listStudies(), STUDY_ID);
 
@@ -368,6 +376,9 @@ class AdminStudyListIntegrationTest {
                 "studyId",
                 "visibility",
                 "recruitStatus",
+                "recruitFilter",
+                "keyword",
+                "hasApplicationForm",
                 "sort",
                 "offset",
                 "limit"
@@ -383,6 +394,45 @@ class AdminStudyListIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "recruitFilter=UNKNOWN",
+                "recruitFilter=NOT_RECRUITING&recruitStatus=RECRUITING",
+                "hasApplicationForm=yes",
+                "hasApplicationForm=1",
+                "hasApplicationForm=bad",
+                "sort=UNKNOWN",
+                "limit=101",
+                "offset=-1"
+            })
+    @DisplayName("실패 - 잘못된 필터·중복 모집 축·페이지 범위는 400이다")
+    void rejectsInvalidListQueries(String query) {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?" + query,
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @Test
+    @DisplayName("성공 - 관리자 전용 마감 필터는 DRAFT도 포함하고 상태 필터와 함께 적용한다")
+    void broadClosedFilterAndStatus() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?recruitFilter=NOT_RECRUITING&status=DRAFT&keyword=드래프트&sort=STATUS_ASC",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(studyIds(response.getBody())).containsExactly(DRAFT_STUDY_ID);
+        assertThat(itemById(response.getBody(), DRAFT_STUDY_ID))
+                .containsEntry("recruitStatus", null);
     }
 
     @Test
@@ -442,7 +492,7 @@ class AdminStudyListIntegrationTest {
                         + " PARTICIPANT_ROLE, JOINED_AT, CREATED_AT, UPDATED_AT)"
                         + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 accountId,
-                0L,
+                STUDY_GROUP_ID,
                 studyId,
                 status.name(),
                 ParticipantRole.MEMBER.name(),
@@ -487,6 +537,7 @@ class AdminStudyListIntegrationTest {
                 STUDY_ID,
                 DRAFT_STUDY_ID,
                 CLUB_STUDY_ID);
+        jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE ID = ?", STUDY_GROUP_ID);
         jdbcTemplate.update(
                 "DELETE FROM STUDY_RECRUITMENT WHERE STUDY_ID IN (?, ?, ?)",
                 STUDY_ID,
@@ -571,6 +622,17 @@ class AdminStudyListIntegrationTest {
     private long latestRecruitmentId(Long studyId) {
         return jdbcTemplate.queryForObject(
                 "SELECT MAX(ID) FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?", Long.class, studyId);
+    }
+
+    private void insertGroup(Long id, Long studyId, Timestamp now) {
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_GROUP (ID, STUDY_ID, NAME, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?)",
+                id,
+                studyId,
+                "1반",
+                now,
+                now);
     }
 
     private void insertApplication(Long accountId, long recruitmentId, Timestamp now) {

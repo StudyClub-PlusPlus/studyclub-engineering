@@ -40,7 +40,7 @@ export const Interactive: Story = {
 export const PaddingNone: Story = {
   render: (args) => (
     <Card {...args} padding='none'>
-      <div className='p-4 text-sm'>padding="none" — 직접 내부에서 패딩 제어</div>
+      <div className='p-4 type-body-sm'>padding="none" — 직접 내부에서 패딩 제어</div>
     </Card>
   ),
 };
@@ -52,8 +52,8 @@ export const PaddingLg: Story = {
 export const WithContent: Story = {
   render: () => (
     <Card interactive className='w-72'>
-      <p className='text-sm font-semibold text-neutral-900'>알고리즘 스터디</p>
-      <p className='mt-1 text-xs text-fg-muted'>매주 화요일 · 온라인</p>
+      <p className='type-label-lg text-neutral-900'>알고리즘 스터디</p>
+      <p className='mt-1 type-label-sm text-fg-muted'>매주 화요일 · 온라인</p>
     </Card>
   ),
 };

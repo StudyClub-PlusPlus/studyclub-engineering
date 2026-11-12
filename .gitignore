@@ -36,3 +36,6 @@ serviceAccount*.json
 .claude/
 .envrc
 .pnpm-store/
+
+# e2e 가 APP_DIST_DIR 로 따로 띄우는 Next 빌드 폴더 (.next-e2e 등)
+.next-*/

@@ -101,19 +101,19 @@ function Quadrant<T extends { id: string; title: string }>({
   return (
     <div data-anno={anno} className={`flex flex-col px-5 py-4 ${className}`} style={{ minHeight: QUADRANT_MIN_H }}>
       <div className='flex h-6 items-baseline gap-2'>
-        <h3 className='flex items-center gap-1.5 text-[15px] font-bold'>
+        <h3 className='flex items-center gap-1.5 type-title-md'>
           {icon}
           {title}
         </h3>
-        <span className='tnum text-[13px] font-bold text-fg-secondary'>{count}</span>
-        {note && <span className='text-xs text-fg-muted'>{note}</span>}
-        <Link href={href} className='ml-auto text-xs font-medium text-brand'>
+        <span className='tnum type-label-lg text-fg-secondary'>{count}</span>
+        {note && <span className='type-label-sm text-fg-muted'>{note}</span>}
+        <Link href={href} className='ml-auto type-label-sm text-brand'>
           전체 보기
         </Link>
       </div>
 
       {items.length === 0 ? (
-        <p className='flex flex-1 items-center justify-center text-sm text-fg-muted'>{empty}</p>
+        <p className='flex flex-1 items-center justify-center type-body-sm text-fg-muted'>{empty}</p>
       ) : (
         <ul className='mt-2'>
           {shown.map((s) => (
@@ -123,7 +123,7 @@ function Quadrant<T extends { id: string; title: string }>({
                 title={s.title}
                 className='flex h-11 items-center gap-3 rounded-control px-1 transition-colors hover:bg-surface-2'
               >
-                <span className='min-w-0 flex-1 truncate text-sm font-semibold'>{s.title}</span>
+                <span className='min-w-0 flex-1 truncate type-label-lg'>{s.title}</span>
                 {row(s)}
               </Link>
             </li>
@@ -132,7 +132,7 @@ function Quadrant<T extends { id: string; title: string }>({
             <li data-anno='3-4'>
               <Link
                 href={href}
-                className='flex h-11 items-center justify-center text-xs text-fg-muted hover:text-fg-secondary'
+                className='flex h-11 items-center justify-center type-label-sm text-fg-muted hover:text-fg-secondary'
               >
                 외 {rest}개 스터디
               </Link>
@@ -146,7 +146,7 @@ function Quadrant<T extends { id: string; title: string }>({
 
 /** 모집 마감 칸. 날짜만으로는 급한지 알 수 없어 남은 일수를 같이 적는다. */
 function DeadlineCell({ deadline }: { deadline?: string }) {
-  if (deadline === undefined) return <span className='w-[110px] shrink-0 text-right text-sm text-fg-muted'>—</span>;
+  if (deadline === undefined) return <span className='w-[110px] shrink-0 text-right type-body-sm text-fg-muted'>—</span>;
   const d = daysUntil(deadline);
   // 임박을 따로 가르지 않는다 — 운영 화면은 남은 날을 숫자로 읽는 자리고, 재촉은 사용자 사이트의 일이다.
   // 지난 것만 구분한다 — 그건 이미 벌어진 일이라 눈에 띄어야 한다.
@@ -154,7 +154,7 @@ function DeadlineCell({ deadline }: { deadline?: string }) {
   // 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이고, 여기 쓰면 끝난 것으로 읽힌다
   const label = d < 0 ? '마감 경과' : `D-${d}`;
   return (
-    <span className={`tnum w-[110px] shrink-0 whitespace-nowrap text-right text-sm font-medium ${tone}`}>
+    <span className={`tnum w-[110px] shrink-0 whitespace-nowrap text-right type-label-lg ${tone}`}>
       ~{deadline.slice(5)} ({label})
     </span>
   );
@@ -164,7 +164,7 @@ function DeadlineCell({ deadline }: { deadline?: string }) {
 function DateCell({ date }: { date: string }) {
   const d = daysUntil(date);
   return (
-    <span className='tnum w-[110px] shrink-0 whitespace-nowrap text-right text-sm text-fg-secondary'>
+    <span className='tnum w-[110px] shrink-0 whitespace-nowrap text-right type-body-sm text-fg-secondary'>
       {date.slice(5)} {d > 0 ? `(D-${d})` : d === 0 ? '(오늘)' : ''}
     </span>
   );

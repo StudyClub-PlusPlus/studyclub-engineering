@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { distinctNames } from './crew';
+import { distinctNames } from '@/features/schedule/crew';
 
 describe('발표자 드롭다운 이름', () => {
   it('닉네임이 겹치는 사람만 디스코드 닉네임을 붙인다 — 별명이 없으면 그대로', () => {

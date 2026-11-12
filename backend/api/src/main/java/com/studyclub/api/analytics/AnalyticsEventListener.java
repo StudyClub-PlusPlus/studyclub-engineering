@@ -1,8 +1,10 @@
 package com.studyclub.api.analytics;
 
+import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.UserRegisteredEvent;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.application.StudyApplicationSubmitted;
+import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,36 +30,60 @@ public class AnalyticsEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(AnalyticsEventListener.class);
 
+    private final AnalyticsPrivacyService privacy;
     private final AmplitudeClient amplitude;
     private final Ga4Client ga4;
     private final StudyApplicationRepository applicationRepository;
+    private final AccountIdentityRepository identityRepository;
 
     public AnalyticsEventListener(
             AmplitudeClient amplitude,
             Ga4Client ga4,
-            StudyApplicationRepository applicationRepository) {
+            StudyApplicationRepository applicationRepository,
+            AccountIdentityRepository identityRepository,
+            AnalyticsPrivacyService privacy) {
+        this.privacy = privacy;
         this.amplitude = amplitude;
         this.ga4 = ga4;
         this.applicationRepository = applicationRepository;
+        this.identityRepository = identityRepository;
     }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onUserRegistered(UserRegisteredEvent event) {
         try {
-            amplitude.send(
-                    "User Signed Up",
+            String method = signupMethod(event.accountId());
+            privacy.whenAllowed(
                     event.accountId(),
-                    "user_signed_up_account_" + event.accountId(),
-                    event.meta().occurredAt(),
-                    Map.of("method", "google", "signup_surface", "onboarding"));
-            ga4.send("sign_up", event.accountId(), event.gaClientId(), Map.of("method", "google"));
+                    event.gaClientId(),
+                    analyticsId -> {
+                        amplitude.send(
+                                "User Signed Up",
+                                analyticsId,
+                                "user_signed_up_" + analyticsId,
+                                event.meta().occurredAt(),
+                                Map.of("method", method, "signup_surface", "onboarding"));
+                        ga4.send(
+                                "sign_up",
+                                analyticsId,
+                                event.gaClientId(),
+                                Map.of("method", method));
+                    });
         } catch (RuntimeException e) {
             log.warn(
                     "amplitude: 가입 이벤트 실패 eventId={} ({})",
                     event.meta().eventId(),
                     e.getClass().getSimpleName());
         }
+    }
+
+    /** 가입한 로그인 수단 (google·apple). 가입 시점엔 수단이 하나뿐이다. 못 찾으면 google — 애플 이전 가입은 전부 구글이다 */
+    private String signupMethod(Long accountId) {
+        return identityRepository.findByAccountId(accountId).stream()
+                .findFirst()
+                .map(identity -> identity.getIssuer().name().toLowerCase(Locale.ROOT))
+                .orElse("google");
     }
 
     @Async
@@ -71,22 +97,26 @@ public class AnalyticsEventListener {
             if (applicationRepository.findByAccountId(event.accountId()).size() != 1) {
                 return;
             }
-            amplitude.send(
-                    "Activated",
-                    event.accountId(),
-                    "activated_account_" + event.accountId(),
-                    event.meta().occurredAt(),
-                    Map.of(
-                            "activation_action",
-                            "study_applied",
-                            "study_id",
-                            String.valueOf(event.studyId())));
-            // 사용자 요청 맥락이 없어 합성 client_id — GA4 유입 귀속은 안 된다
-            ga4.send(
-                    "activated",
+            privacy.whenAllowed(
                     event.accountId(),
                     null,
-                    Map.of("activation_action", "study_applied"));
+                    analyticsId -> {
+                        amplitude.send(
+                                "Activated",
+                                analyticsId,
+                                "activated_" + analyticsId,
+                                event.meta().occurredAt(),
+                                Map.of(
+                                        "activation_action",
+                                        "study_applied",
+                                        "study_id",
+                                        String.valueOf(event.studyId())));
+                        ga4.send(
+                                "activated",
+                                analyticsId,
+                                null,
+                                Map.of("activation_action", "study_applied"));
+                    });
         } catch (RuntimeException e) {
             log.warn(
                     "amplitude: 활성화 이벤트 실패 eventId={} ({})",

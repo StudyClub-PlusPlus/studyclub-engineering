@@ -7,8 +7,8 @@ import type { NoticeFormValues } from '@console/components/NoticeForm';
 import { PageHeader } from '@console/components/ui';
 import { getUser } from '@console/lib/auth';
 import { seedNotices, type Notice } from '@console/lib/notices';
-import { todayISO } from '@studyclub/mock';
 import { Button, Pagination } from '@studyclub/ui';
+import { todayISO } from '@studyclub/utils';
 import { Plus } from 'lucide-react';
 
 /**
@@ -129,9 +129,9 @@ export function NoticesConsole() {
             setPage(1);
           }}
           placeholder='제목 검색'
-          className='h-9 w-44 shrink-0 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-9 w-44 shrink-0 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
         />
-        <span className='ml-auto shrink-0 pl-2 text-xs text-fg-muted'>{filtered.length}개</span>
+        <span className='ml-auto shrink-0 pl-2 type-label-sm text-fg-muted'>{filtered.length}개</span>
       </div>
 
       <div data-anno='notice:3' className='card overflow-x-auto'>

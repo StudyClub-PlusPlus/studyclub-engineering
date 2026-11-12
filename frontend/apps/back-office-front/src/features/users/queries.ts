@@ -1,17 +1,11 @@
-// 백오피스 회원 — 목록·이메일 보기·권한 변경·권한표. 키·fetcher·훅을 한 파일에 둔다.
 import { toast } from '@studyclub/ui';
 import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { DISCORD_NOTICE } from '@/features/users/labels';
-import type {
-  ApiAdminAccountPage,
-  ApiEmailReveal,
-  ApiRoleChange,
-  ApiRolePermissions,
-  SystemRole,
-  UserFilter,
-} from '@/features/users/types';
-import { http, qs } from '@/lib/http';
+import { changeAccountRole, revealDiscord, revealEmail, rolePermissions, users } from '@/features/users/repository';
+import type { SystemRole, UserFilter } from '@/features/users/types';
+
+// 백오피스 회원 — 목록·이메일 보기·권한 변경·권한표. 키·fetcher·훅을 한 파일에 둔다.
 
 /**
  * 키는 넓은 것에서 좁은 것으로 쌓는다 — `['users']` 를 무효화하면 목록이 전부 딸려 간다.
@@ -27,28 +21,19 @@ export const userKeys = {
    */
   roleChange: (accountId: number) => [...userKeys.all, 'role-change', accountId] as const,
   emailReveal: (accountId: number) => [...userKeys.all, 'email-reveal', accountId] as const,
+  discordReveal: (accountId: number) => [...userKeys.all, 'discord-reveal', accountId] as const,
 };
 
 /** 목록 요청 경로. 값이 없는 조건은 넣지 않는다. `role=ALL` 은 기본값이라 싣지 않는다. */
-export function usersPath(filter: UserFilter): string {
-  return `/api/admin/users${qs({
-    role: filter.role === 'ALL' ? undefined : filter.role,
-    q: filter.q?.trim(),
-    offset: filter.offset,
-    limit: filter.limit,
-  })}`;
-}
 
 export function useUsers(filter: UserFilter) {
   return useQuery({
     queryKey: userKeys.list(filter),
-    queryFn: () => http<ApiAdminAccountPage>(usersPath(filter)),
+    queryFn: () => users(filter),
     // 탭·검색·페이지를 바꾸는 동안 이전 결과를 지우지 않는다 — 표가 깜빡이면 보던 자리를 잃는다.
     placeholderData: keepPreviousData,
   });
 }
-
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 /**
  * 한 명의 이메일 원본 보기. 서버가 볼 때마다 감사 로그를 남긴다.
@@ -68,7 +53,7 @@ export function useRevealEmail(accountId: number) {
   const mutation = useMutation({
     mutationKey,
     gcTime: 0,
-    mutationFn: () => http<ApiEmailReveal>(`/api/admin/users/${accountId}/email-reveals`, { method: 'POST' }),
+    mutationFn: () => revealEmail(accountId),
     // 실패 안내는 훅에서 — 줄이 사라져(목록 갱신) 컴포넌트가 없어져도 안내는 뜬다. 가린 값은 그대로 둔다
     onError: (err) => toast.error(err.message || '이메일을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'),
   });
@@ -95,12 +80,7 @@ export function useChangeAccountRole(accountId: number) {
   const mutationKey = userKeys.roleChange(accountId);
   const mutation = useMutation({
     mutationKey,
-    mutationFn: (systemRole: SystemRole) =>
-      http<ApiRoleChange>(`/api/admin/users/${accountId}/system-role`, {
-        method: 'PATCH',
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ systemRole }),
-      }),
+    mutationFn: (systemRole: SystemRole) => changeAccountRole(accountId, systemRole),
     // 안내는 훅 단계 콜백에서 띄운다. `mutate(…, { onSuccess })` 처럼 호출 단계에 두면, 성공 뒤 목록이 다시 와서
     // 이 줄이 사라질 때(예: 캡틴 탭에서 내림) 콜백이 불리지 않아 안내가 사라진다. 훅 단계는 언마운트와 상관없이 불린다.
     onSuccess: () => {
@@ -119,12 +99,33 @@ export function useChangeAccountRole(accountId: number) {
   };
 }
 
+/** 이메일과 같은 개별 열람. 원본은 페이지 state로 옮긴 뒤 reset하여 캐시에 남기지 않는다. */
+export function useRevealDiscord(accountId: number) {
+  const queryClient = useQueryClient();
+  const mutationKey = userKeys.discordReveal(accountId);
+  const mutation = useMutation({
+    mutationKey,
+    gcTime: 0,
+    mutationFn: () => revealDiscord(accountId),
+    onError: (err) => toast.error(err.message || '디스코드 아이디를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'),
+  });
+  const isPending = useIsMutating({ mutationKey }) > 0;
+  return {
+    mutate: mutation.mutate,
+    reset: mutation.reset,
+    isPending,
+    isBusy: () => queryClient.isMutating({ mutationKey }) > 0,
+  };
+}
+
 /** 권한표 — 모달을 열 때만 부른다(`enabled`). 배포 사이에 바뀌지 않아 오래 신선하게 둔다. */
 export function useRolePermissions(enabled: boolean) {
   return useQuery({
     queryKey: userKeys.rolePermissions(),
-    queryFn: () => http<ApiRolePermissions>('/api/admin/role-permissions'),
+    queryFn: () => rolePermissions(),
     enabled,
     staleTime: 60 * 60 * 1000,
   });
 }
+
+export { usersPath } from './repository';

@@ -1,4 +1,4 @@
-import type { ApplicationQuestionType } from '@studyclub/mock';
+import type { ApplicationQuestionType } from '@studyclub/types';
 
 export type ApiQuestion = {
   id: string;

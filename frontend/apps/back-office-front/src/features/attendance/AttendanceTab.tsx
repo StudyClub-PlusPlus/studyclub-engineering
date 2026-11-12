@@ -5,10 +5,9 @@ import { useMemo } from 'react';
 import { Button, Segmented, toast } from '@studyclub/ui';
 import { CalendarPlus } from 'lucide-react';
 
-import { toBook, toUpdates, useGroupAttendance, useSaveAttendance } from './api';
-import { AttendanceBook, type BookColumn, type BookRow } from './AttendanceBook';
+import { toBook, toUpdates, useGroupAttendance, useSaveAttendance } from '@/features/attendance/api';
+import { AttendanceBook, type BookColumn, type BookRow } from '@/features/attendance/AttendanceBook';
 import { toMeetings, useGroupMeetings } from '@/features/schedule/api';
-import { useCrew } from '@/features/schedule/crew';
 import { GroupPicker } from '@/features/schedule/GroupPicker';
 import { useScheduleGroups } from '@/features/schedule/groups';
 import { hasTime, isKickoff } from '@/features/schedule/meetings';
@@ -60,25 +59,23 @@ export function AttendanceTab({
   const attendanceQuery = useGroupAttendance(studyId, serverGroupId);
   const meetings = useMemo(() => (meetingsQuery.data ? toMeetings(meetingsQuery.data) : []), [meetingsQuery.data]);
   const attendance = useMemo(() => (attendanceQuery.data ? toBook(attendanceQuery.data) : {}), [attendanceQuery.data]);
-  const crew = useCrew(studyId, group?.id);
   const save = useSaveAttendance(studyId, serverGroupId ?? 0);
 
-  // 줄은 출석 명부(중단한 사람 포함). 디스코드 닉네임은 참여 명단에서 붙인다 — 명부 응답에는 없다.
+  // 줄은 출석 명부(중단한 사람 포함). 디스코드 닉네임은 명부 응답에서 직접 읽는다 (share D6).
   // 중단한 사람은 맨 아래로. 누구나 골라 출석을 바꿀 수 있고, 네비게이터는 참여 중단이 잠긴다 —
   // 신청자 탭에서 네비게이터 권한을 회수(크루로)한 뒤 중단한다. 역할은 명부의 LEADER.
   const rows = useMemo<BookRow[]>(() => {
-    const nick = new Map(crew.map((c) => [c.id, c.discordNickname]));
     return (attendanceQuery.data?.participants ?? [])
       .map((p) => ({
         id: String(p.participantId),
         name: p.displayName,
-        discordNickname: nick.get(String(p.participantId)) ?? null,
+        discordNickname: p.discordNickname ?? null,
         ...(p.participantRole === 'LEADER' && { role: 'navigator' as const }),
         leftAt: p.leftAt ?? undefined,
         serverRate: p.attendanceRate,
       }))
       .sort((a, b) => Number(Boolean(a.leftAt)) - Number(Boolean(b.leftAt)));
-  }, [attendanceQuery.data, crew]);
+  }, [attendanceQuery.data]);
 
   const columns = useMemo<BookColumn[]>(
     () =>
@@ -101,7 +98,7 @@ export function AttendanceTab({
   // 반 목록(참여 명단)을 못 읽었다 — 「아직 반이 없습니다」와 반 만들기를 보이면 반이 사라진 것처럼 보인다
   if (!group && groupsError) {
     return (
-      <p role='alert' className='card px-6 py-10 text-center text-sm text-fg-muted'>
+      <p role='alert' className='card px-6 py-10 text-center type-body-sm text-fg-muted'>
         {groupsError.message || '반 목록을 불러오지 못했습니다.'}
       </p>
     );
@@ -111,8 +108,8 @@ export function AttendanceTab({
   if (!group) {
     return (
       <div className='card px-6 py-10 text-center'>
-        <p className='text-sm font-semibold text-fg'>아직 반이 없습니다.</p>
-        <p className='mt-1.5 text-sm text-fg-muted'>
+        <p className='type-label-lg text-fg'>아직 반이 없습니다.</p>
+        <p className='mt-1.5 type-body-sm text-fg-muted'>
           신청자 탭에서 반을 만들고 일정 탭에서 일정을 정하면 그 반의 출석부가 만들어집니다.
         </p>
         <Button size='sm' className='mt-4' leadingIcon={<CalendarPlus size={15} />} onClick={onGoCrew}>
@@ -129,17 +126,17 @@ export function AttendanceTab({
       {!meetingsQuery.data || !attendanceQuery.data ? (
         <p
           role={meetingsQuery.isError || attendanceQuery.isError ? 'alert' : 'status'}
-          className='card px-6 py-10 text-center text-sm text-fg-muted'
+          className='card px-6 py-10 text-center type-body-sm text-fg-muted'
         >
           {(meetingsQuery.error ?? attendanceQuery.error)?.message ?? '출석부를 불러오는 중입니다.'}
         </p>
       ) : meetings.length === 0 ? (
         // 반은 있는데 회차가 없다 — 회차는 일정 탭에서 만든다. 반 칩은 위에 남겨 다른 반으로 옮길 수 있게 한다
         <div className='card px-6 py-10 text-center'>
-          <p className='text-sm font-semibold text-fg'>
+          <p className='type-label-lg text-fg'>
             {hasTime(group) ? '이 반에는 아직 회차가 없습니다.' : '이 반은 아직 스터디 시간이 없습니다.'}
           </p>
-          <p className='mt-1.5 text-sm text-fg-muted'>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>
             {hasTime(group)
               ? '일정 탭에서 회차를 추가하면 이 반의 출석부가 만들어집니다.'
               : '일정 탭에서 스터디 시간을 정하고 회차를 추가하면 출석부가 만들어집니다.'}
@@ -157,17 +154,18 @@ export function AttendanceTab({
           attendance={attendance}
           onDirtyChange={onDirtyChange}
           onSave={(next, withdrawIds) => {
-            const { updates, cleared } = toUpdates(
+            const { updates } = toUpdates(
               attendance,
               next,
               columns.map((c) => c.id),
             );
-            // 서버는 칸을 비우지 못한다 — 미체크로 되돌린 칸은 저장하지 않고 알린다
-            if (cleared > 0) toast.error(`미체크로 되돌린 ${cleared}칸은 저장할 수 없어 그대로 둡니다.`);
             if (updates.length === 0 && withdrawIds.length === 0) return;
             save.mutate(
               { updates, withdrawals: withdrawIds.map(Number) },
-              { onError: (err) => toast.error(err.message || '출석부를 저장하지 못했습니다.') },
+              {
+                onSuccess: () => toast.success('출석부를 저장했습니다.'),
+                onError: (err) => toast.error(err.message || '출석부를 저장하지 못했습니다.'),
+              },
             );
           }}
           toolbar={

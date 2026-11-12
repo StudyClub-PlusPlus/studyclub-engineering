@@ -1,4 +1,4 @@
-import type { L10n, Study } from '../../types';
+import type { L10n, Study } from '@studyclub/types';
 
 export type StudyDraft = Omit<Study, "study_id">;
 

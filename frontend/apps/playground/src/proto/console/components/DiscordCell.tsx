@@ -22,7 +22,7 @@ export function DiscordCell({ email }: { email: string }) {
   if (!handle) {
     return (
       <td className='whitespace-nowrap'>
-        <span className='text-xs font-semibold text-warning-700'>미연동</span>
+        <span className='type-label-sm text-warning-700'>미연동</span>
       </td>
     );
   }
@@ -30,7 +30,7 @@ export function DiscordCell({ email }: { email: string }) {
   return (
     <td className='whitespace-nowrap'>
       <span className='inline-flex items-center gap-1.5'>
-        <span className='text-xs text-fg-secondary'>{shown ? handle : '연동'}</span>
+        <span className='type-label-sm text-fg-secondary'>{shown ? handle : '연동'}</span>
         <button
           type='button'
           onClick={() => setShown((v) => !v)}

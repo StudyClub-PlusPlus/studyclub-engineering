@@ -75,15 +75,20 @@ flowchart LR
 - **내용**
   - 일정이 있으면 일정 문구와 시간대를 함께 알려 준다
   - 일정이 없으면 시간대만 알려 준다
-  - 시간대 문구는 `KST`, `PST`, 표기가 없으면 `동시 모집(KST·PST)`
-- **정책**: 시간대는 `studyTimezone(study)` 한 곳이다. 목록 필터·목록·상세가 같은 함수를 쓴다
-- **데이터**: `study.schedule`, `study.recruitment.kickoff`
+  - 시간대 문구는 `KST`, `PST`, `동시 진행(KST·PST)`. 알 수 없으면 `시간대 미정`
+- **정책**
+  - 시간대는 `studyTimezone(study)` 한 곳이다. 목록·상세가 같은 함수를 쓴다. 목록 필터는 서버가 같은 순서로 판정한다
+  - 운영자가 고른 값(`study.timezone`, `STUDY.TIMEZONE`)이 있으면 그대로 쓴다
+  - 값이 없으면(`null`) 일정·킥오프 문구의 `KST` / `PST`·`PDT` 표기로 추정한다. 표기도 없으면 `시간대 미정` — `동시 진행`이라 단정하지 않는다
+- **데이터**: `study.timezone`, `study.schedule`, `study.recruitment.kickoff`
 
 ### 7. 스터디 소개
 
-- **내용**: 제목 `스터디 소개`. 본문은 상세 소개 원문. 줄바꿈을 유지한다
-- **정책**: `study.description`이 있을 때만 보인다
-- **데이터**: `study.description`
+- **내용**: 제목 `스터디 소개`. 본문은 상세 소개를 마크다운으로 그린다(제목 · 굵게 · 기울임 · 취소선 · 코드 · 링크 · 목록). 줄바꿈을 유지한다
+- **정책**
+  - `study.description`이 있을 때만 보인다
+  - 운영 콘솔 등록·수정 폼이 마크다운을 받는다. 링크는 `http(s)` · `/` 로 시작할 때만 링크로 만든다
+- **데이터**: `study.description` (마크다운)
 - **조건**: 상세 소개가 있을 때
 
 ### 8. 시작 예정일
@@ -181,7 +186,7 @@ erDiagram
 - 모집 열림: `recruitState(study)` — [study-recruit-status/spec.md](../../../specs/study-recruit-status/spec.md#판정-규칙)
 - 모집 상태 문구: `recruitBadge(study, locale)` — 목록과 같다
 - 시작일 표시: `studyStartValue(study, locale)` — `START_AT`가 없으면 `미정`
-- 시간대: `studyTimezone(study)` — 일정·킥오프 문구의 `KST` / `PST`·`PDT`. 없으면 동시 모집
+- 시간대: `studyTimezone(study)` — `STUDY.TIMEZONE` 이 있으면 그 값, 없으면 일정·킥오프 문구의 `KST` / `PST`·`PDT`. 그마저 없으면 시간대 미정
 
 ### API
 

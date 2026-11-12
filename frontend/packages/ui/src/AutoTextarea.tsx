@@ -57,8 +57,8 @@ export function AutoTextarea({
         onChange(singleLine ? ev.target.value.replace(/\n/g, ' ') : ev.target.value)
       }
       className={cx(
-        'w-full resize-none overflow-hidden rounded-control border bg-bg px-3.5 py-2.5 text-sm text-neutral-900',
-        'leading-relaxed placeholder:text-fg-placeholder',
+        'w-full resize-none overflow-hidden rounded-control border bg-bg px-3.5 py-2.5 type-body-md text-neutral-900',
+        'placeholder:text-fg-placeholder',
         'transition-[border-color,box-shadow] duration-fast ease-out',
         'focus:outline-none',
         'disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-neutral-400',

@@ -76,6 +76,7 @@ jobs:
           FLYWAY_ENABLED: 'true'
           DDL_AUTO: validate
           JWT_SECRET: ci-only-not-a-real-secret
+          NOTIFICATION_SITE_BASE_URL: http://localhost:4700
         run: |
           java -jar api/build/libs/app.jar --server.port=8080 > boot.log 2>&1 &
           pid=$!

@@ -1,16 +1,18 @@
-// 출석 탭의 서버 상태 — 명부 응답을 출석부 모양으로 바꾸고(`toBook` · `toUpdates`), React Query 로 읽고 쓴다.
-// 서버 호출 자체는 `repository.ts` 에 있다. 열(회차)은 일정 탭과 같은 반 회차 목록(`schedule/api.ts` 의 `useGroupMeetings`)이다.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import attendanceRepository, {
+import attendanceRepository from './repository';
+import {
   type ApiAttendance,
   type ApiAttendanceStatus as ApiStatus,
   type AttendanceSavePayload,
   type AttendanceUpdate,
-} from './repository';
+} from '@/features/attendance/repository';
 import { scheduleKeys } from '@/features/schedule/api';
 import type { AttendanceBook, AttendanceStatus } from '@/features/schedule/store';
 import { studyKeys } from '@/features/studies/queries';
+
+// 출석 탭의 서버 상태 — 명부 응답을 출석부 모양으로 바꾸고(`toBook` · `toUpdates`), React Query 로 읽고 쓴다.
+// 서버 호출 자체는 `repository.ts` 에 있다. 열(회차)은 일정 탭과 같은 반 회차 목록(`schedule/api.ts` 의 `useGroupMeetings`)이다.
 
 const FROM_API: Record<ApiStatus, AttendanceStatus> = {
   PRESENT: 'present',
@@ -41,27 +43,26 @@ export function toBook(res: ApiAttendance, now: Date = new Date()): AttendanceBo
   );
 }
 
-/**
- * 저장할 칸 — 지금 열(회차)에서 값이 바뀐 칸만. 서버는 칸을 비우지 못한다(상태는 필수) —
- * 저장된 값을 미체크로 되돌린 칸은 `cleared` 로 따로 센다.
- */
+/** 저장할 칸 — 지금 열(회차)에서 값이 바뀐 칸만. status = null 은 미체크로 되돌리기(행 삭제). */
 export function toUpdates(
   saved: AttendanceBook,
   next: AttendanceBook,
   columnIds: string[],
-): { updates: AttendanceUpdate[]; cleared: number } {
+): { updates: AttendanceUpdate[] } {
   const updates: AttendanceUpdate[] = [];
-  let cleared = 0;
   for (const pid of new Set([...Object.keys(saved), ...Object.keys(next)])) {
     for (const mid of columnIds) {
       const before = saved[pid]?.[mid];
       const after = next[pid]?.[mid];
       if (before === after) continue;
-      if (after === undefined) cleared += 1;
-      else updates.push({ meetingId: Number(mid), participantId: Number(pid), status: TO_API[after] });
+      if (after === undefined) {
+        updates.push({ meetingId: Number(mid), participantId: Number(pid), status: null });
+      } else {
+        updates.push({ meetingId: Number(mid), participantId: Number(pid), status: TO_API[after] });
+      }
     }
   }
-  return { updates, cleared };
+  return { updates };
 }
 
 /** 참여를 중단한 사람까지 — 출석부 맨 아래 흐린 줄로 남는다. */

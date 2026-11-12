@@ -1,8 +1,9 @@
-// 대시보드 표시 형식 — 서버가 준 수·시각을 글자로 바꾸는 곳은 여기 하나다.
-// 값을 다시 세거나 판정하지 않는다. 하는 일은 반올림과 「그 시간대의 달력 날짜」 계산뿐이다 (spec 2.4).
-import { CATEGORY_DISPLAY } from '@studyclub/mock';
+import { CATEGORY_DISPLAY } from '@studyclub/utils';
 
 import type { ApiStudyBoardItem, CrewTimeZoneGroupCode } from '@/features/dashboard/types';
+
+// 대시보드 표시 형식 — 서버가 준 수·시각을 글자로 바꾸는 곳은 여기 하나다.
+// 값을 다시 세거나 판정하지 않는다. 하는 일은 반올림과 「그 시간대의 달력 날짜」 계산뿐이다 (spec 2.4).
 
 const DAY = 86_400_000;
 

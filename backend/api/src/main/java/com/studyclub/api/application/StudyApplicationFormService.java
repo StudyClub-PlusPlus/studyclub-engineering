@@ -75,48 +75,34 @@ public class StudyApplicationFormService {
         return toResponse(study);
     }
 
-    /** 사용자 사이트 저장 — 권한은 {@code @RequireCaptainOrNavigator}. */
-    @Transactional
-    public StudyApplicationFormResponse replaceFormFromSite(
-            Long studyId, Long accountId, StudyApplicationFormRequest request) {
-        return replace(studyId, request);
-    }
-
-    /** 백오피스 저장 — 권한은 {@code @RequireAdmin}. */
+    /** 백오피스 저장 — 권한은 {@code @RequireAdmin}. 담당 캡틴({@code STUDY.CREATED_BY})만, NULL 이면 캡틴 누구나. */
     @Transactional
     public StudyApplicationFormResponse replaceFormFromBackOffice(
             Long studyId, Long accountId, StudyApplicationFormRequest request) {
-        return replace(studyId, request);
-    }
-
-    /** 저장 자체는 어느 화면에서 왔든 같다 — 권한만 위에서 갈린다. */
-    private StudyApplicationFormResponse replace(
-            Long studyId, StudyApplicationFormRequest request) {
         Study study =
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        assertUnlocked(studyId);
+        studyCaptainGuard.assertOwnerCaptain(
+                accountId, study.getCreatedBy(), "담당 캡틴만 신청 폼을 수정할 수 있습니다.");
+        return replace(study, request);
+    }
+
+    /** 저장 자체는 어느 화면에서 왔든 같다 — 권한만 위에서 갈린다. */
+    private StudyApplicationFormResponse replace(Study study, StudyApplicationFormRequest request) {
+        String lockReason = lockReasonOf(study.getId());
+        if (lockReason != null) {
+            throw new BusinessException(ErrorCode.CONFLICT, lockReason);
+        }
 
         NormalizedApplicationForm form = normalize(request);
         try {
             study.replaceApplicationForm(objectMapper.writeValueAsString(form));
         } catch (JacksonException e) {
-            log.error("신청 폼 직렬화 실패 — studyId={}", studyId, e);
+            log.error("신청 폼 직렬화 실패 — studyId={}", study.getId(), e);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
-        return toResponse(study);
-    }
-
-    /** 신청서와 질문이 어긋나지 않도록 잠근다. 막힌 사유를 구분해 준다 — 캡틴이 무엇 때문인지 알아야 다음 행동이 정해진다. */
-    private void assertUnlocked(Long studyId) {
-        if (studyApplicationRepository.existsByStudyId(studyId)) {
-            throw new BusinessException(ErrorCode.CONFLICT, "이미 들어온 신청서가 있어 신청 폼을 수정할 수 없습니다.");
-        }
-        if (studyRecruitmentRepository.existsByStudyIdAndStartAtLessThanEqual(
-                studyId, Instant.now())) {
-            throw new BusinessException(ErrorCode.CONFLICT, "모집이 시작되어 신청 폼을 수정할 수 없습니다.");
-        }
+        return toResponse(study, null);
     }
 
     /** 형식·길이는 요청 DTO 의 Bean Validation 이 막는다. 여기서는 <b>규칙</b>만 본다 — 공백 정리, 플랫폼 문항, id 중복, 타입별 조합. */
@@ -236,6 +222,10 @@ public class StudyApplicationFormService {
     }
 
     private StudyApplicationFormResponse toResponse(Study study) {
+        return toResponse(study, lockReasonOf(study.getId()));
+    }
+
+    private StudyApplicationFormResponse toResponse(Study study, String lockReason) {
         StoredApplicationForm form = storedFormOf(study.getApplicationForm());
         return new StudyApplicationFormResponse(
                 study.getId(),
@@ -246,7 +236,20 @@ public class StudyApplicationFormService {
                 study.getCategory().name(),
                 study.getOneLineSummary(),
                 study.getDescription(),
-                form.questions());
+                form.questions(),
+                lockReason != null,
+                lockReason);
+    }
+
+    private String lockReasonOf(Long studyId) {
+        if (studyApplicationRepository.existsByStudyId(studyId)) {
+            return "이미 들어온 신청서가 있어 신청 폼을 수정할 수 없습니다.";
+        }
+        if (studyRecruitmentRepository.existsByStudyIdAndStartAtLessThanEqual(
+                studyId, Instant.now())) {
+            return "모집이 시작되어 신청 폼을 수정할 수 없습니다.";
+        }
+        return null;
     }
 
     private Instant recruitDeadlineOf(Long studyId) {

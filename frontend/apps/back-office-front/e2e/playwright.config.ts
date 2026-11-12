@@ -5,6 +5,9 @@ const APP_PORT = process.env.APP_PORT ?? '4701';
 const APP_ORIGIN = `http://localhost:${APP_PORT}`;
 const APP_ROOT = path.resolve(__dirname, '..');
 const API_MOCK_PORT = process.env.APP_API_MOCK_PORT ?? '4702';
+// 화면 카탈로그는 브라우저 조회를 MSW 목으로 받는다 — 우회 토큰으로 진짜 API 를 부르면 401 이라 로그인으로 튕긴다.
+// 스모크는 page.route 로 진짜 API 를 가로채므로 켜지 않는다 (MSW 가 먼저 답한다). test:e2e:catalog 스크립트만 켠다.
+const API_MOCKING = process.env.APP_API_MOCKING;
 
 export default defineConfig({
   fullyParallel: true,
@@ -45,11 +48,16 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      command: 'npm run dev',
+      command: `npm run dev -- --port ${APP_PORT}`,
       cwd: APP_ROOT,
       url: `${APP_ORIGIN}/studies`,
-      env: { BO_DEV_BYPASS_AUTH: '1', API_BASE_URL: `http://127.0.0.1:${API_MOCK_PORT}` },
-      reuseExistingServer: !process.env.CI,
+      env: {
+        ...(process.env.APP_DIST_DIR ? { APP_DIST_DIR: process.env.APP_DIST_DIR } : {}),
+        BO_DEV_BYPASS_AUTH: API_MOCKING ? '0' : '1',
+        API_BASE_URL: `http://127.0.0.1:${API_MOCK_PORT}`,
+        ...(API_MOCKING ? { NEXT_PUBLIC_API_MOCKING: API_MOCKING, NEXT_PUBLIC_API_BASE_URL: 'http://localhost:8080' } : {}),
+      },
+      reuseExistingServer: false,
       timeout: 120_000,
     },
   ],

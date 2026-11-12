@@ -32,11 +32,11 @@ export function FeaturedStudies({
     <section className='pb-14'>
       <div className='mb-5 flex items-end justify-between gap-4'>
         <div>
-          <h2 className='text-xl font-bold tracking-tight'>{m('studies.title', locale)}</h2>
+          <h2 className='type-title-lg'>{m('studies.title', locale)}</h2>
         </div>
         <Link
           href={`/proto/core/${locale}/studies`}
-          className='shrink-0 text-sm font-medium text-[var(--color-brand)] hover:underline'
+          className='shrink-0 type-label-lg text-[var(--color-brand)] hover:underline'
         >
           {t({ ko: '전체 보기', en: 'View all' }, locale)} →
         </Link>

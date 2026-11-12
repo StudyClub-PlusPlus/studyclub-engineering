@@ -4,9 +4,12 @@ import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.participant.StudyParticipant;
+import com.studyclub.domain.study.StudyStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -61,6 +64,7 @@ class AdminAccountJpqlDao implements AdminAccountDao {
         String jpql =
                 "SELECT a, "
                         + PARTICIPATING_COUNT
+                        + ", (SELECT MAX(i.lastLoginAt) FROM AccountIdentity i WHERE i.accountId = a.id)"
                         + " FROM Account a"
                         + where.jpql()
                         + " ORDER BY CASE WHEN a.systemRole = :adminRole THEN 0 ELSE 1 END,"
@@ -79,7 +83,37 @@ class AdminAccountJpqlDao implements AdminAccountDao {
         query.setFirstResult(Math.max(offset, 0));
         query.setMaxResults(limit);
         return query.getResultList().stream()
-                .map(row -> new AccountRow((Account) row[0], ((Number) row[1]).longValue()))
+                .map(
+                        row ->
+                                new AccountRow(
+                                        (Account) row[0],
+                                        ((Number) row[1]).longValue(),
+                                        (Instant) row[2]))
+                .toList();
+    }
+
+    @Override
+    public List<ParticipationRow> getParticipationPeriods(Collection<Long> accountIds) {
+        if (accountIds.isEmpty()) {
+            return List.of();
+        }
+        return em
+                .createQuery(
+                        "SELECT p, s.status, s.endAt FROM StudyParticipant p"
+                                + " LEFT JOIN Study s ON s.id = p.studyId"
+                                + " WHERE p.accountId IN :accountIds",
+                        Object[].class)
+                .setParameter("accountIds", accountIds)
+                .getResultList()
+                .stream()
+                .map(
+                        row -> {
+                            StudyParticipant participant = (StudyParticipant) row[0];
+                            return new ParticipationRow(
+                                    participant.getAccountId(),
+                                    participant.participationPeriod(
+                                            (StudyStatus) row[1], (Instant) row[2]));
+                        })
                 .toList();
     }
 

@@ -44,12 +44,16 @@ erDiagram
   ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
   ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
+  STUDY_NOTICE ||--o{ STUDY_NOTICE_RECIPIENT : "받는 사람"
+  STUDY_NOTICE |o..o{ NOTIFICATION : "메일 (REFERENCE_ID, FK 없음)"
   ACCOUNT ||--o{ ACCOUNT_IDENTITY : "로그인 수단"
   ACCOUNT ||--o{ ACCOUNT_CONSENT : "동의"
   ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
   ACCOUNT_LEAVE_REASON
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
   ACCOUNT |o..o{ SITE_NOTICE : "작성한 캡틴 (FK 없음)"
+  ACCOUNT |o..o{ FEEDBACK : "제출자·완료 처리자 (FK 없음)"
+  FEEDBACK ||--o{ FEEDBACK_IMAGE : "첨부"
   STUDY_PROGRAM ||--o{ STUDY : "기수"
   STUDY ||--o{ STUDY_GROUP : "분반"
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
@@ -80,9 +84,13 @@ erDiagram
   ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
   ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
+  STUDY_NOTICE ||--o{ STUDY_NOTICE_RECIPIENT : "받는 사람"
+  STUDY_NOTICE |o..o{ NOTIFICATION : "메일 (REFERENCE_ID, FK 없음)"
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
   ACCOUNT |o..o{ SITE_NOTICE : "작성한 캡틴 (FK 없음)"
   ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
+  ACCOUNT |o..o{ FEEDBACK : "제출자·완료 처리자 (FK 없음)"
+  FEEDBACK ||--o{ FEEDBACK_IMAGE : "첨부"
   NOTIFICATION {
     bigint ID PK
     varchar EVENT_TYPE
@@ -90,12 +98,38 @@ erDiagram
     varchar RECIPIENT_VALUE
     bigint RECIPIENT_USER_ID
     bigint TEMPLATE_ID
+    bigint REFERENCE_ID "STUDY_NOTICE.ID 등 (FK 없음)"
+    bigint SENDER_ACCOUNT_ID "보낸 사람 ACCOUNT.ID (FK 없음)"
     json PAYLOAD
     varchar STATUS
     datetime LOCKED_AT
     varchar ERROR_TYPE
     datetime SCHEDULED_AT
     datetime SENT_AT
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  STUDY_NOTICE {
+    bigint ID PK
+    bigint STUDY_ID
+    bigint STUDY_GROUP_ID
+    bigint SENDER_ACCOUNT_ID
+    varchar TITLE
+    text BODY
+    boolean SEND_EMAIL
+    boolean SEND_DISCORD
+    varchar DISCORD_STATUS
+    varchar DISCORD_SKIP_REASON
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  STUDY_NOTICE_RECIPIENT {
+    bigint ID PK
+    bigint NOTICE_ID FK
+    bigint ACCOUNT_ID
+    boolean DISCORD_MENTIONED
     datetime CREATED_AT
     datetime UPDATED_AT
   }
@@ -156,7 +190,7 @@ erDiagram
   STORAGE_OBJECT {
     bigint   ID                PK
     bigint   ACCOUNT_ID           "올린 사람 (FK 없음)"
-    varchar  PURPOSE              "PROFILE / STUDY_THUMBNAIL"
+    varchar  PURPOSE              "PROFILE / STUDY_THUMBNAIL / FEEDBACK"
     varchar  PROVIDER             "S3 / R2"
     varchar  OBJECT_KEY        UK "gigs/profiles/<UUID>.webp"
     varchar  CONTENT_TYPE
@@ -174,6 +208,12 @@ erDiagram
     bigint   TARGET_ACCOUNT_ID    "대상 회원. FK 없음"
     varchar  BEFORE_VALUE         "ROLE_CHANGE 의 변경 전 SYSTEM_ROLE"
     varchar  AFTER_VALUE          "ROLE_CHANGE 의 변경 후 SYSTEM_ROLE"
+    varchar  ACTOR_IP              "검증된 접속 주소"
+    bigint   PARTICIPANT_ID
+    varchar  PARTICIPANT_ROLE       "행위 직전 역할"
+    varchar  REASON
+    varchar  RETENTION_POLICY       "적용 규칙·버전"
+    datetime EXPIRES_AT             "저장한 만료 시각; 역할 미상은 NULL"
     datetime CREATED_AT           "행위 시각"
     datetime UPDATED_AT
   }
@@ -186,6 +226,36 @@ erDiagram
     datetime REMOVED_AT           "소프트 삭제. NULL = 게시 중"
     datetime CREATED_AT           "게시 시각"
     datetime UPDATED_AT           "마지막 수정"
+  }
+
+  FEEDBACK {
+    bigint   ID                PK
+    bigint   ACCOUNT_ID           "제출자 (FK 없음)"
+    varchar  TYPE                 "QUESTION / IDEA / BUG"
+    varchar  TITLE
+    varchar  CONTENT              "평문 2000자"
+    varchar  BROWSER              "Chrome 141 · macOS"
+    int      VIEWPORT_WIDTH
+    int      VIEWPORT_HEIGHT
+    varchar  STATUS               "NEW / SEEN / DONE — DONE 은 회신으로만"
+    bigint   DONE_BY_ACCOUNT_ID   "첫 회신 캡틴 (FK 없음)"
+    varchar  REPLY_CONTENT
+    datetime REPLIED_AT           "첫 회신 시각"
+    varchar  RETENTION_POLICY       "적용 규칙·버전"
+    datetime EXPIRES_AT             "저장한 만료 시각"
+    varchar  ADMIN_MEMO           "캡틴 전용"
+    datetime CREATED_AT           "접수 시각"
+    datetime UPDATED_AT
+  }
+
+  FEEDBACK_IMAGE {
+    bigint   ID                PK
+    bigint   FEEDBACK_ID          FK
+    bigint   STORAGE_OBJECT_ID    "업로드 행 (FK 없음)"
+    varchar  IMAGE_URL
+    int      DISPLAY_ORDER
+    datetime CREATED_AT
+    datetime UPDATED_AT
   }
 
   STUDY_PROGRAM {
@@ -340,6 +410,8 @@ erDiagram
 
 ## 테이블
 
+분석 개인정보: [ACCOUNT_ANALYTICS](./ACCOUNT_ANALYTICS.md). 회원당 분석 설정·삭제 진행을 한 행에 저장하며, 계정과 외래키를 두지 않는다.
+
 
 | 영역  | 테이블                                                     | 한 줄                    | 저장하는 상태                              |
 | --- | ------------------------------------------------------- | ---------------------- | ------------------------------------ |
@@ -366,7 +438,11 @@ erDiagram
 
 | 알림 | [NOTIFICATION](./NOTIFICATION.md) | 알림 발송 이력 | `STATUS`, `ERROR_TYPE` |
 | 알림 | [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md) | 이벤트별 메일 문구 | — |
+| 알림 | [STUDY_NOTICE](./STUDY_NOTICE.md) | 반 공지 발송 기록 (메일 결과는 NOTIFICATION, 디스코드 결과는 여기) | `DISCORD_STATUS` |
+| 알림 | [STUDY_NOTICE_RECIPIENT](./STUDY_NOTICE_RECIPIENT.md) | 반 공지를 받는 사람 (공지 한 건에 한 사람 한 행) | — |
 | 공지 | [SITE_NOTICE](./SITE_NOTICE.md) | 사이트 전체 공지 — 콘솔이 쓰고 사이트가 읽는다 | `REMOVED_AT` (소프트 삭제) |
+| 문의 | [FEEDBACK](./FEEDBACK.md) | 문의·오류 신고 — 크루가 보내고 콘솔이 처리 · 회신 | `STATUS` |
+| 문의 | [FEEDBACK_IMAGE](./FEEDBACK_IMAGE.md) | 문의 첨부 이미지 (최대 3장) | — |
 
 
 ## ERD 추가·변경 절차

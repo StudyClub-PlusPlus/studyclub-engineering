@@ -7,22 +7,12 @@ import { LIFECYCLE_LABEL, LIFECYCLE_ORDER } from '@console/components/lifecycle'
 import { LifecycleBadge } from '@console/components/LifecycleBadge';
 import { TIMEZONE_LABEL } from '@console/components/StudyForm';
 import { tx } from '@console/lib/l10n';
+import { rememberStudiesListSearch } from '@console/lib/list-return';
 import { studyAuthor } from '@console/lib/users';
-import {
-  STUDY_CATEGORIES,
-  applyFormUrl,
-  categoriesOf,
-  getStudyCrew,
-  lifecycleState,
-  publishState,
-  recruitCapacity,
-  recruitState,
-  toISODate,
-  todayISO,
-  type LifecycleState,
-  type Study,
-} from '@studyclub/mock';
+import { getStudyCrew, recruitCapacity } from '@studyclub/mock';
+import { type LifecycleState, type Study } from '@studyclub/types';
 import { Badge, Button, Modal, Pagination, Select, cx } from '@studyclub/ui';
+import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, recruitState, toISODate, todayISO } from '@studyclub/utils';
 import { Check, Minus } from 'lucide-react';
 
 /**
@@ -102,9 +92,9 @@ function FilterSelect<T extends string>({
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      // 높이는 Select size='sm'(h-8) 그대로 — 검색 칸도 h-8. 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
       className={cx(
-        'h-9 w-auto shrink-0',
+        'w-auto shrink-0',
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
       )}
     >
@@ -126,9 +116,9 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (v: stri
       aria-label='카테고리'
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      // 높이는 Select size='sm'(h-8) 그대로 — 검색 칸도 h-8. 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
       className={cx(
-        'h-9 w-auto shrink-0',
+        'w-auto shrink-0',
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
       )}
     >
@@ -206,14 +196,14 @@ const COLUMNS: Column[] = [
   {
     key: 'recruitStart',
     label: '모집 시작일',
-    cellClass: 'tnum whitespace-nowrap text-xs text-fg-secondary',
+    cellClass: 'tnum whitespace-nowrap type-label-sm text-fg-secondary',
     anno: 'list:2',
     render: ({ s }) => startedOn(s) ?? <span className='text-fg-muted'>—</span>,
   },
   {
     key: 'recruitEnd',
     label: '모집 종료일',
-    cellClass: 'tnum whitespace-nowrap text-xs text-fg-secondary',
+    cellClass: 'tnum whitespace-nowrap type-label-sm text-fg-secondary',
     anno: 'list:2-1',
     render: ({ s }) => toISODate(s.recruitment?.deadline) ?? <span className='text-fg-muted'>—</span>,
   },
@@ -230,7 +220,7 @@ const COLUMNS: Column[] = [
   {
     key: 'crew',
     label: '지원 현황',
-    cellClass: 'tnum whitespace-nowrap text-xs text-fg-secondary',
+    cellClass: 'tnum whitespace-nowrap type-label-sm text-fg-secondary',
     anno: 'list:1',
     render: ({ s, crewStat }) => (
       <>
@@ -242,21 +232,21 @@ const COLUMNS: Column[] = [
   {
     key: 'startAt',
     label: '스터디 시작일',
-    cellClass: 'tnum whitespace-nowrap text-xs text-fg-secondary',
+    cellClass: 'tnum whitespace-nowrap type-label-sm text-fg-secondary',
     anno: 'list:3',
     render: ({ s }) => toISODate(s.startAt) ?? <span className='text-fg-muted'>미정</span>,
   },
   {
     key: 'form',
     label: '신청 폼',
-    cellClass: 'whitespace-nowrap text-xs',
+    cellClass: 'whitespace-nowrap type-label-sm',
     anno: 'publish:2',
     render: ({ s, open }) => <FormCell url={applyFormUrl(s)} recruiting={open} />,
   },
   {
     key: 'publish',
     label: '공개 상태',
-    cellClass: 'whitespace-nowrap text-xs',
+    cellClass: 'whitespace-nowrap type-label-sm',
     anno: 'publish:1',
     render: ({ s }, { requestPublish }) => (
       <PublishCell
@@ -269,7 +259,7 @@ const COLUMNS: Column[] = [
   {
     key: 'author',
     label: '작성자',
-    cellClass: 'whitespace-nowrap text-xs text-fg-secondary',
+    cellClass: 'whitespace-nowrap type-label-sm text-fg-secondary',
     anno: 'list:10',
     render: ({ s }) => studyAuthor(s).name,
   },
@@ -346,6 +336,27 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   // 처음부터 그 열을 강조해 두어, 지금 무엇으로 줄 세웠는지 늘 보이게 한다.
   const [sort, setSort] = useState<SortState>({ key: 'recruit', dir: 'asc' });
   const [page, setPage] = useState(1);
+
+  // 필터 · 정렬 · 페이지는 주소(쿼리)에 싣는다 — 상세에 갔다가 뒤로 가기 · 「← 스터디 관리」로 와도 그대로다 (백오피스와 같다).
+  // 목업 데이터라 서버를 다시 부를 일이 없어 주소만 바꾼다(history.replaceState). 붙은 뒤 주소를 읽고, 그 뒤부터 적는다
+  const [urlReady, setUrlReady] = useState(false);
+  useEffect(() => {
+    const u = readListUrl(window.location.search);
+    setQuery(u.q);
+    setCategory(u.category);
+    setStatus(u.status);
+    setRecruit(u.recruit);
+    setPublish(u.publish);
+    setForm(u.form);
+    setSort(u.sort);
+    setPage(u.page);
+    setUrlReady(true);
+  }, []);
+  useEffect(() => {
+    if (!urlReady) return;
+    writeListUrl({ q: query, category, status, recruit, publish, form, sort, page });
+  }, [urlReady, query, category, status, recruit, publish, form, sort, page]);
+
   // 가로 스크롤바를 표 위에도 둔다 — 행이 많으면 아래로 내려가야 스크롤바가 보인다.
   const topScrollRef = useRef<HTMLDivElement>(null);
   const bodyScrollRef = useRef<HTMLDivElement>(null);
@@ -442,7 +453,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   return (
     <div>
       {/* 필터는 한 줄에 둔다. 좁으면 줄바꿈하지 않고 옆으로 넘긴다. */}
-      <div data-anno='list:4' className='mb-3 flex flex-nowrap items-center gap-2 overflow-x-auto'>
+      {/* 가로 스크롤 상자는 위아래로 넘친 것도 자른다 — 칸 테두리 · 포커스 링(3px)이 잘리지 않게 사방에 여백을 두고
+          좌우는 음수 여백으로 상쇄해 줄 위치는 그대로 둔다 */}
+      <div data-anno='list:4' className='-mx-1 mb-2 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 py-1'>
         <input
           type='search'
           value={query}
@@ -451,7 +464,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             setPage(1);
           }}
           placeholder='제목 검색'
-          className='h-9 w-44 shrink-0 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-8 w-44 shrink-0 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
         />
         <CategorySelect
           value={category}
@@ -503,7 +516,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             options={FORM_OPTIONS}
           />
         </span>
-        <span className='ml-auto shrink-0 pl-2 text-xs text-fg-muted'>{rows.length}개</span>
+        <span className='ml-auto shrink-0 pl-2 type-label-sm text-fg-muted'>{rows.length}개</span>
       </div>
 
       <div className='card'>
@@ -554,7 +567,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                 const row: Row = { s, open: recruitState(s) === 'apply', crewStat: summarize(s) };
                 return (
                   <tr key={s.id}>
-                    <td className='max-w-[10rem] truncate text-xs text-fg-secondary'>
+                    <td className='max-w-[10rem] truncate type-label-sm text-fg-secondary'>
                       {s.program?.id ?? <span className='text-fg-muted'>—</span>}
                     </td>
                     <td className='min-w-[24rem] max-w-[32rem]'>
@@ -604,10 +617,10 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         }
       >
         <div data-anno='publish:4' className='py-6 text-center'>
-          <p className='text-sm font-semibold text-fg'>
+          <p className='type-label-lg text-fg'>
             ‘{confirm?.title}’ {confirm?.next ? '스터디를 공개하시겠습니까?' : '스터디를 비공개로 전환하시겠습니까?'}
           </p>
-          <p className='mt-1.5 text-sm text-fg-muted'>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>
             {confirm?.next
               ? '공개하면 오늘이 모집 시작일이 되고, 스터디 상태가 「개설」이 되어 사용자 사이트에 노출됩니다.'
               : '사용자 사이트에서 내려가고 스터디 상태가 「작성 중」으로 돌아갑니다.'}
@@ -646,7 +659,7 @@ function PublishCell({
       disabled={blocked}
       data-anno={blocked ? 'publish:1-1' : undefined}
       title={blocked ? '신청 폼을 먼저 연결하세요.' : live ? '눌러서 내린다' : '눌러서 공개한다'}
-      className={`rounded-pill px-2.5 py-1 text-xs font-semibold transition-colors ${
+      className={`rounded-pill px-2.5 py-1 type-label-lg transition-colors ${
         live
           ? 'bg-success-50 text-success-700 hover:bg-success-100'
           : blocked
@@ -702,11 +715,70 @@ function CategoryCell({ categories }: { categories: string[] }) {
   return (
     <span className='inline-flex items-center gap-1.5' title={categories.join(' · ')}>
       {shown.map((c) => (
-        <span key={c} className='rounded-pill bg-surface-2 px-2 py-0.5 text-xs font-medium text-fg-secondary'>
+        <span key={c} className='rounded-pill bg-surface-2 px-2 py-0.5 type-label-sm text-fg-secondary'>
           {c}
         </span>
       ))}
-      {rest.length > 0 && <span className='tnum text-xs text-fg-muted'>+{rest.length}</span>}
+      {rest.length > 0 && <span className='tnum type-label-sm text-fg-muted'>+{rest.length}</span>}
     </span>
   );
+}
+
+/* ── 목록 조건 ↔ 주소 ───────────────────────────────────────────────────── */
+
+type ListUrlState = {
+  q: string;
+  category: string;
+  status: StatusFilter;
+  recruit: RecruitFilter;
+  publish: PublishFilter;
+  form: FormFilter;
+  sort: SortState;
+  page: number;
+};
+
+const DEFAULT_SORT: SortState = { key: 'recruit', dir: 'asc' };
+
+/** 주소 쿼리 → 목록 조건. 허용 밖 값은 기본값 — 주소는 누구나 고칠 수 있다. */
+function readListUrl(search: string): ListUrlState {
+  const p = new URLSearchParams(search);
+  const pick = <T extends string>(key: string, allowed: readonly T[], fallback: T): T => {
+    const v = p.get(key);
+    return v !== null && (allowed as readonly string[]).includes(v) ? (v as T) : fallback;
+  };
+  const rawSort = p.get('sort');
+  let sort: SortState = DEFAULT_SORT;
+  if (rawSort === 'none') sort = null;
+  else if (rawSort) {
+    const [key, dir] = rawSort.split(':');
+    if (key && key in SORT_VALUE && (dir === 'asc' || dir === 'desc')) sort = { key: key as SortKey, dir };
+  }
+  const page = Math.floor(Number(p.get('page')));
+  return {
+    q: p.get('q') ?? '',
+    category: pick('category', CATEGORY_OPTIONS.map((o) => o.value), 'all'),
+    status: pick<StatusFilter>('status', STATUS_OPTIONS.map((o) => o.value), 'all'),
+    recruit: pick<RecruitFilter>('recruit', RECRUIT_OPTIONS.map((o) => o.value), 'all'),
+    publish: pick<PublishFilter>('publish', PUBLISH_OPTIONS.map((o) => o.value), 'all'),
+    form: pick<FormFilter>('form', FORM_OPTIONS.map((o) => o.value), 'all'),
+    sort,
+    page: Number.isFinite(page) && page >= 1 ? page : 1,
+  };
+}
+
+/** 목록 조건 → 주소. 기본값은 싣지 않는다. 「← 스터디 관리」가 돌아올 주소도 함께 적어 둔다. */
+function writeListUrl(state: ListUrlState) {
+  const p = new URLSearchParams();
+  if (state.q.trim()) p.set('q', state.q);
+  if (state.category !== 'all') p.set('category', state.category);
+  if (state.status !== 'all') p.set('status', state.status);
+  if (state.recruit !== 'all') p.set('recruit', state.recruit);
+  if (state.publish !== 'all') p.set('publish', state.publish);
+  if (state.form !== 'all') p.set('form', state.form);
+  const sort = state.sort ? `${state.sort.key}:${state.sort.dir}` : 'none';
+  if (sort !== `${DEFAULT_SORT!.key}:${DEFAULT_SORT!.dir}`) p.set('sort', sort);
+  if (state.page > 1) p.set('page', String(state.page));
+  const search = p.toString() ? `?${p.toString()}` : '';
+  window.history.replaceState(window.history.state, '', `${window.location.pathname}${search}`);
+  rememberStudiesListSearch(search);
 }

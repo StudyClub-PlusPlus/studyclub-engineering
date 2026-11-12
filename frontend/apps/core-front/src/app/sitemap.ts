@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 
-import { getEvents, getStudies } from '@/lib/content';
+import { getStudies } from '@/features/studies/server';
+import { FEATURES } from '@/lib/features';
 import { DEFAULT_LOCALE, LOCALES } from '@/lib/i18n';
 import { SITE_URL } from '@/lib/seo';
 
@@ -20,7 +21,7 @@ const STATIC_PATHS: {
 }[] = [
   { path: '', priority: 1, changeFrequency: 'daily' },
   { path: '/studies', priority: 0.9, changeFrequency: 'daily' },
-  { path: '/events', priority: 0.7, changeFrequency: 'weekly' },
+  ...(FEATURES.EVENTS ? [{ path: '/events', priority: 0.7, changeFrequency: 'weekly' as const }] : []),
   { path: '/notices', priority: 0.6, changeFrequency: 'weekly' },
   { path: '/terms', priority: 0.2, changeFrequency: 'yearly' },
   { path: '/privacy', priority: 0.2, changeFrequency: 'yearly' },
@@ -42,7 +43,7 @@ function entry(path: string, opts: Partial<MetadataRoute.Sitemap[number]> = {}):
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [studies, events] = await Promise.all([getStudies(), getEvents()]);
+  const studies = await getStudies();
 
   return [
     ...STATIC_PATHS.flatMap((s) =>
@@ -54,9 +55,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'weekly',
         lastModified: s.startAt ? new Date(s.startAt) : s.date ? new Date(s.date) : new Date(),
       }),
-    ),
-    ...events.flatMap((e) =>
-      entry(`/events/${e.id}`, { priority: 0.5, changeFrequency: 'monthly', lastModified: new Date(e.date) }),
     ),
   ];
 }

@@ -51,9 +51,9 @@ export function RegionClocks({ locale }: { locale: Locale }) {
                 <div className='font-semibold' style={{ color: r.color }}>
                   {locale === 'ko' ? r.name.ko : r.name.en}
                 </div>
-                <div className='text-xs text-[var(--color-fg-muted)]'>{locale === 'ko' ? r.city.ko : r.city.en}</div>
+                <div className='type-label-sm text-[var(--color-fg-muted)]'>{locale === 'ko' ? r.city.ko : r.city.en}</div>
                 {/* 시간대 — 약어(PDT·EST 등)와 UTC 차이. 서머타임에 따라 바뀌어 마운트 뒤에만 그린다 */}
-                <div className='mt-0.5 text-[11px] font-semibold tabular-nums' style={{ color: r.color }} suppressHydrationWarning>
+                <div className='mt-0.5 type-label-sm tabular-nums' style={{ color: r.color }} suppressHydrationWarning>
                   {p ? [p.tz.abbr, p.tz.offset].filter(Boolean).join(' · ') : ' '}
                 </div>
               </div>
@@ -63,13 +63,13 @@ export function RegionClocks({ locale }: { locale: Locale }) {
             </div>
             <div className='mt-2 px-5 pb-4' style={{ background: r.soft }}>
               <div
-                className='pt-3 font-mono text-3xl font-bold tabular-nums tracking-tight'
+                className='pt-3 type-headline-md tabular-nums'
                 style={{ color: r.color }}
                 suppressHydrationWarning
               >
                 {p ? p.time : '--:--:--'}
               </div>
-              <div className='mt-0.5 text-xs text-[var(--color-fg-muted)]' suppressHydrationWarning>
+              <div className='mt-0.5 type-label-sm text-[var(--color-fg-muted)]' suppressHydrationWarning>
                 {p ? p.date : ' '}
               </div>
             </div>

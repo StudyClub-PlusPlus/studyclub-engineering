@@ -33,7 +33,9 @@ class ErrorCodeTest {
     @DisplayName("모르는 4xx 는 INVALID_INPUT — 클라이언트 잘못을 서버 오류로 보고하지 않는다")
     void unknownClientErrorIsNotServerError() {
         assertThat(ErrorCode.fromStatus(418)).isEqualTo(ErrorCode.INVALID_INPUT);
-        assertThat(ErrorCode.fromStatus(429)).isEqualTo(ErrorCode.INVALID_INPUT);
+        // 429 는 STUDY_NOTICE_RATE_LIMITED 가 쓴다 — 매핑이 없는 4xx 의 예로는 451 을 든다
+        assertThat(ErrorCode.fromStatus(451)).isEqualTo(ErrorCode.INVALID_INPUT);
+        assertThat(ErrorCode.fromStatus(429)).isEqualTo(ErrorCode.STUDY_NOTICE_RATE_LIMITED);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.studyclub.domain.account;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
@@ -8,6 +9,9 @@ public interface AccountIdentityRepository extends JpaRepository<AccountIdentity
 
     Optional<AccountIdentity> findByIssuerAndProviderAccountId(
             Issuer issuer, String providerAccountId);
+
+    /** 회원 탈퇴 — 파기 전에 제공자 연결을 끊을 토큰을 읽는다. */
+    List<AccountIdentity> findByAccountId(Long accountId);
 
     /** 회원 탈퇴 — 로그인 수단 파기. 이 삭제가 빠지면 재가입 시 UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID) 에 걸린다. */
     @Transactional

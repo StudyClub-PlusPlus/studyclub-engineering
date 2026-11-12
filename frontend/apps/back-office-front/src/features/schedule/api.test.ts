@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { toMeetings, toPeople } from './api';
-import type { ApiGroupMeetings } from './repository';
+import { toMeetings, toPeople } from '@/features/schedule/api';
+import type { ApiGroupMeetings } from '@/features/schedule/repository';
 
 const res: ApiGroupMeetings = {
   studyGroup: {
@@ -11,6 +11,7 @@ const res: ApiGroupMeetings = {
     startTime: '19:00',
     navigatorName: null,
     rules: null,
+    daysOfWeek: null,
   },
   me: { participantId: null, canEdit: true },
   participants: [{ participantId: 78, name: '건우' }],

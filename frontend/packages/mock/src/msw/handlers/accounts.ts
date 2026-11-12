@@ -21,8 +21,8 @@ export type ApiAdminAccount = {
   roleChangeBlockedReason:
     | 'CANNOT_CHANGE_OWN_ROLE'
     | 'LAST_ADMIN_REQUIRED'
-    | 'DISCORD_LINK_REQUIRED'
     | null;
+  discordLinked: boolean;
 };
 
 export type ApiAdminAccountPage = {
@@ -39,9 +39,12 @@ type MockAccountRecord = {
   email: string;
   systemRole: ApiSystemRole;
   navigatorOf: { studyId: number; title: string }[];
-  /** 참여 중인 스터디 수 — 정렬과 dormant 판정에 쓴다. */
+  /** 참여 중인 스터디 수 — 정렬에만 쓴다. */
   participating: number;
+  /** 서버가 판정한 휴면 여부를 재현하는 응답 fixture. */
+  dormant: boolean;
   joinedAt: string;
+  discordHandle: string | null;
 };
 
 /** 목에서 「로그인한 캡틴」으로 치는 계정. 이 행은 CANNOT_CHANGE_OWN_ROLE 로 잠긴다. */
@@ -175,7 +178,7 @@ function buildAccounts(): MockAccountRecord[] {
   return NAMES.map((name, i) => {
     const id = i + 1;
     const navigatorOf = NAVIGATOR_OF[id] ?? [];
-    // 4의 배수는 참여 이력이 없는 휴면. 담당 스터디가 있으면 최소 그 수만큼 참여 중이다.
+    // 4의 배수는 현재 참여가 없다. 휴면 여부는 별도 응답 fixture다. 담당 스터디가 있으면 최소 그 수만큼 참여 중이다.
     const base = id % 4 === 0 ? 0 : (id * 7) % 5;
     return {
       id,
@@ -184,7 +187,11 @@ function buildAccounts(): MockAccountRecord[] {
       systemRole: ADMIN_IDS.has(id) ? 'ADMIN' : 'MEMBER',
       navigatorOf,
       participating: Math.max(base, navigatorOf.length),
+      // 4·8·12: 가입·로그인이 180일보다 오래됐고 명부 이력이 없는 예시. 나머지는 최근 로그인 또는 기록 미확인.
+      dormant: [4, 8, 12].includes(id),
       joinedAt: new Date(Date.UTC(2026, 0, 5, 3, 41, 9) + id * 5 * DAY).toISOString().replace('.000Z', 'Z'),
+      // 3의 배수는 디스코드 미연동 — 캡틴도 미연동일 수 있다
+      discordHandle: id % 3 === 0 ? null : `${LOCALS[i]}_dc`,
     };
   });
 }
@@ -216,9 +223,10 @@ function toApi(a: MockAccountRecord, accounts: MockAccountRecord[]): ApiAdminAcc
     maskedEmail: maskEmail(a.email),
     systemRole: a.systemRole,
     navigatorOf: a.navigatorOf,
-    dormant: a.participating === 0,
+    dormant: a.dormant,
     joinedAt: a.joinedAt,
     roleChangeBlockedReason: blockedReason(a, accounts),
+    discordLinked: a.discordHandle !== null,
   };
 }
 
@@ -276,6 +284,27 @@ async function revealEmail({ params }: MockResolveContext): Promise<{ id: number
   return HttpResponse.json({ id: account.id, email: account.email }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
+async function revealDiscord({
+  params,
+}: MockResolveContext): Promise<Response> {
+  const account = mockAdminAccounts.find(
+    (a) => a.id === Number(params.accountId),
+  );
+  if (!account?.discordHandle) {
+    return HttpResponse.json(
+      {
+        errorCode: "NOT_FOUND",
+        errorMessage: "연동된 디스코드 아이디를 찾을 수 없습니다.",
+      },
+      { status: 404 },
+    );
+  }
+  return HttpResponse.json(
+    { id: account.id, discordHandle: account.discordHandle },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
+
 async function changeRole({
   request,
   params,
@@ -321,6 +350,15 @@ export const accountsHandlers = mockClient.createHandlerGroup('/api/admin/users'
     presets: [
       { label: '성공', status: 200, response: revealEmail },
       { label: '404 없는 계정', status: 404, response: notFound },
+      { label: '403 캡틴 아님', status: 403, response: forbidden },
+    ],
+  },
+  {
+    method: 'POST',
+    path: '/:accountId/discord-reveals',
+    presets: [
+      { label: '성공', status: 200, response: revealDiscord },
+      { label: '404 계정·아이디 없음', status: 404, response: notFound },
       { label: '403 캡틴 아님', status: 403, response: forbidden },
     ],
   },

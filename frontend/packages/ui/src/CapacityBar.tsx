@@ -46,7 +46,7 @@ export function CapacityBar({ taken, total, showLabel = false, label, className 
           style={{ width: `${pct}%` }}
         />
       </div>
-      {showLabel && <span className='tnum text-xs text-fg-placeholder'>{label ?? `정원 ${pct}%`}</span>}
+      {showLabel && <span className='tnum type-label-sm text-fg-placeholder'>{label ?? `정원 ${pct}%`}</span>}
     </div>
   );
 }

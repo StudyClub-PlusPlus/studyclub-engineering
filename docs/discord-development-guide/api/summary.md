@@ -40,7 +40,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 |------|------|---------------|
 | `Content-Type: application/json` | 바디가 있을 때만 | — |
 | `X-API-Key` | 항상 — 서비스 간 인증 | 401. 단 없는 경로는 키 검사 전에 404 (401 우선은 [아직 미구현](common-header.md)) |
-| `X-Discord-User-ID` | 항상 — 요청자. 봇은 역할도 길드 멤버인지도 보지 않고 `발신:` 줄에만 쓴다. 시스템 호출은 `DISCORD_BOT_ID` | 400 |
+| `X-Discord-User-ID` | 항상 — 요청자. 봇은 역할도 길드 멤버인지도 보지 않고 `발신:` 줄에만 쓴다. 시스템 호출은 `DISCORD_CONFIG_BOT_ID` | 400 |
 | `Idempotency-Key` | 상태를 바꾸는 요청 (`GET` 제외 전부) — 로그 추적용 요청 ID | 없으면 400 |
 
 **ID 와 설정**
@@ -48,7 +48,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 - snowflake 는 경계에서 **항상 문자열**이고 `^[0-9]{17,20}$` 로 검증한다 (JS 정밀도 문제).
 - 이름에 `discord` 가 붙은 ID 는 StudyClub 가 아니라 **Discord 쪽 ID** 다.
 - captain · navigator 역할, alert · announcement 채널은 길드에 **이미 있는** 것이고, 모두 **설정값으로 ID 를 받는다**
-  (`DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` · `DISCORD_ALERT_CHANNEL_ID` · `DISCORD_ANNOUNCEMENT_CHANNEL_ID`).
+  (`DISCORD_CONFIG_CAPTAIN_ROLE_ID` · `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` · `DISCORD_CONFIG_ALERT_CHANNEL_ID` · `DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID`).
   이름으로 찾지 않고, 못 찾으면 만들지 않고 404 로 실패한다 — 호출자가 고칠 수 없는 **서버·길드 설정 문제**다.
 - **누가 부를 수 있는지는 봇이 보지 않는다.** 봇은 `X-API-Key` 로 백엔드가 부른 것인지만 확인한다.
   요청자의 역할(captain · navigator 인지)도, 스터디 단위 권한(그 스터디의 captain 인지, 대상이 그 스터디 멤버인지)도

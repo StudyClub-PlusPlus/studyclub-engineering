@@ -1,6 +1,7 @@
 package com.studyclub.domain.participant;
 
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -17,13 +18,17 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     List<StudyParticipant> findByStudyIdAndStatusIn(
             Long studyId, Collection<ParticipantStatus> statuses);
 
-    /** 진행 중 기수의 ACTIVE 참여 명부. 대시보드 활성 크루·1인당 참여·시간대 분포용 (specs/dashboard/spec.md 2-1). */
+    /**
+     * 진행 중 기수(STATUS=OPEN, START_AT 경과)의 ACTIVE 참여 명부. 대시보드 활성 크루·1인당 참여·시간대 분포용
+     * (specs/dashboard/spec.md 2-1). 결정 5에 따라 OPEN→ONGOING 전환을 당분간 일으키지 않으므로 START_AT 경과로 판단한다.
+     */
     @Query(
             "SELECT p FROM StudyParticipant p, Study s"
                     + " WHERE p.studyId = s.id"
-                    + " AND s.status = com.studyclub.domain.study.StudyStatus.ONGOING"
+                    + " AND s.status = com.studyclub.domain.study.StudyStatus.OPEN"
+                    + " AND s.startAt IS NOT NULL AND s.startAt <= :asOf"
                     + " AND p.status = com.studyclub.domain.participant.ParticipantStatus.ACTIVE")
-    List<StudyParticipant> findActiveInOngoingStudies();
+    List<StudyParticipant> findActiveInStartedOpenStudies(@Param("asOf") Instant asOf);
 
     void deleteByStudyId(Long studyId);
 
@@ -50,8 +55,20 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     boolean existsByStudyGroupIdAndStatusIn(
             Long studyGroupId, Collection<ParticipantStatus> statuses);
 
-    /** 한 기수 안 여러 반 동시 소속은 금지라 많아야 하나다. 회차 관리 화면이 분반을 지정하지 않았을 때 쓴다. */
+    /**
+     * 한 기수 안 여러 반 동시 소속은 금지라 많아야 하나다. 회차 관리 화면이 분반을 지정하지 않았을 때 쓴다.
+     *
+     * <p>⚠️ 상태 필터 없음 — WITHDRAWN·COMPLETED 행도 반환한다. 반 이동 후 구 행을 무시해야 하면 {@link
+     * #findFirstByStudyIdAndAccountIdAndStatusIn} 을 쓸 것.
+     */
     Optional<StudyParticipant> findFirstByStudyIdAndAccountId(Long studyId, Long accountId);
+
+    /**
+     * 활성 명부 행의 분반 — WITHDRAWN·COMPLETED 를 건너뛴다. 재합류(다른 반) 시 구 행을 무시하기 위해 status 필터를 적용한다. 한 기수 안 활성
+     * 소속은 하나이므로 findFirst 가 고유하다.
+     */
+    Optional<StudyParticipant> findFirstByStudyIdAndAccountIdAndStatusIn(
+            Long studyId, Long accountId, Collection<ParticipantStatus> statuses);
 
     /** 분반 안 내 명부 행 — (ACCOUNT_ID, STUDY_GROUP_ID) 가 유일하다. 회차 보기·발표 신청 판정에 쓴다. */
     Optional<StudyParticipant> findByStudyGroupIdAndAccountId(Long studyGroupId, Long accountId);
@@ -130,8 +147,32 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
                     + " AND a.discordId IS NOT NULL AND a.discordId <> ''")
     List<String> findNavigatorDiscordIds();
 
+    /**
+     * 이 계정이 진행 중 스터디(OPEN · ONGOING) 어디서든 LEADER · (ACTIVE · PAUSED) 인지 — navigator role 보유 판정용.
+     * navigator role 은 길드에 하나라, 스터디 하나에서 LEADER 가 아니어도 다른 진행 중 스터디에서 LEADER 면 role 을 유지한다 (DSC-08 ·
+     * DSC-09, specs/discord-study-link/spec.md).
+     */
+    @Query(
+            "SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END"
+                    + " FROM StudyParticipant p, Study s"
+                    + " WHERE p.studyId = s.id AND p.accountId = :accountId"
+                    + " AND p.participantRole = com.studyclub.domain.participant.ParticipantRole.LEADER"
+                    + " AND p.status IN (com.studyclub.domain.participant.ParticipantStatus.ACTIVE,"
+                    + " com.studyclub.domain.participant.ParticipantStatus.PAUSED)"
+                    + " AND s.status IN (com.studyclub.domain.study.StudyStatus.OPEN,"
+                    + " com.studyclub.domain.study.StudyStatus.ONGOING)")
+    boolean existsActiveNavigatorInAnyActiveStudy(@Param("accountId") Long accountId);
+
     /** 디스코드 연결 해제 차단 — 어느 스터디든 참여 중인 행이 있는가 (AccountDiscordLinkService). */
     boolean existsByAccountIdAndStatusIn(Long accountId, Collection<ParticipantStatus> statuses);
+
+    /** 늦은 연결 role 동기화 — 풀 엔티티 대신 accountId 만 뽑는다 (StudyDiscordLinkService). */
+    @Query(
+            "SELECT DISTINCT p.accountId FROM StudyParticipant p"
+                    + " WHERE p.studyId = :studyId AND p.status IN :statuses")
+    List<Long> findAccountIdsByStudyIdAndStatusIn(
+            @Param("studyId") Long studyId,
+            @Param("statuses") Collection<ParticipantStatus> statuses);
 
     boolean existsByStudyIdAndAccountIdAndStatusIn(
             Long studyId, Long accountId, Collection<ParticipantStatus> statuses);

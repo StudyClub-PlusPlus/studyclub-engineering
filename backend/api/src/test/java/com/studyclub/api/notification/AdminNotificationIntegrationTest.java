@@ -241,6 +241,52 @@ class AdminNotificationIntegrationTest {
     }
 
     @Test
+    @DisplayName("같은 사람에게 템플릿마다 행이 있어도 재발송은 행 단위다 — 실패한 행만 PENDING 으로 돌아가고 나간 행은 건너뛴다")
+    void resendWorksPerRowWhenOneRecipientHasSeveralRows() {
+        Account recipient = recipientAccount();
+        Notification failed = failedFor(recipient.getId(), "multi@example.com");
+        Notification otherTemplateRow =
+                notificationRepository.save(
+                        Notification.pendingImmediate(
+                                NotificationEventType.USER_REGISTERED,
+                                NotificationChannel.EMAIL,
+                                "multi@example.com",
+                                recipient.getId(),
+                                template.getId() + 1_000,
+                                Map.of("nickname", "홍길동")));
+        Instant lockedAt = Instant.now();
+        otherTemplateRow.markProcessing(lockedAt);
+        otherTemplateRow.markSent(Instant.now(), lockedAt);
+        notificationRepository.save(otherTemplateRow);
+        long rowsBefore = notificationRepository.count();
+
+        var response =
+                resend(
+                        SystemRole.ADMIN,
+                        List.of(failed.getId(), otherTemplateRow.getId()),
+                        NotificationResendResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(response.getBody().accepted()).containsExactly(failed.getId());
+        assertThat(response.getBody().skipped())
+                .singleElement()
+                .satisfies(
+                        skipped -> {
+                            assertThat(skipped.id()).isEqualTo(otherTemplateRow.getId());
+                            assertThat(skipped.reason()).isEqualTo(ResendSkipReason.NOT_FAILED);
+                        });
+        assertThat(notificationRepository.findById(failed.getId()).orElseThrow().getStatus())
+                .isEqualTo(NotificationStatus.PENDING);
+        assertThat(
+                        notificationRepository
+                                .findById(otherTemplateRow.getId())
+                                .orElseThrow()
+                                .getStatus())
+                .isEqualTo(NotificationStatus.SENT);
+        assertThat(notificationRepository.count()).as("새 행을 만들지 않는다").isEqualTo(rowsBefore);
+    }
+
+    @Test
     @DisplayName("실패 건 재발송 — 그 행이 PENDING 으로 돌아가고 새 행은 생기지 않는다. 202 로 접수만 알린다")
     void resendReusesTheSameRow() {
         Account recipient = recipientAccount();

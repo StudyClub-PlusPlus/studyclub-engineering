@@ -16,7 +16,7 @@ function RetryToast({ t, message, onRetry }: { t: Toast; message: string; onRetr
       <span>{message}</span>
       <button
         type='button'
-        className='shrink-0 rounded-control px-2 py-1 text-sm font-semibold underline underline-offset-2 hover:bg-surface-2'
+        className='shrink-0 rounded-control px-2 py-1 type-label-lg underline underline-offset-2 hover:bg-surface-2'
         onClick={() => {
           toast.dismiss(t.id);
           onRetry();

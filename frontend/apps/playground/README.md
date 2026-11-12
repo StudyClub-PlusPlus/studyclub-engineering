@@ -85,7 +85,7 @@ git push -u origin design/내가-만든-화면
 ## 개발자용 메모
 
 - 이 앱은 `core-front` 와 **배포가 완전히 분리**돼 있다. playground 빌드가 깨져도 core-front CI 는 영향 없음
-- 컴포넌트는 `@studyclub/ui`(디자인 시스템 프리미티브), 토큰은 `@studyclub/design`, 데이터는 `@studyclub/mock`. 백엔드 호출 없음
+- 컴포넌트는 `@studyclub/ui`(디자인 시스템 프리미티브), 토큰은 `@studyclub/design`, 공용 타입은 `@studyclub/types`, 함수·상수는 `@studyclub/utils`, 데이터는 `@studyclub/mock`. 백엔드 호출 없음
 - `robots.ts` 로 전체 noindex — 미공개 시안이 검색에 잡히지 않게
 - 카탈로그는 **프리미티브만** 다룬다. `StudyCard`·`Nav` 같은 도메인 컴포넌트는 core-front 앱 안에 있어 여기서 import 하지 않는다.
   두 앱에서 같은 도메인 컴포넌트가 필요해지면 그때 `packages/ui` 승격을 논의한다

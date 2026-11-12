@@ -50,7 +50,7 @@ DELETE /api/v1/roles/{discordRoleId}/users
 
 **captain · navigator · `@everyone` 역할은 뗄 수 없다** (**400**) — [assign-role 과 같은 셋](assign-role.md#배정할-수-있는-역할의-범위)이다.
 navigator 는 [`remove-navigator-role`](remove-navigator-role.md) 로 뗀다. 막으려면 두 역할 ID 를 알아야 하므로
-`DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 가 비어 있으면 **409** 다.
+`DISCORD_CONFIG_CAPTAIN_ROLE_ID` · `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` 가 비어 있으면 **409** 다.
 그 밖의 `discordRoleId` 는 제한하지 않는다. 올바른 `discordStudyId` · `discordRoleId` 쌍을 보내는 건 백엔드
 책임이다 — [assign-role 의 역할 범위](assign-role.md#배정할-수-있는-역할의-범위) 와 같은 신뢰 모델이다.
 
@@ -95,7 +95,7 @@ navigator 는 [`remove-navigator-role`](remove-navigator-role.md) 로 뗀다. �
 | **400** | `discordUserIds` 가 중복을 뺀 뒤 100개 초과 | 위와 같음. 나눠서 보낸다 |
 | **400** | `discordRoleId` 가 captain · navigator · `@everyone` 역할 | [요청](#요청) 참고. 역할이 길드에 있는지보다 먼저 본다 |
 | **404** | `discordRoleId` 에 해당하는 역할이 길드에 없음 | [아래](#역할이-없으면-404-다) 참고 |
-| **409** | `DISCORD_GUILD_ID` · `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
+| **409** | `DISCORD_CONFIG_GUILD_ID` · `DISCORD_CONFIG_CAPTAIN_ROLE_ID` · `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
 `discordUserIds` 의 유저가 **길드 멤버가 아니어도 에러가 아니다** — [아래](#길드에-없는-유저는-성공이다) 참고.

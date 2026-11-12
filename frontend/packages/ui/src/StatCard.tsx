@@ -63,22 +63,22 @@ export function StatCard({
       )}
     >
       <div className='flex items-center justify-between gap-2'>
-        <span className='flex items-center gap-1.5 text-sm text-fg-muted'>
+        <span className='flex items-center gap-1.5 type-body-sm text-fg-muted'>
           {leadingIcon}
           {label}
         </span>
         {icon && <span className='text-fg-placeholder'>{icon}</span>}
       </div>
-      <span className='stat-value text-3xl font-bold tracking-tight text-ink'>{value}</span>
+      <span className='stat-value type-headline-md text-ink'>{value}</span>
       {hasDelta && delta !== 0 && (
-        <span className='flex items-baseline gap-1.5 text-sm'>
-          <span className={cx('tnum font-medium', good ? 'text-success-fg' : 'text-danger-fg')}>
+        <span className='flex items-baseline gap-1.5 type-body-sm'>
+          <span className={cx('tnum font-semibold', good ? 'text-success-fg' : 'text-danger-fg')}>
             {up ? '▲' : '▼'} {Math.abs(delta)}{unit}
           </span>
-          {deltaLabel && <span className='text-xs text-fg-placeholder'>{deltaLabel}</span>}
+          {deltaLabel && <span className='type-label-sm text-fg-placeholder'>{deltaLabel}</span>}
         </span>
       )}
-      {sub && <span className='text-xs text-fg-placeholder'>{sub}</span>}
+      {sub && <span className='type-label-sm text-fg-placeholder'>{sub}</span>}
     </Card>
   );
 

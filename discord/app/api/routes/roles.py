@@ -65,7 +65,7 @@ def resolve_navigator_role(guild: discord.Guild, settings: Settings) -> discord.
     server setup problem the caller cannot fix.
     """
     if settings.navigator_role_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_NAVIGATOR_ROLE_ID configured")
+        raise HTTPException(status_code=409, detail="no DISCORD_CONFIG_NAVIGATOR_ROLE_ID configured")
     role = guild.get_role(settings.navigator_role_id)
     if role is None:
         raise HTTPException(
@@ -84,9 +84,9 @@ def resolve_study_role(guild: discord.Guild, settings: Settings, role_id: int) -
     role through rather than keep it out.
     """
     if settings.captain_role_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_CAPTAIN_ROLE_ID configured")
+        raise HTTPException(status_code=409, detail="no DISCORD_CONFIG_CAPTAIN_ROLE_ID configured")
     if settings.navigator_role_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_NAVIGATOR_ROLE_ID configured")
+        raise HTTPException(status_code=409, detail="no DISCORD_CONFIG_NAVIGATOR_ROLE_ID configured")
     if role_id in (settings.captain_role_id, settings.navigator_role_id, guild.id):
         raise HTTPException(
             status_code=400, detail=f"role {role_id} cannot be changed through this endpoint"

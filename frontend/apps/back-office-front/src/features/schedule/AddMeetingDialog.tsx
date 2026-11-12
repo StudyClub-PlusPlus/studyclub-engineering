@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button, cx, Input, Modal } from '@studyclub/ui';
+import { useForm } from 'react-hook-form';
 
-import { Button, Input, Modal, cx } from '@studyclub/ui';
-
+import { meetingSchema, type MeetingValues } from '@/features/schedule/form-schemas';
 import {
   DEFAULT_TIME,
   defaultDate,
@@ -14,12 +15,11 @@ import {
   previewOf,
   REPEAT_SPAN_DAYS,
   TITLE_MAX,
-  type DraftErrors,
   type Meeting,
   type MeetingDraft,
   type Repeat,
   type ScheduleGroup,
-} from './meetings';
+} from '@/features/schedule/meetings';
 import {
   addDaysYmd,
   dayLabel,
@@ -30,7 +30,7 @@ import {
   zonedInstant,
   zoneLabel,
   zoneTitle,
-} from './time';
+} from '@/features/schedule/time';
 
 const REPEAT_OPTIONS: { key: Repeat; label: string }[] = [
   { key: 'none', label: '반복 안 함' },
@@ -41,7 +41,7 @@ const REPEAT_OPTIONS: { key: Repeat; label: string }[] = [
 /** 월요일부터 — 주간 일정과 같은 순서. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-const CHIP = 'h-9 rounded-control border text-sm font-semibold transition-colors';
+const CHIP = 'h-9 rounded-control border type-label-lg transition-colors';
 const chipTone = (on: boolean) =>
   on ? 'border-brand bg-brand text-white' : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2';
 
@@ -61,20 +61,33 @@ export function AddMeetingDialog({
   onAdd: (input: { dates: string[]; time: string; title: string }, label: string) => void;
 }) {
   const tz = group.time.tz;
-  const [draft, setDraft] = useState<MeetingDraft>(() => initialDraft(group, existing));
-  const [errors, setErrors] = useState<DraftErrors>({});
-  const [touched, setTouched] = useState(false);
-
-  const { errors: live, plan } = planDraft(draft, existing, tz);
+  const schema = meetingSchema(existing, tz);
+  const {
+    watch,
+    setValue,
+    handleSubmit,
+    trigger,
+    formState: { errors, isSubmitted: touched },
+  } = useForm<MeetingValues>({
+    resolver: zodResolver(schema),
+    defaultValues: initialDraft(group, existing),
+  });
+  const draft = watch();
+  const parsed = schema.safeParse(draft);
+  const plan = parsed.success ? planDraft(parsed.data, existing, tz).plan : undefined;
 
   function change(patch: Partial<MeetingDraft>) {
     const next = { ...draft, ...patch };
     if (patch.repeat && patch.repeat !== 'none' && !next.until) next.until = defaultUntil(next.date, patch.repeat);
     // 매주를 처음 고르면 시작 일자의 요일을 켜 둔다 — 빈 채로 두면 무엇을 눌러야 할지 모른다
     if (patch.repeat === 'weekly' && next.weekdays.length === 0 && next.date) next.weekdays = [dowOf(next.date)];
-    setDraft(next);
+    for (const key of Object.keys(patch) as (keyof MeetingValues)[]) {
+      setValue(key, next[key], { shouldDirty: true });
+    }
+    setValue('until', next.until, { shouldDirty: true });
+    setValue('weekdays', next.weekdays, { shouldDirty: true });
     // 한 번 막힌 뒤에는 고치는 즉시 문구가 풀려야 한다
-    if (touched) setErrors(planDraft(next, existing, tz).errors);
+    if (touched) void trigger();
   }
 
   function toggleWeekday(d: number) {
@@ -82,9 +95,8 @@ export function AddMeetingDialog({
     change({ weekdays: on ? draft.weekdays.filter((x) => x !== d) : [...draft.weekdays, d].sort() });
   }
 
-  function submit() {
-    setTouched(true);
-    setErrors(live);
+  const submit = handleSubmit((draft) => {
+    const plan = planDraft(draft, existing, tz).plan;
     if (!plan) return;
     const { from } = previewOf(plan, existing);
     const first = plan.dates[0];
@@ -95,7 +107,7 @@ export function AddMeetingDialog({
         ? `${from}회차 · ${dayLabel(first)} ${draft.time}`
         : `회차 ${plan.dates.length}개 · ${dayLabel(first)} ~ ${dayLabel(last)} ${draft.time}`,
     );
-  }
+  });
 
   const preview = plan ? previewOf(plan, existing) : undefined;
   const first = plan?.dates[0];
@@ -124,7 +136,7 @@ export function AddMeetingDialog({
             label={draft.repeat === 'none' ? '일자' : '시작 일자'}
             required
             value={draft.date}
-            error={errors.date}
+            error={errors.date?.message}
             onChange={(ev) => change({ date: ev.target.value })}
           />
           <Input
@@ -132,13 +144,13 @@ export function AddMeetingDialog({
             label={`시작 시각 (${zoneLabel(tz)})`}
             required
             value={draft.time}
-            error={errors.time}
+            error={errors.time?.message}
             onChange={(ev) => change({ time: ev.target.value })}
           />
         </div>
 
         <div className='flex flex-col gap-1.5'>
-          <span className='text-sm font-medium text-neutral-800'>반복</span>
+          <span className='type-label-lg text-neutral-800'>반복</span>
           <div role='group' aria-label='반복' className='flex flex-wrap gap-1.5'>
             {REPEAT_OPTIONS.map((o) => (
               <button
@@ -168,7 +180,7 @@ export function AddMeetingDialog({
                   </button>
                 ))}
               </div>
-              {errors.weekdays && <p className='text-xs text-error-700'>{errors.weekdays}</p>}
+              {errors.weekdays && <p className='type-label-sm text-error-700'>{errors.weekdays?.message}</p>}
             </div>
           )}
         </div>
@@ -183,7 +195,7 @@ export function AddMeetingDialog({
               min={draft.date}
               max={maxUntil(draft.date)}
               value={draft.until}
-              error={errors.until}
+              error={errors.until?.message}
               onChange={(ev) => change({ until: ev.target.value })}
             />
           </div>
@@ -194,14 +206,14 @@ export function AddMeetingDialog({
           labelHint={`선택 · ${draft.title.trim().length}/${TITLE_MAX}`}
           placeholder={draft.repeat === 'none' ? '예: 3장 저장소와 검색' : '반복하면 모든 회차에 같은 제목이 붙습니다'}
           value={draft.title}
-          error={errors.title}
+          error={errors.title?.message}
           onChange={(ev) => change({ title: ev.target.value })}
         />
 
-        <div className='rounded-control border border-border px-3.5 py-2.5 text-sm'>
+        <div className='rounded-control border border-border px-3.5 py-2.5 type-body-sm'>
           {plan && preview && first ? (
             <>
-              <p className='font-bold text-fg'>
+              <p className='font-semibold text-fg'>
                 {plan.dates.length === 1 ? (
                   <>
                     <span className='tnum'>{preview.from}</span>회차로 추가됩니다
@@ -216,7 +228,7 @@ export function AddMeetingDialog({
                   </>
                 )}
               </p>
-              <ul className='mt-1 flex flex-col gap-0.5 text-xs text-fg-secondary'>
+              <ul className='mt-1 flex flex-col gap-0.5 type-label-sm text-fg-secondary'>
                 {plan.dates.length > 1 && (
                   <li className='tnum'>
                     {dayLabel(first)} ~ {dayLabel(plan.dates[plan.dates.length - 1])}
@@ -241,8 +253,8 @@ export function AddMeetingDialog({
                 {preview.extendsTo && <li>마지막 회차 뒤라 스터디 기간이 {preview.extendsTo}까지 늘어납니다.</li>}
               </ul>
             </>
-          ) : touched && errors.form ? (
-            <p className='font-medium text-error-700'>{errors.form}</p>
+          ) : touched && errors.root?.message ? (
+            <p className='font-semibold text-error-700'>{errors.root?.message}</p>
           ) : (
             <p className='text-fg-muted'>
               일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_DAYS}일까지.

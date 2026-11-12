@@ -40,7 +40,8 @@ class DashboardSummaryAggregateService {
 
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     ParticipationResult participation() {
-        List<StudyParticipant> actives = studyParticipantRepository.findActiveInOngoingStudies();
+        List<StudyParticipant> actives =
+                studyParticipantRepository.findActiveInStartedOpenStudies(Instant.now());
         Set<String> enrollments =
                 actives.stream()
                         .map(p -> p.getAccountId() + ":" + p.getStudyId())

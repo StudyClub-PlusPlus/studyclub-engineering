@@ -29,6 +29,27 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("recipientUserId") Long recipientUserId);
 
     /**
+     * 회원 탈퇴 — 이 계정이 보낸 공지({@code REFERENCE_ID})의 메일 행을 잠그고 조회한다(보낸 사람 이름 비식별화). {@link
+     * #findByRecipientUserIdForUpdate} 와 같은 이유로 {@code FOR UPDATE} 다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            "select n from Notification n where n.eventType = :eventType"
+                    + " and n.referenceId in :referenceIds order by n.id")
+    List<Notification> findByReferenceIdsForUpdate(
+            @Param("eventType") NotificationEventType eventType,
+            @Param("referenceIds") Collection<Long> referenceIds);
+
+    /** 이 사람이 보낸 알림 — 보낸 사람이 탈퇴할 때 보낸 사람 이름을 비식별화할 행을 잠그고 읽는다. 공지가 스터디 삭제로 사라져도 찾는다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            "select n from Notification n where n.eventType = :eventType"
+                    + " and n.senderAccountId = :senderAccountId order by n.id")
+    List<Notification> findBySenderAccountIdForUpdate(
+            @Param("eventType") NotificationEventType eventType,
+            @Param("senderAccountId") Long senderAccountId);
+
+    /**
      * 완료 처리(markSent/markFailed) 전용 — 행을 잠근다({@code AccountRepository.findByEmailForUpdate} 와 같은
      * 이유). 일반 {@code findById} 는 트랜잭션 시작 시점의 스냅샷을 읽을 뿐이라, 이 값을 읽어 자바에서 상태·lockedAt 을 확인한 뒤 저장하는 사이에
      * 다른 트랜잭션(재수거 등)이 같은 행을 먼저 바꿔도 알아채지 못하고 덮어쓸 수 있다 — 확인과 갱신이 원자적이지 않다는 리뷰 지적. {@code FOR UPDATE}
@@ -88,6 +109,53 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             """,
             nativeQuery = true)
     long countFiltered(@Param("eventType") String eventType, @Param("status") String status);
+
+    /**
+     * 공지별 메일 결과를 <b>받는 사람 수</b> 기준으로 한 번에 센다 (기록 목록이 공지마다 조회하지 않게 — N+1). 같은 조건의 템플릿이 여럿이면 한 사람에게
+     * 행이 여러 개라, 행 수로 세면 템플릿 수만큼 부풀기 때문이다.
+     *
+     * <p>안쪽 쿼리가 (공지, 받는 사람)마다 행들을 {@link NotificationMailResult} 하나로 줄이고, 바깥 쿼리가 그 결과별로 센다 — 한 사람의
+     * 행이 몇 개든 DB 가 줄여서 주므로 돌아오는 행은 공지당 많아야 3개다(수신자 수에 비례하지 않는다). 줄이는 규칙: 하나라도 {@code FAILED} 면 실패,
+     * 아니면 하나라도 {@code PENDING}·{@code PROCESSING} 이면 대기, 아니면 {@code SENT} 가 있으면 완료. {@code
+     * CANCELLED} 만 있는 사람은 어느 쪽에도 세지 않는다. 네이티브 쿼리라 결과를 위치로 읽는다 — {@link
+     * #countRecipientsByMailResult} 를 쓴다.
+     */
+    @Query(
+            value =
+                    """
+            SELECT r.REFERENCE_ID, r.MAIL_RESULT, COUNT(*)
+            FROM (
+                SELECT REFERENCE_ID,
+                       RECIPIENT_USER_ID,
+                       CASE
+                           WHEN SUM(CASE WHEN STATUS = 'FAILED' THEN 1 ELSE 0 END) > 0 THEN 'FAILED'
+                           WHEN SUM(CASE WHEN STATUS IN ('PENDING', 'PROCESSING') THEN 1 ELSE 0 END) > 0 THEN 'PENDING'
+                           WHEN SUM(CASE WHEN STATUS = 'SENT' THEN 1 ELSE 0 END) > 0 THEN 'SENT'
+                       END AS MAIL_RESULT
+                FROM NOTIFICATION
+                WHERE EVENT_TYPE = :eventType AND REFERENCE_ID IN (:referenceIds)
+                GROUP BY REFERENCE_ID, RECIPIENT_USER_ID
+            ) r
+            WHERE r.MAIL_RESULT IS NOT NULL
+            GROUP BY r.REFERENCE_ID, r.MAIL_RESULT
+            """,
+            nativeQuery = true)
+    List<Object[]> findMailResultRows(
+            @Param("eventType") String eventType,
+            @Param("referenceIds") Collection<Long> referenceIds);
+
+    /** {@link #findMailResultRows} 의 위치 기반 결과를 타입 있는 값으로 바꾼다. 건수가 0인 결과는 행이 없다. */
+    default List<NotificationMailResultCount> countRecipientsByMailResult(
+            NotificationEventType eventType, Collection<Long> referenceIds) {
+        return findMailResultRows(eventType.name(), referenceIds).stream()
+                .map(
+                        row ->
+                                new NotificationMailResultCount(
+                                        ((Number) row[0]).longValue(),
+                                        NotificationMailResult.valueOf((String) row[1]),
+                                        ((Number) row[2]).longValue()))
+                .toList();
+    }
 
     /**
      * 다중 서버 환경에서 같은 PENDING 행을 두 인스턴스가 동시에 집어가지 않도록 잠근다. InnoDB 가 행 락 획득을 원자적으로 처리하므로 이 SELECT 자체가

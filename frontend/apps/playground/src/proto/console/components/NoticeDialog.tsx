@@ -106,7 +106,7 @@ export function NoticeDialog({
                 data-anno='notice:2-6'
                 onClick={() => setConfirmDelete(true)}
                 disabled={saving}
-                className='mr-auto h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
+                className='mr-auto h-10 type-label-lg text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
               >
                 공지 삭제
               </button>
@@ -120,15 +120,15 @@ export function NoticeDialog({
       }
     >
       {done === 'deleted' ? (
-        <p className='py-6 text-center text-sm text-fg-muted'>삭제되었습니다. 사이트 공지에서 내려갔습니다.</p>
+        <p className='py-6 text-center type-body-sm text-fg-muted'>삭제되었습니다. 사이트 공지에서 내려갔습니다.</p>
       ) : done === 'saved' ? (
-        <p className='py-6 text-center text-sm text-fg-muted'>
+        <p className='py-6 text-center type-body-sm text-fg-muted'>
           {editing ? '저장되었습니다. 사이트 공지에 바로 반영됩니다.' : '등록되었습니다. 사이트 공지에 바로 올라갑니다.'}
         </p>
       ) : confirmDelete ? (
         <div className='py-6 text-center'>
-          <p className='text-sm font-semibold text-fg'>‘{notice?.title}’ 공지를 삭제합니다.</p>
-          <p className='mt-1.5 text-sm text-fg-muted'>사이트 공지와 이 목록에서 바로 사라지며 되돌릴 수 없습니다.</p>
+          <p className='type-label-lg text-fg'>‘{notice?.title}’ 공지를 삭제합니다.</p>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>사이트 공지와 이 목록에서 바로 사라지며 되돌릴 수 없습니다.</p>
         </div>
       ) : (
         <NoticeForm value={form} errors={errors} onChange={setForm} />

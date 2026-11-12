@@ -1,5 +1,6 @@
-import { config as baseConfig } from './base.js';
 import pluginNext from '@next/eslint-plugin-next';
+
+import { config as baseConfig } from './base.js';
 
 /** @type {import('eslint').Linter.Config} */
 export default [

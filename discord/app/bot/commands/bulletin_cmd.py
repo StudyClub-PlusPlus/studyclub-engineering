@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 NOT_ALLOWED = "이 명령은 captain 역할을 가진 멤버만 쓸 수 있습니다."
 DISABLED = (
-    "DISCORD_BULLETIN_CHANNEL_ID 가 설정되지 않아 공부방 게시판 기능이 꺼져 있습니다."
+    "DISCORD_CONFIG_BULLETIN_CHANNEL_ID 가 설정되지 않아 공부방 게시판 기능이 꺼져 있습니다."
 )
 UPDATED = "공부방 게시판을 갱신했습니다."
 FAILED = "공부방 게시판을 갱신하지 못했습니다. alert 채널과 로그를 확인해 주세요."
@@ -34,7 +34,7 @@ def may_update(ctx: commands.Context, settings: Settings) -> bool:
     Captain only. A refresh costs a history read and an edit against Discord's
     rate limits, so it is not left open to the whole guild -- and the board is what every member reads.
 
-    An unset ``DISCORD_CAPTAIN_ROLE_ID`` shuts the door rather than opening it.
+    An unset ``DISCORD_CONFIG_CAPTAIN_ROLE_ID`` shuts the door rather than opening it.
     In a DM there is no member and no role, so there is nobody to check.
     """
     if ctx.guild is None or settings.captain_role_id is None:

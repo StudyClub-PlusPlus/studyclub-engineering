@@ -16,6 +16,11 @@ import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,8 +39,8 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * 반 이름 바꾸기 ({@code PATCH /api/admin/studies/{studyId}/groups/{groupId}}) —
- * specs/study-group/spec.md
+ * 반 수정 ({@code PATCH /api/admin/studies/{studyId}/groups/{groupId}}) — specs/study-group/spec.md.
+ * 이름 · 요일 · 시간대를 각각 독립적으로 보낼 수 있다(보낸 필드만 반영).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -134,6 +139,170 @@ class AdminStudyGroupUpdateIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
+    }
+
+    @Test
+    @DisplayName("성공 - 요일을 저장한다")
+    void updatesDaysOfWeek() {
+        var response =
+                patch(
+                        Map.of("daysOfWeek", List.of("mon", "wed")),
+                        ADMIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("daysOfWeek", List.of("mon", "wed"));
+        assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getDaysOfWeek())
+                .isEqualTo(List.of("mon", "wed"));
+    }
+
+    @Test
+    @DisplayName("성공 - daysOfWeek · timezone · startTime null 이면 기존 값 그대로")
+    void nullFieldsAreIgnored() {
+        group.changeDaysOfWeek(List.of("mon"));
+        group.changeTimezone("Asia/Seoul");
+        group.changeStartAt(
+                LocalTime.parse("20:00")
+                        .atDate(LocalDate.EPOCH)
+                        .atZone(ZoneId.of("Asia/Seoul"))
+                        .toInstant());
+        studyGroupRepo.saveAndFlush(group);
+
+        var body = new HashMap<String, Object>();
+        body.put("daysOfWeek", null);
+        body.put("timezone", null);
+        body.put("startTime", null);
+        var response = patch(body, ADMIN_ID, study.getId(), group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        var saved = studyGroupRepo.findById(group.getId()).orElseThrow();
+        assertThat(saved.getDaysOfWeek()).isEqualTo(List.of("mon"));
+        assertThat(saved.getTimezone()).isEqualTo("Asia/Seoul");
+        assertThat(saved.getStartAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("실패 - 유효하지 않은 요일 값이면 400 INVALID_INPUT")
+    void invalidDayOfWeek() {
+        var response =
+                patch(
+                        Map.of("daysOfWeek", List.of("monday")),
+                        ADMIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @Test
+    @DisplayName("실패 - 빈 요일 목록은 400 INVALID_INPUT")
+    void emptyDaysOfWeek() {
+        var response =
+                patch(Map.of("daysOfWeek", List.of()), ADMIN_ID, study.getId(), group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @Test
+    @DisplayName("성공 - 시간대를 저장한다")
+    void updatesTimezone() {
+        var response =
+                patch(
+                        Map.of("timezone", "America/New_York"),
+                        ADMIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("timezone", "America/New_York");
+        assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getTimezone())
+                .isEqualTo("America/New_York");
+    }
+
+    @Test
+    @DisplayName("실패 - 허용되지 않은 시간대면 400 INVALID_INPUT")
+    void invalidTimezone() {
+        var response =
+                patch(Map.of("timezone", "Europe/Paris"), ADMIN_ID, study.getId(), group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @Test
+    @DisplayName("성공 - 이름·요일·시간대를 한 번에 바꾼다")
+    void updatesAllFields() {
+        var response =
+                patch(
+                        Map.of(
+                                "name", "새이름",
+                                "daysOfWeek", List.of("tue", "fri"),
+                                "timezone", "America/Vancouver"),
+                        ADMIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        var saved = studyGroupRepo.findById(group.getId()).orElseThrow();
+        assertThat(saved.getName()).isEqualTo("새이름");
+        assertThat(saved.getDaysOfWeek()).isEqualTo(List.of("tue", "fri"));
+        assertThat(saved.getTimezone()).isEqualTo("America/Vancouver");
+    }
+
+    @Test
+    @DisplayName("성공 - startTime 과 timezone 을 함께 보내 저장한다")
+    void updatesStartTime() {
+        var response =
+                patch(
+                        Map.of("startTime", "20:30", "timezone", "Asia/Seoul"),
+                        ADMIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("startTime", "20:30");
+        assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getStartAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("성공 - timezone 없이 startTime 만 보내면 기본 시간대(Asia/Seoul)로 저장한다")
+    void startTimeWithoutTimezoneUsesDefault() {
+        var response = patch(Map.of("startTime", "20:00"), ADMIN_ID, study.getId(), group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getStartAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("실패 - startTime 형식이 잘못되면 400 INVALID_INPUT")
+    void invalidStartTime() {
+        var response =
+                patch(
+                        Map.of("startTime", "9:00", "timezone", "Asia/Seoul"),
+                        ADMIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @Test
+    @DisplayName("성공 - 이름만 보내면 요일·시간대는 그대로")
+    void nameOnlyDoesNotClearOthers() {
+        group.changeDaysOfWeek(List.of("sat"));
+        group.changeTimezone("Asia/Seoul");
+        studyGroupRepo.saveAndFlush(group);
+
+        var response = patch(Map.of("name", "새이름2"), ADMIN_ID, study.getId(), group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        var saved = studyGroupRepo.findById(group.getId()).orElseThrow();
+        assertThat(saved.getDaysOfWeek()).isEqualTo(List.of("sat"));
+        assertThat(saved.getTimezone()).isEqualTo("Asia/Seoul");
     }
 
     @Test

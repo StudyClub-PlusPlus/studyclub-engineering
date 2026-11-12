@@ -14,7 +14,7 @@ import { checkNicknameAvailability } from '@core/lib/nickname-availability';
 import {
   clearDrafts,
   initialDraft,
-  isValidTimeZone,
+  isOnboardingTimeZone,
   nicknameError,
   ONBOARDING_SCENARIOS,
   returnPath,
@@ -67,11 +67,11 @@ function OnboardingScreen() {
       <ScreenSpecRegistrar spec={SPEC} />
       <div className='mx-auto max-w-[540px]'>
         <header className='mb-7 text-center' data-anno='1'>
-          <div className='mb-4 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1.5 text-xs font-medium text-primary-700'>
+          <div className='mb-4 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1.5 type-label-sm text-primary-700'>
             <Check size={13} aria-hidden='true' />
             {locale === 'ko' ? 'Google 계정 연결 완료' : 'Google account connected'}
           </div>
-          <h1 className='break-keep text-2xl font-bold tracking-tight sm:text-[28px]'>
+          <h1 className='break-keep type-headline-lg sm:type-headline-lg'>
             {locale === 'ko' ? 'StudyClub에 오신 것을 환영해요' : 'Welcome to StudyClub'}
           </h1>
         </header>
@@ -86,7 +86,7 @@ function OnboardingScreen() {
           <div
             aria-busy='true'
             role='status'
-            className='rounded-card border border-border bg-bg p-8 text-sm text-fg-muted'
+            className='rounded-card border border-border bg-bg p-8 type-body-sm text-fg-muted'
           >
             {locale === 'ko' ? '가입 정보를 확인하고 있어요…' : 'Loading your profile…'}
           </div>
@@ -168,7 +168,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
   // 「확인 중」에도 누를 수 있어야 한다 — 400ms 를 기다렸다 누르게 하면 다 채운 사람이 멈춰 선다.
   // 중복으로 판명된 값만 막는다.
   const valid =
-    !nicknameError(draft.nickname, locale) && nickStatus !== 'taken' && isValidTimeZone(draft.timeZone) && requiredAgreed;
+    !nicknameError(draft.nickname, locale) && nickStatus !== 'taken' && isOnboardingTimeZone(draft.timeZone) && requiredAgreed;
   /**
    * 닉네임 칸 아래 한 줄. **자리를 하나만 쓴다** — 상태마다 줄을 더하면 아래가 밀린다.
    * 형식 오류는 친 순간 보여주고, 중복 여부는 형식이 맞은 뒤에만 말한다.
@@ -281,11 +281,11 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
         <div
           data-anno='6'
           role='alert'
-          className='mb-6 rounded-control border border-error-600/20 bg-error-50 p-4 text-sm text-error-700'
+          className='mb-6 rounded-control border border-error-600/20 bg-error-50 p-4 type-body-sm text-error-700'
         >
           <div className='flex items-start gap-2'>
             <AlertCircle size={17} className='mt-0.5 shrink-0' />
-            <p className='leading-relaxed'>
+            <p className=''>
               {problem === 'expired'
                 ? ko
                   ? '로그인 시간이 만료됐어요. 다시 로그인하면 입력하던 내용을 이어서 작성할 수 있어요.'
@@ -332,7 +332,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
             id='nickname-help'
             data-anno='2-1'
             role={nickLine.tone === 'error' ? 'alert' : undefined}
-            className={`mt-2 flex items-center gap-1.5 text-xs leading-relaxed ${
+            className={`mt-2 flex items-center gap-1.5 type-label-sm ${
               nickLine.tone === 'ok' ? 'text-success-700' : nickLine.tone === 'error' ? 'text-error-700' : 'text-fg-muted'
             }`}
           >
@@ -347,7 +347,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
           locale={locale}
           disabled={disabled}
           error={
-            touched && !isValidTimeZone(draft.timeZone)
+            touched && !isOnboardingTimeZone(draft.timeZone)
               ? ko
                 ? '일정에 사용할 시간대를 선택해 주세요.'
                 : 'Choose a time zone for your schedule.'
@@ -356,11 +356,11 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
         />
 
         <section className='border-t border-border pt-6'>
-          <h2 className='mb-4 text-base font-semibold'>{ko ? '약관 동의' : 'Terms and agreements'}</h2>
+          <h2 className='mb-4 type-title-md'>{ko ? '약관 동의' : 'Terms and agreements'}</h2>
           {!ko && (
             <p
               role='note'
-              className='mb-4 rounded-control bg-surface-1 px-3 py-2.5 text-xs leading-relaxed text-fg-muted'
+              className='mb-4 rounded-control bg-surface-1 px-3 py-2.5 type-label-sm text-fg-muted'
             >
               The documents below are currently available in Korean. English versions have not been provided yet.
             </p>

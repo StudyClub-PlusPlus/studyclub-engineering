@@ -21,6 +21,8 @@
     "tokens.css",
     "compat.css",
     "base.css",
+    "buttons.css",
+    "typography.css",
     "core.css",
     "console.css",
     "console-only.css",

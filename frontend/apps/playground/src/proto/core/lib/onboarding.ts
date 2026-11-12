@@ -1,4 +1,8 @@
 import type { Locale } from './content';
+import { ZONES } from './zones';
+
+export const ONBOARDING_ZONES = ZONES.map(({ zone }) => zone);
+export type OnboardingZone = (typeof ZONES)[number]['zone'];
 
 /** Matches POST /accounts/onboarding. No real API is called in playground. */
 export type OnboardingRequest = {
@@ -57,9 +61,47 @@ export function clearDrafts() {
   }
 }
 
+/** 기기 시간대를 온보딩 4개 중 하나로 접는다. 못 접으면 빈 값 — 사용자가 고른다. */
+export function snapToOnboardingZone(iana: string): OnboardingZone | '' {
+  if ((ONBOARDING_ZONES as readonly string[]).includes(iana)) return iana as OnboardingZone;
+  const aliases: Record<string, OnboardingZone> = {
+    'Asia/Seoul': 'Asia/Seoul',
+    'America/Toronto': 'America/New_York',
+    'America/Detroit': 'America/New_York',
+    'America/Montreal': 'America/New_York',
+    'America/Seattle': 'America/Los_Angeles',
+    'America/Tijuana': 'America/Los_Angeles',
+  };
+  if (aliases[iana]) return aliases[iana]!;
+  try {
+    const target = offsetMinutes(iana);
+    for (const zone of ONBOARDING_ZONES) {
+      if (offsetMinutes(zone) === target) return zone;
+    }
+  } catch {
+    // ignore
+  }
+  return '';
+}
+
+function offsetMinutes(zone: string): number {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: zone,
+    timeZoneName: 'longOffset',
+  }).formatToParts(now);
+  const raw = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT';
+  const match = raw.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+  if (!match) return 0;
+  const sign = match[1] === '-' ? -1 : 1;
+  const hours = Number(match[2] ?? 0);
+  const minutes = Number(match[3] ?? 0);
+  return sign * (hours * 60 + minutes);
+}
+
 export function initialDraft(scenario: OnboardingScenario): OnboardingRequest {
   const saved = readDraft(scenario);
-  if (saved) return saved;
+  if (saved) return { ...saved, timeZone: snapToOnboardingZone(saved.timeZone) };
   let timeZone = '';
   try {
     timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -75,7 +117,7 @@ export function initialDraft(scenario: OnboardingScenario): OnboardingRequest {
           : scenario === 'duplicate'
             ? 'studyclub'
             : 'Journey',
-    timeZone: scenario === 'empty' ? '' : timeZone,
+    timeZone: scenario === 'empty' ? '' : snapToOnboardingZone(timeZone),
     termsOfServiceAgreed: !['default', 'empty', 'nickname'].includes(scenario),
     privacyPolicyAgreed: !['default', 'empty', 'nickname'].includes(scenario),
     marketingAgreed: false,
@@ -127,14 +169,8 @@ export function nicknameError(raw: string, locale: Locale): string | undefined {
   }
 }
 
-export function isValidTimeZone(value: string): boolean {
-  if (!value) return false;
-  try {
-    new Intl.DateTimeFormat('en', { timeZone: value }).format();
-    return true;
-  } catch {
-    return false;
-  }
+export function isOnboardingTimeZone(value: string): value is OnboardingZone {
+  return (ONBOARDING_ZONES as readonly string[]).includes(value);
 }
 
 /** Keep prototype return links inside the user site, never back into authentication. */

@@ -27,7 +27,7 @@ export function DiscordPreviewToolbar() {
 
   return (
     <aside aria-label={ko ? '디스코드 검토 도구' : 'Discord preview controls'} className='border-b border-border bg-surface-1 px-5 py-2.5'>
-      <div className='mx-auto flex max-w-6xl flex-wrap items-center gap-3 text-xs'>
+      <div className='mx-auto flex max-w-6xl flex-wrap items-center gap-3 type-label-sm'>
         <span className='font-semibold text-fg-muted'>{ko ? '디스코드 미리보기' : 'Discord preview'}</span>
         <label className='flex items-center gap-2'>
           {ko ? '예시 회원 (선택 시 예시 데이터 초기화)' : 'Example member (resets example data)'}

@@ -30,7 +30,7 @@ POST /api/v1/roles/{discordRoleId}/users
 
 **봇은 요청자를 검사하지 않는다.** 누가 역할을 배정시킬 수 있는지는 백엔드가 호출 전에 정한다
 ([공통 헤더](common-header.md#x-discord-user-id)). 스터디 참가 확정처럼 백엔드가 스스로 처리하는 배정은
-`X-Discord-User-ID` 에 `DISCORD_BOT_ID` 를 싣는다 ([시스템 호출](common-header.md#시스템-호출)).
+`X-Discord-User-ID` 에 `DISCORD_CONFIG_BOT_ID` 를 싣는다 ([시스템 호출](common-header.md#시스템-호출)).
 
 ```jsonc
 {
@@ -64,11 +64,11 @@ POST /api/v1/roles/{discordRoleId}/users
 
 | 역할 | 왜 막나 |
 |------|---------|
-| captain (`DISCORD_CAPTAIN_ROLE_ID`) | 사람이 손으로 준다. API 로 열면 captain 이 captain 을 만들 수 있다 |
-| navigator (`DISCORD_NAVIGATOR_ROLE_ID`) | 전용 엔드포인트가 있다 — [assign-navigator-role](assign-navigator-role.md) · [remove-navigator-role](remove-navigator-role.md) |
+| captain (`DISCORD_CONFIG_CAPTAIN_ROLE_ID`) | 사람이 손으로 준다. API 로 열면 captain 이 captain 을 만들 수 있다 |
+| navigator (`DISCORD_CONFIG_NAVIGATOR_ROLE_ID`) | 전용 엔드포인트가 있다 — [assign-navigator-role](assign-navigator-role.md) · [remove-navigator-role](remove-navigator-role.md) |
 | `@everyone` (역할 ID = 길드 ID) | 모든 멤버가 이미 갖고 있고, Discord 도 붙이고 떼는 걸 거부한다 |
 
-막으려면 두 ID 를 알아야 하므로, `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 가
+막으려면 두 ID 를 알아야 하므로, `DISCORD_CONFIG_CAPTAIN_ROLE_ID` · `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` 가
 비어 있으면 **409** 다 — 설정이 비었다고 그 역할이 열리지 않는다. (2026-10-14 결정)
 
 그 밖의 역할은 **제한하지 않는다** — 길드에 있고 봇이 붙일 수 있으면 배정한다.
@@ -140,7 +140,7 @@ POST /api/v1/roles/{discordRoleId}/users
 | **400** | `discordUserIds` 가 중복을 뺀 뒤 100개 초과 | 위와 같음. 나눠서 보낸다 |
 | **400** | `discordRoleId` 가 captain · navigator · `@everyone` 역할 | [배정할 수 있는 역할의 범위](#배정할-수-있는-역할의-범위). 역할이 길드에 있는지보다 먼저 본다 |
 | **404** | `discordRoleId` 에 해당하는 역할이 길드에 없음 | 이미 지워졌거나 애초에 없는 ID. 아무 유저도 건드리지 않는다 |
-| **409** | `DISCORD_GUILD_ID` · `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
+| **409** | `DISCORD_CONFIG_GUILD_ID` · `DISCORD_CONFIG_CAPTAIN_ROLE_ID` · `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
 | **502** | 캐시에 없는 대상 유저를 Discord 에 물었는데 답이 없음 | 아직 아무도 건드리지 않았다. 그대로 재시도해도 안전하다 |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
@@ -212,7 +212,7 @@ Discord 에는 "역할을 여러 명에게 한 번에" 가 없다. **유저 한 
 
 정해야 이 계약이 확정되는 것들.
 
-- ~~**captain 역할을 찾는 방법**~~ — 정해졌다. 설정값(`DISCORD_CAPTAIN_ROLE_ID`)으로 ID 를 받는다.
+- ~~**captain 역할을 찾는 방법**~~ — 정해졌다. 설정값(`DISCORD_CONFIG_CAPTAIN_ROLE_ID`)으로 ID 를 받는다.
 - ~~**`discordUserIds` 상한**~~ — 정해졌다. 중복을 뺀 뒤 **100개**. 유저 수만큼 Discord 호출이 나가므로
   상한이 곧 최악의 응답 시간이고, 캐시에 없는 유저를 한 번에 묻는 Discord 멤버 조회가 최대 100명까지 받는다.
 - ~~**길드에 없는 유저 처리**~~ — 정해졌다. 건너뛰고 나머지를 붙이며, 빠진 사람은

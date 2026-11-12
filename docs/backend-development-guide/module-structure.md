@@ -41,7 +41,8 @@ backend/
 ### notification
 
 - Notification·NotificationTemplate 엔티티와 리포지토리
-- UserRegisteredEvent 구독과 별도 트랜잭션의 알림 생성
+- UserRegisteredEvent 구독과 별도 트랜잭션의 알림 생성 (웰컴메일)
+- StudyNoticeSent 구독과 같은 트랜잭션(`BEFORE_COMMIT`)의 알림 생성 (반 공지 메일)
 - 클레임·재수거 스케줄러 및 MailClient/SES 발송
 - 자체 Flyway 마이그레이션 (`db/migration`), 전역 버전 번호 공유
 - `src/main/resources/notification.yml`에 `mail.*`·`notification.polling.*` 기본 설정 관리

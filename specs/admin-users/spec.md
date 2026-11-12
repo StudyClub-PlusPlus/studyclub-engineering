@@ -1,4 +1,8 @@
-# 백오피스 회원 API Spec — 회원 목록 · 이메일 보기 · 계정 권한 변경
+# 백오피스 회원 API Spec — 회원 목록 · 개인정보 보기 · 계정 권한 변경
+
+> 갱신: 2026-10-31 — 디스코드 아이디도 이메일과 같은 개별 열람·감사 기록 방식으로 제공한다. 목록에는 연동 여부만 보낸다.
+> 갱신: 2026-10-31 — 이메일·디스코드 모두 플레이그라운드의 눈 아이콘 보기·가리기를 반영한다. 가리면 원본을 지우고, 다시 열 때 새 요청과 감사 기록을 남긴다.
+> 갱신: 2026-11-01 — [180일간 명부 참여·로그인이 모두 없는 회원만 휴면으로 표시](../../docs/share/2026-10-31-user-dormancy-180-days.md)하는 기준을 실제 회원 목록 API와 백오피스에도 적용한다.
 
 > ERD: [ACCOUNT](../../docs/erd/ACCOUNT.md), [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md), [STUDY](../../docs/erd/STUDY.md), [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) (신규)
 > 생성일: 2026-10-01
@@ -8,7 +12,7 @@
 > 갱신: 2026-10-08 — `beta` 반영: 기획 폴더 `01-planning/` 이동, POL-0001 담당 캡틴 = `STUDY.CREATED_BY`·반 편성 때 명부 편입(#208)
 > 갱신: 2026-10-08 — **기획 문서(PRD)에 적힌 이름을 따른다** — 경로 `/api/admin/users`·`…/system-role`, 역할 필터 `role`, 에러 코드 `CANNOT_CHANGE_OWN_ROLE`·`LAST_ADMIN_REQUIRED`, 스펙 위치 `specs/admin-users/` (옛 `specs/admin-accounts/` 에서 옮김). 동작은 PR #163 합의 그대로 ([PRD 와 다른 곳](#기획-문서와-다른-곳))
 > 갱신: 2026-10-14 — POL-0001 반 편성 때 명부 편입 원복. 담당 캡틴은 신청했을 때만 명부에 있다
-> 상태: 구현완료 (2026-10-10, PR #219 · #221) — 남은 미확정 1건 (감사 로그 보관 기간)
+> 상태: 구현완료 (2026-10-10, PR #219 · #221)
 >
 > Story PRD:
 > - [캡틴으로서, 전체 회원 리스트를 조회할 수 있다](../../01-planning/stories/captain-list-users/PRD.md)
@@ -16,7 +20,7 @@
 >
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) — 계정 권한(캡틴·크루)과 스터디 역할(네비게이터)은 다른 층이다
 > 관련: [authz-guards/spec.md](../authz-guards/spec.md) — 인가는 이 스펙을 따른다. [back-office-login/spec.md](../back-office-login/spec.md) — 「2단계 — 역할 부여」를 이 스펙이 받는다. [user-leave/spec.md](../user-leave/spec.md) — 탈퇴 계정은 물리 삭제라 목록에 나오지 않는다
-> 기준 프로토타입: playground 운영 콘솔 › 유저 (`frontend/apps/playground/src/proto/console/components/UsersTable.tsx`, `lib/roles.ts`). 이메일 「보기」는 playground 반영 전이다 — 화면 모양은 반영되면 그것을 따른다
+> 기준 프로토타입: playground 운영 콘솔 › 유저 (`frontend/apps/playground/src/proto/console/components/UsersTable.tsx`, `components/DiscordCell.tsx`, `lib/roles.ts`). 이메일·디스코드 열람은 눈 아이콘으로 열고 다시 가리는 모양을 따른다.
 
 ## 엔드포인트 목록
 
@@ -24,6 +28,7 @@
 |--------|------|------|------|------|
 | GET | /api/admin/users | 회원 목록 — 필터·검색·페이지, 걸러진 뒤 총 인원. 이메일은 가려서 준다 | O (`@RequireAdmin`) | 구현완료 |
 | POST | /api/admin/users/{accountId}/email-reveals | 한 명의 이메일 원본 보기 — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현완료 |
+| POST | /api/admin/users/{accountId}/discord-reveals | 한 명의 디스코드 아이디 보기 — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현완료 |
 | PATCH | /api/admin/users/{accountId}/system-role | 계정 권한 변경 (ADMIN ↔ MEMBER) — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현완료 |
 | GET | /api/admin/role-permissions | 역할별 기본 권한표 | O (`@RequireAdmin`) | 구현완료 |
 | ~~GET~~ | ~~/accounts~~ | 옛 유저 목록 — **삭제됨** (#221, [아래](#옛-get-accounts-를-없앤다)) | O (`@RequireAdmin`, #178) | 삭제 |
@@ -139,7 +144,8 @@
       "navigatorOf": [],
       "dormant": true,
       "joinedAt": "2026-08-12T03:41:09Z",
-      "roleChangeBlockedReason": "CANNOT_CHANGE_OWN_ROLE"
+      "roleChangeBlockedReason": "CANNOT_CHANGE_OWN_ROLE",
+      "discordLinked": true
     },
     {
       "id": 18,
@@ -152,7 +158,8 @@
       ],
       "dormant": false,
       "joinedAt": "2026-09-01T11:00:00Z",
-      "roleChangeBlockedReason": null
+      "roleChangeBlockedReason": null,
+      "discordLinked": false
     },
     {
       "id": 27,
@@ -162,7 +169,8 @@
       "navigatorOf": [],
       "dormant": true,
       "joinedAt": "2026-09-30T08:15:42Z",
-      "roleChangeBlockedReason": null
+      "roleChangeBlockedReason": null,
+      "discordLinked": true
     }
   ],
   "total": 134,
@@ -181,12 +189,28 @@
 | items[].navigatorOf | Array | N | 담당 스터디. 없으면 `[]`. 편입 최신순 — 화면은 첫 개만 적고 나머지는 개수로 접는다 | 계산: STUDY_PARTICIPANT (`PARTICIPANT_ROLE = LEADER`, `STATUS ∈ {ACTIVE, PAUSED}`), `JOINED_AT DESC` |
 | items[].navigatorOf[].studyId | Long | N | | STUDY.ID |
 | items[].navigatorOf[].title | String | N | | STUDY.TITLE |
-| items[].dormant | Boolean | N | 「휴면」 표기. 계정 상태가 아니라 참여 이력으로 판정한다 | 계산: 참여 중인 스터디 수 = 0 |
+| items[].dormant | Boolean | N | 「휴면」 표기. 최근 180일간 명부 참여와 로그인이 모두 없을 때만 true | 계산: `Account.isDormant` — 아래 휴면 판정 기준 |
 | items[].joinedAt | String | N | 가입일. UTC ISO 8601 | ACCOUNT.CREATED_AT |
 | items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: `Account.roleChangeBlockedReason(요청자 ID, ADMIN 수)` — 권한 변경 API 의 거절도 같은 메서드 |
+| items[].discordLinked | Boolean | N | 디스코드 계정 연동 여부 — 목록 「디스코드」 칸 (2026-10-27) | 계산: `ACCOUNT.DISCORD_ID` 있음 |
 | total | Long | N | 걸러진 뒤 전체 수 — 화면의 「총 N명」 | 계산: COUNT |
 | offset | Integer | N | 요청 값 그대로 | |
 | limit | Integer | N | 요청 값 그대로 | |
+
+### 휴면 판정
+
+- 요청당 한 번 정한 현재 시각에서 180 × 24시간을 뺀 시각을 경계로 삼는다. 경계 시각의 기록도 최근 기록이다.
+- `ACCOUNT.CREATED_AT`과 모든 로그인 수단의 `MAX(ACCOUNT_IDENTITY.LAST_LOGIN_AT)`이 모두 경계보다 과거여야 한다. 사이트·백오피스 로그인은 같은 기록을 갱신한다. 화면 열람과 토큰 갱신은 새 로그인으로 세지 않는다.
+- 명부는 역할·반·상태와 무관하게 모두 확인한다. `JOINED_AT`부터 참여 종료까지를 참여 기간으로 보고, 모든 참여 기간이 경계 전에 끝났을 때만 휴면이다.
+  - ACTIVE·PAUSED: 스터디 `END_AT`까지 참여한다. 종료일이 없으면 현재 참여 중이거나 종료 시각 미확인이므로 휴면으로 단정하지 않는다.
+  - COMPLETED: 스터디 `END_AT`까지 참여했다.
+  - WITHDRAWN·DELETED: `LEFT_AT`까지 참여했다. 스터디 `END_AT`이 있으면 둘 중 이른 시각을 쓴다.
+- 가입일·최근 로그인일이 없거나, 명부가 참조하는 스터디가 없거나, 참여 시작·종료일이 누락/역전되어 있으면 `false`다. 명부 행이 전혀 없는 것은 참여 이력이 없다는 뜻이다.
+- 캡틴도 같은 기준이다. 가입 후 180일 이내면 휴면이 아니다. 로그인 수단을 합친 최신 로그인일이 존재하면 일부 수단의 날짜가 비어 있어도 그 최신값을 쓴다.
+- 참여 중인 스터디 수는 기존 목록 정렬에만 쓴다. 휴면 기준 변경으로 정렬·권한·접근 가능 여부는 바뀌지 않는다.
+- 화면은 서버의 `dormant`를 그대로 표시한다. 목록 위 안내와 휴면 툴팁은 「최근 180일간 스터디 참여 및 로그인 기록이 없는 회원」이다.
+
+디스코드 아이디 원본(`discordHandle`)과 숫자 ID 는 목록 응답에 포함하지 않는다. 원본은 [디스코드 보기](#디스코드-보기)로만 제공한다.
 
 - 필드 이름을 `email` 이 아니라 `maskedEmail` 로 둔다 — 원본으로 착각해 다른 곳에 쓰지 않게 이름이 말하게 한다.
 - 마스킹은 서버가 한다. 원본을 내려보내고 화면에서 가리면 응답·브라우저 개발자 도구에 원본이 남는다.
@@ -197,8 +221,9 @@
 |---|---|---|
 | `CANNOT_CHANGE_OWN_ROLE` | 이 행이 요청자 본인 | 자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요. |
 | `LAST_ADMIN_REQUIRED` | 이 행이 `ADMIN` 이고 `ADMIN` 이 1명뿐 | 마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요. |
-| `DISCORD_LINK_REQUIRED` | 이 행이 `MEMBER` 이고 디스코드 미연동(`ACCOUNT.DISCORD_ID` 없음) — 캡틴은 연동이 필수다 (10-24 회의, STD-05) | 디스코드를 연동한 회원만 캡틴이 될 수 있습니다. |
-| `null` | 위 셋 다 아님 | — |
+| `null` | 위 둘 다 아님 | — |
+
+> 2026-10-27 `DISCORD_LINK_REQUIRED`(디스코드 미연동 크루는 캡틴으로 못 올림, STD-05)를 뺐다. 캡틴에게 디스코드 연동은 필수가 아니다 — [share 10-27](../../docs/share/2026-10-27-captain-discord-optional.md)
 
 > 요청자는 언제나 `ADMIN` 이므로, `ADMIN` 이 1명이면 그 1명은 요청자 본인이라 `CANNOT_CHANGE_OWN_ROLE` 가 먼저 걸린다. 목록에서 `LAST_ADMIN_REQUIRED` 이 보이는 일은 사실상 없다. **마지막 캡틴을 실제로 지키는 것은 `PATCH` 의 잠금 판정**이다 — 캡틴 둘이 동시에 서로를 내리는 경우 ([아래](#처리-규칙)).
 
@@ -221,6 +246,64 @@
 - `frontend/apps/back-office-front/src/features/users/queries.ts` → `useUsers()` — `/api/admin/users` 로 교체, 쿼리 키에 필터·`offset` 포함
 - `frontend/apps/back-office-front/src/features/users/types.ts` → `ApiUser` 를 이 응답 모양으로 교체
 - `frontend/packages/mock/src/msw/handlers/accounts.ts` — 핸들러 그룹을 `/api/admin/users` 로 옮기고 `ApiAccount` 를 이 모양으로. 프리셋: 정상 · 빈 결과 · 403
+
+---
+
+## 디스코드 보기
+
+### 기본 정보
+
+- **Method**: POST
+- **Path**: `/api/admin/users/{accountId}/discord-reveals`
+- **인증**: 필요 — `@RequireAdmin` (캡틴만)
+- **설명**: 해당 회원의 디스코드 username을 반환하고 `DISCORD_REVEAL` 감사 로그 한 행을 남긴다. 숫자 ID·표시 이름은 반환하지 않는다.
+
+### 파라미터
+
+| 이름 | 위치 | 타입 | 설명 |
+|---|---|---|---|
+| accountId | Path | Long | 열람 대상 계정 ID |
+
+Query Parameters / Request Body 없음.
+
+### 처리 규칙
+
+1. 계정이 없거나 디스코드 미연동, 또는 저장된 username이 없으면 `404 NOT_FOUND`. 원본과 열람 기록을 반환·생성하지 않는다.
+2. 이메일 보기와 같이 하나의 트랜잭션에서 요청자·대상 계정 ID와 `DISCORD_REVEAL`을 `ADMIN_AUDIT_LOG`에 저장하고 원본을 반환한다. 기록 실패 시 `500 INTERNAL_ERROR`로 롤백하여 원본도 보내지 않는다.
+3. 본인 열람도 동일하게 기록하며, 성공한 요청마다 한 행을 남긴다. 로그에는 디스코드 아이디 원문을 담지 않는다.
+4. 응답은 `Cache-Control: no-store`. 이메일 보기와 같은 이유로 POST를 사용한다.
+
+### Response — 200
+
+```json
+{ "id": 18, "discordHandle": "sample_crew" }
+```
+
+| 필드 | 타입 | NULL | 설명 | 소스 |
+|---|---|---|---|---|
+| id | Long | N | 대상 계정 ID | ACCOUNT.ID |
+| discordHandle | String | N | 디스코드 username (`@` 제외) | ACCOUNT.DISCORD_HANDLE |
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 인증 없음·무효 |
+| 403 | FORBIDDEN | 캡틴이 아님 |
+| 404 | NOT_FOUND | 계정 없음·미연동·username 없음 |
+| 500 | INTERNAL_ERROR | 감사 로그 저장 실패 등 |
+
+### 프론트엔드 사용처
+
+- `frontend/apps/back-office-front/src/features/users/components/DiscordCell.tsx`: 미연동은 「미연동」만, 연동 상태는 「연동」과 눈 아이콘을 표시한다. 버튼의 접근성 이름·툴팁으로 보기·가리기를 구분한다.
+- 클릭 중에는 해당 버튼을 비활성화하고 로딩 아이콘과 스크린리더용 「확인 중…」을 표시한다. 성공하면 그 줄에 `@username`을 보여주고 눈 가림 아이콘으로 바꾼다. 실패하면 가린 상태를 유지하고 오류를 안내한다.
+- 눈 가림 아이콘을 누르면 해당 원본을 페이지 state에서 즉시 지운다. 가리기는 API를 호출하지 않으며, 다시 눈 아이콘을 누르면 새 요청으로 새 감사 기록을 남긴 뒤 원본을 보여준다.
+- 원본은 페이지 state에만 보관한다. 이메일과 같이 목록 데이터 갱신·화면 이탈 시에도 비운다. 시간 제한은 추가하지 않는다.
+- 이메일 보기와 독립적으로 동작한다. 원본을 목록·mutation 캐시, URL, localStorage에 남기지 않는다.
+
+### 미확정
+
+- 보관 기간·접속 IP·자동 삭제는 [공통 정리 스펙](../data-retention/spec.md)을 따른다.
 
 ---
 
@@ -279,7 +362,8 @@
 
 ### 프론트엔드 사용처
 
-- `frontend/apps/back-office-front/src/app/users/page.tsx` — 이메일 칸 옆 「보기」. 누르면 그 줄에 처리 중을 표시하고 중복 클릭을 막는다 (권한 변경과 같은 원칙). 성공하면 그 줄의 이메일을 원본으로 바꿔 보여준다
+- `frontend/apps/back-office-front/src/app/users/page.tsx` — 이메일 칸 옆 눈 아이콘. 누르면 해당 버튼을 비활성화하고 로딩 아이콘과 스크린리더용 「확인 중…」을 표시한다. 성공하면 그 줄의 이메일과 눈 가림 아이콘을 보여준다.
+- 눈 가림 아이콘을 누르면 해당 이메일 원본을 페이지 state에서 즉시 지우고 마스킹 상태로 돌아간다. 가리기는 API를 호출하지 않는다. 다시 열 때는 `POST …/email-reveals`를 새로 호출하여 감사 기록을 남긴다. 디스코드 열람·가리기와 독립적으로 동작한다.
   - 받은 원본은 **그 화면의 메모리에만** 둔다. 쿼리 캐시에 오래 두거나 URL·localStorage 에 넣지 않는다
   - 목록을 다시 받거나 화면을 떠나면 다시 가려진다. 다시 보려면 다시 누른다(다시 기록된다)
   - 실패하면 가린 값을 그대로 두고 `errorMessage` 를 토스트로 띄운다
@@ -326,7 +410,7 @@
 3. 대상이 요청자 본인이면 `409 CANNOT_CHANGE_OWN_ROLE`. 값이 같아도 막는다.
 4. 대상의 현재 값과 요청 값이 같으면 **아무것도 바꾸지 않고 200**. 감사 기록도 남기지 않는다 (중복 클릭·재시도에 안전).
 5. `ADMIN → MEMBER` 이고 1 에서 센 `ADMIN` 수가 1 이하이면 `409 LAST_ADMIN_REQUIRED`.
-   - `MEMBER → ADMIN` 이고 대상이 디스코드 미연동이면 `409 DISCORD_LINK_REQUIRED`. 내림은 연동과 상관없다 — 이미 캡틴인 미연동자도 내릴 수 있다.
+   - 디스코드 연동 여부는 보지 않는다 — 올림도 내림도 (2026-10-27, 그전에는 미연동 크루를 올리면 `409 DISCORD_LINK_REQUIRED`).
 6. `Account` 의 상태 변경 메서드로 바꾼다 (setter 금지 — 규칙 3·5 는 서비스가 판정하고, 엔티티는 값 전이만 책임진다).
 7. `ADMIN_AUDIT_LOG` 에 `(ACTOR_ACCOUNT_ID = 요청자, ACTION = ROLE_CHANGE, TARGET_ACCOUNT_ID = 대상, BEFORE_VALUE, AFTER_VALUE)` 한 행을 쓴다. 6 과 같은 트랜잭션이라 기록 없이 권한만 바뀌는 일은 없다.
 
@@ -383,7 +467,6 @@
 | 404 | NOT_FOUND | `accountId` 에 해당하는 계정 없음 (탈퇴 등) |
 | 409 | CANNOT_CHANGE_OWN_ROLE | **신규.** 대상이 요청자 본인 — 「자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요.」 |
 | 409 | LAST_ADMIN_REQUIRED | **신규.** 마지막 `ADMIN` 을 `MEMBER` 로 내리려 함 — 「마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요.」 |
-| 409 | DISCORD_LINK_REQUIRED | 디스코드 미연동 `MEMBER` 를 `ADMIN` 으로 올리려 함 — 「디스코드를 연동한 회원만 캡틴이 될 수 있습니다.」 (2026-10-26, STD-05) |
 
 - 두 신규 코드는 `ErrorCode` 에 `CONFLICT` 뒤로 추가한다 (`fromStatus(409)` 는 첫 409 인 `CONFLICT` 를 써야 한다).
 - 이름이 목록의 `roleChangeBlockedReason` 값과 같은 사유를 가리킨다 — 화면이 잠그는 이유와 서버가 거절하는 이유가 하나의 어휘다.
@@ -485,13 +568,15 @@
 | ACTION | 언제 쓰나 | BEFORE_VALUE / AFTER_VALUE |
 |---|---|---|
 | `EMAIL_REVEAL` | [이메일 보기](#이메일-보기) 성공 | NULL / NULL |
+| `DISCORD_REVEAL` | [디스코드 보기](#디스코드-보기) 성공 | NULL / NULL |
 | `ROLE_CHANGE` | [계정 권한 변경](#계정-권한-변경)으로 값이 실제로 바뀜 | `MEMBER` / `ADMIN` 처럼 변경 전후 `SYSTEM_ROLE` |
 
-- **개인정보를 담지 않는다.** 계정 ID 와 행위만 남긴다. 이메일·닉네임을 넣으면 회원이 탈퇴해도 이 테이블에 개인정보가 남는다.
-- `ACCOUNT` 와 FK 를 걸지 않는다 (애그리거트 사이 — [database-guide](../../docs/backend-development-guide/database-guide.md#외래키-정책)). 회원이 탈퇴해 `ACCOUNT` 행이 지워져도 기록은 남고, 남은 ID 로는 더 이상 사람을 되짚을 수 없다 — [user-leave](../user-leave/spec.md) 의 「식별할 수 없게 처리한 뒤 남긴다」와 같은 방식이다.
+- 이메일·닉네임 원문은 복제하지 않는다. 계정 ID·행위·접속 IP와 필요한 역할 스냅샷을 저장한다. ID·IP도 개인정보일 수 있으므로 접근 제한과 파기 기준을 적용한다.
+- `ACCOUNT` 와 FK를 걸지 않는다. 탈퇴 후에도 정해진 기한까지 남기되 자동 파기한다.
 - 기록은 **그 행위와 같은 트랜잭션**에서 쓴다. 기록이 실패하면 행위도 일어나지 않는다.
-- insert-only 다. 고치거나 지우는 API 는 없다.
-- 보관 기간은 [미확정](#미확정). 정해지면 그보다 오래된 행을 지우는 작업을 따로 둔다.
+- 고치거나 지우는 API는 없다. 보관 기한이 끝난 행은 자동 정리에서 지운다.
+- `DISCORD_REVEAL`은 기존 `ACTION VARCHAR(20)`에 들어가는 새 값이다. 컬럼·테이블 추가나 스키마 변경은 없다.
+- 이메일·디스코드 조회는 1년(법정 대상이면 2년 설정), 권한 변경·탈퇴 말소는 3년. [공통 정리 스펙](../data-retention/spec.md)과 [ERD](../../docs/erd/ADMIN_AUDIT_LOG.md)를 따른다.
 - 기록을 조회하는 화면·API 는 이 스펙 범위 밖이다. 필요해지면 별도 스펙으로 연다.
 
 ---
@@ -506,10 +591,11 @@
 
 ## 보안·개인정보
 
-- 네 엔드포인트 모두 `/api/admin` 아래라 `SecurityConfig` 의 기본 `authenticated()` 를 타고, `@RequireAdmin` 이 캡틴만 통과시킨다. `permitAll` 추가 없음.
+- 모든 엔드포인트가 `/api/admin` 아래라 `SecurityConfig` 의 기본 `authenticated()` 를 타고, `@RequireAdmin` 이 캡틴만 통과시킨다. `permitAll` 추가 없음.
+- **디스코드 아이디는 목록에 보내지 않는다.** 원본은 개별 「보기」로만 반환하고 `DISCORD_REVEAL`을 기록한다.
 - **목록의 이메일은 서버에서 가린다.** 원본은 「보기」로 한 명씩만, 볼 때마다 감사 로그에 남는다.
 - **이메일 검색은 전체 일치만** — 부분 검색으로 가린 이메일을 알아내는 길을 막는다 ([Query Parameters](#query-parameters)).
-- 이메일 보기 응답은 `Cache-Control: no-store`.
+- 이메일·디스코드 보기 응답은 `Cache-Control: no-store`.
 - 마스킹 함수는 공용 유틸로 올린다. 지금 `NotificationListResponse.maskEmail` 이 주석에 「두 번째 사용처가 생기면 공용 유틸로 승격한다」고 남겨 둔 바로 그 경우다.
 - 앱 로그에는 ID 만 남긴다.
 - 탈퇴 계정은 `ACCOUNT` 행이 물리 삭제되므로 별도 조건 없이 목록에 나오지 않는다 ([user-leave](../user-leave/spec.md)).
@@ -539,6 +625,9 @@
 | | MEMBER 요청 / 토큰 없음 / `limit=0` | 403 / 401 / 400 |
 | POST 이메일 보기 | ADMIN 요청 | 200 원본, `Cache-Control: no-store`, `EMAIL_REVEAL` 1행 (요청자·대상 ID) |
 | | 없는 계정 / MEMBER 요청 | 404 / 403, 감사 기록 0행 |
+| POST 디스코드 보기 | ADMIN 요청 / 반복 요청 | 200 username, `Cache-Control: no-store`, 요청마다 `DISCORD_REVEAL` 1행. 원문은 로그에 없음 |
+| | 미인증 / MEMBER / 없는 계정·미연동·username 없음 / 기록 실패 | 각각 401 / 403 / 404 / 500. 원본과 열람 기록 없음 |
+| GET 목록 | 디스코드 연동 계정 | 연동 여부만 반환. username·숫자 ID 없음 |
 | PATCH 권한 | MEMBER → ADMIN | 200, DB 반영, `ROLE_CHANGE` 1행 (`MEMBER` → `ADMIN`) |
 | | 같은 값 | 200, 변경 없음, 감사 기록 0행 |
 | | 본인 | 409 CANNOT_CHANGE_OWN_ROLE, 감사 기록 0행 |
@@ -552,13 +641,17 @@
 - 감사 기록 쓰기가 실패하면 이메일을 돌려주지 않고 권한도 바뀌지 않는다 — 저장소를 실패시키는 테스트로 확인한다.
 - 마스킹 유틸 — 일반 · `@` 앞 1자 · `@` 없음 · null.
 
+## 퍼널·계측
+
+해당 없음 — 백오피스 회원 관리라 트래킹 플랜 대상(사용자 사이트) 밖이다. 이벤트도 지표 변화도 없다.
+
 ## 범위 밖
 
 - 네비게이터 지정·해제 — 스터디 크루 명단 소관 ([study-group](../study-group/spec.md) · [captain-view-attendees](../../01-planning/stories/captain-view-attendees/PRD.md))
 - 회원 상세 화면 · 초대 · 정지 · 탈퇴 처리 · 명단 내보내기(CSV)
 - 정지 계정 — `ACCOUNT` 에 정지 상태가 없다. 생기면 목록 포함 여부를 그때 정한다
 - ~~`CO_LEADER` 제거 — 별도 작업 (POL-0001)~~ — 2026-10-09 완료 (V35)
-- 감사 로그 조회 화면·API, 보관 기간이 지난 기록을 지우는 작업 — 보관 기간이 정해진 뒤 별도로
+- 감사 로그 조회 화면·API는 별도. 만료 자동 삭제는 [공통 정리 스펙](../data-retention/spec.md)에서 구현한다.
 - 이메일 보기 횟수 제한
 - 디스코드 역할 자동 연동 — 운영자가 수동으로 바꾼다 ([위](#디스코드-역할은-자동으로-바꾸지-않는다))
 
@@ -577,9 +670,9 @@
 
 ## 미확정
 
-- [NEEDS CLARIFICATION] **감사 로그 보관 기간** — 운영진 확인 중. 개인정보 접속기록은 1년 이상 보관하라는 기준(개인정보의 안전성 확보조치 기준)이 있는 것으로 알고 있어 그 이상을 제안한다. 근거 조항은 확인 뒤 여기에 적는다
-- 「변경 중」·「보기」 처리 중·실패 안내의 화면 모양 — 디자인에서 정한다. API 계약에는 영향 없음. 정해지기 전까지 실패는 `errorMessage` 토스트
-- 이메일 「보기」·마스킹·감사 로그는 아직 기획 문서(Notion·PRD)에 없다 — 기획 반영은 기획 쪽에서
+- 감사 로그 보관 기준은 2026-10-31 확정. 운영 적용 전 2년 의무 대상 여부는 실제 규모·항목으로 확인한다 ([공통 정리 스펙](../data-retention/spec.md)).
+- 권한 「변경 중」·실패 안내의 화면 모양 — 디자인에서 정한다. API 계약에는 영향 없음. 정해지기 전까지 실패는 `errorMessage` 토스트. 이메일·디스코드 열람 아이콘과 처리 중 표시는 위 프론트엔드 사용처를 따른다.
+- 이메일·디스코드 열람·가리기와 감사 기록은 Story PRD에 반영했다. Notion 반영 여부는 별도 확인한다.
 - **이메일 검색 방식** — PRD 는 닉네임·이메일 부분 일치, 이 스펙은 이메일 전체 일치(PR #163 합의, 마스킹과 함께). 기획 반영 대기 ([기획 문서와 다른 곳](#기획-문서와-다른-곳))
 - **권한표에 POL-0001 「신청 폼 · 신청 결과」 표를 넣을지** — 기획 확인 대기. 지금은 넣지 않는다 ([권한표](#역할별-기본-권한표-조회)). 넣기로 하면 서버 정의에 그룹 추가 + 화면 열 이름표에 「담당 캡틴」·「다른 캡틴」
 - ~~반 편성 전 담당 캡틴을 「참여 중」으로 볼지~~ → 보지 않는다. 담당 캡틴은 신청했을 때만 참여다 (POL-0001, 2026-10-14)

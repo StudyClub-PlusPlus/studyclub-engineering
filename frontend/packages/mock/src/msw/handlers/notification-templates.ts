@@ -55,7 +55,7 @@ export const notificationTemplatesHandlers = mockClient.createHandlerGroup(
         { label: '서버 오류', status: 500, response: serverError },
       ],
     },
-    // TODO(api): 백엔드 구현 전 계약 — 기획 PRD(notification-template)의 API 표 기준
+    // 계약: specs/notification/spec.md — 같은 조건에 템플릿을 여럿 둘 수 있어 409 는 없다
     {
       method: 'POST',
       path: '/',

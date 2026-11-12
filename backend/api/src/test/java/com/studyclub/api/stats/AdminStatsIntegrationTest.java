@@ -15,6 +15,8 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -25,7 +27,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-/** 대시보드 stats API — 권한·핵심 집계·모집 보드 신청서 수 기준. specs/dashboard/spec.md */
+/** 대시보드 stats API — 권한·핵심 집계·모집 보드 명부 기준. specs/dashboard/spec.md */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 class AdminStatsIntegrationTest {
@@ -37,6 +39,7 @@ class AdminStatsIntegrationTest {
     private static final Long ONGOING_STUDY = 9801L;
     private static final Long OPEN_STUDY = 9802L;
     private static final Long GROUP_ID = 9811L;
+    private static final Long OPEN_STUDY_GROUP_ID = 9812L;
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
@@ -53,13 +56,21 @@ class AdminStatsIntegrationTest {
         insertAccount(CREW_B, "crew-b@example.com", SystemRole.MEMBER, "America/New_York", now);
 
         // 제목을 AAA 로 시작해 보드 미리보기(최대 4건) 정렬에서 항상 앞에 오게 한다
-        insertStudy(ONGOING_STUDY, "AAA 대시보드 진행중", "ALGORITHM", "ONGOING", now);
-        insertStudy(OPEN_STUDY, "AAA 대시보드 모집중", "SOFTWARE", "OPEN", now);
+        // 결정 5: OPEN→ONGOING 전환 없이 START_AT 경과로 진행 중 판정 — OPEN + 과거 START_AT 으로 세팅
+        insertStudy(
+                ONGOING_STUDY,
+                "AAA 대시보드 진행중",
+                "ALGORITHM",
+                "OPEN",
+                Timestamp.from(Instant.now().minus(1, ChronoUnit.DAYS)),
+                now);
+        insertStudy(OPEN_STUDY, "AAA 대시보드 모집중", "SOFTWARE", "OPEN", null, now);
         insertGroup(GROUP_ID, ONGOING_STUDY, now);
         insertParticipant(CREW_A, ONGOING_STUDY, GROUP_ID, ParticipantStatus.ACTIVE, now);
         insertParticipant(CREW_B, ONGOING_STUDY, GROUP_ID, ParticipantStatus.ACTIVE, now);
         insertRecruitment(OPEN_STUDY, 1, Instant.now().plus(2, ChronoUnit.DAYS), now);
-        insertApplication(CREW_A, latestRecruitmentId(OPEN_STUDY), now);
+        insertGroup(OPEN_STUDY_GROUP_ID, OPEN_STUDY, now);
+        insertParticipant(CREW_A, OPEN_STUDY, OPEN_STUDY_GROUP_ID, ParticipantStatus.ACTIVE, now);
     }
 
     @Test
@@ -138,21 +149,38 @@ class AdminStatsIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 진행중 보드는 전체 목록의 첫 최대 4건과 같은 DB 정렬을 쓴다")
-    void ongoingBoardMatchesAdminListOrder() {
+    @DisplayName("성공 - 진행중 보드는 START_AT 경과 OPEN 스터디만 표시한다 (결정 5)")
+    void ongoingBoardShowsStartedOpenOnly() {
         var board =
                 rest.exchange(
                         "/api/admin/stats/study-board?view=ONGOING",
                         HttpMethod.GET,
                         auth(ADMIN_ID),
                         Map.class);
-        var list =
+
+        assertThat(board.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Long> ids = studyIds(board.getBody());
+        // ONGOING_STUDY: STATUS=OPEN, START_AT 과거 → 보드에 포함
+        assertThat(ids).contains(ONGOING_STUDY);
+        // OPEN_STUDY: STATUS=OPEN, START_AT 없음 → 보드에 미포함
+        assertThat(ids).doesNotContain(OPEN_STUDY);
+    }
+
+    @Test
+    @DisplayName("성공 - 모집 보드와 전체 보기는 같은 DB 필터·정렬을 사용한다")
+    void recruitmentBoardMatchesAdminListOrder() {
+        var board =
                 rest.exchange(
-                        "/api/admin/studies?status=ONGOING&sort=TITLE_ASC&offset=0&limit=20",
+                        "/api/admin/stats/study-board?view=RECRUITMENT",
                         HttpMethod.GET,
                         auth(ADMIN_ID),
                         Map.class);
-
+        var list =
+                rest.exchange(
+                        "/api/admin/studies?status=OPEN&sort=RECRUITMENT&offset=0&limit=20",
+                        HttpMethod.GET,
+                        auth(ADMIN_ID),
+                        Map.class);
         assertThat(board.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(list.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(studyIds(board.getBody()))
@@ -162,7 +190,7 @@ class AdminStatsIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - study-board RECRUITMENT 는 신청서 수로 정원 마감·CLOSING_SOON")
+    @DisplayName("성공 - study-board RECRUITMENT 는 명부 기준으로 정원 마감·CLOSING_SOON (결정 D4-A)")
     void recruitmentBoardCapacityAndClosingSoon() {
         var response =
                 rest.exchange(
@@ -226,7 +254,39 @@ class AdminStatsIntegrationTest {
         @SuppressWarnings("unchecked")
         List<?> points = (List<?>) trend.getBody().get("points");
         assertThat(points).hasSize(12);
-        assertThat(trend.getBody()).containsEntry("timeZone", "UTC");
+        assertThat(trend.getBody()).containsEntry("timeZone", "Asia/Seoul");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "/summary?timeZone=America/Toronto",
+                "/study-board?view=ONGOING&timeZone=America/Toronto",
+                "/study-board?view=RECRUITMENT&timeZone=America/Toronto",
+                "/attendance-trend?weeks=12&timeZone=America/Toronto"
+            })
+    @DisplayName("현재 프로필 우선 — 프로필 변경·누락·무효 값은 다음 요청에서 반영한다")
+    void endpointsUseCurrentProfileThenBrowser(String path) {
+        for (String profile :
+                new String[] {"Asia/Seoul", "America/Los_Angeles", null, "Not/AZone"}) {
+            jdbcTemplate.update("UPDATE ACCOUNT SET TIME_ZONE = ? WHERE ID = ?", profile, ADMIN_ID);
+            var response =
+                    rest.exchange(
+                            "/api/admin/stats" + path, HttpMethod.GET, auth(ADMIN_ID), Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            String expected =
+                    profile == null || profile.equals("Not/AZone") ? "America/Toronto" : profile;
+            assertThat(response.getBody()).containsEntry("timeZone", expected);
+        }
+        jdbcTemplate.update("UPDATE ACCOUNT SET TIME_ZONE = NULL WHERE ID = ?", ADMIN_ID);
+        var response =
+                rest.exchange(
+                        "/api/admin/stats" + path.replace("timeZone=America/Toronto", ""),
+                        HttpMethod.GET,
+                        auth(ADMIN_ID),
+                        Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("timeZone", "Asia/Seoul");
     }
 
     @Test
@@ -274,7 +334,8 @@ class AdminStatsIntegrationTest {
                 ONGOING_STUDY,
                 OPEN_STUDY);
         jdbcTemplate.update("DELETE FROM STUDY_MEETING WHERE STUDY_GROUP_ID = ?", GROUP_ID);
-        jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE ID = ?", GROUP_ID);
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_GROUP WHERE ID IN (?, ?)", GROUP_ID, OPEN_STUDY_GROUP_ID);
         jdbcTemplate.update(
                 "DELETE FROM STUDY_RECRUITMENT WHERE STUDY_ID IN (?, ?)",
                 ONGOING_STUDY,
@@ -307,6 +368,16 @@ class AdminStatsIntegrationTest {
     }
 
     private void insertStudy(Long id, String title, String category, String status, Timestamp now) {
+        insertStudy(id, title, category, status, null, now);
+    }
+
+    private void insertStudy(
+            Long id,
+            String title,
+            String category,
+            String status,
+            Timestamp startAt,
+            Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
                         + " VALUES (?, ?, 'STUDY', ?, ?)",
@@ -316,13 +387,14 @@ class AdminStatsIntegrationTest {
                 now);
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, CATEGORY, STATUS,"
-                        + " CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        + " START_AT, CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 id,
                 id,
                 title,
                 "요약",
                 category,
                 status,
+                startAt,
                 now,
                 now);
     }
@@ -366,22 +438,6 @@ class AdminStatsIntegrationTest {
                 Timestamp.from(Instant.now().minusSeconds(3600)),
                 Timestamp.from(deadline),
                 capacity,
-                now,
-                now);
-    }
-
-    private long latestRecruitmentId(Long studyId) {
-        return jdbcTemplate.queryForObject(
-                "SELECT MAX(ID) FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?", Long.class, studyId);
-    }
-
-    private void insertApplication(Long accountId, long recruitmentId, Timestamp now) {
-        jdbcTemplate.update(
-                "INSERT INTO STUDY_APPLICATION (ACCOUNT_ID, RECRUITMENT_ID, FORM_ANSWER,"
-                        + " CREATED_AT, UPDATED_AT) VALUES (?, ?, CAST(? AS JSON), ?, ?)",
-                accountId,
-                recruitmentId,
-                "{\"discordNickname\":\"n\"}",
                 now,
                 now);
     }

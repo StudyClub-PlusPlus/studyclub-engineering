@@ -8,11 +8,8 @@ import { ZONES } from '@core/lib/zones';
 import { Check, ChevronDown } from 'lucide-react';
 
 /**
- * 고를 수 있는 지역은 셋뿐이다.
- *
- * 반은 한국팀·미국팀으로 갈리고 회차 시각은 그 지역 기준으로 적힌다. 전 세계 시간대를 검색하게
- * 하면 고르는 사람은 도시를 고르지만, 우리가 쓰는 값은 결국 이 셋 중 하나로 접힌다.
- * **접힐 값을 처음부터 보여준다.**
+ * 서비스의 온보딩·프로필과 같은 네 지역을 쓴다.
+ * 밴쿠버와 LA는 같은 시차인 날에도 별도의 시간대로 저장한다.
  *
  * 오프셋은 상수로 적지 않는다 — 서머타임에 따라 북미가 한 시간씩 움직인다.
  */
@@ -30,7 +27,6 @@ export function TimeZonePicker({
   error,
   /** 이미 라벨이 있는 자리(카드 칸 안)에서는 제 라벨을 숨긴다 — 같은 말이 두 번 나온다. */
   hideLabel,
-  compact,
 }: {
   value: string;
   onChange: (zone: string) => void;
@@ -38,8 +34,6 @@ export function TimeZonePicker({
   disabled?: boolean;
   error?: string;
   hideLabel?: boolean;
-  /** 값 줄 자리에 끼울 때. 상자를 낮춰 보기 모드와 줄 높이를 맞춘다. */
-  compact?: boolean;
 }) {
   const ko = locale === 'ko';
   const id = useId();
@@ -73,7 +67,7 @@ export function TimeZonePicker({
   return (
     <div ref={root} className='relative' data-anno='3'>
       {!hideLabel && (
-        <label htmlFor={`${id}-trigger`} className='text-sm font-medium text-neutral-800'>
+        <label htmlFor={`${id}-trigger`} className='type-label-lg text-neutral-800'>
           {ko ? '나의 시간대' : 'My time zone'}{' '}
           <span className='text-error-600' aria-hidden='true'>
             *
@@ -110,15 +104,15 @@ export function TimeZonePicker({
             select(ZONES[active]!.zone);
           }
         }}
-        className={`${hideLabel ? '' : 'mt-1.5'} flex w-full items-center justify-between gap-3 rounded-control border bg-bg text-left text-sm ${compact ? 'min-h-8 px-2.5 py-1' : 'min-h-12 px-3.5 py-2.5'} outline-none transition focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 ${error ? 'border-error-600' : 'border-border-strong hover:border-brand'}`}
+        className={`${hideLabel ? '' : 'mt-1.5'} flex min-h-12 w-full items-center justify-between gap-3 rounded-control border bg-bg px-3.5 py-2.5 text-left type-label-lg outline-none transition focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 ${error ? 'border-error-600' : 'border-border-strong hover:border-brand'}`}
       >
-        <span className={selected ? 'font-medium text-fg' : 'text-fg-muted'}>
+        <span className={selected ? 'font-semibold text-fg' : 'text-fg-muted'}>
           {selected ?? (ko ? '지역을 선택해 주세요' : 'Select your region')}
         </span>
         <ChevronDown size={16} className={`shrink-0 text-fg-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {error && (
-        <p id={`${id}-error`} className='mt-2 text-xs leading-relaxed text-error-700'>
+        <p id={`${id}-error`} className='mt-2 type-label-sm text-error-700'>
           {error}
         </p>
       )}
@@ -127,7 +121,7 @@ export function TimeZonePicker({
           id={`${id}-list`}
           role='listbox'
           aria-label={ko ? '지역' : 'Region'}
-          className={`absolute left-0 right-0 ${compact ? 'top-[38px]' : hideLabel ? 'top-[56px]' : 'top-[76px]'} z-40 overflow-hidden rounded-card border border-border bg-bg p-1.5 shadow-lg`}
+          className={`absolute left-0 right-0 ${hideLabel ? 'top-[56px]' : 'top-[76px]'} z-40 overflow-hidden rounded-card border border-border bg-bg p-1.5 shadow-lg`}
         >
           {ZONES.map((z, index) => (
             <button
@@ -139,13 +133,13 @@ export function TimeZonePicker({
               onMouseDown={(event) => event.preventDefault()}
               onMouseEnter={() => setActive(index)}
               onClick={() => select(z.zone)}
-              className={`flex w-full items-center justify-between gap-2 rounded-control px-3 py-2.5 text-left text-sm hover:bg-brand-subtle ${
+              className={`flex w-full items-center justify-between gap-2 rounded-control px-3 py-2.5 text-left type-label-lg hover:bg-brand-subtle ${
                 active === index ? 'bg-brand-subtle' : ''
               }`}
             >
               <span className='min-w-0'>
-                <span className='block font-medium'>{ko ? z.ko : z.en}</span>
-                <span className='mt-0.5 block text-xs text-fg-muted'>{zoneOffset(z.zone, now)}</span>
+                <span className='block font-semibold'>{ko ? z.ko : z.en}</span>
+                <span className='mt-0.5 block type-label-sm text-fg-muted'>{zoneOffset(z.zone, now)}</span>
               </span>
               {value === z.zone && <Check size={16} className='shrink-0 text-brand' aria-hidden='true' />}
             </button>

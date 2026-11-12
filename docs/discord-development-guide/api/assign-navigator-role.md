@@ -30,7 +30,7 @@ POST /api/v1/roles/navigator/users
 붙이게 할 수 있는지는 백엔드가 호출 전에 정한다.
 
 navigator 역할은 길드에 **이미 존재하는** 역할이다. 이 엔드포인트는 만들지 않고, 찾지 못하면 배정하지 말고 실패한다.
-설정값 `DISCORD_NAVIGATOR_ROLE_ID` 로 역할 ID 를 받는다. 이름으로 찾지 않는다 (길드에서 역할 이름이 바뀌거나 동명 역할이 생기면 조용히 깨진다).
+설정값 `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` 로 역할 ID 를 받는다. 이름으로 찾지 않는다 (길드에서 역할 이름이 바뀌거나 동명 역할이 생기면 조용히 깨진다).
 
 ```jsonc
 {
@@ -84,7 +84,7 @@ navigator 역할은 길드에 **이미 존재하는** 역할이다. 이 엔드�
 | **400** | `discordUserIds` 가 없거나 빈 배열 | 위와 같음. "아무것도 안 함" 을 200 으로 돌려주지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
 | **400** | `discordUserIds` 가 중복을 뺀 뒤 100개 초과 | 위와 같음. 나눠서 보낸다 |
 | **404** | navigator 역할을 길드에서 찾지 못함 | **서버·길드 설정 문제**(역할이 지워졌거나 잘못 지정됨)다. 호출자가 보낸 값이 아니므로 호출자가 고칠 수 없다. `detail` 로 다른 404 와 구분한다 |
-| **409** | `DISCORD_GUILD_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
+| **409** | `DISCORD_CONFIG_GUILD_ID` · `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
 | **502** | 캐시에 없는 대상 유저를 Discord 에 물었는데 답이 없음 | 아직 아무도 건드리지 않았다. 그대로 재시도해도 안전하다 |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 

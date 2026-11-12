@@ -50,7 +50,7 @@ export const Error: Story = {
 export const Loading: Story = {
   render: () => (
     <Button
-      variant='tonal'
+      variant='secondary'
       onClick={() => {
         const id = toast.loading('신청 처리 중…');
         setTimeout(() => toast.success('신청 완료!', { id }), 2000);
@@ -80,7 +80,7 @@ export const AllTypes: Story = {
         에러
       </Button>
       <Button
-        variant='tonal'
+        variant='secondary'
         onClick={() => {
           const id = toast.loading('로딩 중…');
           setTimeout(() => toast.dismiss(id), 2000);

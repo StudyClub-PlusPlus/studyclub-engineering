@@ -4,7 +4,7 @@
 반영:
   - docs/share/2026-10-18-discord-automation-gap.md — 됨 (질문 4 · 5 · 6, DSC-06 · 08 · 09, 새 작업 DSC-13 ~ 16 · STD-05 · 06 · COM-04)
   - docs/share/2026-10-23-planning-decisions.md — 됨 (질문 5 · 6 행)
-  - specs/admin-users/spec.md 계정 권한 변경 — 됨 (STD-05, `DISCORD_LINK_REQUIRED`)
+  - specs/admin-users/spec.md 계정 권한 변경 — 됨 (STD-05, `DISCORD_LINK_REQUIRED`) → 10-27 번복, 규칙 제거됨 (docs/share/2026-10-27-captain-discord-optional.md)
   - docs/discord-development-guide/api/common-header.md 「시스템 호출」 · 봇 창구 문서들의 권한 칸 — 안 됨 (DSC-06 · DSC-13, 디스코드 스쿼드)
 ---
 
@@ -31,7 +31,7 @@
 
 | # | 결정 | 지금 코드 | 할 일 |
 |---|---|---|---|
-| 1 | **캡틴은 디스코드 연동이 필수다.** 연동을 마친 사람만 캡틴 권한을 받을 수 있다 | 권한 변경 API(`PATCH /api/admin/users/{accountId}/system-role`)가 연동을 보지 않는다 | **STD-05** — 캡틴으로 올릴 때 미연동이면 거절. 백오피스 회원 목록의 배지 잠금 이유에도 같은 값 |
+| 1 | ~~**캡틴은 디스코드 연동이 필수다.** 연동을 마친 사람만 캡틴 권한을 받을 수 있다~~ **10-27 번복 ([share 10-27](2026-10-27-captain-discord-optional.md))** | 권한 변경 API(`PATCH /api/admin/users/{accountId}/system-role`)가 연동을 보지 않는다 | **STD-05** — 캡틴으로 올릴 때 미연동이면 거절. 백오피스 회원 목록의 배지 잠금 이유에도 같은 값 — **10-27 번복으로 할 일 없음** |
 | 2 | **크루 · 네비게이터는 스터디 신청할 때 연동한다** | 이미 그렇다 — 미연동이면 신청 403 (#298). 화면은 `discordLinked` 로 연동 창을 먼저 띄운다 (#327) | 없음 |
 | 3 | **권한 확인은 백엔드에서 한다 (SSOT). 디스코드 API 는 동작만 한다** | 백엔드는 봇을 부르기 전에 명부를 다시 본다 (`StudyRoleSyncListener`). 봇은 navigator role 창구 두 개를 captain 만 받는다 | **DSC-13** — 봇 API 권한 체크를 지운다. 이걸로 **DSC-06(질문 5)이 풀린다** |
 | 4 | **권한 확인 시점** — 캡틴은 백오피스에 들어올 때, 캡틴 · 네비게이터는 디스코드 API 를 부르기 전 | 백오피스 API 마다 DB 의 `SYSTEM_ROLE` 을 본다 (`AdminGuardInterceptor`) — 들어올 때보다 더 자주 본다. 봇 호출 전 확인도 이미 한다 | 새로 부르는 곳(DSC-08 등)도 같은 규칙을 따른다 |

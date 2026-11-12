@@ -48,6 +48,10 @@ public class AccountIdentity extends BaseEntity {
     @Column(name = "LAST_LOGIN_AT")
     private Instant lastLoginAt;
 
+    /** 제공자 refresh token — 탈퇴 때 제공자 쪽 연결을 끊는 데만 쓴다. 지금은 애플만 채운다(심사 5.1.1(v)). 응답·로그에 내지 않는다. */
+    @Column(name = "PROVIDER_REFRESH_TOKEN", length = 1024)
+    private String providerRefreshToken;
+
     protected AccountIdentity() {}
 
     public AccountIdentity(
@@ -56,11 +60,22 @@ public class AccountIdentity extends BaseEntity {
             String providerAccountId,
             String providerEmail,
             Instant lastLoginAt) {
+        this(accountId, issuer, providerAccountId, providerEmail, lastLoginAt, null);
+    }
+
+    public AccountIdentity(
+            Long accountId,
+            Issuer issuer,
+            String providerAccountId,
+            String providerEmail,
+            Instant lastLoginAt,
+            String providerRefreshToken) {
         this.accountId = accountId;
         this.issuer = issuer;
         this.providerAccountId = providerAccountId;
         this.providerEmail = providerEmail;
         this.lastLoginAt = lastLoginAt;
+        this.providerRefreshToken = providerRefreshToken;
     }
 
     public Long getId() {
@@ -87,7 +102,19 @@ public class AccountIdentity extends BaseEntity {
         return lastLoginAt;
     }
 
-    public void recordLogin(Instant at) {
+    public String getProviderRefreshToken() {
+        return providerRefreshToken;
+    }
+
+    /** 로그인할 때마다 제공자가 새 refresh token 을 준다. 안 주면(null) 이전 값을 그대로 둔다. */
+    public void recordLogin(Instant at, String refreshToken) {
         this.lastLoginAt = at;
+        if (refreshToken != null) {
+            this.providerRefreshToken = refreshToken;
+        }
+    }
+
+    public void recordLogin(Instant at) {
+        recordLogin(at, null);
     }
 }

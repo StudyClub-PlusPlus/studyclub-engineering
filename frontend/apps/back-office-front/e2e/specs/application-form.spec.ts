@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+import { studyDetailFixture } from '../fixtures/study-detail';
+// PRD 부분 연결: BO-ST-023-S01/S02 (질문 편집·저장 일부)
+// 전체 대응표: docs/frontend-development-guide/admin-e2e-prd-map.md
+
 test('신청 폼 편집 후 한 번의 클릭으로 저장하고 다시 불러온다', async ({ page, context, baseURL }) => {
   let questions: unknown[] = [];
   let savedTitle = '신청 폼 테스트';
@@ -27,6 +31,7 @@ test('신청 폼 편집 후 한 번의 클릭으로 저장하고 다시 불러�
     } else {
       await route.fulfill({
         json: {
+          ...studyDetailFixture(),
           id: 106,
           programId: 1,
           title: '신청 폼 테스트',

@@ -23,7 +23,7 @@ import org.springframework.web.client.RestClient;
  * <ul>
  *   <li>{@code AMPLITUDE_API_KEY} 가 비어 있으면 아무것도 하지 않는다
  *   <li>{@code insertId} 는 필수 — 같은 사실을 다시 보내도 Amplitude 가 중복을 지운다(결정적 값만)
- *   <li>user_id 는 프론트와 같은 회원 번호 문자열. 5자 미만이면 400 이라 {@code min_id_length=1} 을 함께 보낸다
+ *   <li>user_id 는 저장된 HMAC 분석 ID. 프론트와 같은 값을 쓴다
  *   <li>던지지 않는다 — 3초 타임아웃, 실패는 warn 로그만
  * </ul>
  */
@@ -60,7 +60,7 @@ public class AmplitudeClient {
     /** {@code at} = 사실이 생긴 시각(도메인 이벤트의 occurredAt). */
     public void send(
             String eventType,
-            Long accountId,
+            String analyticsId,
             String insertId,
             Instant at,
             Map<String, Object> properties) {
@@ -72,7 +72,7 @@ public class AmplitudeClient {
                     .post()
                     .uri(endpoint)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(payload(eventType, accountId, insertId, properties, at))
+                    .body(payload(eventType, analyticsId, insertId, properties, at))
                     .retrieve()
                     .toBodilessEntity();
         } catch (RuntimeException e) {
@@ -83,7 +83,7 @@ public class AmplitudeClient {
 
     Map<String, Object> payload(
             String eventType,
-            Long accountId,
+            String analyticsId,
             String insertId,
             Map<String, Object> properties,
             Instant at) {
@@ -95,7 +95,7 @@ public class AmplitudeClient {
             props.putAll(properties);
         }
         Map<String, Object> event = new LinkedHashMap<>();
-        event.put("user_id", String.valueOf(accountId));
+        event.put("user_id", analyticsId);
         event.put("event_type", eventType);
         event.put("insert_id", insertId);
         event.put("time", at.toEpochMilli());

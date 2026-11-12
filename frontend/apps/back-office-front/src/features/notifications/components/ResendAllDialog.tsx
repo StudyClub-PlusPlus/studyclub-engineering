@@ -31,13 +31,13 @@ export function ResendAllDialog({
         </div>
       }
     >
-      <p className='text-sm text-fg'>
+      <p className='type-body-sm text-fg'>
         거른 실패 건 <strong className='tnum'>{count.toLocaleString()}건</strong>을 모두 다시 보냅니다.
       </p>
-      <p className='mt-2 text-sm text-fg-muted'>
+      <p className='mt-2 type-body-sm text-fg-muted'>
         보고 있는 페이지뿐 아니라 이 조건에 걸린 실패 건 전체입니다. 같은 주소로 다시 나갑니다.
       </p>
-      <p className='mt-2 text-sm text-fg-muted'>탈퇴한 회원의 건처럼 다시 보낼 수 없는 건은 제외됩니다.</p>
+      <p className='mt-2 type-body-sm text-fg-muted'>탈퇴한 회원의 건처럼 다시 보낼 수 없는 건은 제외됩니다.</p>
     </Modal>
   );
 }

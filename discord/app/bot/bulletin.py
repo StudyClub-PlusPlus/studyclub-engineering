@@ -1,6 +1,6 @@
 """The voice-channel bulletin board.
 
-One message in ``DISCORD_BULLETIN_CHANNEL_ID`` lists every study's voice
+One message in ``DISCORD_CONFIG_BULLETIN_CHANNEL_ID`` lists every study's voice
 channels as clickable links, so a member reaches their 공부방 without scrolling
 the sidebar. The message is rewritten in place once a
 day at 20:00 America/Los_Angeles, and on demand via ``!updateBulletin``.
@@ -23,7 +23,6 @@ from discord.ext import commands, tasks
 from fastapi import HTTPException
 
 from app.api.routes.channels import resolve_configured_channel
-from app.api.routes.studies import DEFAULT_NEW_STUDY_ANCHOR_NAME
 from app.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -34,6 +33,8 @@ logger = logging.getLogger(__name__)
 # discord.py recomputes the next occurrence each time, so the PST/PDT switch
 # takes care of itself -- 20:00 local either way, which is what was asked for.
 BULLETIN_TIME = datetime.time(hour=20, tzinfo=ZoneInfo("America/Los_Angeles"))
+# The header's time is the club's own, like the schedule above.
+DISPLAY_TZ = ZoneInfo("America/Los_Angeles")
 
 # Discord's hard cap on a message.
 MAX_MSG = 2000
@@ -41,32 +42,41 @@ MAX_MSG = 2000
 # list up instead would have people clicking rooms that are gone.
 EMPTY_BULLETIN = "지금 열린 공부방이 없습니다."
 TRUNCATED_NOTICE = "…외 {count}개 스터디는 사이드바에서 확인해 주세요."
+# First line of the board, so a reader can tell a stale list from today's.
+UPDATED_AT = "마지막 갱신: {time}"
 # The channel holds one message, so the bot's own is within the first few even
 # after a moderator posts. Reading further costs another API call per 100.
 HISTORY_LIMIT = 50
 
 
-def build_bulletin(categories: list[tuple[str, list[int]]]) -> tuple[str, int]:
+def build_bulletin(
+    categories: list[tuple[str, list[int]]], now: datetime.datetime
+) -> tuple[str, int]:
     """Render ``(category name, voice channel ids)`` pairs as the board's text.
 
-    Returns the text and how many studies did not fit. ``<#id>`` is a channel
+    Returns the text and how many studies did not fit. The first line is the
+    time of this refresh (``now``); the studies follow. ``<#id>`` is a channel
     mention: Discord renders the channel's current name, so a renamed room does
     not leave a stale label on the board.
 
     A category with no voice channel gets no line -- a line with nothing to
     click only makes the board longer.
     """
+    header = UPDATED_AT.format(time=now.astimezone(DISPLAY_TZ).strftime("%Y-%m-%d %H:%M %Z"))
+    # The header shares the cap with the list.
+    limit = MAX_MSG - len(header) - 1
+
     lines = [
         f"{name} : " + " - ".join(f"<#{channel_id}>" for channel_id in voice_ids)
         for name, voice_ids in categories
         if voice_ids
     ]
     if not lines:
-        return EMPTY_BULLETIN, 0
+        return f"{header}\n{EMPTY_BULLETIN}", 0
 
     content = "\n".join(lines)
-    if len(content) <= MAX_MSG:
-        return content, 0
+    if len(content) <= limit:
+        return f"{header}\n{content}", 0
 
     # Over the cap. Whole lines are kept and the rest are counted in a closing
     # notice -- cutting mid-line would leave a broken link, which is worse than
@@ -78,19 +88,19 @@ def build_bulletin(categories: list[tuple[str, list[int]]]) -> tuple[str, int]:
     length = 0
     for line in lines:
         added = len(line) + (1 if kept else 0)
-        if length + added > MAX_MSG - reserve:
+        if length + added > limit - reserve:
             break
         kept.append(line)
         length += added
 
     omitted = len(lines) - len(kept)
-    return "\n".join(kept + [TRUNCATED_NOTICE.format(count=omitted)]), omitted
+    return "\n".join([header] + kept + [TRUNCATED_NOTICE.format(count=omitted)]), omitted
 
 
 def collect_categories(
-    guild: discord.Guild, anchor_name: str
+    guild: discord.Guild, anchor_id: int | None
 ) -> list[tuple[str, list[int]]] | None:
-    """List the studies below the anchor category, or ``None`` if it is gone.
+    """List the studies below the anchor category, or ``None`` if it is unset or gone.
 
     Everything under the anchor is a study: ``create_study`` puts each new
     category directly below it, and nothing else is placed there. Returning
@@ -99,11 +109,11 @@ def collect_categories(
     staff channels on a board every member reads.
 
     ``guild.categories`` is sorted by position and is rebuilt on each access, so
-    it is read once. A duplicated anchor name resolves to the topmost, which is
-    the one ``create_study`` anchors to.
+    it is read once. An ID naming a channel that is not a category is not in it,
+    so it counts as gone.
     """
     categories = guild.categories
-    anchor = discord.utils.get(categories, name=anchor_name)
+    anchor = discord.utils.get(categories, id=anchor_id)
     if anchor is None:
         return None
 
@@ -193,11 +203,6 @@ async def refresh(bot: commands.Bot, settings: Settings) -> bool:
     sent to the alert channel; it is what ``!updateBulletin`` answers with. A
     board that went up truncated is still ``True`` -- it was rewritten, and the
     alert channel hears about what did not fit.
-
-    The anchor name is read from the constant rather than from
-    ``app.state.new_study_anchor_name``: the two are always equal today, and the
-    command that will change the anchor at runtime has to give both readers one
-    source when it lands (see the plan's 미정 사항 2).
     """
     try:
         return await _refresh(bot, settings)
@@ -213,7 +218,7 @@ async def refresh(bot: commands.Bot, settings: Settings) -> bool:
 async def _refresh(bot: commands.Bot, settings: Settings) -> bool:
     """:func:`refresh` without the catch-all. Handles the failures it expects."""
     if settings.guild_id is None:
-        logger.error("bulletin: no DISCORD_GUILD_ID configured, skipping the refresh")
+        logger.error("bulletin: no DISCORD_CONFIG_GUILD_ID configured, skipping the refresh")
         return False
     guild = bot.get_guild(settings.guild_id)
     if guild is None:
@@ -235,21 +240,24 @@ async def _refresh(bot: commands.Bot, settings: Settings) -> bool:
         )
         return False
 
-    categories = collect_categories(guild, DEFAULT_NEW_STUDY_ANCHOR_NAME)
+    categories = collect_categories(guild, settings.anchor_channel_id)
     if categories is None:
         logger.error(
-            "bulletin: reference category %r not found, leaving the board untouched",
-            DEFAULT_NEW_STUDY_ANCHOR_NAME,
+            "bulletin: reference category %s unset or not found, leaving the board untouched",
+            settings.anchor_channel_id,
         )
         await notify_alert_channel(
             guild,
             settings,
-            f"기준 카테고리 `{DEFAULT_NEW_STUDY_ANCHOR_NAME}` 를 찾지 못해 "
-            "공부방 게시판을 갱신하지 않았습니다. 카테고리가 지워졌거나 이름이 바뀌었는지 확인해 주세요.",
+            f"기준 카테고리(DISCORD_CONFIG_ANCHOR_CHANNEL_ID={settings.anchor_channel_id})가 "
+            "설정되지 않았거나 찾을 수 없어 공부방 게시판을 갱신하지 않았습니다. "
+            "카테고리 ID 가 맞는지, 카테고리가 지워지지 않았는지 확인해 주세요.",
         )
         return False
 
-    content, omitted = build_bulletin(categories)
+    content, omitted = build_bulletin(
+        categories, datetime.datetime.now(datetime.timezone.utc)
+    )
 
     # Checked rather than left to the search: Discord answers a history request
     # without this permission with an empty list, not a 403, so the board would
@@ -314,7 +322,7 @@ def register(bot: commands.Bot, settings: Settings) -> tasks.Loop | None:
     """
     if settings.bulletin_channel_id is None:
         logger.warning(
-            "DISCORD_BULLETIN_CHANNEL_ID is not set - the voice channel bulletin is disabled"
+            "DISCORD_CONFIG_BULLETIN_CHANNEL_ID is not set - the voice channel bulletin is disabled"
         )
         return None
 

@@ -1,8 +1,8 @@
+import type { Locale } from '@studyclub/types';
 import type { Metadata } from 'next';
 
-import { LegalDoc } from '@/components/LegalDoc';
-import type { Locale } from '@/lib/content';
-import { legalDoc, lx } from '@/lib/legal';
+import { legalDoc, lx } from '@/features/legal/content';
+import { LegalDoc } from '@/features/legal/LegalDoc';
 import { pageMetadata } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {

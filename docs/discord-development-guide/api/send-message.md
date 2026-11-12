@@ -163,7 +163,7 @@ Discord 는 에러 없이 알림만 건너뛴다 ([위](#올리는-메시지) �
 | **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 |
 | **400** | `Idempotency-Key` 없음 |
 | **401** | `X-API-Key` 없음 또는 불일치 |
-| **409** | `DISCORD_GUILD_ID` 가 설정되지 않음 |
+| **409** | `DISCORD_CONFIG_GUILD_ID` 가 설정되지 않음 |
 
 ### 이 엔드포인트에서 나는 것
 

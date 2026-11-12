@@ -7,8 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * 클레임된 알림 1건을 실제로 발송하는 조립 지점 — 템플릿 조회 → 렌더링 → {@link MailClient} 호출. 웰컴메일(NOTIFY 카테고리) 전용이라 이름에 그대로
- * 드러낸다; 두 번째 이벤트가 생기면 event_type 별 디스패처로 일반화한다.
+ * 클레임된 알림 1건을 실제로 발송하는 조립 지점 — 템플릿 조회 → 렌더링 → {@link MailClient} 호출. 지금 알림은 모두 NOTIFY 카테고리 메일이라
+ * 웰컴메일과 스터디 공지({@code STUDY_NOTICE}) 가 같은 경로를 탄다 — 이름은 처음 하나뿐이던 때의 것이다. 카테고리가 다른 알림이 생기면 event_type
+ * 별 디스패처로 일반화한다.
  */
 @Component
 @RequiredArgsConstructor

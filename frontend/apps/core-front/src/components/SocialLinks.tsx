@@ -1,6 +1,6 @@
-import { Instagram, Linkedin, MessageCircle } from 'lucide-react';
+import type { Locale } from '@studyclub/types';
+import { Instagram, Linkedin, MessageCircle, Youtube } from 'lucide-react';
 
-import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import { activeSocialChannels, type SocialId } from '@/lib/social';
 
@@ -16,6 +16,7 @@ function XMark({ size = 16 }: { size?: number }) {
 const PENDING = '주소 준비 중';
 
 const ICON: Record<SocialId, (p: { size?: number }) => React.ReactNode> = {
+  youtube: (p) => <Youtube {...p} />,
   instagram: (p) => <Instagram {...p} />,
   x: (p) => <XMark {...p} />,
   kakao: (p) => <MessageCircle {...p} />,
@@ -58,8 +59,8 @@ export function FollowStrip({ locale }: { locale: Locale }) {
   return (
     <section className='mt-12 flex flex-col gap-4 rounded-2xl p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8' style={{ background: 'var(--color-brand-subtle)' }}>
       <div>
-        <h2 className='text-lg font-bold tracking-tight'>{t({ ko: '행사와 모집 소식을 먼저 받아 보세요', en: 'Hear about events and new studies first' }, locale)}</h2>
-        <p className='mt-1 text-sm text-(--color-fg-muted)'>
+        <h2 className='type-title-md'>{t({ ko: '행사와 모집 소식을 먼저 받아 보세요', en: 'Hear about events and new studies first' }, locale)}</h2>
+        <p className='mt-1 type-body-sm text-(--color-fg-muted)'>
           {t({ ko: '새 행사가 열리거나 스터디 모집이 시작되면 여기에 알려 드려요.', en: 'We post here when an event opens or a study starts recruiting.' }, locale)}
         </p>
       </div>
@@ -71,7 +72,7 @@ export function FollowStrip({ locale }: { locale: Locale }) {
               href={c.href}
               target='_blank'
               rel='noreferrer'
-              className='inline-flex items-center gap-2 rounded-full bg-(--color-bg) px-4 py-2 text-sm font-semibold text-(--color-fg) shadow-sm transition-colors hover:bg-(--color-surface-subtle)'
+              className='inline-flex items-center gap-2 rounded-full bg-(--color-bg) px-4 py-2 type-label-lg text-(--color-fg) shadow-sm transition-colors hover:bg-(--color-surface-subtle)'
             >
               {ICON[c.id]({ size: 16 })}
               {t(c.label, locale)}
@@ -79,7 +80,7 @@ export function FollowStrip({ locale }: { locale: Locale }) {
           ) : (
             <span
               key={c.id}
-              className='inline-flex items-center gap-2 rounded-full border border-dashed border-(--color-border) px-4 py-2 text-sm font-semibold text-(--color-fg-faint)'
+              className='inline-flex items-center gap-2 rounded-full border border-dashed border-(--color-border) px-4 py-2 type-label-lg text-(--color-fg-faint)'
             >
               {ICON[c.id]({ size: 16 })}
               {t(c.label, locale)} · {PENDING}

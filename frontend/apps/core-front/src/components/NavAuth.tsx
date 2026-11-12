@@ -6,12 +6,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { ChevronDown, DoorOpen, LogOut, UserRound } from 'lucide-react';
+import type { Locale } from '@studyclub/types';
+import { ChevronDown, DoorOpen, Heart, LogOut, UserRound } from 'lucide-react';
 
-import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
+import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/features/auth/auth';
+import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/features/auth/preview';
 import { announceMenuOpen, closeOnOtherMenu } from '@/lib/header-menus';
-import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/lib/preview';
 
 export function NavAuth({ locale }: { locale: Locale }) {
   const router = useRouter();
@@ -51,7 +51,9 @@ export function NavAuth({ locale }: { locale: Locale }) {
     return (
       <Link
         href={`/${locale}/onboarding`}
-        className='rounded-full bg-brand px-4 py-2 text-sm font-semibold text-on-brand'
+        className='sc-button type-label-lg'
+        data-variant='tertiary'
+        data-size='md'
       >
         {locale === 'en' ? 'Finish sign-up' : '가입 마무리'}
       </Link>
@@ -63,7 +65,9 @@ export function NavAuth({ locale }: { locale: Locale }) {
       <div className='flex items-center gap-2'>
         <Link
           href={`/${locale}/login`}
-          className='whitespace-nowrap rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-fg)] transition-colors hover:bg-[var(--color-surface-subtle)]'
+          className='sc-button type-label-lg'
+          data-variant='secondary'
+          data-size='md'
         >
           {locale === 'en' ? 'Log in' : '로그인'}
         </Link>
@@ -72,7 +76,9 @@ export function NavAuth({ locale }: { locale: Locale }) {
             type='button'
             onClick={enterPreview}
             title='로그인 없이 마이페이지 보기 (로컬 개발 서버 전용)'
-            className='rounded-full border border-dashed border-[var(--color-border)] px-3 py-2 text-sm font-semibold text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-interactive)] hover:bg-[var(--color-surface-subtle)]'
+            className='sc-button type-label-lg'
+            data-variant='tertiary'
+            data-size='md'
           >
             MY
           </button>
@@ -95,22 +101,22 @@ export function NavAuth({ locale }: { locale: Locale }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={user.picture} alt='' className='h-8 w-8 rounded-full' />
         ) : (
-          <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-brand-subtle)] text-xs font-bold text-[var(--color-brand)]'>
+          <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-brand-subtle)] type-label-sm text-[var(--color-brand)]'>
             {(user.nickname ?? user.email).slice(0, 1).toUpperCase()}
           </span>
         )}
-        <span className='hidden max-w-[8rem] truncate text-sm font-semibold sm:block'>{user.nickname ?? user.email}</span>
+        <span className='hidden max-w-[8rem] truncate type-label-lg sm:block'>{user.nickname ?? user.email}</span>
         <ChevronDown size={14} className='text-[var(--color-fg-muted)]' />
       </button>
 
       {open && (
         // 그림자는 옅게 — 진한 shadow-lg 는 화면에서 떠 보이기만 했다. 테두리로 경계를 잡고 그림자는 아래로만 살짝
         <div className='absolute right-0 z-40 mt-2 w-52 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-1.5 shadow-[0_10px_30px_-12px_rgb(15_23_42/0.18)]'>
-          <div className='truncate px-3 pb-2 pt-1.5 text-xs text-[var(--color-fg-muted)]'>{user.email}</div>
+          <div className='truncate px-3 pb-2 pt-1.5 type-label-sm text-[var(--color-fg-muted)]'>{user.email}</div>
           <Link
             href={`/${locale}/my/joined`}
             onClick={() => setOpen(false)}
-            className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 type-label-lg text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
           >
             <DoorOpen size={16} style={{ color: 'var(--color-brand)' }} />
             {locale === 'en' ? 'My study room' : '내 스터디룸'}
@@ -118,11 +124,20 @@ export function NavAuth({ locale }: { locale: Locale }) {
           <Link
             href={`/${locale}/my`}
             onClick={() => setOpen(false)}
-            className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 type-label-lg text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
           >
             <UserRound size={16} className='text-[var(--color-fg-muted)]' />
             {locale === 'en' ? 'My page' : '마이페이지'}
           </Link>
+          <Link
+            href={`/${locale}/my/saved`}
+            onClick={() => setOpen(false)}
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 type-label-lg text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+          >
+            <Heart size={16} className='text-[var(--color-fg-muted)]' />
+            {locale === 'en' ? 'Saved' : '찜한 스터디'}
+          </Link>
+          {/* 「문의·오류 신고」는 푸터에 있다 — 눌러야 나오는 자리에 두면 할 말이 생긴 사람이 찾지 못한다 */}
           <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
             type='button'
@@ -133,7 +148,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
               router.replace(`/${locale}`);
               router.refresh();
             }}
-            className='flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-danger-fg hover:bg-[var(--color-surface-subtle)]'
+            className='flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left type-label-lg text-danger-fg hover:bg-[var(--color-surface-subtle)]'
           >
             <LogOut size={16} />
             {locale === 'en' ? 'Log out' : '로그아웃'}

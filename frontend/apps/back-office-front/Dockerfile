@@ -8,7 +8,7 @@
 # so no separate package build step is required.
 
 # ---- builder ----
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 # node 이미지엔 pnpm 이 없다 — corepack 이 package.json 의 packageManager(pnpm@9.10.0)를 받아온다.
 RUN corepack enable
@@ -30,7 +30,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter back-office-front run build
 
 # ---- runner ----
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000

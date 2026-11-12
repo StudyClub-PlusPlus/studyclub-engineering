@@ -88,7 +88,7 @@ def resolve_configured_channel(
     """
     if channel_id is None:
         raise HTTPException(
-            status_code=409, detail=f"no DISCORD_{label.upper()}_CHANNEL_ID configured"
+            status_code=409, detail=f"no DISCORD_CONFIG_{label.upper()}_CHANNEL_ID configured"
         )
 
     channel = guild.get_channel(channel_id)
@@ -115,7 +115,7 @@ async def send_alert_message(
     user_id: int = Depends(discord_user_id),
     key: str = Depends(idempotency_key),
 ) -> Response:
-    """Post the caller's message to ``DISCORD_ALERT_CHANNEL_ID``, prefixed with who sent it.
+    """Post the caller's message to ``DISCORD_CONFIG_ALERT_CHANNEL_ID``, prefixed with who sent it.
 
     Everything is resolved before anything is sent, so a request that fails
     leaves nothing in the channel.
@@ -200,7 +200,7 @@ async def send_announcement_message(
     body: SendAnnouncementRequest,
     key: str = Depends(idempotency_key),
 ) -> Response:
-    """Post the caller's message to ``DISCORD_ANNOUNCEMENT_CHANNEL_ID`` under an @everyone line.
+    """Post the caller's message to ``DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID`` under an @everyone line.
 
     An announcement goes out in the organisers' name, not the caller's, so it
     carries no sender line. Everything is resolved before anything is sent, so

@@ -10,18 +10,31 @@ const EMPTY: ReadonlyMap<number, string> = new Map();
  * 목록을 다시 받으면 다시 가려지고, 다시 보려면 다시 눌러야 한다(그때 감사 로그가 다시 남는다).
  */
 export function useRevealedEmails(listVersion: number) {
-  const [emails, setEmails] = useState(EMPTY);
-  const [version, setVersion] = useState(listVersion);
+  const [state, setState] = useState({ version: listVersion, emails: EMPTY });
 
   // 렌더 중에 맞춘다(React 권장 패턴) — effect 로 지우면 새 목록이 한 번 원본과 함께 그려진다
-  if (version !== listVersion) {
-    setVersion(listVersion);
-    setEmails(EMPTY);
+  if (state.version !== listVersion) {
+    setState({ version: listVersion, emails: EMPTY });
   }
 
-  const reveal = useCallback((accountId: number, email: string) => {
-    setEmails((prev) => new Map(prev).set(accountId, email));
+  const reveal = useCallback(
+    (accountId: number, email: string) => {
+      setState((prev) => {
+        if (prev.version !== listVersion) return prev;
+        return { ...prev, emails: new Map(prev.emails).set(accountId, email) };
+      });
+    },
+    [listVersion],
+  );
+
+  const hide = useCallback((accountId: number) => {
+    setState((prev) => {
+      if (!prev.emails.has(accountId)) return prev;
+      const emails = new Map(prev.emails);
+      emails.delete(accountId);
+      return { ...prev, emails };
+    });
   }, []);
 
-  return { emails, reveal };
+  return { emails: state.emails, reveal, hide };
 }

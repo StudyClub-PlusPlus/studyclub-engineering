@@ -66,7 +66,6 @@ def create_app(settings: Settings, bot: commands.Bot | None = None) -> FastAPI:
     app.state.bot = bot
     app.state.settings = settings
     app.state.study_reservations = StudyReservations(settings.db_path)
-    app.state.new_study_anchor_name = studies.DEFAULT_NEW_STUDY_ANCHOR_NAME
     app.middleware("http")(log_requests)
     app.exception_handler(RequestValidationError)(validation_error_as_400)
     app.include_router(health.router, prefix=API_PREFIX)

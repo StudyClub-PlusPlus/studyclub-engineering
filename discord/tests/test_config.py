@@ -15,7 +15,7 @@ def test_load_settings_reads_command_channel():
     settings = load_settings(
         environ={
             "DISCORD_TOKEN": "secret-token",
-            "DISCORD_BOT_CHANNEL_ID": "123456789012345678",
+            "DISCORD_CONFIG_BOT_CHANNEL_ID": "123456789012345678",
         },
         load_dotenv_file=False,
     )
@@ -28,7 +28,7 @@ def test_load_settings_reads_command_channel():
 def test_load_settings_blank_command_channel_is_none(raw):
     """An unset or blank channel var means "no channel takes commands", not an error."""
     settings = load_settings(
-        environ={"DISCORD_TOKEN": "t", "DISCORD_BOT_CHANNEL_ID": raw},
+        environ={"DISCORD_TOKEN": "t", "DISCORD_CONFIG_BOT_CHANNEL_ID": raw},
         load_dotenv_file=False,
     )
     assert settings.command_channel_id is None
@@ -38,7 +38,7 @@ def test_load_settings_drops_non_numeric_command_channel_with_a_warning(caplog):
     """A typo'd ID neither stops startup nor passes silently: it is logged and dropped."""
     with caplog.at_level("WARNING"):
         settings = load_settings(
-            environ={"DISCORD_TOKEN": "t", "DISCORD_BOT_CHANNEL_ID": "not-an-id"},
+            environ={"DISCORD_TOKEN": "t", "DISCORD_CONFIG_BOT_CHANNEL_ID": "not-an-id"},
             load_dotenv_file=False,
         )
 
@@ -60,12 +60,13 @@ def test_load_settings_reads_study_settings():
     """The guild, roles, channels, and API key come from the environment."""
     settings = load_settings(
         environ={
-            "DISCORD_GUILD_ID": "123456789012345678",
-            "DISCORD_CAPTAIN_ROLE_ID": "223456789012345678",
-            "DISCORD_NAVIGATOR_ROLE_ID": "323456789012345678",
-            "DISCORD_ALERT_CHANNEL_ID": "423456789012345678",
-            "DISCORD_ANNOUNCEMENT_CHANNEL_ID": "523456789012345678",
-            "DISCORD_BULLETIN_CHANNEL_ID": "723456789012345678",
+            "DISCORD_CONFIG_GUILD_ID": "123456789012345678",
+            "DISCORD_CONFIG_CAPTAIN_ROLE_ID": "223456789012345678",
+            "DISCORD_CONFIG_NAVIGATOR_ROLE_ID": "323456789012345678",
+            "DISCORD_CONFIG_ALERT_CHANNEL_ID": "423456789012345678",
+            "DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID": "523456789012345678",
+            "DISCORD_CONFIG_BULLETIN_CHANNEL_ID": "723456789012345678",
+            "DISCORD_CONFIG_ANCHOR_CHANNEL_ID": "823456789012345678",
             "DISCORD_API_KEY": " key ",
         },
         load_dotenv_file=False,
@@ -77,7 +78,34 @@ def test_load_settings_reads_study_settings():
     assert settings.alert_channel_id == 423456789012345678
     assert settings.announcement_channel_id == 523456789012345678
     assert settings.bulletin_channel_id == 723456789012345678
+    assert settings.anchor_channel_id == 823456789012345678
     assert settings.api_key == "key"
+
+
+def test_load_settings_ignores_the_names_before_the_config_prefix():
+    """The ID settings were renamed to ``DISCORD_CONFIG_*``; the old names are not read."""
+    settings = load_settings(
+        environ={
+            "DISCORD_GUILD_ID": "123456789012345678",
+            "DISCORD_BOT_CHANNEL_ID": "123456789012345678",
+            "DISCORD_CAPTAIN_ROLE_ID": "223456789012345678",
+            "DISCORD_NAVIGATOR_ROLE_ID": "323456789012345678",
+            "DISCORD_ALERT_CHANNEL_ID": "423456789012345678",
+            "DISCORD_ANNOUNCEMENT_CHANNEL_ID": "523456789012345678",
+            "DISCORD_BULLETIN_CHANNEL_ID": "723456789012345678",
+            "DISCORD_ANCHOR_CHANNEL_ID": "823456789012345678",
+        },
+        load_dotenv_file=False,
+    )
+
+    assert settings.guild_id is None
+    assert settings.command_channel_id is None
+    assert settings.captain_role_id is None
+    assert settings.navigator_role_id is None
+    assert settings.alert_channel_id is None
+    assert settings.announcement_channel_id is None
+    assert settings.bulletin_channel_id is None
+    assert settings.anchor_channel_id is None
 
 
 def test_load_settings_study_settings_default_to_unset(caplog):
@@ -85,10 +113,11 @@ def test_load_settings_study_settings_default_to_unset(caplog):
     with caplog.at_level("WARNING"):
         settings = load_settings(
             environ={
-                "DISCORD_GUILD_ID": "not-an-id",
-                "DISCORD_ALERT_CHANNEL_ID": "also-not-an-id",
-                "DISCORD_ANNOUNCEMENT_CHANNEL_ID": "",
-                "DISCORD_BULLETIN_CHANNEL_ID": "nor-this",
+                "DISCORD_CONFIG_GUILD_ID": "not-an-id",
+                "DISCORD_CONFIG_ALERT_CHANNEL_ID": "also-not-an-id",
+                "DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID": "",
+                "DISCORD_CONFIG_BULLETIN_CHANNEL_ID": "nor-this",
+                "DISCORD_CONFIG_ANCHOR_CHANNEL_ID": "구분선",
                 "DISCORD_API_KEY": "  ",
             },
             load_dotenv_file=False,
@@ -100,10 +129,13 @@ def test_load_settings_study_settings_default_to_unset(caplog):
     assert settings.alert_channel_id is None
     assert settings.announcement_channel_id is None
     assert settings.bulletin_channel_id is None
+    assert settings.anchor_channel_id is None
     assert settings.api_key is None
     assert settings.db_path == "data/discord.sqlite3"
     assert "not-an-id" in caplog.text
     assert "nor-this" in caplog.text
+    # A category name where the ID belongs is refused, not matched by name.
+    assert "구분선" in caplog.text
 
 
 def test_backend_base_url_is_read_from_api_base_url():

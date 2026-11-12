@@ -71,7 +71,7 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 · 9~12 는 기획(세은님
 
 전개 규칙(시작 날짜 이후 첫 해당 요일, 종료일 포함 등)은 화면의 일이고, 서버가 지켜야 할 불변식(중복·상한·과거)은 목록만으로 다 검사된다. 서버에 규칙 엔진을 둘 이유가 없다.
 
-**31일 상한은 두 겹이다.** PRD 7-4 의 「시작 날짜 ~ 종료일 31일」 은 화면이 **고른 기간**을 막는다. 서버는 고른 기간을 받지 않으므로 **만들어지는 회차들**이 31일 안에 드는지만 다시 본다 (아래 회차 추가 검증). 고른 기간이 31일 안이면 결과도 반드시 그 안이라 서버 검사가 화면 검사보다 느슨할 뿐 어긋나지 않는다.
+**31일 상한은 두 겹이다.** PRD 7-4 의 「시작 날짜 ~ 종료일 31일」 은 화면이 **고른 기간**을 막는다. 서버는 고른 기간을 받지 않으므로 **만들어지는 회차들**이 31일 안에 드는지만 다시 본다 (아래 회차 추가 검증). 입력자의 시간대와 반 시간대가 다르면 서머타임 전환으로 입력 31일이 반 달력에서는 32일에 걸칠 수 있다. 화면은 겹치는 날을 제외한 실제 생성 회차를 반 시간대 날짜로 환산해 `max(날짜) − min(날짜) ≤ 30일`도 검사한다. 넘으면 추가 전에 입력 종료일을 어디까지 줄여야 하는지 안내하며, 회차를 임의로 잘라 저장하지 않는다.
 
 ### 권한 판정
 
@@ -134,7 +134,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 | 이름 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| studyGroupId | Long | N | 분반 ID. 없으면 이 스터디에서 내 명부 행(`STUDY_PARTICIPANT`, 역할 무관)이 속한 분반 — 한 기수 안 여러 반 동시 소속은 금지라 하나로 정해진다. 명부에 없는 캡틴은 필수 → 없으면 400. 정한 분반에 대해 권한 판정은 그대로 한다 |
+| studyGroupId | Long | N | 분반 ID. 없으면 이 스터디에서 내 활성 명부 행(`STUDY_PARTICIPANT STATUS IN (ACTIVE, PAUSED)`, 역할 무관)이 속한 분반 — 한 기수 안 활성 소속은 하나. 반 이동 후 이전 WITHDRAWN 행은 무시된다. 명부에 없는 캡틴은 필수 → 없으면 400. 정한 분반에 대해 권한 판정은 그대로 한다 |
 
 ### Request Body
 
@@ -189,17 +189,18 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | studyGroup.timezone | String | N | IANA. 화면 시각 기준. 비어 있으면 `Asia/Seoul` | STUDY_GROUP.TIMEZONE |
 | studyGroup.startTime | String | Y | 분반 정규 시작 시각, 분반 시간대의 현지 `HH:mm`. 추가 창 시작 시각 기본값(PRD 7-2). `START_AT` 이 비어 있으면 null | 계산: `STUDY_GROUP.START_AT` 을 분반 시간대로 바꾼 시각 |
 | meetings | Array | N | `scheduledAt` 오름차순. 없으면 `[]` | STUDY_MEETING (`STUDY_GROUP_ID` = 분반) |
-| studyGroup.navigatorName | String | Y | 시트 머리의 「네비게이터」. 없으면 null | STUDY_PARTICIPANT(LEADER) → ACCOUNT 닉네임 |
+| studyGroup.navigatorName | String | Y | 시트 머리의 「네비게이터」. 2명 이상이면 `", "` 로 이음. 없으면 null | STUDY_PARTICIPANT(LEADER, 활성) → ACCOUNT 닉네임, 가입 순 |
+| studyGroup.daysOfWeek | String[] | Y | 반 정기 요일. `mon`…`sun` 소문자. 미정이면 null | STUDY_GROUP.DAYS_OF_WEEK |
 | studyGroup.rules | String | Y | 스터디 규칙. 없으면 null | STUDY_GROUP.RULES |
 | study.discordChannelUrl | String | Y | 정보 카드 「디스코드」 버튼. 완주한 참여자는 클럽 로비 초대. 없으면 null — 버튼을 두지 않는다 | STUDY.DISCORD_CHANNEL_URL |
 | study.driveUrl | String | Y | 정보 카드 「자료실」 버튼. 없으면 null | STUDY.DRIVE_URL |
 | me.participantId | Long | Y | 내 명부 행. 명부에 없는 캡틴은 null | STUDY_PARTICIPANT.ID |
 | me.canEdit | Boolean | N | true 면 네비게이터·캡틴 — 화면이 표를 고칠 수 있게 연다 | 계산: 위 「권한 판정」 고치기 |
-| participants | Array | N | 발표자 드롭다운 후보. 그 분반 활성 참여자, 이름순 | STUDY_PARTICIPANT `STATUS IN (ACTIVE, PAUSED)` |
+| participants | Array | N | 발표자 드롭다운 후보. 그 분반 활성 참여자, 이름순. `name` 은 디스코드 닉네임이 없는 계정에서 null — 화면은 「(알 수 없음)」 | STUDY_PARTICIPANT `STATUS IN (ACTIVE, PAUSED)` |
 | meetings[].id | Long | N | | STUDY_MEETING.ID |
 | meetings[].type | String | N | `KICKOFF` · `REGULAR` | STUDY_MEETING.MEETING_TYPE |
 | meetings[].number | Int | N | 회차 번호. 킥오프는 0 | 계산: 정규 회차를 `SCHEDULED_AT` 오름차순으로 센 순번 (1부터) |
-| meetings[].presenter1 · presenter2 | Object | Y | `{ participantId, name, active }`. 비었으면 null. 킥오프는 늘 null. `active=false` 면 참여를 중단한 사람 — 화면은 「이름 (참여 종료)」 | STUDY_MEETING.PRESENTER1·2_PARTICIPANT_ID → STUDY_PARTICIPANT |
+| meetings[].presenter1 · presenter2 | Object | Y | `{ participantId, name, active }`. 비었으면 null. 킥오프는 늘 null. `active=false` 면 참여를 중단한 사람 — 화면은 「이름 (참여 종료)」. `name` 은 null 가능 — 반 이동 등으로 현 명부에 없을 때; 화면은 「(알 수 없음)」 | STUDY_MEETING.PRESENTER1·2_PARTICIPANT_ID → STUDY_PARTICIPANT |
 | study.id · study.title | Long · String | N | 지면 머리의 스터디 이름 | STUDY.ID · STUDY.TITLE |
 | meetings[].scheduledAt | String | N | UTC ISO 8601 | STUDY_MEETING.SCHEDULED_AT |
 | meetings[].title | String | Y | 없으면 null — 화면은 「—」 | STUDY_MEETING.TITLE |
@@ -665,6 +666,12 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - `SERIES_ID` 컬럼은 새 마이그레이션 `V{n}__add_study_meeting_series_id.sql` 로 더한다. `n` 은 머지 시점 beta 최신 번호의 다음이다 — 열린 PR 여럿이 V26 을 쓰고 있어 번호를 미리 박지 않는다. 기존 행은 null 로 둔다 — 이미 만든 반복 회차는 묶을 근거가 없다. 응답에는 아직 내보내지 않는다(쓰는 화면이 없다).
 - #174 가 `Study` 에서 `slug`·`capacity`·`isHidden`·`studyDeliveryFormat` 을 지우고 `phase()`·`recruitStatus()` 에 `recruitmentCapacity` 인자를 더한다. 구현 전에 머지 여부를 확인하고 rebase 한 뒤 테스트 픽스처를 맞춘다.
 
+## 퍼널·계측
+
+- 단계: 재방문 (활성화 뒤 참여)
+- 이벤트 (front): 발표 신청·취소 성공에 `Study Presenter Registered` · `Study Presenter Unregistered` (`study_id`, `meeting_id`, `slot`). 회차 만들기·고치기·지우기(캡틴)에는 이벤트가 없다
+- 기대: 신청한 크루가 스터디룸에서 스스로 하는 행동을 보는 첫 신호. A/B 없음
+
 ## 범위 밖
 
 - 회차 변경 알림 (결정 4)
@@ -680,5 +687,3 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - ~~이미 운영 중인 분반에 킥오프 회차를 소급해 만들지~~ → 캡틴이 백오피스에서 지난 날로도 정한다 (2026-10-22)
 - [NEEDS CLARIFICATION] 한 사람이 맡을 수 있는 발표 수에 상한을 둘지 — 지금은 두지 않는다.
 - [NEEDS CLARIFICATION] 발표자1이 빠진 날 발표자2가 대신한 것을 따로 기록할지 — 지금은 일정의 발표자를 고쳐서 남긴다.
-
-

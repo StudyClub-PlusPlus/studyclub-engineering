@@ -11,7 +11,7 @@ import {
   type StudyFormErrors,
   type StudyFormValues,
 } from '@console/components/StudyForm';
-import type { Study } from '@studyclub/mock';
+import type { Study } from '@studyclub/types';
 import { Button, Modal } from '@studyclub/ui';
 
 import { ScreenSpecRegistrar } from '@/proto/annotate';
@@ -113,7 +113,7 @@ export function StudyCreateDialog({
         }
       >
         {done ? (
-          <p className='py-6 text-center text-sm text-fg-muted'>
+          <p className='py-6 text-center type-body-sm text-fg-muted'>
             {editing
               ? '저장되었습니다.'
               : '등록되었습니다. 아직 사이트에 보이지 않습니다 — 목록에서 공개를 켜세요.'}

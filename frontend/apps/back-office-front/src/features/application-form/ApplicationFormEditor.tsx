@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/mock';
+import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/types';
 import { Button, Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 import { ArrowDown, ArrowUp, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -14,9 +14,9 @@ import {
   MARKDOWN_HINT,
   OptionEditor,
   QuestionFillView,
-} from './ApplicationFormUi';
-import { allowsOther, needsOptions, QUESTION_TYPES, TYPE_LABEL } from './question';
-import { applicationFormSchema, type ApplicationFormValues } from './schema';
+} from '@/features/application-form/ApplicationFormUi';
+import { allowsOther, needsOptions, QUESTION_TYPES, TYPE_LABEL } from '@/features/application-form/question';
+import { applicationFormSchema, type ApplicationFormValues } from '@/features/application-form/schema';
 
 const HEADER_ID = '__form-header__';
 const DISCORD_QUESTION: ApplicationQuestion = {
@@ -104,7 +104,7 @@ export function ApplicationFormEditor({
 
   return (
     <form
-      className='mx-auto flex w-full max-w-2xl flex-col gap-3'
+      className='flex w-full flex-col gap-3'
       onSubmit={(event) => {
         void submit(event).catch(() => {});
       }}
@@ -131,7 +131,7 @@ export function ApplicationFormEditor({
           account={{ name: '홍길동', email: 'applicant@example.com' }}
         />
         {(errors.title || errors.description) && (
-          <p role='alert' className='text-sm text-error-700'>
+          <p role='alert' className='type-body-sm text-error-700'>
             {errors.title?.message ?? errors.description?.message}
           </p>
         )}
@@ -259,7 +259,7 @@ export function ApplicationFormEditor({
                     <QuestionFillView q={question} ghost />
                   )}
                   {issue?.options && (
-                    <p role='alert' className='text-sm text-error-700'>
+                    <p role='alert' className='type-body-sm text-error-700'>
                       {issue.options.message ?? issue.options.root?.message ?? '선택지를 하나 이상 넣어 주세요.'}
                     </p>
                   )}
@@ -272,7 +272,7 @@ export function ApplicationFormEditor({
                     <Button
                       type='button'
                       size='sm'
-                      variant='ghost'
+                      variant='tertiary'
                       leadingIcon={<Trash2 size={13} />}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -337,12 +337,12 @@ export function ApplicationFormEditor({
       </fieldset>
       <div className='flex items-center gap-3 pt-1'>
         {message && (
-          <p role='alert' className='text-sm text-error-700'>
+          <p role='alert' className='type-body-sm text-error-700'>
             {message}
           </p>
         )}
         {saved && !isDirty && (
-          <p role='status' className='text-sm font-medium text-success-700'>
+          <p role='status' className='type-label-lg text-success-700'>
             저장되었습니다.
           </p>
         )}

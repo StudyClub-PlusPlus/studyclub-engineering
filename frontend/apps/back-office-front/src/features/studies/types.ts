@@ -1,5 +1,6 @@
+import { CATEGORY_DISPLAY } from '@studyclub/utils';
+
 // 백오피스 스터디 상세·등록·수정이 쓰는 타입.
-import { CATEGORY_DISPLAY } from '@studyclub/mock';
 
 /** 기준 시간대 (STUDY.TIMEZONE). `BOTH` = 동시 진행(KST·PST). */
 export type StudyTimezone = 'KST' | 'PST' | 'BOTH';
@@ -27,6 +28,8 @@ export type ApiStudyDetail = {
   recruitDeadlineAt: string | null;
   startAt: string | null;
   endAt: string | null;
+  /** STUDY_DISCORD_LINK 행 존재 여부. 채널 URL 입력 여부와 별개다. */
+  discordLinked: boolean;
   discordChannelUrl: string | null;
   driveUrl: string | null;
 };

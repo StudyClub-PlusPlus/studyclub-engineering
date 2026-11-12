@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react';
 
-import type { Person } from './meetings';
 import { useParticipants } from '@/features/participants/queries';
+import type { Person } from '@/features/schedule/meetings';
 
 /** 그 반 참가자 — 발표자 후보이자 출석부의 한 줄. ID 는 명부 행 ID(`participantId`) 문자열 — 회차 발표자 · 출석부와 같다. */
 export type CrewMember = Person & {

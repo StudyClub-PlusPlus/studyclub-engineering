@@ -20,7 +20,6 @@ import {
   upcomingMeeting,
   mondayOf,
   upcomingOf,
-  userWallTz,
   weekDays,
   ymdInTz,
   type LifeStatus,
@@ -28,11 +27,13 @@ import {
   type WeekDay,
 } from '@core/lib/joined';
 import { PAGE } from '@core/lib/layout';
-import { getApplications, getRegion } from '@core/lib/me';
+import { getApplications } from '@core/lib/me';
 import { SCHEDULE_ROLE_LABEL, isKickoff, manageAccessOf, type ScheduleRole } from '@core/lib/meetings';
-import { type Study } from '@studyclub/mock';
+import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
+import { type Study } from '@studyclub/types';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
-import { Badge, Button, Card, EmptyState, Select, cx } from '@studyclub/ui';
+import { Badge, Button, IconButton, Card, EmptyState, Select, cx } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { MEETING_SPEC, SPEC } from './spec';
@@ -149,7 +150,6 @@ function WeekStrip({
   locale,
   wallTz,
   studies,
-  onWallTz,
   onPrev,
   onNext,
 }: {
@@ -158,7 +158,6 @@ function WeekStrip({
   locale: Locale;
   wallTz: WallTz;
   studies: Study[];
-  onWallTz: (tz: WallTz) => void;
   onPrev: () => void;
   onNext: () => void;
 }) {
@@ -168,26 +167,17 @@ function WeekStrip({
   return (
     <section data-anno='1-1' className='mt-5'>
       <div className='flex flex-wrap items-end justify-between gap-2'>
-        <h2 className='text-lg font-extrabold tracking-tight'>
-          {thisWeek ? '이번 주 일정 ' : '주간 일정 '} <span className='tnum font-bold text-fg-muted'>{range}</span>
+        <h2 className='type-title-md'>
+          {thisWeek ? '이번 주 일정 ' : '주간 일정 '} <span className='tnum font-semibold text-fg-muted'>{range}</span>
         </h2>
         <div className='flex items-center gap-2'>
-          <SegmentTabs
-            anno='1-1-1'
-            value={wallTz}
-            options={[
-              { key: 'KST', label: 'KST' },
-              { key: 'PDT', label: 'PDT' },
-            ]}
-            onChange={onWallTz}
-          />
-          <div className='flex items-center'>
-            <Button variant='ghost' size='sm' aria-label='이전 주' onClick={onPrev}>
-              <ChevronLeft size={16} />
-            </Button>
-            <Button variant='ghost' size='sm' aria-label='다음 주' onClick={onNext}>
-              <ChevronRight size={16} />
-            </Button>
+          <p data-anno='1-1-1' className='type-label-sm text-fg-secondary'>
+            {locale === 'ko' ? '내 시간대: ' : 'My time zone: '}
+            {scheduleZoneTitle(wallTz, locale)}
+          </p>
+          <div className='flex items-center gap-3'>
+            <IconButton variant='tertiary' size='sm' aria-label='이전 주' onClick={onPrev} icon={<ChevronLeft />} />
+            <IconButton variant='tertiary' size='sm' aria-label='다음 주' onClick={onNext} icon={<ChevronRight />} />
           </div>
         </div>
       </div>
@@ -199,12 +189,10 @@ function WeekStrip({
               key={d.date}
               className={cx('min-w-0 rounded-card px-1 py-1.5', d.today ? 'bg-brand-subtle' : 'bg-surface-1')}
             >
-              <p className={cx('text-center text-[11px] font-bold', d.today ? 'text-primary-700' : 'text-fg-muted')}>
+              <p className={cx('text-center type-label-sm', d.today ? 'text-primary-700' : 'text-fg-muted')}>
                 {d.label}
               </p>
-              <p className={cx('tnum text-center text-sm font-extrabold', d.today ? 'text-primary-700' : 'text-fg')}>
-                {d.day}
-              </p>
+              <p className={cx('tnum text-center type-label-lg', d.today ? 'text-primary-700' : 'text-fg')}>{d.day}</p>
               <ul className='mt-1 flex min-h-10 flex-col gap-1'>
                 {d.hits.map((hit) => {
                   const study = byId.get(hit.studyId);
@@ -215,14 +203,16 @@ function WeekStrip({
                         type='button'
                         title={`${hit.time} ${hit.title} ${hit.no === 0 ? '킥오프' : `${hit.no}회차`}`}
                         onClick={() => study && router.push(schedulePath(locale, study))}
-                        className='block w-full rounded-sm border-l-[3px] px-1.5 py-1 text-left text-[10px] font-bold leading-tight hover:brightness-[0.97]'
+                        className='block w-full rounded-sm border-l-[3px] px-1.5 py-1 text-left type-label-lg hover:brightness-[0.97]'
                         style={{
                           borderLeftColor: accent,
                           backgroundColor: `color-mix(in srgb, ${accent} ${tint}%, var(--color-bg))`,
                           color: accent,
                         }}
                       >
-                        <span className='tnum block text-[10px] font-semibold opacity-75'>{hit.time}</span>
+                        <span className='tnum block type-label-sm opacity-75'>
+                          {hit.time} {hit.abbreviation}
+                        </span>
                         <span data-anno='1-1-2' className='line-clamp-2 break-keep'>
                           {hit.title}
                         </span>
@@ -244,7 +234,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
   return (
     <nav data-anno='5' className='mt-8 flex items-center justify-center gap-1' aria-label='목록 페이지'>
       <Button
-        variant='ghost'
+        variant='tertiary'
         size='sm'
         disabled={page <= 1}
         leadingIcon={<ChevronLeft size={16} />}
@@ -261,7 +251,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
             aria-current={on ? 'page' : undefined}
             onClick={() => onChange(n)}
             className={cx(
-              'grid h-8 min-w-8 place-items-center rounded-control px-2.5 text-sm font-bold transition-colors',
+              'grid h-8 min-w-8 place-items-center rounded-control px-2.5 type-label-lg transition-colors',
               on ? 'bg-brand text-on-brand' : 'text-fg-secondary hover:bg-surface-2 hover:text-fg',
             )}
           >
@@ -270,7 +260,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
         );
       })}
       <Button
-        variant='ghost'
+        variant='tertiary'
         size='sm'
         disabled={page >= pages}
         trailingIcon={<ChevronRight size={16} />}
@@ -299,8 +289,9 @@ export default function MyJoinedPage() {
   const [sort, setSort] = useState<SortKey>(defaultSortOf('active'));
   const [role, setRole] = useState<RoleFilter>('all');
   const [page, setPage] = useState(1);
-  const [wallTz, setWallTz] = useState<WallTz>('KST');
-  const [weekStart, setWeekStart] = useState(() => mondayOf(ymdInTz(new Date(), 'KST')));
+  const wallTz = useDisplayTimeZone();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStart = addDays(mondayOf(ymdInTz(new Date(), wallTz)), weekOffset * 7);
   const listTop = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -313,8 +304,6 @@ export default function MyJoinedPage() {
         .filter((a) => a.status === 'accepted')
         .map((a) => a.studyId),
     );
-    setWallTz(userWallTz(getRegion()));
-    setWeekStart(mondayOf(ymdInTz(new Date(), userWallTz(getRegion()))));
     setReady(true);
   }, [locale, router]);
 
@@ -351,7 +340,7 @@ export default function MyJoinedPage() {
   }
 
   if (!ready) {
-    return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
+    return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
   const empty =
@@ -365,7 +354,7 @@ export default function MyJoinedPage() {
     <div className={`${PAGE} pb-16 pt-10`}>
       <ScreenSpecRegistrar spec={SPEC} />
       <ScreenSpecRegistrar spec={MEETING_SPEC} />
-      <h1 data-anno='1' className='text-2xl font-extrabold tracking-tight'>
+      <h1 data-anno='1' className='type-headline-lg'>
         내 스터디룸
       </h1>
 
@@ -375,9 +364,8 @@ export default function MyJoinedPage() {
         locale={locale}
         wallTz={wallTz}
         studies={mine}
-        onWallTz={setWallTz}
-        onPrev={() => setWeekStart(addDays(weekStart, -7))}
-        onNext={() => setWeekStart(addDays(weekStart, 7))}
+        onPrev={() => setWeekOffset((n) => n - 1)}
+        onNext={() => setWeekOffset((n) => n + 1)}
       />
 
       <div className='mt-5 flex flex-wrap items-center gap-2'>
@@ -448,15 +436,15 @@ function MissionClear({ book }: { book: MyAttendanceBook }) {
   });
   return (
     <div data-anno='4-4' className='mt-3 rounded-card border border-warning-400 bg-bg px-3 py-2.5 shadow-xs'>
-      <p className='flex items-center gap-1.5 text-[13px] font-extrabold tracking-tight text-warning-700'>
+      <p className='flex items-center gap-1.5 type-label-lg text-warning-700'>
         <Award size={15} strokeWidth={2.5} aria-hidden='true' />
         완주를 축하합니다!
       </p>
       <p className='mt-1 flex items-baseline gap-1'>
-        <span className='tnum text-[32px] font-extrabold leading-none tracking-tight text-warning-700'>{attended}</span>
-        <span className='text-lg font-bold text-fg-muted'>/</span>
-        <span className='tnum text-lg font-bold text-fg-muted'>{total}</span>
-        <span className='ml-1 text-[13px] font-bold text-fg-muted'>회</span>
+        <span className='tnum type-headline-md text-warning-700'>{attended}</span>
+        <span className='type-title-md text-fg-muted'>/</span>
+        <span className='tnum type-title-md text-fg-muted'>{total}</span>
+        <span className='ml-1 type-label-lg text-fg-muted'>회</span>
       </p>
       <ol className='mt-2.5 flex gap-1' aria-hidden='true'>
         {bars.map((s) => {
@@ -521,12 +509,12 @@ function StudyItem({ study, locale, wallTz }: { study: Study; locale: Locale; wa
                   <Link
                     data-anno='4-2'
                     href={schedulePath(locale, study)}
-                    className="min-w-0 truncate text-[17px] font-bold text-fg after:absolute after:inset-0 after:content-['']"
+                    className="min-w-0 truncate type-body-md text-fg after:absolute after:inset-0 after:content-['']"
                   >
                     {t(study.title, locale)}
                   </Link>
                 ) : (
-                  <span data-anno='4-2' className='min-w-0 truncate text-[17px] font-bold text-fg'>
+                  <span data-anno='4-2' className='min-w-0 truncate type-body-md text-fg'>
                     {t(study.title, locale)}
                   </span>
                 )}
@@ -534,14 +522,14 @@ function StudyItem({ study, locale, wallTz }: { study: Study; locale: Locale; wa
                   <Badge tone={role === 'crew' ? 'member' : role}>{SCHEDULE_ROLE_LABEL[role]}</Badge>
                 </span>
               </div>
-              <p data-anno='4-5' className='mt-0.5 text-[13px] text-fg-muted'>
+              <p data-anno='4-5' className='mt-0.5 type-body-sm text-fg-muted'>
                 {durationOf(study, locale, wallTz)}
               </p>
             </div>
             <span className='flex shrink-0 items-center gap-0.5'>
               <span data-anno='4-3' className='ml-1'>
                 {completed ? (
-                  <span className='inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-pill bg-warning-100 px-2 py-0.5 text-xs font-bold text-warning-700'>
+                  <span className='inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-pill bg-warning-100 px-2 py-0.5 type-label-sm text-warning-700'>
                     <Award size={12} strokeWidth={2.5} aria-hidden='true' />
                     완주
                   </span>
@@ -560,10 +548,7 @@ function StudyItem({ study, locale, wallTz }: { study: Study; locale: Locale; wa
             <div className='mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
               <p
                 data-anno='4-4'
-                className={cx(
-                  'min-w-0 tracking-tight',
-                  ended ? 'text-sm font-semibold text-fg-muted' : 'text-lg font-extrabold text-fg',
-                )}
+                className={cx('min-w-0', ended ? 'type-label-lg text-fg-muted' : 'type-title-md text-fg')}
               >
                 {upcomingOf(study, locale, wallTz)}
               </p>

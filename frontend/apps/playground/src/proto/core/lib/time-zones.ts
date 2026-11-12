@@ -1,5 +1,6 @@
 import type { Locale } from './content';
 import localizedLabels from './time-zone-labels.json';
+import { formattingZone } from './time-zone-rules';
 
 // Localized city/territory names from Unicode CLDR 48, with IANA 2025b aliases.
 // See third-party/time-zone-labels.md for provenance and the Unicode license.
@@ -58,10 +59,11 @@ export function availableZones(selected: string): string[] {
 
 export function zoneOffset(zone: string, now: Date): string {
   try {
-    let formatter = offsetFormatters.get(zone);
+    const effectiveZone = formattingZone(zone, now);
+    let formatter = offsetFormatters.get(effectiveZone);
     if (!formatter) {
-      formatter = new Intl.DateTimeFormat('en', { timeZone: zone, timeZoneName: 'longOffset' });
-      offsetFormatters.set(zone, formatter);
+      formatter = new Intl.DateTimeFormat('en', { timeZone: effectiveZone, timeZoneName: 'longOffset' });
+      offsetFormatters.set(effectiveZone, formatter);
     }
     return (
       formatter
@@ -77,7 +79,7 @@ export function zoneOffset(zone: string, now: Date): string {
 export function localTime(zone: string, locale: Locale, now: Date): string {
   try {
     return new Intl.DateTimeFormat(locale === 'ko' ? 'ko-KR' : 'en-US', {
-      timeZone: zone,
+      timeZone: formattingZone(zone, now),
       month: 'short',
       day: 'numeric',
       hour: 'numeric',

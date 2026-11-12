@@ -216,13 +216,13 @@ export function FeedbackDialog({
           }}
         >
           <div data-anno='feedback:2' className='flex flex-col gap-1.5'>
-            <span className='text-sm font-medium text-neutral-800'>
+            <span className='type-label-lg text-neutral-800'>
               유형<span className='ml-0.5 text-error-600'>*</span>
             </span>
             {/* 기본 선택이 없다 — 무엇을 보내는지는 보내는 사람이 고른다 */}
             <div role='radiogroup' aria-label='유형' className='flex flex-wrap gap-x-5 gap-y-2'>
               {FEEDBACK_TYPES.map((t) => (
-                <label key={t.value} className='inline-flex cursor-pointer items-center gap-2 text-sm text-fg'>
+                <label key={t.value} className='inline-flex cursor-pointer items-center gap-2 type-body-sm text-fg'>
                   <input
                     type='radio'
                     name='feedback-type'
@@ -235,7 +235,7 @@ export function FeedbackDialog({
                 </label>
               ))}
             </div>
-            {touched && errors.type && <p className='text-xs text-error-700'>{errors.type}</p>}
+            {touched && errors.type && <p className='type-label-sm text-error-700'>{errors.type}</p>}
           </div>
 
           <div data-anno='feedback:3'>
@@ -265,12 +265,12 @@ export function FeedbackDialog({
 
           {/* 이미지 첨부 — 선택. 오류는 스크린샷이 있으면 재현이 쉽다 */}
           <div data-anno='feedback:5-1' className='flex flex-col gap-1.5'>
-            <span className='flex items-baseline justify-between text-sm font-medium text-neutral-800'>
+            <span className='flex items-baseline justify-between type-label-lg text-neutral-800'>
               {/* 라벨과 (선택)을 한 덩어리로 묶는다 — 따로 두면 양끝 정렬이 둘 사이를 벌려 놓는다 */}
               <span>
                 이미지 첨부 <span className='font-normal text-fg-muted'>(선택)</span>
               </span>
-              <span className='tnum text-xs font-normal text-fg-placeholder'>
+              <span className='tnum type-label-sm text-fg-placeholder'>
                 {draft.images.length}/{IMAGE_MAX_COUNT}
               </span>
             </span>
@@ -303,7 +303,7 @@ export function FeedbackDialog({
                     setDragging(false);
                     void attach(Array.from(e.dataTransfer.files));
                   }}
-                  className={`flex h-20 min-w-[13rem] flex-1 flex-col items-center justify-center gap-1 rounded-control border border-dashed text-xs transition-colors ${
+                  className={`flex h-20 min-w-[13rem] flex-1 flex-col items-center justify-center gap-1 rounded-control border border-dashed type-label-sm transition-colors ${
                     dragging ? 'border-brand bg-brand/5 text-brand' : 'border-border-strong text-fg-muted hover:bg-surface-2'
                   }`}
                 >
@@ -323,7 +323,7 @@ export function FeedbackDialog({
                 e.target.value = '';
               }}
             />
-            <p className={`text-xs ${imageError ? 'text-error-700' : 'text-fg-muted'}`}>
+            <p className={`type-label-sm ${imageError ? 'text-error-700' : 'text-fg-muted'}`}>
               {imageError ?? `최대 ${IMAGE_MAX_COUNT}장, 장당 5MB · PNG, JPG, WEBP, GIF`}
             </p>
           </div>

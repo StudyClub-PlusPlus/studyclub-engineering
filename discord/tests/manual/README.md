@@ -41,7 +41,7 @@ Discord 가 `invalid_redirect_uri` 로 막는다.
 
 값은 요청마다 다시 읽는다 — `.env` 를 고쳤으면 페이지만 새로고침하면 된다 (파일 값이 우선한다).
 
-> `DISCORD_TOKEN` · `DISCORD_PORT` · `DISCORD_BOT_CHANNEL_ID` 은 **서비스** 설정이라 계속
+> `DISCORD_TOKEN` · `DISCORD_PORT` · `DISCORD_CONFIG_BOT_CHANNEL_ID` 은 **서비스** 설정이라 계속
 > 루트 `.env` 에 있다. 여기 것과 섞지 않는다.
 
 ## 실행

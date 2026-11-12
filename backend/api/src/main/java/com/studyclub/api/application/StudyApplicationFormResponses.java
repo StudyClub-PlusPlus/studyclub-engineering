@@ -20,7 +20,9 @@ public final class StudyApplicationFormResponses {
             @Schema(description = "스터디 한 줄 소개") String summary,
             @Schema(description = "스터디 상세 소개") String detail,
             @Schema(description = "캡틴 추가 질문 목록. 플랫폼 기본 문항은 포함하지 않습니다.")
-                    List<ApplicationFormQuestionResponse> questions) {}
+                    List<ApplicationFormQuestionResponse> questions,
+            @Schema(description = "폼 수정 잠금 여부. true면 저장 버튼을 숨기고 lockReason을 표시합니다.") boolean locked,
+            @Schema(description = "잠긴 이유. locked=false면 null입니다.") String lockReason) {}
 
     @Schema(description = "신청 폼 추가 질문")
     public record ApplicationFormQuestionResponse(

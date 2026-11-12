@@ -82,6 +82,7 @@
 |---|---|---|
 | `--color-border` | `#E2E1E9` | 기본 경계, 구분선, 비선택 컨트롤 |
 | `--color-border-strong` | `#8D90A3` | 선택된 input·control 경계 |
+| `--color-button-secondary-border` | `#CBCFE5` | Secondary 버튼 기본 1px 경계 |
 | `--color-border-interactive` | `#7A8BD8` | hover와 focus 경계 |
 | `--color-focus-ring` | `#7183DA` | 키보드 focus 전용 3px ring |
 | `--color-page-bg` | `#FBFCFF` | 페이지 기본 배경 |
@@ -160,39 +161,47 @@
 | 역할 | 폰트 | 비고 |
 |---|---|---|
 | Display / Body | **Pretendard Variable** (한글+라틴 통합) | 국내 IT 표준, 가변폰트 1개로 100~900 커버. 별도 영문 폰트 불필요 |
-| Mono / 숫자 | `"Pretendard", ui-monospace` + `font-feature-settings: "tnum" 1` | 출석부·대시보드 수치는 **tabular-nums**로 자리 고정. 코드는 `"JetBrains Mono", "D2Coding"` |
+| 코드·토큰 값·식별자 | `font-mono` | JetBrains Mono → D2Coding → Pretendard Variable → Pretendard → 시스템 고정폭. Mono 웹폰트는 추가 로딩하지 않는다. |
+| 날짜·비율·일반 수치 | Pretendard Variable + `tabular-nums` / `tnum` | 본문 서체를 유지하면서 숫자 폭을 정렬한다. |
 
 **웹폰트 로딩 전략**
-- Pretendard를 **self-host**(woff2)하고 한글은 dynamic subset로 분할 로드. CDN 직링크보다 안정적·빠름.
-- 대표 weight(400/600/700)는 `<link rel="preload" as="font" ... crossorigin>`로 프리로드, 나머지는 lazy.
-- `font-display: swap`으로 FOIT 방지. fallback: `-apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`.
+- 현재 세 앱의 루트 레이아웃에서 Pretendard Variable CDN stylesheet를 로딩한다.
+- CSS family 첫 이름은 실제 로딩 이름인 `"Pretendard Variable"`을 유지한다.
+- Mono는 기존 선언을 유지한다. 로컬 설치 여부에 따라 fallback이 적용된다.
 
-### 3-2. Type Scale (base 16px · ratio ≈ 1.2 Minor Third)
+### 3-2. 콘텐츠 역할 기반 타입 스케일
 
-밀도 높은 콘솔에서도 위계가 과하지 않도록 1.2 비율. 헤딩 line-height는 1.05~1.33, 본문은 1.5~1.6.
+정본은 `typography.css`의 Tailwind `@utility`이다. 앱·공통 UI·proto가 함께 사용한다.
+크기 대신 실제 콘텐츠 역할로 선택한다. 기존 `text-*` 토큰은 호환용이며 신규 코드에서는 사용하지 않는다.
 
 | Token | px | line-height | letter-spacing | weight | 용도 |
 |---|---|---|---|---|---|
-| text-xs | 12 | 16px (1.33) | +0.01em | 500 | 뱃지, 캡션, 메타, 테이블 라벨 |
-| text-sm | 14 | 20px (1.43) | +0.005em | 400/500 | 보조 텍스트, 테이블 셀, 폼 헬프 |
-| text-base | 16 | 26px (1.63) | 0 | 400 | **기본 본문** |
-| text-lg | 18 | 28px (1.56) | −0.005em | 400/500 | 리드 문단, 카드 본문 강조 |
-| text-xl | 20 | 28px (1.40) | −0.01em | 600 | 카드 제목, 소제목 |
-| text-2xl | 24 | 32px (1.33) | −0.015em | 600 | 섹션 소제목 |
-| text-3xl | 30 | 38px (1.27) | −0.02em | 700 | 섹션 제목 |
-| text-4xl | 36 | 44px (1.22) | −0.02em | 700 | 페이지 타이틀 |
-| text-5xl | 48 | 56px (1.17) | −0.025em | 800 | 히어로 |
-| text-6xl | 60 | 66px (1.10) | −0.03em | 800 | 대형 히어로 |
-| text-7xl | 72 | 76px (1.06) | −0.03em | 800 | 마케팅 히어로 |
+| type-display-lg | 56 | 64px | −0.035em | 500 | 홈 히어로·캠페인 메시지 |
+| type-display-sm | 44 | 52px | −0.03em | 500 | 상세 핵심 메시지 |
+| type-headline-lg | 36 | 46px | −0.025em | 600 | 사용자 사이트 페이지 제목 |
+| type-headline-md | 28 | 38px | −0.02em | 600 | 운영 콘솔 페이지 제목·주요 섹션 제목 |
+| type-headline-sm | 24 | 34px | −0.015em | 600 | 작은 섹션 제목 |
+| type-title-lg | 20 | 30px | −0.01em | 600 | 스터디 카드 제목·사용자 사이트 카드/패널 제목 |
+| type-title-md | 18 | 27px | −0.005em | 600 | 행사 카드 제목·운영 콘솔 카드/섹션 제목·리스트 제목·강조 문장 |
+| type-body-lg | 18 | 30px | 0 | 400 | 리드 문단·긴 소개 |
+| type-body-md | 16 | 27px | 0 | 400 | 기본 본문·일반 폼 입력값/placeholder |
+| type-body-sm | 14 | 22px | 0 | 400 | 보조 설명·테이블 내용·조밀한 Console 폼 입력값 |
+| type-label-lg | 14 | 20px | 0 | 600 | md/lg 버튼·탭·필드 라벨·목록 필터 선택값·목록 검색 입력값/placeholder |
+| type-label-sm | 12 | 18px | +0.005em | 500 | sm 버튼·배지·메타·타임스탬프·캡션 |
 
-### 3-3. 한글 광학 사이즈 보정 (필수)
+### 3-3. 적용 규칙
 
-Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 보입니다. 다음을 규칙화합니다.
-
-1. **자간(letter-spacing)**: 헤딩(20px↑)은 한글 자간이 벌어져 보이므로 **음수 자간**(−0.01 ~ −0.03em)으로 조입니다. 위 표에 반영됨. 본문(16px)은 0, 12~14px 작은 한글은 오히려 **+0.005~0.01em**로 살짝 벌려 가독성 확보.
-2. **밀도 높은 UI −1px**: 테이블 셀·뱃지 등 조밀한 영역의 한글은 라틴 기준보다 1px 작게(예: 라틴 14 → 한글 UI 13) 잡으면 균형이 맞습니다. 콘솔 본문 base를 15px로 낮추는 것도 허용(사이트는 16 유지).
-3. **line-height 여유**: 한글은 받침 때문에 세로로 더 큽니다. 라틴 권장 대비 **+0.05~0.1** 여유(본문 1.6 이상 유지). 짧은 헤딩만 1.1~1.2 허용.
-4. **weight 인지 보정**: 한글은 굵기가 강하게 보여 라틴 Bold(700) 대신 **SemiBold(600)**가 헤딩에 더 적절한 경우가 많음. 800은 히어로 한정.
+- Display Large는 모바일 36/44px, Small은 32/42px. 48rem 이상에서 위 데스크톱 값을 사용한다.
+- Display 2줄은 편집 가이드다. 긴 제목을 강제로 잘라내지 않는다.
+- 역할 클래스가 크기·굵기·행간·자간을 함께 소유한다. 이전 `text-*`, `font-*` 굵기, `leading-*`, `tracking-*`와 중복하지 않는다.
+- 기본 굵기는 400/500/600. 본문 내부 `strong`/`b`는 600이며 700 이상은 쓰지 않는다.
+- `font-mono`, `uppercase`, `capitalize`, `tabular-nums`는 역할과 독립적이다. 전환 과정에서 자동 추가하지 않는다. 한글 제목에는 대문자 효과·넓은 자간을 주지 않는다.
+- 읽기 문단에 `type-prose`를 사용한다. 최대 65ch, 한국어는 최대 40ic로 제한한다. 짧은 라벨·테이블에는 적용하지 않는다.
+- Console의 별도 기본 15px 예외는 제거한다. 조밀한 영역은 `type-body-sm`을 명시한다.
+- 일반 폼의 입력값과 목록 탐색 컨트롤을 구분한다. 스터디 목록의 「시간대 전체」 선택값과 「스터디 검색」 placeholder/입력값은 `type-label-lg`다. 일반 폼의 이름·소개 입력에는 `type-body-md`를 사용한다.
+- 운영 콘솔의 페이지 제목(유저·스터디·행사·알림·대시보드·상세)은 `type-headline-md`다. 상단 브랜드명·사이드바 라벨과 구분한다.
+- 운영 콘솔 카드/섹션 제목(진행중 스터디·모집중 스터디·예정 행사·차트 제목)과 행사 카드 제목(예: 시스템 디자인 라이브 토크)은 `type-title-md`다. 스터디 카드 제목의 `type-title-lg`와 구분한다.
+- 보조 텍스트도 기존 AA 색상 토큰을 유지한다. 메일 HTML과 OG 이미지의 독립 렌더링은 별도 관리한다.
 
 ---
 
@@ -231,7 +240,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 
 | Token | px | | 컴포넌트 권장(semantic) |
 |---|---|---|---|
-| radius-none | 0 | | `--radius-control` (버튼·입력·셀렉트) = **8** |
+| radius-none | 0 | | `--radius-control` (입력·셀렉트) = **8**, 버튼은 **8/9/10** |
 | radius-xs | 2 | | `--radius-chip` (필터칩·태그) = 8 |
 | radius-sm | 4 | | `--radius-card` = **16** |
 | radius-md | 8 | | `--radius-modal` = 20 (모바일 바텀시트 상단 24) |
@@ -292,7 +301,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
         ↓ 별칭
 [2] 호환 별칭           → --color-brand, --color-fg, --color-surface-1 ...
         ↓ 참조
-[3] 컴포넌트           → .btn { background: var(--color-brand) }  ← HEX 금지
+[3] 컴포넌트           → .sc-button { background: var(--color-primary) }  ← HEX 금지
 ```
 
 **주요 semantic 토큰(발췌)** — 전체는 `tokens.css` 참고.
@@ -301,7 +310,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 |---|---|---|
 | `--color-primary` | `#5267D8` | 브랜드 기준 액션 |
 | `--color-primary-hover/active` | Cobalt 단계 | hover / pressed |
-| `--color-primary-light` | `#E9ECFF` | 선택·tonal 배경 |
+| `--color-primary-light` | `#E9ECFF` | 선택 영역·Secondary/Tertiary hover 배경 |
 | `--color-highlight` | `#FF805C` | 제한적 강조. 상태색으로 사용 금지 |
 | `--color-ink` | `#282A43` | 본문·헤딩 |
 | `--color-text-secondary/muted` | Cool neutral | 설명 / 메타데이터 |
@@ -320,7 +329,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 [data-app="console"] {
   --radius-control: 6px;   /* 사이트 8 → 콘솔 6 */
   --radius-card: 12px;     /* 사이트 16 → 콘솔 12 */
-  --font-size-base: 15px;  /* 콘솔 밀도 (사이트 16 유지) */
+  /* 글꼴은 공통 역할 스케일. 조밀한 내용에 type-body-sm을 사용한다. */
   --row-height: 44px;      /* 출석부/테이블 조밀 */
 }
 ```
@@ -342,7 +351,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 | `compat.css` | 구 토큰 점진적 마이그레이션 별칭 브리지 | 공용 |
 | `base.css` | `tokens` + `compat` + `html`/`body`/`.card`/`.card-hover`/`.no-scrollbar` | 공통 베이스 (Storybook 등) |
 | `core.css` | `base.css` + `.hero-glow` | `core-front`, `playground proto/core` |
-| `console-only.css` | 콘솔 밀도 오버라이드(`[data-app="console"]` 스코프) + `.bo-table` / `.btn`. base 없음 | `playground` (core.css 위에 추가) |
+| `console-only.css` | 콘솔 밀도 오버라이드(`[data-app="console"]` 스코프) + `.bo-table`. 버튼은 공통 `buttons.css` 소유 | `playground` (core.css 위에 추가) |
 | `console.css` | `base.css` + `console-only.css` | `back-office-front` |
 
 **앱별 `globals.css` 적용 형태**:
@@ -372,9 +381,8 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 | 변형 | 배경 | 텍스트 | hover | 용도 |
 |---|---|---|---|---|
 | Primary (solid) | brand(600) | 흰색 | brand-hover(700) | 화면당 1개 주요 액션 |
-| Tonal | primary-light | primary-dark | brightness 97% | 보조 주요 액션 |
-| Secondary (outline) | surface-raised + border | ink | page-bg / border-interactive | 취소·보조 |
-| Ghost | 투명 | text-secondary | cloud | 아이콘 버튼, 3차 액션 |
+| Secondary (outline) | surface-raised + button-secondary-border | ink | primary-light / border-interactive | 보조 행동 |
+| Tertiary | 투명 | primary-dark | primary-light | 취소·닫기·건너뛰기·낮은 우선순위 |
 | Danger (outline) | surface-raised + danger-fg 테두리 | danger-fg | danger-bg | 삭제·참여 중단을 **여는** 버튼 |
 | Destructive | danger-fg | on-primary | brightness 90% | 되돌릴 수 없는 **마지막 확인** (확인 모달의 「삭제」) |
 
@@ -384,21 +392,34 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 |---|---|---|
 | 주 행동 — 한 묶음에 하나 | 저장 · 만들기 · 회차 추가 | Primary |
 | 보조 행동 | 수정 · 반 추가 | Secondary |
-| 되돌리기 | 취소 · 변경 취소 · 선택 해제 | Ghost |
+| 되돌리기 | 취소 · 변경 취소 · 선택 해제 | Tertiary |
 | 지우기 · 내보내기를 연다 | 삭제 · 참여 중단 | Danger |
 | 지우기 마지막 확인 | 확인 모달의 「삭제」 | Destructive |
 
 - 한 줄에 함께 둘 때 되돌리기는 왼쪽, 주 행동은 오른쪽 끝.
 - 화면에서 `className` 으로 색을 덧칠해 변형을 흉내 내지 않는다 — 필요한 모양이 없으면 여기에 변형을 더한다.
 
-**사이즈**: sm h32/px12/text-sm · md h40/px16/text-sm~15 · lg h48/px20/text-base. 라운딩 `--radius-control`(8). 모바일 터치 타깃 **최소 44px**(sm는 hit-area 패딩으로 보정). **disabled**: disabled-bg / disabled-fg / 그림자 없음. **loading**: 스피너 + 라벨 유지, 폭 고정.
+**사이즈**: 기본 md. sm 32px/px12/gap4/radius8/아이콘14/`type-label-sm`, md 40px/px16/gap8/radius9/아이콘16/`type-label-lg`, lg 48px/px20/gap8/radius10/아이콘20/`type-label-lg`.
+
+- 정본: `buttons.css`와 `@studyclub/ui`의 `Button`/`IconButton`. 버튼 전용 `radius-button-sm/md/lg`를 사용하므로 Console의 `radius-control`에 영향을 받지 않는다.
+- Secondary 기본 상태: 배경 `#FFFFFF`, 테두리 `1px solid #CBCFE5`(`--color-button-secondary-border`), 글자 `#282A43`. 입력 필드의 일반 `border`/선택 `border-strong` 규칙은 유지한다.
+- 텍스트 버튼 최소 너비: sm 64px / md 80px / lg 96px. 긴 레이블은 콘텐츠에 맞춰 확장한다. IconButton은 제외하며 정사각형 크기를 유지한다. 고밀도 콘솔·테이블의 sm은 `min-w-0`으로 해제할 수 있다. 버튼 그룹은 동일 너비를 강제하지 않는다(카탈로그 비교 예시 제외).
+- Hover: Y -1px, Pressed: scale .98 + 그림자 없음. 전환은 공통 `duration-fast` 150ms. Reduced Motion에서는 transform을 제거한다.
+- 버튼 전용 Focus-visible: focus-ring 색의 3px outline + 3px offset. 입력·셀렉트의 기존 포커스는 유지한다.
+- Disabled 및 Loading은 native `disabled`. Disabled bg/fg·그림자 없음·hover/pressed 차단·포커스 대상 제외. `aria-disabled`도 실제 비활성으로 처리한다.
+- Loading은 native disabled + `aria-busy=true`로 중복 실행을 막고, 원래 레이블과 아이콘을 계속 표시한다. 버튼 내부 스피너는 사용하지 않는다. 사용처에서 버튼 외부의 `role=status` 영역으로 처리 상태를 안내하고, 필요한 공간을 미리 확보해 레이아웃 이동을 막는다.
+- `state="error"`는 실패한 저장/제출 상태이며 Danger와 다르다. 레이블은 「저장」 그대로 유지한다. 사용처가 근처에 실패 문구를 `role="alert"`로 표시하고 `aria-describedby`로 연결한다. 재실행 중 Loading, 성공 시 Default, 실패 시 Error를 화면에서 제어한다.
+- Primary Error와 Destructive는 danger-fg 채움/on-primary, Secondary Error는 danger-bg/fg/테두리, Tertiary Error는 danger-bg/fg(테두리 없음). 모든 hover/pressed에서 빨간 계열 유지. 우선순위는 Disabled/Loading → Error/Destructive/Danger → Pressed → Hover → Default.
+- `leadingIcon`/`trailingIcon` API를 유지한다. 장식 아이콘은 aria-hidden. IconButton은 각 크기의 정사각형이며 `aria-label` 필수다.
+- 터치 장치에서는 sm/md의 클릭 영역을 양축 최소 44px로 확장한다. 인접 타깃이 겹치지 않도록 배치 간격을 확보한다. 주요 CTA 전체 너비는 레이아웃에서 `w-full sm:w-auto`처럼 지정한다.
+- Ghost는 Tertiary로 이름을 바꾼다. Tonal은 제거하며 보조 행동은 Secondary, 초기화/되돌리기는 Tertiary로 전환한다. Native button 속성(type, form, onClick, aria-*)은 유지한다.
 
 ### 9-2. Input / Select / Textarea
 
 - 기본: h40, px14, radius `--radius-control`, bg surface-raised, border `--color-border`, text ink, placeholder text-placeholder.
 - 선택된 control: border `--color-border-strong`. 포커스: border-interactive + `--shadow-focus-ring`. 에러: border danger-fg + error 링 + helper danger-fg.
 - disabled: disabled-bg / disabled-fg.
-- 라벨 text-sm/500 ink · helper text-xs text-muted · 필수표시 danger-fg `*`.
+- 라벨 type-label-lg ink · helper type-label-sm text-muted · 입력값 type-body-md(Console은 type-body-sm) · 필수표시 danger-fg `*`.
 
 ### 9-3. Card
 
@@ -408,7 +429,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 
 ### 9-4. Badge / Status Pill
 
-- 패딩 py2/px8, text-xs/500, radius `--radius-pill`. tonal 스타일: bg `{semantic}-50`, text `{semantic}-700`, 선행 dot `{semantic}-500`(6px).
+- 패딩 py2/px8, type-label-sm, radius `--radius-pill`. tonal 스타일: bg `{semantic}-50`, text `{semantic}-700`, 선행 dot `{semantic}-500`(6px).
 - 상태/역할/출석 매핑은 **2-5** 그대로. 색만으로 구분 금지 → 텍스트 라벨 필수.
 
 ### 9-5. Study Card (핵심)
@@ -419,13 +440,13 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 ┌───────────────────────────────┐
 │ ● 모집중 D-5                   │  ← 글래스 상태 배지 (bg-black/40 + blur)
 │                        (아이콘) │  ← 카테고리 아이콘 워터마크 white/15
-│ </> DEV                        │  ← 카테고리 라벨 11px/700 uppercase white/70
-│ React 딥다이브 스터디            │  ← text-xl/700 white (2줄 clamp)
+│ </> DEV                        │  ← 카테고리 type-label-sm uppercase white/70
+│ React 딥다이브 스터디            │  ← type-title-lg white (2줄 clamp)
 │   ↑ 컬러 헤더 160px — 카테고리 그라디언트 │
 ├───────────────────────────────┤
-│ 한 줄 소개 (2줄 clamp)           │  ← text-sm text-fg-secondary
+│ 한 줄 소개 (2줄 clamp)           │  ← type-body-sm text-fg-secondary
 │ 🗓 매주 목 20:00                 │
-│ 🌐 한국 시간 (KST)               │  ← 정보 줄 text-xs text-fg-muted
+│ 🌐 한국 시간 (KST)               │  ← 정보 줄 type-label-sm text-fg-muted
 │ 🚀 시작 예정일 11/03             │
 └───────────────────────────────┘
 ```
@@ -441,13 +462,13 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 
 - 구조: 좌측 **멤버 열 고정**, 상단 **세션(회차) 행 고정**. 셀 = 출석 chip.
 - 셀 탭 시 순환: 출석 → 지각 → 결석 → 휴가 → 미체크. 각 상태는 2-5 색 + 아이콘.
-- 행 높이 48~56(콘솔은 44). 헤더 bg cloud, 셀 text-sm ink, 구분선 border.
+- 행 높이 48~56(콘솔은 44). 헤더 bg cloud/type-label-sm, 셀 type-body-sm ink, 구분선 border.
 - 우측 고정 **출석률 열**: tabular-nums + 임계 색(≥80 success / 60–79 warning / <60 error). 즉시 집계.
 - 정정/휴가는 별도 모달(사유·허가 토글). 변경 이력은 툴팁으로.
 
 ### 9-7. Dashboard Stat Card
 
-- 라벨 text-sm text-muted → 값 text-3xl~4xl/700 ink tabular-nums → 델타 text-sm(success-fg ▲ / danger-fg ▼).
+- 라벨 type-label-sm text-muted → 값 type-headline-md~lg ink tabular-nums → 델타 type-body-sm(success-fg ▲ / danger-fg ▼).
 - 예: "활성 인원 128명 ▲12", "평균 출석률 82% ▲3%p", "운영 스터디 24개".
 - 차트: 분야별=2-6 카테고리 팔레트, 상태별=2-5 상태 색, 추이=primary 라인 + primary-light area.
 
@@ -511,7 +532,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 | 선택된 입력 경계 | border-strong / page-bg | 3.08 | ✅ UI 3:1 |
 | Focus ring | focus-ring / page-bg | 3.43 | ✅ UI 3:1 |
 
-**규칙**: ① 상태는 색+텍스트+아이콘 3중 인코딩. ② 모집 중 chip은 success, 비상태 강조만 highlight. ③ 포커스는 항상 `--shadow-focus-ring`. ④ 장식 border는 3:1 미만을 허용하지만 입력·포커스·선택 경계는 3:1 이상. ⑤ disabled 요소는 대비 요건 면제(1.4.3). ⑥ 터치 타깃 24px 이상, 주요 액션 44px 권장.
+**규칙**: ① 상태는 색+텍스트+아이콘 3중 인코딩. ② 모집 중 chip은 success, 비상태 강조만 highlight. ③ 입력·선택 컨트롤 포커스는 `--shadow-focus-ring`, 버튼은 focus-ring 색의 3px outline + 3px offset. ④ 장식 border는 3:1 미만을 허용하지만 입력·포커스·선택 경계는 3:1 이상. ⑤ disabled 요소는 대비 요건 면제(1.4.3). ⑥ 버튼 터치 타깃은 양축 44px 이상 확보.
 
 ---
 

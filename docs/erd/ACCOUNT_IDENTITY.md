@@ -1,6 +1,6 @@
 # ACCOUNT_IDENTITY — 로그인 수단
 
-한 회원이 가진 소셜 로그인 연결. 구글로 시작, 애플 추가 예정. **이메일 자동 병합 없음** — 로그인된 상태에서 명시적으로 연결한다.
+한 회원이 가진 소셜 로그인 연결. 구글·애플(iOS 앱). **이메일 자동 병합 없음** — 로그인된 상태에서 명시적으로 연결한다.
 
 ## 컬럼
 
@@ -12,6 +12,7 @@
 | PROVIDER_ACCOUNT_ID | VARCHAR(255) | N | OAuth `sub` |
 | PROVIDER_EMAIL | VARCHAR(255) | N | OAuth 제공자가 전달한 이메일 원본. ACCOUNT.EMAIL 과 다를 수 있음 |
 | LAST_LOGIN_AT | DATETIME | Y | |
+| PROVIDER_REFRESH_TOKEN | VARCHAR(1024) | Y | 제공자 refresh token. 애플만 채운다 — 탈퇴 때 `/auth/revoke` 로 애플 쪽 연결을 끊는 데 쓴다. 로그인마다 새 값으로 바뀐다. 응답·로그 금지 |
 
 ## 관계
 - N : 1 [ACCOUNT](./ACCOUNT.md)

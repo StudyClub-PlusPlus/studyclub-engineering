@@ -40,6 +40,8 @@ export interface ScreenStateDef {
   label: string;
   pageId: SdfId;
   rationale: string;
+  /** PRD 시나리오의 부분 화면 근거. 완료 판정이 아니다. */
+  prdScenarios?: string[];
   recipe: Recipe;
   viewports?: ViewportName[];
   assertions?: Assertions;

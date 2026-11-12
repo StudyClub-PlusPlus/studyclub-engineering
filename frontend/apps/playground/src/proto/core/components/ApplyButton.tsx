@@ -51,7 +51,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     else setDiscordOpen(true);
   }, [pathname, router, state, study.id]);
 
-  const card = 'inline-flex items-center rounded-pill px-8 py-3 text-sm font-bold';
+  const card = 'inline-flex items-center rounded-pill px-8 py-3 type-label-lg';
   const live =
     'bg-brand text-on-brand shadow-sm transition-[background-color,transform] hover:bg-brand-hover hover:scale-[1.02] focus-visible:outline-none focus-visible:shadow-(--ring)';
   const idle = 'bg-surface-2 text-fg-placeholder';

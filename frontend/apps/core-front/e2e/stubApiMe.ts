@@ -39,4 +39,15 @@ export async function stubApiMe(page: Page) {
       });
     },
   );
+
+  // 마이페이지 수신 동의 — MSW 목이 없어 진짜 백엔드로 가면 401 이고, 401 은 세션을 지워 헤더가 「로그인」으로 바뀐다
+  await page.context().route(
+    (url) => url.pathname === '/api/me/marketing-consent',
+    (route) => {
+      const method = route.request().method();
+      if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS_HEADERS });
+      if (method !== 'GET') return route.fallback();
+      return route.fulfill({ status: 200, headers: CORS_HEADERS, json: { agreed: false, agreedAt: null } });
+    },
+  );
 }

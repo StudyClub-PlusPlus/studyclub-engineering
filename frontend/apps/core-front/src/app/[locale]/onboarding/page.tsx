@@ -2,19 +2,23 @@
 
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { Locale } from '@studyclub/types';
 import { Button, Input } from '@studyclub/ui';
 import { AlertCircle, ArrowRight, Check } from 'lucide-react';
+import { useForm, useWatch } from 'react-hook-form';
 
-import { OnboardingConsent } from '@/components/OnboardingConsent';
 import { TimeZonePicker } from '@/components/TimeZonePicker';
-import { readGaClientId, track, trackSignUp } from '@/lib/analytics';
-import { ApiError } from '@/lib/api/client';
-import { checkNicknameAvailability } from '@/lib/api/nicknames';
-import { completeOnboarding } from '@/lib/api/onboarding';
-import { getSuggestedNickname, getUser, logout, setSuggestedNickname, setUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
+import {
+  getLoginMethod,
+  getSuggestedNickname,
+  getUser,
+  logout,
+  setSuggestedNickname,
+  setUser,
+} from '@/features/auth/auth';
 import {
   clearDraft,
   hasOnboardingFieldErrors,
@@ -26,7 +30,15 @@ import {
   saveDraft,
   type OnboardingDraft,
   type OnboardingFieldErrors,
-} from '@/lib/onboarding';
+} from '@/features/onboarding/model';
+import { OnboardingConsent } from '@/features/onboarding/OnboardingConsent';
+import { OnboardingDiscord } from '@/features/onboarding/OnboardingDiscord';
+import { completeOnboarding } from '@/features/onboarding/repository';
+import { makeOnboardingSchema, type OnboardingFormValues } from '@/features/onboarding/schema';
+import { checkNicknameAvailability } from '@/features/profile/nickname-repository';
+import { readGaClientId, track, trackSignUp } from '@/lib/analytics';
+import { afterAnalyticsReady } from '@/lib/analytics-privacy-state';
+import { ApiError } from '@/lib/http';
 
 export default function OnboardingPage() {
   return (
@@ -42,10 +54,15 @@ function OnboardingScreen() {
   const search = useSearchParams();
   const router = useRouter();
   const next = returnPath(search.get('next'), locale);
+  const discordStep = search.get('step') === 'discord';
   const [ready, setReady] = useState(false);
   const [accountId, setAccountId] = useState<number | null>(null);
 
   useEffect(() => {
+    if (discordStep) {
+      setReady(true);
+      return;
+    }
     const user = getUser();
     if (!user) {
       router.replace(
@@ -59,17 +76,19 @@ function OnboardingScreen() {
     }
     setAccountId(user.id);
     setReady(true);
-  }, [locale, next, router]);
+  }, [discordStep, locale, next, router]);
+
+  if (discordStep) return <OnboardingDiscord locale={locale} next={next} />;
 
   return (
     <div className='min-h-[80vh] bg-surface-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12'>
       <div className='mx-auto max-w-[540px]'>
         <header className='mb-7 text-center'>
-          <div className='mb-4 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1.5 text-xs font-medium text-primary-700'>
+          <div className='mb-4 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1.5 type-label-sm text-primary-700'>
             <Check size={13} aria-hidden='true' />
             {locale === 'ko' ? 'Google 계정 연결 완료' : 'Google account connected'}
           </div>
-          <h1 className='break-keep text-2xl font-bold tracking-tight sm:text-[28px]'>
+          <h1 className='break-keep type-headline-lg sm:type-headline-lg'>
             {locale === 'ko' ? 'StudyClub에 오신 것을 환영해요' : 'Welcome to StudyClub'}
           </h1>
         </header>
@@ -79,7 +98,7 @@ function OnboardingScreen() {
           <div
             aria-busy='true'
             role='status'
-            className='rounded-card border border-border bg-bg p-8 text-sm text-fg-muted'
+            className='rounded-card border border-border bg-bg p-8 type-body-sm text-fg-muted'
           >
             {locale === 'ko' ? '가입 정보를 확인하고 있어요…' : 'Loading your profile…'}
           </div>
@@ -92,10 +111,18 @@ function OnboardingScreen() {
 function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: string; accountId: number }) {
   const ko = locale === 'ko';
   const router = useRouter();
-  const [draft, setDraft] = useState<OnboardingDraft>(() => initialDraft(accountId, getSuggestedNickname()));
+  const schema = makeOnboardingSchema(locale);
+  const { control, setValue, handleSubmit } = useForm<OnboardingFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { ...initialDraft(accountId, getSuggestedNickname()), ageConfirmed: false },
+  });
+  const values = useWatch({ control });
+  const { ageConfirmed, draft } = useMemo(() => {
+    const { ageConfirmed, ...draft } = values as OnboardingFormValues;
+    return { ageConfirmed, draft };
+  }, [values]);
   const [touched, setTouched] = useState(false);
   const [composing, setComposing] = useState(false);
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
   /** expired | input(400) | server(500 등) */
   const [problem, setProblem] = useState<'expired' | 'input' | 'server' | null>(null);
   const [fieldErrors, setFieldErrors] = useState<OnboardingFieldErrors>({});
@@ -109,8 +136,8 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
     saveDraft(accountId, draft);
   }, [accountId, draft]);
 
-  function update<K extends keyof OnboardingDraft>(field: K, value: OnboardingDraft[K]) {
-    setDraft((previous) => ({ ...previous, [field]: value }));
+  function update(field: keyof OnboardingDraft, value: OnboardingDraft[keyof OnboardingDraft]) {
+    setValue(field, value, { shouldDirty: true });
     if (field === 'nickname') {
       setFieldErrors((previous) => ({ ...previous, nickname: undefined }));
     } else if (field === 'timeZone') {
@@ -172,11 +199,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
     prevRequiredAgreed.current = requiredAgreed;
   }, [requiredAgreed, draft.termsOfServiceAgreed, draft.privacyPolicyAgreed, draft.marketingAgreed]);
 
-  const valid =
-    !nicknameError(draft.nickname, locale) &&
-    nickStatus !== 'taken' &&
-    isOnboardingTimeZone(draft.timeZone) &&
-    requiredAgreed;
+  const valid = schema.safeParse({ ...draft, ageConfirmed }).success && nickStatus !== 'taken';
 
   /** 서버 닉네임 오류가 있으면 초록「사용 가능」을 빨간 오류로 교체한다. */
   const nickLine: { text: string; tone: 'muted' | 'error' | 'ok' } = fieldErrors.nickname
@@ -243,10 +266,13 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    send();
+    setTouched(true);
+    void handleSubmit(send)();
   }
 
-  sendRef.current = send;
+  sendRef.current = () => {
+    void handleSubmit(send)();
+  };
 
   async function send() {
     if (submitting.current || disabled) return;
@@ -290,15 +316,21 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
       setSuggestedNickname(null);
       clearDraft(accountId);
       // 온보딩 최초 완료 = 가입 확정 (서버 user.registered 와 같은 지점)
-      trackSignUp();
-      track({
-        name: 'Onboarding Completed',
-        props: {
-          time_to_complete_sec: Math.round((Date.now() - startTime.current) / 1000),
-          marketing_agreed: draft.marketingAgreed,
+      afterAnalyticsReady(
+        () => getUser()?.id === account.id,
+        () => {
+          trackSignUp(getLoginMethod());
+          track({
+            name: 'Onboarding Completed',
+            props: {
+              time_to_complete_sec: Math.round((Date.now() - startTime.current) / 1000),
+              marketing_agreed: draft.marketingAgreed,
+            },
+          });
         },
-      });
-      router.replace(next);
+      );
+      // 가입 완료와 디스코드 연결은 독립 — 연결 선택 단계로 보낸다 (DSC-03)
+      router.replace(`/${locale}/onboarding?step=discord&next=${encodeURIComponent(next)}`);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401) {
@@ -357,11 +389,11 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
       {topAlertText && (
         <div
           role='alert'
-          className='mb-6 rounded-control border border-error-600/20 bg-error-50 p-4 text-sm text-error-700'
+          className='mb-6 rounded-control border border-error-600/20 bg-error-50 p-4 type-body-sm text-error-700'
         >
           <div className='flex items-start gap-2'>
             <AlertCircle size={17} className='mt-0.5 shrink-0' />
-            <p className='leading-relaxed'>{topAlertText}</p>
+            <p className=''>{topAlertText}</p>
           </div>
           {problem === 'expired' && (
             <Link
@@ -401,7 +433,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
           <p
             id='nickname-help'
             role={nickLine.tone === 'error' ? 'alert' : undefined}
-            className={`mt-2 flex items-center gap-1.5 text-xs leading-relaxed ${
+            className={`mt-2 flex items-center gap-1.5 type-label-sm ${
               nickLine.tone === 'ok'
                 ? 'text-success-700'
                 : nickLine.tone === 'error'
@@ -423,12 +455,9 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
         />
 
         <section className='border-t border-border pt-6'>
-          <h2 className='mb-4 text-base font-semibold'>{ko ? '약관 동의' : 'Terms and agreements'}</h2>
+          <h2 className='mb-4 type-title-md'>{ko ? '약관 동의' : 'Terms and agreements'}</h2>
           {!ko && (
-            <p
-              role='note'
-              className='mb-4 rounded-control bg-surface-1 px-3 py-2.5 text-xs leading-relaxed text-fg-muted'
-            >
+            <p role='note' className='mb-4 rounded-control bg-surface-1 px-3 py-2.5 type-label-sm text-fg-muted'>
               The documents below are currently available in Korean. English versions have not been provided yet.
             </p>
           )}
@@ -443,7 +472,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
             }}
             onChange={(key, value) => {
               if (key === 'age') {
-                setAgeConfirmed(value);
+                setValue('ageConfirmed', value, { shouldDirty: true });
                 setFieldErrors((previous) => ({ ...previous, consent: undefined }));
                 return;
               }

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -74,7 +74,14 @@ const RECRUITMENT: ApiStudyBoard = {
       recruitDeadlineAt: '2026-09-18T14:59:00Z',
       deadlineBadge: 'CLOSING_SOON',
     },
-    { studyId: 22, programId: 3, title: '상시 모집', recruitStatus: 'RECRUITING', recruitDeadlineAt: null, deadlineBadge: 'DEADLINE_MISSING' },
+    {
+      studyId: 22,
+      programId: 3,
+      title: '상시 모집',
+      recruitStatus: 'RECRUITING',
+      recruitDeadlineAt: null,
+      deadlineBadge: 'DEADLINE_MISSING',
+    },
     {
       studyId: 23,
       programId: 4,
@@ -177,8 +184,7 @@ function without<T extends object, K extends keyof T>(value: T, ...keys: K[]): O
 const callsTo = (endpoint: Endpoint) => httpMock.mock.calls.filter(([path]) => endpointOf(path) === endpoint);
 const serverError = () => new ApiError(500, '집계 정보를 불러오지 못했습니다.');
 
-function renderDashboard() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderDashboard(client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
@@ -201,10 +207,12 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  focusManager.setFocused(undefined);
+  onlineManager.setOnline(true);
 });
 
 describe('요청', () => {
-  it('요약·보드·추세에는 브라우저 시간대를 같이 보내고, 분포·카테고리에는 보내지 않는다', async () => {
+  it('요약·보드·추세에는 브라우저 대체값을 같이 보내고, 분포·카테고리에는 보내지 않는다', async () => {
     renderDashboard();
     await screen.findByText('1,462');
 
@@ -220,15 +228,68 @@ describe('요청', () => {
     );
   });
 
-  it('시간대를 읽지 못하면 Query 를 빼고 보낸다 — 서버가 회원 설정 → UTC 로 정한다', async () => {
-    viewerZone = undefined;
+  it.each([undefined, '', 'Not/AZone'])(
+    '브라우저 값이 %s이면 Query를 생략한다 — 서버가 프로필 → 서울로 정한다',
+    async (zone) => {
+      viewerZone = zone;
+      renderDashboard();
+      await screen.findByText('1,462');
+
+      expect(callsTo('summary')[0][0]).toBe('/api/admin/stats/summary');
+      expect(callsTo('attendance-trend')[0][0]).toBe('/api/admin/stats/attendance-trend?weeks=12');
+    },
+  );
+
+  it('브라우저 감지 오류도 Query를 생략한다', async () => {
+    vi.mocked(Intl.DateTimeFormat.prototype.resolvedOptions).mockImplementation(() => {
+      throw new Error('unavailable');
+    });
     renderDashboard();
     await screen.findByText('1,462');
-
     expect(callsTo('summary')[0][0]).toBe('/api/admin/stats/summary');
-    expect(callsTo('attendance-trend')[0][0]).toBe('/api/admin/stats/attendance-trend?weeks=12');
+  });
+
+  it('브라우저와 다른 서버의 프로필 시간대로 갱신 시각·마감 날짜·차트를 표시한다', async () => {
+    respondInSeoul();
+    renderDashboard();
+    expect(await screen.findByText('전기간 기준 · 2026-09-16 12:00 KST 갱신')).toBeInTheDocument();
+    expect(screen.getByText('~09-18 (D-2)')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /주.*Asia\/Seoul 기준/ })).toHaveLength(2);
+    expect(callsTo('summary')[0][0]).toContain('timeZone=America%2FNew_York');
+    expect(callsTo('summary')).toHaveLength(1);
+  });
+
+  it('프로필 변경·탭 복귀·연결 복구로 자동 갱신하지 않고 재진입하면 최신 설정을 받는다', async () => {
+    const view = renderDashboard();
+    await screen.findByText('전기간 기준 · 2026-09-15 23:00 EDT 갱신');
+    respondInSeoul();
+    await act(async () => {
+      window.dispatchEvent(new StorageEvent('storage'));
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+      onlineManager.setOnline(false);
+      onlineManager.setOnline(true);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(callsTo('summary')).toHaveLength(1);
+    expect(screen.getByText('전기간 기준 · 2026-09-15 23:00 EDT 갱신')).toBeInTheDocument();
+
+    view.unmount();
+    renderDashboard(view.client);
+    expect(await screen.findByText('전기간 기준 · 2026-09-16 12:00 KST 갱신')).toBeInTheDocument();
+    await waitFor(() => expect(callsTo('attendance-trend')).toHaveLength(2));
+    expect(callsTo('summary')).toHaveLength(2);
   });
 });
+
+function respondInSeoul() {
+  respond({
+    summary: { ...SUMMARY, timeZone: 'Asia/Seoul' },
+    'study-board:ONGOING': { ...ONGOING, timeZone: 'Asia/Seoul' },
+    'study-board:RECRUITMENT': { ...RECRUITMENT, timeZone: 'Asia/Seoul' },
+    'attendance-trend': { ...TREND, timeZone: 'Asia/Seoul' },
+  });
+}
 
 describe('제목 줄 · KPI', () => {
   it('범위와 갱신 시각을 응답 시간대로 적고, KPI 넷을 형식대로 그린다', async () => {
@@ -253,7 +314,10 @@ describe('제목 줄 · KPI', () => {
   it('출석 묶음만 실패하면 출석률 카드만 실패로 그린다 — 다른 카드는 그대로', async () => {
     const rest = without(SUMMARY, 'attendanceRate', 'attendanceComparison');
     respond({
-      summary: { ...rest, errors: { attendance: { errorCode: 'INTERNAL_ERROR', errorMessage: '출석 정보를 불러오지 못했습니다.' } } },
+      summary: {
+        ...rest,
+        errors: { attendance: { errorCode: 'INTERNAL_ERROR', errorMessage: '출석 정보를 불러오지 못했습니다.' } },
+      },
     });
     renderDashboard();
 
@@ -287,7 +351,10 @@ describe('제목 줄 · KPI', () => {
 
   it('커뮤니티 멤버 묶음만 실패하면 그 카드만 실패로 그린다', async () => {
     respond({
-      summary: { ...without(SUMMARY, 'communityMembers'), errors: { communityMembers: { errorCode: 'INTERNAL_ERROR', errorMessage: '실패' } } },
+      summary: {
+        ...without(SUMMARY, 'communityMembers'),
+        errors: { communityMembers: { errorCode: 'INTERNAL_ERROR', errorMessage: '실패' } },
+      },
     });
     renderDashboard();
 
@@ -337,7 +404,10 @@ describe('현황 보드', () => {
 
     expect(await within(ongoing).findByRole('link', { name: '진행 스터디 11' })).toHaveAttribute('href', '/studies/11');
     expect(within(ongoing).getByText('6')).toBeInTheDocument();
-    expect(within(ongoing).getByRole('link', { name: '외 2개 스터디' })).toHaveAttribute('href', '/studies?view=ongoing');
+    expect(within(ongoing).getByRole('link', { name: '외 2개 스터디' })).toHaveAttribute(
+      'href',
+      '/studies?view=ongoing',
+    );
     expect(within(ongoing).getByRole('link', { name: '전체 보기' })).toHaveAttribute('href', '/studies?view=ongoing');
 
     const recruitment = boardColumn('모집중 스터디');
@@ -425,7 +495,9 @@ describe('평균 출석률 추세', () => {
     expect(points).toHaveLength(2);
 
     act(() => points[0]!.focus());
-    expect(screen.getByText('2026-09-07 주 · 출석률 85% (출석 8.5 / 대상 10) · America/New_York 기준')).toBeInTheDocument();
+    expect(
+      screen.getByText('2026-09-07 주 · 출석률 85% (출석 8.5 / 대상 10) · America/New_York 기준'),
+    ).toBeInTheDocument();
   });
 
   it('값이 한 주뿐이면 선 없이 점 하나만 찍는다', async () => {
@@ -462,7 +534,9 @@ describe('평균 출석률 추세', () => {
 
 describe('카테고리별 스터디 수', () => {
   const rowNames = () =>
-    screen.getAllByRole('link', { name: /스터디 \d+개 — 목록 보기/ }).map((a) => [a.getAttribute('aria-label'), a.getAttribute('href')]);
+    screen
+      .getAllByRole('link', { name: /스터디 \d+개 — 목록 보기/ })
+      .map((a) => [a.getAttribute('aria-label'), a.getAttribute('href')]);
 
   it('진행중이 기본 — 0개는 숨기고 많은 순, 행은 카테고리 코드로 목록에 간다', async () => {
     renderDashboard();

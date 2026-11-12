@@ -1,4 +1,4 @@
-import { addDaysYmd, dayLabel, dowOf, DOW_LABEL, type StudyTz, tzAbbr, zonedInstant } from './time';
+import { addDaysYmd, dayLabel, DOW_LABEL, dowOf, type StudyTz, tzAbbr, zonedInstant } from '@/features/schedule/time';
 
 /**
  * 반(STUDY_GROUP)과 회차(STUDY_MEETING).

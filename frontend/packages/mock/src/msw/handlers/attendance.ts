@@ -1,15 +1,9 @@
 import { HttpResponse } from 'msw';
 
+import { getStudyMeetingIds, CAPTAIN_STUDY_IDS, NAVIGATOR_STUDY_IDS, withdrawnState, getWithdrawnParticipants } from './meetings';
 import { studies } from '../../data';
 import { getStudyCrew } from '../../data/crew';
 import { currentUserName, mockClient, type MockResolveContext } from '../utils';
-import {
-  getStudyMeetingIds,
-  CAPTAIN_STUDY_IDS,
-  NAVIGATOR_STUDY_IDS,
-  withdrawnState,
-  getWithdrawnParticipants,
-} from './meetings';
 
 const STATUS: Record<string, string> = {
   present: 'PRESENT',
@@ -234,6 +228,7 @@ export const attendanceHandlers = mockClient.createHandlerGroup('/api/me/studies
         label: '정상',
         status: 200,
         response: (context: MockResolveContext) =>
+          // 참여자 discordNickname 은 스펙에 있고(10-18 D6) 백엔드가 아직 내리지 않는다 — 목은 먼저 채워 둔다
           responseFor(context) ??
           HttpResponse.json(
             { errorCode: 'NOT_FOUND', errorMessage: '스터디를 찾을 수 없습니다.' },

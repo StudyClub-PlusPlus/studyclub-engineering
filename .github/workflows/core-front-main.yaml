@@ -30,7 +30,7 @@ jobs:
           package_json_file: frontend/package.json
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
@@ -71,6 +71,7 @@ jobs:
             NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
             NEXT_PUBLIC_OAUTH_REDIRECT_URI=${{ secrets.NEXT_PUBLIC_OAUTH_REDIRECT_URI }}
+            NEXT_PUBLIC_DISCORD_CLIENT_ID=${{ secrets.NEXT_PUBLIC_DISCORD_CLIENT_ID }}
             NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ secrets.NEXT_PUBLIC_AMPLITUDE_API_KEY }}
             NEXT_PUBLIC_BACKOFFICE_URL=https://back-office.studyclub.life
             NEXT_PUBLIC_APP_ENV=production

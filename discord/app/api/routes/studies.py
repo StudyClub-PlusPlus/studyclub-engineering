@@ -27,10 +27,6 @@ VOICE_CHANNEL_PREFIX = "공부방-"
 # Discord caps channel and role names at 100, and the channel names are the
 # study name plus a prefix, so the longest prefix comes off the budget.
 MAX_STUDY_NAME = 100 - max(len(TEXT_CHANNEL_PREFIX), len(VOICE_CHANNEL_PREFIX))
-# New study categories go right below the category with this name. It is the
-# starting value of ``app.state.new_study_anchor_name``, which a Discord
-# command will change at runtime.
-DEFAULT_NEW_STUDY_ANCHOR_NAME = "===== New Study ====="
 
 
 class CreateStudyRequest(BaseModel):
@@ -53,14 +49,14 @@ async def create_study(
     """
     guild = resolve_guild(request)
 
-    # guild.categories is sorted by position, so a duplicated name resolves to the topmost.
-    anchor_name = request.app.state.new_study_anchor_name
-    anchor = discord.utils.get(guild.categories, name=anchor_name)
-    if anchor is None:
+    # An unset anchor is a choice, not a fault: the study goes on top, unlogged.
+    anchor_id = request.app.state.settings.anchor_channel_id
+    anchor = discord.utils.get(guild.categories, id=anchor_id)
+    if anchor_id is not None and anchor is None:
         logger.warning(
-            "create-study %s: reference category %r not found, placing the study at the top",
+            "create-study %s: reference category %s not found, placing the study at the top",
             key,
-            anchor_name,
+            anchor_id,
         )
 
     name = body.studyName

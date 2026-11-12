@@ -1,12 +1,13 @@
-import type { L10n, Recruitment, Study, StudyKind, StudyProgram } from '../../types';
-import { DEMO_APPLICATION_FORM } from '../../constants';
-import { toISODate } from '../../utils';
+import type { L10n, Recruitment, Study, StudyKind, StudyProgram } from '@studyclub/types';
+import { toISODate } from '@studyclub/utils';
+
 import { STUDIES_CLOSED_2024 } from './closed-2024';
 import { STUDIES_CLOSED_2025 } from './closed-2025';
 import { STUDIES_CLOSED_2026 } from './closed-2026';
 import type { StudyDraft } from './helpers';
 import { STUDIES_ONGOING } from './ongoing';
 import { STUDIES_RECRUITING } from './recruiting';
+import { DEMO_APPLICATION_FORM } from '../../constants';
 
 export type { StudyProgram };
 

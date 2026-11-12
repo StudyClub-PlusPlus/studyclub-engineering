@@ -5,7 +5,7 @@
 # build-arg 가 없다 (백엔드·인증 연동 없음, mock 데이터만).
 
 # ---- builder ----
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 # node 이미지엔 pnpm 이 없다 — corepack 이 package.json 의 packageManager(pnpm@9.10.0)를 받아온다.
 RUN corepack enable
@@ -15,7 +15,7 @@ RUN pnpm --filter playground run build
 
 # ---- runner ----
 # standalone 만 넣는다 — 소스·node_modules 통째 복사 금지 (이미지가 4배로 뛴다).
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs

@@ -158,7 +158,7 @@ export function AnnotationLayer() {
                 }}
               />
               <div
-                className='absolute grid min-w-[22px] place-items-center rounded-full px-1.5 text-[11px] font-extrabold text-white shadow-sm'
+                className='absolute grid min-w-[22px] place-items-center rounded-full px-1.5 type-label-sm text-white shadow-sm'
                 style={{
                   top: chipTop,
                   left: chipLeft,
@@ -179,8 +179,8 @@ export function AnnotationLayer() {
         style={{ borderColor: 'var(--color-border)' }}
       >
         <header className='border-b px-5 py-4' style={{ borderColor: 'var(--color-border)' }}>
-          <div className='text-[11px] font-semibold text-[var(--color-fg-muted)]'>설명</div>
-          <h2 className='mt-0.5 text-base font-bold'>{spec.screen}</h2>
+          <div className='type-label-sm text-[var(--color-fg-muted)]'>설명</div>
+          <h2 className='mt-0.5 type-title-md'>{spec.screen}</h2>
 
           {/* 스토리 칩 — 한 지면에 Story 가 여럿이면 고르는 자리.
               번호는 Story 마다 따로 매겨지므로, 고른 Story 것만 화면에 뜬다. */}
@@ -193,7 +193,7 @@ export function AnnotationLayer() {
                     key={(s.story ?? s.chip ?? s.screen) + i}
                     type='button'
                     onClick={() => setActiveIndex(i)}
-                    className='rounded-pill px-2.5 py-1 text-[11px] font-semibold transition-colors'
+                    className='rounded-pill px-2.5 py-1 type-label-lg transition-colors'
                     style={
                       active
                         ? { background: 'var(--color-brand)', color: '#fff' }
@@ -207,19 +207,19 @@ export function AnnotationLayer() {
             </div>
           )}
           {specs.length === 1 && spec.story ? (
-            <div className='mt-1 text-[11px] text-[var(--color-fg-muted)]'>{spec.story}</div>
+            <div className='mt-1 type-label-sm text-[var(--color-fg-muted)]'>{spec.story}</div>
           ) : null}
         </header>
 
-        <div className='flex-1 overflow-y-auto px-5 py-4 text-sm leading-relaxed'>
+        <div className='flex-1 overflow-y-auto px-5 py-4 type-body-sm'>
           {entries.map((e) => (
             <SpecCard key={e.n} entry={e} hit={hitMap.get(e.n)} />
           ))}
 
           {spec.notes?.length ? (
             <section className='mt-6 rounded-lg border p-3' style={{ borderColor: 'var(--color-border)' }}>
-              <h3 className='text-[13px] font-bold'>비고</h3>
-              <ul className='mt-1.5 list-disc space-y-1 pl-4 text-[13px] text-[var(--color-fg-muted)]'>
+              <h3 className='type-title-lg'>비고</h3>
+              <ul className='mt-1.5 list-disc space-y-1 pl-4 type-body-sm text-[var(--color-fg-muted)]'>
                 {spec.notes.map((t) => (
                   <li key={t}>{t}</li>
                 ))}
@@ -228,7 +228,7 @@ export function AnnotationLayer() {
           ) : null}
 
           {conditional.length > 0 && (
-            <p className='mt-4 text-[12px] leading-relaxed text-[var(--color-fg-muted)]'>
+            <p className='mt-4 type-label-sm text-[var(--color-fg-muted)]'>
               지금 화면에 없는 조건부 번호 — {conditional.map((e) => e.n).join(', ')}. 탭을 바꾸거나 상태를 만들면
               나타난다.
             </p>
@@ -236,17 +236,17 @@ export function AnnotationLayer() {
 
           {(missing.length > 0 || undocumented.length > 0) && (
             <section className='mt-6 rounded-lg border p-3' style={{ borderColor: 'var(--color-error-500)' }}>
-              <h3 className='text-[13px] font-bold' style={{ color: 'var(--color-error-600)' }}>
+              <h3 className='type-title-lg' style={{ color: 'var(--color-error-600)' }}>
                 대조 실패
               </h3>
               {missing.length > 0 && (
-                <p className='mt-1.5 text-[12px] leading-relaxed'>
+                <p className='mt-1.5 type-label-sm'>
                   <strong>화면에 없는 번호</strong> — {missing.map((e) => e.n).join(', ')}. 명세만 있고 붙일 요소가
                   없다. 화면이 바뀌었거나 <code>data-anno</code> 를 안 달았다.
                 </p>
               )}
               {undocumented.length > 0 && (
-                <p className='mt-1.5 text-[12px] leading-relaxed'>
+                <p className='mt-1.5 type-label-sm'>
                   <strong>명세 없는 번호</strong> — {undocumented.map((h) => h.n).join(', ')}. 요소에 번호는 붙었는데
                   설명이 없다 (미설명 요소).
                 </p>
@@ -272,9 +272,9 @@ function SpecCard({ entry, hit }: { entry: AnnoEntry; hit?: Hit }) {
 
   return (
     <section className='mb-5'>
-      <h3 className='flex items-center gap-2 text-[13px] font-bold'>
+      <h3 className='flex items-center gap-2 type-title-lg'>
         <span
-          className='grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[10px] font-extrabold text-white'
+          className='grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 type-label-sm text-white'
           style={{ background: hit ? 'var(--color-brand)' : 'var(--color-fg-muted)' }}
         >
           {entry.n}
@@ -282,7 +282,7 @@ function SpecCard({ entry, hit }: { entry: AnnoEntry; hit?: Hit }) {
         {entry.title}
       </h3>
       {lines.length > 0 ? (
-        <ul className='mt-1.5 list-disc space-y-1 pl-5 text-[13px] leading-relaxed text-[var(--color-fg-muted)]'>
+        <ul className='mt-1.5 list-disc space-y-1 pl-5 type-body-sm text-[var(--color-fg-muted)]'>
           {lines.map((t) => (
             <li key={t}>{t}</li>
           ))}

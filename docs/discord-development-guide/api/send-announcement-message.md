@@ -30,8 +30,8 @@ POST /api/v1/channels/announcement/msg
 ([공통 헤더](common-header.md#x-discord-user-id)). 공지에는 발신자 줄이 없으므로 `X-Discord-User-ID` 는 쓰이지 않는다.
 
 announcement 채널은 길드에 **이미 존재하는** 것이다. 이 엔드포인트는 만들지 않고, 찾지 못하면 보내지 말고 실패한다.
-**설정값 `DISCORD_ANNOUNCEMENT_CHANNEL_ID` 로 ID 를 받는다** — 이름으로 찾지 않는다.
-`DISCORD_BULLETIN_CHANNEL_ID` 과 같은 방식이다.
+**설정값 `DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID` 로 ID 를 받는다** — 이름으로 찾지 않는다.
+`DISCORD_CONFIG_BULLETIN_CHANNEL_ID` 과 같은 방식이다.
 
 ```jsonc
 { "msg": "알고리즘 스터디 2기 모집을 시작합니다. 신청은 이번 주 금요일까지입니다." }
@@ -94,7 +94,7 @@ announcement 채널은 길드에 **이미 존재하는** 것이다. 이 엔드�
 | **400** | `@everyone` · `@here` 를 지우고 나니 비었거나 공백만 남음 | 위와 같음 |
 | **400** | `msg` 가 1990자 초과 | 위와 같음. 잘라서 보내지 않는다 — 공지 뒷부분이 조용히 사라진다. 길이는 **가공 전** 값으로 잰다 |
 | **404** | announcement 채널을 봇이 찾지 못함, 또는 그 ID 가 메시지를 올릴 수 있는 채널(텍스트 · 공지 채널)이 아님 | **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨 |
-| **409** | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. 보낼 곳이 없으므로 보내지 말고 실패한다. |
+| **409** | `DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. 보낼 곳이 없으므로 보내지 말고 실패한다. |
 | **502** | Discord 가 전송을 거부 | 봇 권한 부족(announcement 채널의 `Send Messages`), 그 밖의 Discord 5xx |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
@@ -119,7 +119,7 @@ announcement 채널은 길드에 **이미 존재하는** 것이다. 이 엔드�
 1. 전송 전에 `channel.permissions_for(guild.me).mention_everyone` 으로 권한을 확인해 둔다.
    **없어도 막지 않는다** — 알림이 안 울릴 뿐 공지 내용은 전달된다.
 2. 공지를 [평소대로](#올리는-메시지) 올린다.
-3. 공지 전송이 성공했고 1번에서 권한이 없었으면, **alert 채널**(`DISCORD_ALERT_CHANNEL_ID`,
+3. 공지 전송이 성공했고 1번에서 권한이 없었으면, **alert 채널**(`DISCORD_CONFIG_ALERT_CHANNEL_ID`,
    [send-alert-message](send-alert-message.md#요청) 와 같은 채널)에 아래 메시지를 올린다.
 
 ```
@@ -164,7 +164,7 @@ alert 보다 중복의 비용이 크다.
 | 알림 | `AllowedMentions.none()` — 아무것도 안 울림 | `@everyone` 만 울림 |
 | `msg` 상한 | 1900자 | 1990자 |
 | 추가 권한 | 없음 | `Mention Everyone` (없으면 공지는 올리고 alert 채널에 알림) |
-| 설정값 | `DISCORD_ALERT_CHANNEL_ID` | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` · (권한 알림용) `DISCORD_ALERT_CHANNEL_ID` |
+| 설정값 | `DISCORD_CONFIG_ALERT_CHANNEL_ID` | `DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID` · (권한 알림용) `DISCORD_CONFIG_ALERT_CHANNEL_ID` |
 
 ## 미정 사항
 

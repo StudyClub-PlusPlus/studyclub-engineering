@@ -236,7 +236,7 @@ export function StudyThumb({ image, category, className = '' }: StudyThumbProps)
         <Icon className='pointer-events-none absolute -right-3 -bottom-4 opacity-15' style={{ color: ink }} size={104} strokeWidth={1.25} />
       )}
       <Icon className='relative shrink-0' style={{ color: ink }} size={22} strokeWidth={1.75} />
-      <span className='relative text-sm font-semibold' style={{ color: ink }}>
+      <span className='relative type-label-lg' style={{ color: ink }}>
         {label}
       </span>
     </div>

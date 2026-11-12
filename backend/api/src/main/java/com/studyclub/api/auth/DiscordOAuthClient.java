@@ -63,7 +63,7 @@ public class DiscordOAuthClient {
                 || !StringUtils.hasText(guildId)) {
             throw new BusinessException(
                     ErrorCode.EXTERNAL_SERVICE_ERROR,
-                    "디스코드 OAuth 가 설정되지 않았습니다 (DISCORD_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI, DISCORD_GUILD_ID).");
+                    "디스코드 OAuth 가 설정되지 않았습니다 (DISCORD_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI, DISCORD_CONFIG_GUILD_ID).");
         }
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();

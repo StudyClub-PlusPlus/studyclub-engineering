@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
-import { studies as defaultStudies, type Study } from '@studyclub/mock';
+import { studies as defaultStudies } from '@studyclub/mock';
+import { type Study } from '@studyclub/types';
 
 /**
  * Playground 내에서 MSW /api/studies 응답을 실시간으로 반영하는 Hook.

@@ -10,16 +10,21 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 백오피스 알림 조회·재발송 — 캡틴만 ({@code @RequireAdmin}, specs/authz-guards/spec.md). */
-@Tag(name = "백오피스 · 알림", description = "알림 템플릿·발송 이력 조회, 실패 건 재발송")
+/** 백오피스 알림 템플릿 관리·발송 이력 조회·재발송 — 캡틴만 ({@code @RequireAdmin}, specs/authz-guards/spec.md). */
+@Tag(name = "백오피스 · 알림", description = "알림 템플릿 추가·수정·삭제·조회, 발송 이력 조회, 실패 건 재발송")
 @RequireAdmin
 @SecurityRequirement(name = "bearerAuth")
 @RestController
@@ -28,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminNotificationController {
 
     private final NotificationTemplateQueryService notificationTemplateQueryService;
+    private final NotificationTemplateCommandService notificationTemplateCommandService;
     private final NotificationQueryService notificationQueryService;
     private final NotificationResendService notificationResendService;
 
@@ -35,6 +41,33 @@ public class AdminNotificationController {
     @GetMapping("/notification-templates")
     public List<NotificationTemplateResponse> notificationTemplates() {
         return notificationTemplateQueryService.listAll();
+    }
+
+    @Operation(summary = "알림 템플릿 추가", description = "같은 알림 조건에 이미 템플릿이 있으면 409. 채널은 메일로 고정된다.")
+    @PostMapping("/notification-templates")
+    @ResponseStatus(HttpStatus.CREATED)
+    public NotificationTemplateResponse createTemplate(
+            @Valid @RequestBody NotificationTemplateRequest request,
+            Authentication authentication) {
+        return notificationTemplateCommandService.create(
+                (Long) authentication.getPrincipal(), request);
+    }
+
+    @Operation(summary = "알림 템플릿 수정", description = "조건·제목·본문을 통째로 바꾼다. 바꾸려는 조건에 다른 템플릿이 있으면 409.")
+    @PutMapping("/notification-templates/{id}")
+    public NotificationTemplateResponse updateTemplate(
+            @PathVariable Long id,
+            @Valid @RequestBody NotificationTemplateRequest request,
+            Authentication authentication) {
+        return notificationTemplateCommandService.update(
+                (Long) authentication.getPrincipal(), id, request);
+    }
+
+    @Operation(summary = "알림 템플릿 삭제", description = "되돌릴 수 없다. 발송 이력은 남는다.")
+    @DeleteMapping("/notification-templates/{id}")
+    public ResponseEntity<Void> deleteTemplate(@PathVariable Long id) {
+        notificationTemplateCommandService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(

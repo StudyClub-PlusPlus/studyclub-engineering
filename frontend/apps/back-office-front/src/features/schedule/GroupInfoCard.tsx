@@ -2,10 +2,13 @@
 
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, DiscordGlyph, Textarea, cx } from '@studyclub/ui';
 import { ChevronDown, FolderOpen } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 
-import { RULES_MAX } from './meetings';
+import { groupRulesSchema, type GroupRulesValues } from '@/features/schedule/form-schemas';
+import { RULES_MAX } from '@/features/schedule/meetings';
 
 /** 정보 카드의 바로가기 — 아이콘과 이름만 보이고 새 창으로 연다. 주소는 가리키면 보인다. */
 function LinkButton({ label, href, icon }: { label: string; href: string; icon: ReactNode }) {
@@ -15,7 +18,7 @@ function LinkButton({ label, href, icon }: { label: string; href: string; icon: 
       target='_blank'
       rel='noopener noreferrer'
       title={href}
-      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 text-sm font-semibold text-fg-secondary hover:bg-surface-2 hover:text-fg'
+      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 type-label-lg text-fg-secondary hover:bg-surface-2 hover:text-fg'
     >
       {icon}
       {label}
@@ -52,7 +55,11 @@ export function GroupInfoCard({
 }) {
   /** 처음엔 펼친다. 접으면 머리 줄만 남는다. 접어도 저장하지 않은 규칙 글은 남는다. */
   const [expanded, setExpanded] = useState(true);
-  const [draft, setDraft] = useState(rules);
+  const { watch, setValue, reset, handleSubmit } = useForm<GroupRulesValues>({
+    resolver: zodResolver(groupRulesSchema),
+    defaultValues: { rules },
+  });
+  const draft = watch('rules');
   const bodyId = useId();
 
   const dirty = draft.trim() !== rules.trim();
@@ -61,15 +68,15 @@ export function GroupInfoCard({
   }, [dirty, onDirtyChange]);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
 
-  function save() {
-    onSaveRules(draft.trim());
-    setDraft(draft.trim());
-  }
+  const save = handleSubmit(({ rules }) => {
+    onSaveRules(rules.trim());
+    setValue('rules', rules.trim());
+  });
 
   return (
     <section className='card mb-5 px-5 py-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <dl className='flex flex-wrap gap-x-6 gap-y-1 text-sm'>
+        <dl className='flex flex-wrap gap-x-6 gap-y-1 type-body-sm'>
           <div className='flex gap-2'>
             <dt className='text-fg-muted'>스터디 시간</dt>
             <dd className='tnum font-semibold text-fg'>{time}</dd>
@@ -78,7 +85,7 @@ export function GroupInfoCard({
                 type='button'
                 aria-label='스터디 시간 수정'
                 onClick={onEditTime}
-                className='text-sm font-semibold text-brand underline-offset-2 hover:underline'
+                className='type-label-lg text-brand underline-offset-2 hover:underline'
               >
                 수정
               </button>
@@ -114,7 +121,7 @@ export function GroupInfoCard({
 
       {/* 접어도 본문을 지우지 않고 숨긴다 — aria-controls 가 가리킬 곳이 늘 있고, 저장하지 않은 글도 남는다 */}
       <div id={bodyId} hidden={!expanded} className='mt-3 border-t border-border pt-3'>
-        <h3 className='text-sm font-bold text-fg'>스터디 규칙</h3>
+        <h3 className='type-title-md text-fg'>스터디 규칙</h3>
         <div className='mt-2 flex flex-col gap-2'>
           <Textarea
             aria-label='스터디 규칙'
@@ -124,11 +131,11 @@ export function GroupInfoCard({
             rows={4}
             showCount
             className='bg-surface-1 leading-relaxed'
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => setValue('rules', e.target.value, { shouldDirty: true })}
           />
           {dirty && (
             <div className='flex justify-end gap-2'>
-              <Button variant='secondary' size='sm' onClick={() => setDraft(rules)}>
+              <Button variant='secondary' size='sm' onClick={() => reset({ rules })}>
                 취소
               </Button>
               <Button size='sm' onClick={save}>

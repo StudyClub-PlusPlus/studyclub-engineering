@@ -85,9 +85,9 @@
 - **분반**: 담당 캡틴이라 요청의 `studyGroupId` 와 다른 분반의 행도 중단한다(사용자 사이트의 담당 캡틴과 같다)
 - **대상**: 네비게이터(`LEADER`) 행도 된다. 나머지 제한은 그대로 — 나 자신 400 · 담당 캡틴의 명부 행 403(호출자가 담당 캡틴이라 실제로는 「나 자신」이 먼저 걸린다. `CREATED_BY` NULL 이면 해당 없음) · `DELETED`·`COMPLETED` 409 · 끝난 스터디 409 · 이미 `WITHDRAWN` 멱등
 - **판정 순서 · 잠금 · 감사 로그 · 이벤트**: 아래 그대로 (`ParticipantWithdrawalService.prepareForBackOffice`)
-- **디스코드**: 스터디 role 은 지금 `study_participant.withdrawn` 구독자(DSC-09)가 뗀다. 중단된 사람이 네비게이터면 네비게이터 role 도 떼야 하는데 **아직 하지 않는다** — DSC-06(봇 네비게이터 창구) 뒤에 같은 구독자에 붙인다. 이벤트의 `participantRole = LEADER` 로 가른다
+- **디스코드**: 스터디 role 은 `study_participant.withdrawn` 구독자(DSC-09)가 뗀다. 중단된 사람이 네비게이터(`participantRole = LEADER`)면 같은 구독자가 navigator role 도 맞춘다 — 다른 진행 중 스터디에서 LEADER 면 유지, 아니면 회수 (DSC-09)
 - 네비게이터를 중단하면 그 분반에 네비게이터가 없을 수 있다. 서버는 막지 않는다 — 새 네비게이터는 신청자 탭에서 캡틴이 정한다
-- **중단된 네비게이터의 권한**: 행은 `WITHDRAWN` · `LEADER` 로 남는다 — 역할을 `MEMBER` 로 내리지 않는다(이벤트가 중단 직전 역할을 실어야 DSC-06 이 네비게이터 role 을 뗀다). 대신 네비게이터 권한은 **살아 있는 명부 행(`ACTIVE` · `PAUSED`)의 `LEADER`** 에만 준다 — 사이트 출석 저장 · 출석부 · 회차 추가 · 수정 · 삭제 · 비공개 상세 모두 403 / 404 (`StudyCaptainGuard`, 2026-10-24 #325 리뷰)
+- **중단된 네비게이터의 권한**: 행은 `WITHDRAWN` · `LEADER` 로 남는다 — 역할을 `MEMBER` 로 내리지 않는다(이벤트가 중단 직전 역할을 실어야 DSC-09 가 네비게이터 role 을 뗀다). 대신 네비게이터 권한은 **살아 있는 명부 행(`ACTIVE` · `PAUSED`)의 `LEADER`** 에만 준다 — 사이트 출석 저장 · 출석부 · 회차 추가 · 수정 · 삭제 · 비공개 상세 모두 403 / 404 (`StudyCaptainGuard`, 2026-10-24 #325 리뷰)
 
 ### 판정 순서
 
@@ -125,6 +125,8 @@
 
 ### 감사 로그
 
+신규 기록은 접속 IP와 당시 `PARTICIPANT_ROLE`·`PARTICIPANT_ID`도 저장한다. MEMBER 중단은 1년(2년 의무 대상이면 설정 변경), LEADER 중단은 권한 말소이므로 3년 보관한다. 역할이 없는 과거 로그는 자동 삭제를 보류한다. [공통 정리 스펙](../data-retention/spec.md)을 따른다.
+
 이번에 중단된 행마다 [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) 한 줄 — `ACTION = WITHDRAW` · `ACTOR` = 호출자 · `TARGET` = 중단된 사람 · `BEFORE` = 중단 직전 상태 · `AFTER` = 명부 행 ID · 시각. 출석 저장과 **같은 트랜잭션**이다. 이미 중단된 행은 남기지 않는다. 이름 · 이메일은 남기지 않는다. 사유는 받지도 남기지도 않는다 — 하차 · 제명을 가르지 않는다 ([출석부 PRD](../../01-planning/stories/navigator-edit-attendance/PRD.md) §2-1).
 
 ### Response — 204 No Content
@@ -156,11 +158,15 @@
 ### 프론트엔드 사용처
 
 - `frontend/apps/playground/src/proto/console/components/AttendanceTab.tsx` 의 저장 (프로토 — `// TODO(api)`)
-- `frontend/apps/core-front/src/lib/joined-detail-api.ts` · `AttendanceTabContent.tsx` — 사용자 사이트 출석 탭 저장
+- `frontend/apps/core-front/src/features/attendance/repository.ts` · `features/attendance/AttendanceTabContent.tsx` — 사용자 사이트 출석 탭 저장
 - `frontend/apps/back-office-front/src/features/attendance/` — 백오피스 출석 탭 저장 (담당 캡틴이 아니면 서버 403 을 그대로 보여 준다). 네비게이터는 화면에서 참여 중단을 잠근다 — 신청자 탭에서 권한을 회수한 뒤 중단한다 (2026-10-24, [출석부 PRD](../../01-planning/stories/captain-view-attendance-roster/PRD.md) 개발 범위)
+
+## 퍼널·계측
+
+해당 없음 — 참여 중단에 분석 이벤트가 없다. 크루가 신청을 취소하는 `My Application Cancelled` 와는 다른 흐름이다.
 
 ## 미확정
 
 - [NEEDS CLARIFICATION] 중단당한 사람에게 알림(메일 · 디스코드 DM)을 보낼지. 지금은 보내지 않는다 — 네비게이터가 디스코드에서 말한다
-- 디스코드 채널 권한 회수 — `study_participant.withdrawn` 이벤트를 디스코드 쪽 구독자가 받아 스터디 role 을 뗀다 (DSC-09). 네비게이터 role 회수는 DSC-06 대기 (위 「백오피스 경로」). 그 전까지는 링크(`discordChannelUrl`)만 감춘다 ([my-studies](../my-studies/spec.md) `relation = WITHDRAWN`)
+- 디스코드 채널 권한 회수 — `study_participant.withdrawn` 이벤트를 디스코드 쪽 구독자가 받아 스터디 role 을 뗀다 (DSC-09). 중단된 사람이 네비게이터면 navigator role 도 맞춘다. 링크(`discordChannelUrl`)는 `WITHDRAWN` 이면 감춘다 ([my-studies](../my-studies/spec.md) `relation = WITHDRAWN`)
 - [NEEDS CLARIFICATION] 잘못 중단한 행을 되살리는 길 — 사용자 사이트에는 없다. 백오피스에 둘지 미정

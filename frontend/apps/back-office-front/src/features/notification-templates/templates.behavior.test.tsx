@@ -1,10 +1,16 @@
+import { toast } from '@studyclub/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NotificationTemplatesPage from '@/app/notification-templates/page';
-import type { NotificationTemplate } from '@/features/notification-templates/types';
+import {
+  applyBodyEdit,
+  clampToUtf8Bytes,
+  utf8Bytes,
+  type NotificationTemplate,
+} from '@/features/notification-templates/types';
 import { ApiError, http } from '@/lib/http';
 
 // 서버는 http 한 곳으로 막는다 — 경로·메서드·바디까지 함께 확인한다.
@@ -15,7 +21,15 @@ vi.mock('@/lib/http', async (importOriginal) => ({
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/notification-templates' }));
 
+// 토스트는 DOM 이 아니라 호출로 확인한다 (Toaster 를 마운트하지 않는다).
+vi.mock('@studyclub/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@studyclub/ui')>();
+  return { ...actual, toast: Object.assign(vi.fn(), { error: vi.fn() }) };
+});
+
 const httpMock = vi.mocked(http);
+const toastMock = vi.mocked(toast);
+const toastErrorMock = vi.mocked(toast.error);
 const BASE = '/api/admin/notification-templates';
 
 const BODY = '안녕하세요, {{nickname}}님.\n\n가입을 환영합니다!';
@@ -37,7 +51,7 @@ function tpl(patch: Partial<NotificationTemplate> = {}): NotificationTemplate {
 function fakeServer(initial: NotificationTemplate[], failWith?: { method: string; status: number; message?: string }) {
   let db = initial.map((t) => ({ ...t }));
   let nextId = Math.max(0, ...db.map((t) => t.id)) + 1;
-  httpMock.mockImplementation(async (path, init) => {
+  httpMock.mockImplementation(async (path, _schema, init) => {
     const method = init?.method ?? 'GET';
     if (failWith && failWith.method === method) throw new ApiError(failWith.status, failWith.message ?? '실패');
     if (method === 'GET') return db;
@@ -71,11 +85,13 @@ function renderPage() {
   );
 }
 
-const callsOf = (method: string) => httpMock.mock.calls.filter(([, init]) => (init?.method ?? 'GET') === method);
+const callsOf = (method: string) => httpMock.mock.calls.filter(([, , init]) => (init?.method ?? 'GET') === method);
 
 describe('알림 템플릿 화면', () => {
   beforeEach(() => {
     httpMock.mockReset();
+    toastMock.mockClear();
+    toastErrorMock.mockClear();
   });
 
   it('열은 알림 조건 · 채널 · 제목 · 마지막 수정이다', async () => {
@@ -139,7 +155,7 @@ describe('알림 템플릿 화면', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    const [path, init] = callsOf('POST')[0]!;
+    const [path, , init] = callsOf('POST')[0]!;
     expect(path).toBe(BASE);
     expect(JSON.parse(String(init?.body))).toEqual({ eventType: 'USER_REGISTERED', subject: '새 문구', body: BODY });
 
@@ -172,7 +188,7 @@ describe('알림 템플릿 화면', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    const [path, init] = callsOf('PUT')[0]!;
+    const [path, , init] = callsOf('PUT')[0]!;
     expect(path).toBe(`${BASE}/1`);
     expect(JSON.parse(String(init?.body))).toEqual({ eventType: 'USER_REGISTERED', subject: '바뀐 제목', body: BODY });
     await screen.findByText('바뀐 제목');
@@ -204,7 +220,7 @@ describe('알림 템플릿 화면', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(JSON.parse(String(callsOf('PUT')[0]![1]?.body))).toEqual({ eventType: 'USER_REGISTERED', subject, body });
+    expect(JSON.parse(String(callsOf('PUT')[0]![2]?.body))).toEqual({ eventType: 'USER_REGISTERED', subject, body });
   });
 
   it('일반 텍스트의 태그 모양 글자를 실행하지 않고 줄바꿈과 변수 원문을 표시한다', async () => {
@@ -318,8 +334,13 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
+    // 제목 라벨만으로는 부족하다 — 편집 팝업이 빈 draft 로 먼저 그려진 뒤 useEffect 로 채운다.
+    // 채우기 전에 저장을 누르면 blocked 로 바로 return 해서 alert 가 안 뜬다 (CI 에서 재현).
     await screen.findByLabelText(/제목/);
     const dialog = screen.getByRole('dialog');
+    await waitFor(() => {
+      expect((within(dialog).getByLabelText(/제목/) as HTMLInputElement).value).toMatch(/회원가입/);
+    });
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
     expect((await within(dialog).findByRole('alert')).textContent).toContain('이미 삭제된 템플릿');
@@ -364,9 +385,9 @@ describe('알림 템플릿 화면', () => {
     fakeServer([tpl()]);
     let release!: () => void;
     const base = httpMock.getMockImplementation()!;
-    httpMock.mockImplementation(async (path, init) => {
+    httpMock.mockImplementation(async (path, _schema, init) => {
       if (init?.method === 'PUT') await new Promise<void>((resolve) => (release = resolve));
-      return base(path, init);
+      return base(path, _schema, init);
     });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
@@ -392,15 +413,15 @@ describe('알림 템플릿 화면', () => {
     const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     await waitFor(() => expect(callsOf('PUT')).toHaveLength(1));
-    expect(callsOf('PUT')[0]![1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(callsOf('PUT')[0]![2]?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it('요청 시간이 지나 끊기면 실패로 알리고 팝업을 닫을 수 있다', async () => {
     fakeServer([tpl()]);
     const base = httpMock.getMockImplementation()!;
-    httpMock.mockImplementation(async (path, init) => {
+    httpMock.mockImplementation(async (path, _schema, init) => {
       if (init?.method === 'PUT') throw new DOMException('요청 시간 초과', 'TimeoutError');
-      return base(path, init);
+      return base(path, _schema, init);
     });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
@@ -415,6 +436,182 @@ describe('알림 템플릿 화면', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
+  it('삭제 확인은 그 조건의 알림에 생기는 일을 알린다 — 회원가입은 웰컴 메일이 멈춘다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    expect(within(dialog).getByText('삭제하면 새로 가입한 회원에게 웰컴 메일이 나가지 않습니다.')).toBeTruthy();
+    expect(within(dialog).getByText(/지난 발송 이력은 남습니다/)).toBeTruthy();
+  });
+
+  it('같은 조건에 다른 템플릿이 남으면 삭제 확인은 이 템플릿의 메일만 멈춘다고 알리고 조건별 영향은 보이지 않는다', async () => {
+    fakeServer([tpl(), tpl({ id: 2, subject: '[StudyClub] 첫 스터디를 찾아보세요' })]);
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: '회원가입' }))[0]);
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    const impact = within(dialog).getByText(/이 템플릿의 메일만 더 이상 나가지 않습니다/);
+    expect(impact.textContent).toContain('같은 조건의 다른 템플릿 1개는 계속 나갑니다');
+    expect(within(dialog).queryByText('삭제하면 새로 가입한 회원에게 웰컴 메일이 나가지 않습니다.')).toBeNull();
+    expect(impact.className).not.toContain('text-danger-fg');
+  });
+
+  it('하나를 지워 마지막만 남으면 삭제 확인이 다시 그 조건의 알림이 멈춘다고 알린다', async () => {
+    fakeServer([tpl(), tpl({ id: 2, subject: '[StudyClub] 첫 스터디를 찾아보세요' })]);
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: '회원가입' }))[0]);
+    await screen.findByLabelText(/제목/);
+    let dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // 하나가 남는다 — 이제 이 템플릿이 그 조건의 마지막이다
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+    await screen.findByLabelText(/제목/);
+    dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    const impact = within(dialog).getByText('삭제하면 새로 가입한 회원에게 웰컴 메일이 나가지 않습니다.');
+    expect(impact.className).toContain('text-danger-fg');
+    expect(within(dialog).queryByText(/다른 템플릿/)).toBeNull();
+  });
+
+  it('다른 조건의 템플릿은 세지 않는다 — 스터디 공지가 하나뿐이면 회원가입 템플릿이 둘이어도 공지 삭제는 조건별 영향을 알린다', async () => {
+    fakeServer([
+      tpl(),
+      tpl({ id: 2, subject: '둘째 환영 메일' }),
+      tpl({ id: 3, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' }),
+    ]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '스터디 공지' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    expect(within(dialog).getByText(/메일을 포함한 스터디 공지를 보낼 수 없습니다/)).toBeTruthy();
+    expect(within(dialog).queryByText(/다른 템플릿/)).toBeNull();
+  });
+
+  it('조건의 마지막 템플릿을 다른 조건으로 바꾸려 하면 저장 전에 그 조건의 알림이 멈춘다고 알리고, 되돌리면 사라진다', async () => {
+    fakeServer([tpl(), tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '스터디 공지' }));
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+
+    // 열었을 때는 조건을 바꾸지 않았으니 안내가 없다
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
+    const warning = within(dialog).getByRole('alert');
+    expect(warning.textContent).toContain('‘스터디 공지’ 조건의 마지막입니다');
+    expect(warning.textContent).toContain('조건을 바꿔 저장하면 메일을 포함한 스터디 공지를 보낼 수 없습니다');
+    expect(warning.className).toContain('text-danger-fg');
+    // 서버가 막지 않으니 저장은 막지 않는다
+    expect((within(dialog).getByRole('button', { name: '저장' }) as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'STUDY_NOTICE' } });
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+  });
+
+  it('같은 조건에 다른 템플릿이 남아 있으면 조건을 바꿔도 안내하지 않는다', async () => {
+    fakeServer([
+      tpl({ id: 1, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' }),
+      tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] 새 공지가 도착했어요' }),
+    ]);
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: '스터디 공지' }))[0]);
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
+
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+  });
+
+  it('템플릿을 새로 추가할 때는 조건을 골라도 안내하지 않는다 — 떠나는 조건이 없다', async () => {
+    fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
+    renderPage();
+    await screen.findByRole('button', { name: '스터디 공지' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'STUDY_NOTICE' } });
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
+
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+  });
+
+  it('문의 회신은 링크 변수를 안내하고 마지막 템플릿 삭제가 첫 답변을 막는다고 알린다', async () => {
+    fakeServer([tpl({ eventType: 'FEEDBACK_REPLIED', subject: '[StudyClub] 문의에 답변이 등록됐어요' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '문의 회신' }));
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(/feedbackUrl/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+    expect(within(dialog).getByText(/문의에 첫 답변을 등록할 수 없습니다/)).toBeInTheDocument();
+  });
+
+  it('스터디 공지 템플릿의 삭제 확인은 메일 포함 공지가 막히고 디스코드만 보내는 공지는 영향이 없다고 알린다', async () => {
+    fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '스터디 공지' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    const impact = within(dialog).getByText(/메일을 포함한 스터디 공지를 보낼 수 없습니다/);
+    expect(impact.textContent).toContain('디스코드에도 올라가지 않으며');
+    expect(impact.textContent).toContain('디스코드만 보내는 공지는 영향이 없습니다');
+    expect(callsOf('DELETE')).toHaveLength(0);
+  });
+
+  it('모르는 조건의 삭제 확인에는 영향 안내를 덧붙이지 않고 본문 안내도 변수 없이 일반 문구만 보인다', async () => {
+    fakeServer([tpl({ id: 3, eventType: 'SOMETHING_NEW' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'SOMETHING_NEW' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('HTML과 일반 텍스트를 입력할 수 있습니다.')).toBeTruthy();
+    expect(within(dialog).queryByText(/닉네임 삽입/)).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+    expect(within(dialog).getByText(/지난 발송 이력은 남습니다/)).toBeTruthy();
+    expect(within(dialog).queryByText(/삭제하면 /)).toBeNull();
+  });
+
+  it('본문 안내는 고른 조건에 맞는 치환 변수를 알려 주고 조건을 바꾸면 따라 바뀐다', async () => {
+    fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '스터디 공지' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const help = within(dialog).getByText(/\{\{studyTitle\}\} 스터디 이름/);
+    for (const variable of ['studyTitle', 'groupName', 'senderName', 'title', 'body']) {
+      expect(help.textContent).toContain(`{{${variable}}}`);
+    }
+    expect(within(dialog).queryByText(/닉네임 삽입/)).toBeNull();
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
+    expect(within(dialog).getByText(/\{\{nickname\}\} 으로 닉네임 삽입/)).toBeTruthy();
+    expect(within(dialog).queryByText(/스터디 이름/)).toBeNull();
+  });
+
   it('조건 선택지의 이름은 목록과 같은 곳에서 온다', async () => {
     fakeServer([tpl()]);
     renderPage();
@@ -426,7 +623,160 @@ describe('알림 템플릿 화면', () => {
     const options = within(dialog)
       .getAllByRole('option')
       .map((o) => o.textContent);
-    expect(options).toEqual(['회원가입']);
+    expect(options).toEqual(['회원가입', '스터디 공지', '문의 회신']);
+  });
+
+  it('지운 스터디 공지 템플릿은 추가 팝업에서 조건을 골라 다시 만든다', async () => {
+    fakeServer([tpl({ id: 1 })]); // 스터디 공지 템플릿이 없는 상태
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'STUDY_NOTICE' } });
+    // 조건을 고르면 본문 안내도 그 조건의 치환 변수로 바뀐다
+    expect(within(dialog).getByText(/\{\{studyTitle\}\} 스터디 이름/)).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '[StudyClub] {{studyTitle}} 공지' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: '{{title}}' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const [path, , init] = callsOf('POST')[0]!;
+    expect(path).toBe(BASE);
+    expect(JSON.parse(String(init?.body))).toEqual({
+      eventType: 'STUDY_NOTICE',
+      subject: '[StudyClub] {{studyTitle}} 공지',
+      body: '{{title}}',
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: '스터디 공지' })).toBeTruthy());
+  });
+
+  it('제목은 255자까지만 쓸 수 있고 글자 수를 보여 준다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const subject = within(dialog).getByLabelText(/제목/) as HTMLInputElement;
+    expect(subject.maxLength).toBe(255);
+    fireEvent.change(subject, { target: { value: '가나다' } });
+    expect(within(dialog).getByText('3 / 255자')).toBeTruthy();
+  });
+
+  it('본문은 UTF-8 65,535바이트까지만 받고 바이트 수를 보여 준다 — 글자 수가 아니다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const body = within(dialog).getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement;
+
+    fireEvent.change(body, { target: { value: '가나다' } });
+    expect(within(dialog).getByText('9 / 65,535바이트')).toBeTruthy();
+
+    // 한글 3바이트 × 21,845 = 65,535바이트 — 한도까지는 그대로 들어간다
+    const atLimit = '가'.repeat(21_845);
+    fireEvent.change(body, { target: { value: atLimit } });
+    expect(body.value).toBe(atLimit);
+    expect(within(dialog).getByText('65,535 / 65,535바이트')).toBeTruthy();
+
+    // 1바이트만 더해도 받지 않는다
+    fireEvent.change(body, { target: { value: atLimit + 'a' } });
+    expect(body.value).toBe(atLimit);
+
+    // 붙여 넣은 긴 글은 한도까지만 남고, 글자 한가운데서 잘리지 않는다
+    fireEvent.change(body, { target: { value: '가'.repeat(30_000) } });
+    expect(body.value).toBe(atLimit);
+  });
+
+  it('한도에서 본문 가운데에 글자를 치면 그 글자만 받지 않고 본문 끝은 지워지지 않는다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const body = within(dialog).getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement;
+    const full = '가'.repeat(21_844) + 'END'; // 65,535바이트
+    fireEvent.change(body, { target: { value: full } });
+    expect(body.value).toBe(full);
+
+    fireEvent.change(body, { target: { value: full.slice(0, 10) + 'a' + full.slice(10) } });
+
+    expect(body.value).toBe(full);
+    expect(toastMock).toHaveBeenCalledWith(expect.stringContaining('65,535바이트'), { id: 'template-body-limit' });
+  });
+
+  it('한도를 넘는 글을 가운데에 붙여 넣으면 들어가는 만큼만 남고 앞뒤 본문은 그대로다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const body = within(dialog).getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement;
+    const base = '가'.repeat(21_000) + 'END'; // 63,003바이트
+    fireEvent.change(body, { target: { value: base } });
+
+    fireEvent.change(body, { target: { value: base.slice(0, 100) + '나'.repeat(5_000) + base.slice(100) } });
+
+    expect(utf8Bytes(body.value)).toBeLessThanOrEqual(65_535);
+    expect(body.value.startsWith(base.slice(0, 100))).toBe(true);
+    expect(body.value.endsWith('END')).toBe(true);
+    expect(body.value).toContain('나'.repeat(844)); // 남은 2,532바이트 = 844글자
+    expect(toastMock).toHaveBeenCalledWith(expect.stringContaining('65,535바이트'), { id: 'template-body-limit' });
+  });
+
+  it('applyBodyEdit: 한도 안이면 그대로, 넘으면 바뀐 가운데만 줄이고 커서 자리를 돌려 준다', () => {
+    expect(applyBodyEdit('abc', 'abXc', 10)).toEqual({ value: 'abXc', caret: null });
+    // 가운데에 한 글자: 들어갈 자리가 없어 그 글자만 받지 않는다
+    expect(applyBodyEdit('abcd', 'abXcd', 4)).toEqual({ value: 'abcd', caret: 2 });
+    // 가운데에 긴 글: 들어가는 만큼만 남고 앞뒤는 그대로다
+    expect(applyBodyEdit('abcd', 'abXYZcd', 5)).toEqual({ value: 'abXcd', caret: 3 });
+    // 같은 글자를 반복해 쳐도 앞뒤를 겹쳐 세지 않는다
+    expect(applyBodyEdit('aaaa', 'aaaaa', 4)).toEqual({ value: 'aaaa', caret: 4 });
+  });
+
+  it('applyBodyEdit: 이모지를 반으로 나누지 않는다', () => {
+    const edit = applyBodyEdit('a😀b', 'a😀😁b', 6);
+    expect(edit.value).toBe('a😀b');
+    expect(utf8Bytes(edit.value)).toBeLessThanOrEqual(6);
+  });
+
+  it('clampToUtf8Bytes 는 4바이트 글자(이모지)도 반으로 자르지 않는다', () => {
+    expect(clampToUtf8Bytes('ab😀', 5)).toBe('ab');
+    expect(clampToUtf8Bytes('ab😀', 6)).toBe('ab😀');
+    expect(utf8Bytes('가😀a')).toBe(8);
+  });
+
+  it('이미 템플릿이 있는 조건에도 추가된다 — 같은 조건 템플릿이 목록에 함께 서고 오류 토스트는 없다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '둘째 환영 메일' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: '둘째 본문' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(JSON.parse(String(callsOf('POST')[0][2]?.body))).toEqual({
+      eventType: 'USER_REGISTERED',
+      subject: '둘째 환영 메일',
+      body: '둘째 본문',
+    });
+    expect(await screen.findByText('둘째 환영 메일')).toBeTruthy();
+    expect(screen.getByText('[StudyClub] 회원가입을 환영합니다')).toBeTruthy();
+    expect(toastErrorMock).not.toHaveBeenCalled();
   });
 
   it('입력 오류(4xx)는 서버가 준 이유를 그대로 보여 준다', async () => {
@@ -493,12 +843,12 @@ describe('알림 템플릿 화면', () => {
     fakeServer([tpl()]);
     const base = httpMock.getMockImplementation()!;
     let reject!: (reason: Error) => void;
-    httpMock.mockImplementation(async (path, init) =>
+    httpMock.mockImplementation(async (path, _schema, init) =>
       init?.method === 'PUT'
         ? new Promise((_resolve, fail) => {
             reject = fail;
           })
-        : base(path, init),
+        : base(path, _schema, init),
     );
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
@@ -521,7 +871,7 @@ describe('알림 템플릿 화면', () => {
     let latest!: (value: NotificationTemplate[]) => void;
     let gets = 0;
     let oldSignal: AbortSignal | undefined;
-    httpMock.mockImplementation(async (_path, init) => {
+    httpMock.mockImplementation(async (_path, _schema, init) => {
       if (init?.method === 'POST') return tpl({ subject: '새 문구' });
       if (++gets === 1) {
         oldSignal = init?.signal as AbortSignal;
@@ -552,9 +902,9 @@ describe('알림 템플릿 화면', () => {
     fakeServer([tpl()]);
     const base = httpMock.getMockImplementation()!;
     let gets = 0;
-    httpMock.mockImplementation(async (path, init) => {
+    httpMock.mockImplementation(async (path, _schema, init) => {
       if ((!init?.method || init.method === 'GET') && ++gets === 3) throw new ApiError(500, '목록 실패');
-      return base(path, init);
+      return base(path, _schema, init);
     });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));

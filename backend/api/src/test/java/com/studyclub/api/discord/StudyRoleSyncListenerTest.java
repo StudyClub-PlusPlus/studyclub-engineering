@@ -26,6 +26,7 @@ import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantJoined;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.participant.StudyParticipantRoleChanged;
 import com.studyclub.domain.participant.StudyParticipantWithdrawn;
 import java.util.List;
 import java.util.Optional;
@@ -38,18 +39,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-/** 명부 편입·참여 중단 → 스터디 role 을 명부에 맞춘다. 봇은 목이라 아무 데도 보내지 않는다. */
+/** 명부 편입·역할 변경·참여 중단 → 스터디·navigator role 을 명부에 맞춘다. 봇은 목이라 아무 데도 보내지 않는다. */
 class StudyRoleSyncListenerTest {
 
     private static final Long STUDY_ID = 10L;
     private static final Long ACCOUNT_ID = 7L;
     private static final String SYSTEM_ID = "1327394882193880000";
+    private static final String GUILD_ID = "1327394882193880099";
     private static final String DISCORD_USER_ID = "1327394882193880001";
     private static final String DISCORD_STUDY_ID = "1327394882193883136";
     private static final String DISCORD_ROLE_ID = "1327394882193883140";
     private static final StudyParticipantWithdrawn EVENT =
             new StudyParticipantWithdrawn(
                     EventMeta.now(1L), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.MEMBER, null);
+    private static final StudyParticipantWithdrawn LEADER_EVENT =
+            new StudyParticipantWithdrawn(
+                    EventMeta.now(1L), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.LEADER, null);
     private static final StudyParticipantJoined JOINED =
             new StudyParticipantJoined(
                     EventMeta.now(ACCOUNT_ID), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.MEMBER);
@@ -61,7 +66,7 @@ class StudyRoleSyncListenerTest {
     private final StudyDiscordLinkRepository links = mock(StudyDiscordLinkRepository.class);
     private final AccountRepository accounts = mock(AccountRepository.class);
     private final StudyRoleSyncListener listener =
-            new StudyRoleSyncListener(bot, participants, links, accounts);
+            new StudyRoleSyncListener(bot, participants, links, accounts, GUILD_ID);
 
     @BeforeEach
     void 연결된_스터디와_연동한_계정() {
@@ -80,6 +85,8 @@ class StudyRoleSyncListenerTest {
         lenient().when(account.getDiscordId()).thenReturn(discordId);
         lenient().when(accounts.findById(ACCOUNT_ID)).thenReturn(Optional.of(account));
     }
+
+    // ── 스터디 role (DSC-07 · DSC-09) ────────────────────────────────────────────
 
     @Test
     void 중단되면_시스템_호출로_스터디_role_을_뗀다() {
@@ -219,11 +226,6 @@ class StudyRoleSyncListenerTest {
         verify(bot, never()).assignRole(any(), any(), any(), any());
     }
 
-    private void inRoster(boolean holds) {
-        when(participants.existsByStudyIdAndAccountIdAndStatusIn(any(), any(), any()))
-                .thenReturn(holds);
-    }
-
     @Test
     void 같은_사람의_회수는_한_번에_하나씩_봇을_부른다() throws Exception {
         AtomicInteger inFlight = new AtomicInteger();
@@ -288,6 +290,114 @@ class StudyRoleSyncListenerTest {
         verify(bot, never()).removeRole(any(), any(), any(), any());
     }
 
+    // ── navigator role (DSC-08 · DSC-09) ─────────────────────────────────────────
+
+    @Test
+    void MEMBER에서_LEADER로_바뀌면_navigator_role_을_붙인다() {
+        isNavigatorElsewhere(true);
+        when(bot.assignNavigatorRole(anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onRoleChanged(roleChanged(ParticipantRole.MEMBER, ParticipantRole.LEADER));
+
+        verify(bot).assignNavigatorRole(SYSTEM_ID, GUILD_ID, List.of(DISCORD_USER_ID));
+        verify(bot, never()).removeNavigatorRole(any(), any(), any());
+    }
+
+    @Test
+    void LEADER에서_MEMBER로_바뀌고_다른_스터디도_없으면_navigator_role_을_뗀다() {
+        isNavigatorElsewhere(false);
+        when(bot.removeNavigatorRole(anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onRoleChanged(roleChanged(ParticipantRole.LEADER, ParticipantRole.MEMBER));
+
+        verify(bot).removeNavigatorRole(SYSTEM_ID, GUILD_ID, List.of(DISCORD_USER_ID));
+        verify(bot, never()).assignNavigatorRole(any(), any(), any());
+    }
+
+    @Test
+    void LEADER에서_MEMBER로_바뀌어도_다른_진행_중_스터디에서_LEADER면_navigator_role_을_둔다() {
+        isNavigatorElsewhere(true);
+        when(bot.assignNavigatorRole(anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onRoleChanged(roleChanged(ParticipantRole.LEADER, ParticipantRole.MEMBER));
+
+        verify(bot).assignNavigatorRole(SYSTEM_ID, GUILD_ID, List.of(DISCORD_USER_ID));
+        verify(bot, never()).removeNavigatorRole(any(), any(), any());
+    }
+
+    @Test
+    void LEADER가_아닌_역할_변경은_navigator_role_을_건드리지_않는다() {
+        listener.onRoleChanged(roleChanged(ParticipantRole.MEMBER, ParticipantRole.MEMBER));
+
+        verify(bot, never()).assignNavigatorRole(any(), any(), any());
+        verify(bot, never()).removeNavigatorRole(any(), any(), any());
+    }
+
+    @Test
+    void 역할_변경에서_미연동_계정은_navigator_role_건너뛴다() {
+        linkedAccount(null);
+
+        listener.onRoleChanged(roleChanged(ParticipantRole.MEMBER, ParticipantRole.LEADER));
+
+        verify(bot, never()).assignNavigatorRole(any(), any(), any());
+    }
+
+    @Test
+    void 길드_ID_없으면_navigator_role_건너뛴다() {
+        StudyRoleSyncListener noGuild =
+                new StudyRoleSyncListener(bot, participants, links, accounts, "");
+        isNavigatorElsewhere(true);
+
+        noGuild.onRoleChanged(roleChanged(ParticipantRole.MEMBER, ParticipantRole.LEADER));
+
+        verify(bot, never()).assignNavigatorRole(any(), any(), any());
+    }
+
+    @Test
+    void LEADER가_중단되고_다른_스터디도_없으면_navigator_role_을_뗀다() {
+        isNavigatorElsewhere(false);
+        when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
+        when(bot.removeNavigatorRole(anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onWithdrawn(LEADER_EVENT);
+
+        verify(bot).removeNavigatorRole(SYSTEM_ID, GUILD_ID, List.of(DISCORD_USER_ID));
+    }
+
+    @Test
+    void LEADER가_중단돼도_다른_진행_중_스터디에서_LEADER면_navigator_role_을_둔다() {
+        isNavigatorElsewhere(true);
+        when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
+        when(bot.assignNavigatorRole(anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onWithdrawn(LEADER_EVENT);
+
+        verify(bot).assignNavigatorRole(SYSTEM_ID, GUILD_ID, List.of(DISCORD_USER_ID));
+        verify(bot, never()).removeNavigatorRole(any(), any(), any());
+    }
+
+    @Test
+    void MEMBER가_중단되면_navigator_role_을_건드리지_않는다() {
+        when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onWithdrawn(EVENT);
+
+        verify(bot, never()).assignNavigatorRole(any(), any(), any());
+        verify(bot, never()).removeNavigatorRole(any(), any(), any());
+    }
+
+    @Test
+    void navigator_role_봇_실패해도_던지지_않는다() {
+        isNavigatorElsewhere(false);
+        when(bot.removeNavigatorRole(anyString(), anyString(), anyList()))
+                .thenThrow(new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR, "거절"));
+        when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
+
+        assertThatCode(() -> listener.onWithdrawn(LEADER_EVENT)).doesNotThrowAnyException();
+    }
+
+    // ── 비동기 전달 ───────────────────────────────────────────────────────────────
+
     @EnableTransactionManagement
     static class TxEvents {}
 
@@ -306,6 +416,11 @@ class StudyRoleSyncListenerTest {
             ctx.registerBean(StudyParticipantRepository.class, () -> participants);
             ctx.registerBean(StudyDiscordLinkRepository.class, () -> links);
             ctx.registerBean(AccountRepository.class, () -> accounts);
+            ctx.getEnvironment()
+                    .getPropertySources()
+                    .addFirst(
+                            new org.springframework.core.env.MapPropertySource(
+                                    "test", java.util.Map.of("discord.guild-id", GUILD_ID)));
             ctx.register(TxEvents.class, AsyncConfig.class, StudyRoleSyncListener.class);
             ctx.refresh();
 
@@ -316,5 +431,22 @@ class StudyRoleSyncListenerTest {
                             SYSTEM_ID, DISCORD_ROLE_ID, DISCORD_STUDY_ID, List.of(DISCORD_USER_ID));
             assertThat(thread.get()).startsWith("event-");
         }
+    }
+
+    private void inRoster(boolean holds) {
+        when(participants.existsByStudyIdAndAccountIdAndStatusIn(any(), any(), any()))
+                .thenReturn(holds);
+    }
+
+    private void isNavigatorElsewhere(boolean holds) {
+        lenient()
+                .when(participants.existsActiveNavigatorInAnyActiveStudy(ACCOUNT_ID))
+                .thenReturn(holds);
+    }
+
+    private static StudyParticipantRoleChanged roleChanged(
+            ParticipantRole previous, ParticipantRole next) {
+        return new StudyParticipantRoleChanged(
+                EventMeta.now(1L), STUDY_ID, 100L, ACCOUNT_ID, previous, next);
     }
 }
