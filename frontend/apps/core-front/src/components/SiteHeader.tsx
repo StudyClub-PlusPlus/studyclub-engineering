@@ -59,13 +59,13 @@ export function SiteHeader({
             {m('nav.join', locale)}
           </a>
           <MyStudiesLink locale={locale} />
-          <NavAuth locale={locale} />
           <MobileNav
             locale={locale}
             links={links}
             mentoring={mentoring}
             join={{ href: discordUrl, label: m('nav.join', locale) }}
           />
+          <NavAuth locale={locale} />
         </div>
       </div>
     </header>
