@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { BookOpen, CalendarDays, LayoutDashboard, LogOut, Mail, Megaphone, MessageSquare, Users } from 'lucide-react';
+import { BookOpen, LayoutDashboard, LogOut, Mail, Megaphone, MessageSquare, Users } from 'lucide-react';
 
 import { getUser, logout, type SessionUser } from '@/features/auth/auth';
 
