@@ -60,7 +60,7 @@ public class AdminStudyParticipantQueryService {
     }
 
     /**
-     * 그 스터디의 명부. 정렬은 네비게이터 → 반 이름 → 닉네임.
+     * 그 스터디의 명부. 정렬은 캡틴 → 네비게이터 → 반 이름 → 닉네임.
      *
      * @throws BusinessException NOT_FOUND — 없는 스터디
      */
@@ -112,8 +112,9 @@ public class AdminStudyParticipantQueryService {
                         .sorted(
                                 Comparator.comparing(
                                                 (StudyParticipantsResponse.Participant p) ->
-                                                        p.participantRole()
-                                                                != ParticipantRole.LEADER)
+                                                        !p.captain())
+                                        .thenComparing(
+                                                p -> p.participantRole() != ParticipantRole.LEADER)
                                         .thenComparing(
                                                 p -> groupNames.get(p.groupId()),
                                                 Comparator.nullsLast(Comparator.naturalOrder()))
