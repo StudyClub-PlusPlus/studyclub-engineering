@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { LEGENDS, type Contributor } from '@/features/credits/data';
+import { CREW, CREW_SNAPSHOT, LEGENDS, type Contributor, type CrewMember } from '@/features/credits/data';
 
 const box = 'border-[3px] border-[#282A43] bg-white';
 const STAT_MAX = { prs: 15, specs: 6, commits: 80 };
@@ -65,9 +65,47 @@ function HeroCard({ c, locale }: { c: Contributor; locale: string }) {
   );
 }
 
+function CrewCard({ c, locale }: { c: CrewMember; locale: string }) {
+  return (
+    <Link
+      href={`/${locale}/++/${c.handle}`}
+      className={`${box} flex flex-col gap-3 p-4 text-[#282A43] shadow-[4px_4px_0_#282A43] transition-transform hover:-translate-y-0.5`}
+    >
+      <div className='flex items-center gap-3'>
+        <div className='font-dot flex size-12 shrink-0 items-center justify-center border-[3px] border-[#282A43] bg-[#E9ECFF] text-2xl'>
+          {c.initial}
+        </div>
+        <div className='flex min-w-0 flex-col gap-1'>
+          <div className='flex items-center gap-2'>
+            <span className='font-dot text-xl leading-none'>{c.name}</span>
+            <span className='font-pixel border-2 border-[#282A43] bg-[#E6F4EC] px-1.5 py-1 text-[8px] text-[#1F5A3A]'>
+              ACTIVE
+            </span>
+          </div>
+          <div className='flex flex-wrap items-center gap-1.5'>
+            <span className='font-pixel bg-[#3A4BB0] px-1.5 py-1 text-[8px] text-white'>{c.cls}</span>
+            <span className='text-xs text-[#4A4C63]'>{c.role}</span>
+          </div>
+        </div>
+        {c.prs > 0 && <div className='font-pixel ml-auto shrink-0 text-[10px]'>LV.{c.prs}</div>}
+      </div>
+      {c.recent.length > 0 && (
+        <div className='flex flex-col gap-1.5 border-t-2 border-dotted border-[#D8CDB4] pt-2.5'>
+          {c.recent.map((r) => (
+            <div key={`${r.repo}-${r.no}`} className='flex gap-2 text-[13px] leading-snug'>
+              <span className='font-pixel text-[9px] leading-[19px] text-[#C2410C]'>+</span>
+              <span className='line-clamp-1'>{r.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Link>
+  );
+}
+
 export default async function CreditsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const totalPrs = LEGENDS.reduce((n, c) => n + c.stats.prs, 0);
+  const totalPrs = LEGENDS.reduce((n, c) => n + c.stats.prs, 0) + CREW.reduce((n, c) => n + c.prs, 0);
   return (
     <>
       <section className='mx-auto flex max-w-[1120px] flex-col items-center gap-5 px-6 pt-16 pb-8 text-center'>
@@ -79,6 +117,7 @@ export default async function CreditsPage({ params }: { params: Promise<{ locale
         <div className='mt-2 flex flex-wrap justify-center gap-3.5'>
           {[
             [LEGENDS.length, 'LEGEND · 졸업', '#9A6A00'],
+            [CREW.length, 'ACTIVE · 크루', '#1F5A3A'],
             [totalPrs, '머지 PR', '#3A4BB0'],
           ].map(([v, label, color]) => (
             <div key={label} className={`${box} min-w-[120px] px-[18px] py-3 shadow-[4px_4px_0_#282A43]`}>
@@ -105,6 +144,21 @@ export default async function CreditsPage({ params }: { params: Promise<{ locale
         </div>
       </section>
 
+      <section className='mx-auto flex max-w-[1120px] flex-col gap-[22px] px-6 pb-14'>
+        <div className='flex flex-wrap items-center gap-3.5'>
+          <div className='font-pixel border-[3px] border-[#282A43] bg-[#9FD8B5] px-3.5 py-2.5 text-lg shadow-[4px_4px_0_#282A43]'>
+            PARTY
+          </div>
+          <div className='font-dot text-[22px]'>함께하는 크루</div>
+          <div className='font-pixel text-[9px] text-[#5A5C70]'>머지 PR {CREW_SNAPSHOT} 기준</div>
+        </div>
+        <div className='grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-[18px]'>
+          {CREW.map((c) => (
+            <CrewCard key={c.handle} c={c} locale={locale} />
+          ))}
+        </div>
+      </section>
+
       <section className='mx-auto max-w-[1120px] px-6 pb-[72px]'>
         <div
           className={`${box} grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6 p-6 shadow-[6px_6px_0_#282A43]`}
@@ -127,6 +181,7 @@ export default async function CreditsPage({ params }: { params: Promise<{ locale
                 ['BARD', '기획·운영'],
                 ['ENGINEER', '인프라·디바이스'],
                 ['LV', '머지 PR 수'],
+                ['ACTIVE', '지금 크루'],
               ].map(([k, v]) => (
                 <div key={k}>
                   <b className='font-pixel text-[9px]'>{k}</b> {v}
