@@ -1,7 +1,14 @@
+import { toast } from '@studyclub/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+// 토스트는 DOM 이 아니라 호출로 확인한다 (Toaster 를 마운트하지 않는다).
+vi.mock('@studyclub/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@studyclub/ui')>();
+  return { ...actual, toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) };
+});
 
 import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
 import { participantKeys } from '@/features/participants/queries';
@@ -91,9 +98,11 @@ function mount(
   );
   return fetch;
 }
+const toastSuccessMock = vi.mocked(toast.success);
 afterEach(() => {
   act(() => memoryUrl.set(''));
   memoryUrl.push.mockClear();
+  toastSuccessMock.mockClear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -117,13 +126,13 @@ describe('참여자 반 편성', () => {
       refreshed = client.invalidateQueries({ queryKey: participantKeys.list(20) });
     });
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '한국크루 반' }), '2');
-    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeEnabled();
     await act(async () => {
       finish(reply(data));
       await refreshed;
     });
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
-    await screen.findByText('저장했습니다.');
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('저장했습니다.'));
     expect(client.getQueryState(otherKey)?.isInvalidated).toBe(false);
   });
   it('서버 목록 순서와 무관하게 서버가 기본으로 표시한 반에 기본 배지를 표시한다', async () => {
@@ -145,7 +154,7 @@ describe('참여자 반 편성', () => {
     response.participants[1]!.participantId = 7;
     mount(response, async () => reply({ errorMessage: '요청에 실패했습니다 (500), groupId 7' }, 500));
     await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     await screen.findByRole('alert');
     expect(screen.queryByText('저장 실패')).not.toBeInTheDocument();
   });
@@ -157,9 +166,9 @@ describe('참여자 반 편성', () => {
       return reply({ errorMessage: 'participantId 41: 참여 상태가 변경되었습니다.' }, 409);
     });
     await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     await waitFor(() => expect(screen.getByRole('combobox', { name: '한국크루 반' })).toBeDisabled());
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeDisabled();
     expect(screen.queryByRole('button', { name: '변경 취소' })).not.toBeInTheDocument();
   });
 
@@ -191,7 +200,7 @@ describe('참여자 반 편성', () => {
     await screen.findByText('crew@example.com');
     if (action === '배정') {
       await userEvent.selectOptions(screen.getByRole('combobox', { name: '한국크루 반' }), '2');
-      await userEvent.click(screen.getByRole('button', { name: '저장' }));
+      await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     } else if (action === '반 생성') {
       await userEvent.click(screen.getByRole('button', { name: '반 추가' }));
       await userEvent.type(screen.getByRole('textbox', { name: '반 제목' }), '새반{Enter}');
@@ -223,8 +232,8 @@ describe('참여자 반 편성', () => {
     await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
     expect(fetch.mock.calls.filter(([, init]) => init.method)).toHaveLength(0);
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '북미캡틴 반' }), '3');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
-    await screen.findByText('저장했습니다.');
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('저장했습니다.'));
     expect(fetch.mock.calls.filter(([, init]) => init.method)).toEqual([
       [
         expect.stringContaining('/studies/20/participants'),
@@ -251,14 +260,14 @@ describe('참여자 반 편성', () => {
         : reply({ errorMessage: '서버 오류가 발생했습니다.' }, 500),
     );
     expect(fetch.mock.calls.filter(([, init]) => init.method)).toHaveLength(0);
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
-    await screen.findByText('저장했습니다.');
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('저장했습니다.'));
     expect(fetch.mock.calls.filter(([, init]) => init.method)[0]?.[1]).toMatchObject({
       method: 'PATCH',
       body: JSON.stringify({ changes: [{ participantId: 41, participantRole: 'LEADER' }] }),
     });
     expect(screen.getByRole('combobox', { name: '한국크루 역할' })).toHaveValue('LEADER');
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeDisabled();
   });
 
   it('고른 크루의 반과 역할을 이어서 일괄 변경하고 이미 같은 값인 칸은 보내지 않는다', async () => {
@@ -268,7 +277,7 @@ describe('참여자 반 편성', () => {
     expect(screen.getByRole('combobox', { name: '바꿀 역할' })).toHaveValue('');
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '바꿀 반' }), '2');
     expect(screen.getByRole('combobox', { name: '한국크루 역할' })).toHaveValue('LEADER');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     await waitFor(() =>
       expect(JSON.parse(fetch.mock.calls.filter(([, init]) => init.method)[0]?.[1].body as string)).toEqual({
         changes: [
@@ -287,11 +296,11 @@ describe('참여자 반 편성', () => {
     await userEvent.click(screen.getByRole('button', { name: '변경 취소' }));
     expect(role).toHaveValue('LEADER');
     expect(screen.getByRole('combobox', { name: '북미캡틴 반' })).toHaveValue('1');
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeDisabled();
     await userEvent.selectOptions(role, 'MEMBER');
-    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeEnabled();
     await userEvent.selectOptions(role, 'LEADER');
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeDisabled();
   });
 
   it('필터에 숨은 선택 행은 일괄 변경하지 않는다', async () => {
@@ -299,7 +308,7 @@ describe('참여자 반 편성', () => {
     await userEvent.click(await screen.findByRole('checkbox', { name: '보이는 크루 전체 선택' }));
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '지역 필터' }), 'KR');
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '바꿀 반' }), '2');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     await waitFor(() =>
       expect(fetch.mock.calls.filter(([, init]) => init.method)[0]?.[1].body).toBe(
         JSON.stringify({ changes: [{ participantId: 41, groupId: 2 }] }),
@@ -310,12 +319,12 @@ describe('참여자 반 편성', () => {
   it('저장 실패 시 입력을 유지하고 원래 반으로 되돌리면 저장을 잠근다', async () => {
     mount(data, async () => reply({ errorMessage: 'participantId 41: 참여 상태가 변경되었습니다.' }, 409));
     await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     expect(await screen.findByRole('alert')).toHaveTextContent('41');
     expect(screen.getByText('저장 실패')).toBeVisible();
     expect(screen.getByRole('combobox', { name: '한국크루 반' })).toHaveValue('2');
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '한국크루 반' }), '1');
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeDisabled();
   });
 
   it('제목 검증·중복 오류는 카드 안에 남기고 Esc로 닫는다', async () => {
@@ -466,7 +475,7 @@ describe('참여자 반 편성', () => {
     let finish!: (response: Response) => void;
     mount(data, () => new Promise<Response>((resolve) => (finish = resolve)));
     await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     const link = document.createElement('a');
     link.href = '/studies';
     document.body.append(link);
