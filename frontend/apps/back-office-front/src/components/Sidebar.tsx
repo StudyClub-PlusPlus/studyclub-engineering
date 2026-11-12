@@ -11,7 +11,8 @@ import { getUser, logout, type SessionUser } from '@/features/auth/auth';
 const NAV = [
   { href: '/', label: '대시보드', icon: LayoutDashboard, exact: true },
   { href: '/studies', label: '스터디', icon: BookOpen },
-  { href: '/events', label: '행사', icon: CalendarDays },
+  // TODO(api): 행사 API 가 없어 메뉴를 숨겼다. API 연결 후 아래 줄 주석 해제
+  // { href: '/events', label: '행사', icon: CalendarDays },
   // 스터디원 + 운영진을 "유저" 하나로 통합 (실제 DB 유저 표시)
   { href: '/users', label: '유저', icon: Users },
   // 크루가 보낸 문의 · 개선 의견 · 오류 신고.
