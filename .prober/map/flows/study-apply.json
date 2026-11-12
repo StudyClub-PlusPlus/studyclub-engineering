@@ -1,0 +1,14 @@
+{
+  "name": "스터디 신청",
+  "trigger": "POST /api/studies/{studyId}/applications",
+  "spec": "specs/study-application/spec.md",
+  "steps": [
+    { "table": "ACCOUNT", "op": "lock", "note": "디스코드 연동 확인 · 같은 기수 기존 신청 검사 (계정 행 잠금)" },
+    { "table": "STUDY_RECRUITMENT", "op": "lock", "note": "열린 모집 회차 · 정원 검사 (마지막 자리 동시 신청 방지)" },
+    { "table": "STUDY_APPLICATION", "op": "insert", "note": "신청서 저장 (FORM_ANSWER)" },
+    { "table": "STUDY_GROUP", "op": "read", "note": "기본 반 = id 가 가장 작은 반. 없으면 「기본반」을 만든다" },
+    { "table": "STUDY_PARTICIPANT", "op": "upsert", "note": "명부 편입 — ACTIVE · MEMBER. 남은 행이 있으면 되살린다" },
+    { "table": "ACCOUNT", "op": "update", "note": "디스코드 별명 갱신" },
+    { "external": "discord", "event": "study_participant.joined", "note": "커밋 뒤 스터디 역할 부여 (DSC-07)" }
+  ]
+}

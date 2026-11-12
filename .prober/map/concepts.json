@@ -1,0 +1,23 @@
+{
+  "concepts": [
+    { "name": "계정", "summary": "가입한 크루 한 명 — 로그인 수단(구글), 약관 동의, 탈퇴 사유", "tables": ["ACCOUNT", "ACCOUNT_IDENTITY", "ACCOUNT_CONSENT", "ACCOUNT_LEAVE_REASON"] },
+    { "name": "스터디 운영", "summary": "프로그램(정체성) 아래 기수별 스터디, 스터디 안에 반과 모임, 모임마다 출석. 명부(참가자)는 반에 속한다", "tables": ["STUDY_PROGRAM", "STUDY", "STUDY_GROUP", "STUDY_MEETING", "STUDY_PARTICIPANT", "STUDY_ATTENDANCE"] },
+    { "name": "모집", "summary": "기수의 모집 회차와 신청서. 신청 제출 = 기본 반 명부 편입", "tables": ["STUDY_RECRUITMENT", "STUDY_APPLICATION"] },
+    { "name": "제안", "summary": "크루가 열고 싶은 스터디를 제안하고 다른 크루가 관심을 표시", "tables": ["STUDY_PROPOSAL", "STUDY_PROPOSAL_INTEREST"] },
+    { "name": "활동", "summary": "스터디에 남기는 후기와 북마크", "tables": ["STUDY_REVIEW", "STUDY_BOOKMARK"] },
+    { "name": "알림", "summary": "메일 등 발송 한 건과 그 문구 템플릿", "tables": ["NOTIFICATION", "NOTIFICATION_TEMPLATE"] },
+    { "name": "운영", "summary": "관리자 감사 로그, 올린 파일, 스터디 ↔ 디스코드 카테고리 연결", "tables": ["ADMIN_AUDIT_LOG", "STORAGE_OBJECT", "STUDY_DISCORD_LINK"] },
+    { "name": "디스코드 봇", "summary": "봇이 SQLite 에 따로 두는 것 — 스터디 이름 예약, 공부방 활동 시각", "tables": ["discord/study_reservation", "discord/voice_channel_activity"] }
+  ],
+  "relations": [
+    { "from": "STUDY.CREATED_BY", "to": "ACCOUNT", "why": "이 기수를 등록한 계정 = 담당 캡틴 (docs/erd/STUDY.md)" },
+    { "from": "NOTIFICATION.RECIPIENT_USER_ID", "to": "ACCOUNT", "why": "받는 사람. 애그리거트 사이라 FK 없음 (docs/erd/NOTIFICATION.md)" },
+    { "from": "NOTIFICATION_TEMPLATE.UPDATED_BY_ADMIN_ID", "to": "ACCOUNT", "why": "마지막으로 고친 관리자 (docs/erd/NOTIFICATION_TEMPLATE.md)" },
+    { "from": "ACCOUNT.DISCORD_ID", "to": "discord:user", "why": "디스코드 유저 snowflake — 출석 체크가 이걸로 계정을 찾는다" },
+    { "from": "STUDY_DISCORD_LINK.DISCORD_STUDY_ID", "to": "discord:category", "why": "스터디 카테고리 채널 snowflake" },
+    { "from": "STUDY_DISCORD_LINK.DISCORD_ROLE_ID", "to": "discord:role", "why": "스터디 전용 역할 snowflake" },
+    { "from": "ACCOUNT_IDENTITY.PROVIDER_ACCOUNT_ID", "to": "google:account", "why": "OAuth sub" },
+    { "from": "discord/study_reservation.study_id", "to": "discord:category", "why": "봇이 만든 카테고리 ID — backend STUDY 가 아니다" },
+    { "from": "discord/study_reservation.role_id", "to": "discord:role", "why": "봇이 만든 역할 ID" }
+  ]
+}
