@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 import type { Locale, Study } from '@studyclub/types';
 import { categoryArtUrl, categoryMeta, categoryTint } from '@studyclub/ui';
-import { ArrowLeft, CalendarClock, Globe, Rocket, Timer, Users } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Globe, Rocket, Users } from 'lucide-react';
 
 import { MarkdownLite } from '@/features/applications/ApplicationFormUi';
 import { ApplyButton } from '@/features/applications/ApplyButton';
@@ -65,7 +65,7 @@ export function StudyDetailView({ id, locale, initial }: { id: number; locale: L
     { icon: Globe, label: t({ ko: '시간대', en: 'Time zone' }, locale), value: studyTimezoneLabel(study, locale) },
     { icon: Rocket, label: t({ ko: '시작 예정일', en: 'Starts' }, locale), value: studyStartValue(study, locale) },
     ...(rec?.capacity ? [{ icon: Users, label: t({ ko: '정원', en: 'Capacity' }, locale), value: `${rec.capacity}${t({ ko: '명', en: '' }, locale)}` }] : []),
-    ...(deadline ? [{ icon: Timer, label: t({ ko: '모집 마감', en: 'Apply by' }, locale), value: deadline }] : []),
+    ...(deadline ? [{ icon: CalendarClock, label: t({ ko: '모집 마감', en: 'Apply by' }, locale), value: deadline }] : []),
   ];
   const url = `${SITE_URL}/${locale}/studies/${id}`;
 
