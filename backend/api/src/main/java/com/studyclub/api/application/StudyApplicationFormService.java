@@ -90,7 +90,10 @@ public class StudyApplicationFormService {
 
     /** 저장 자체는 어느 화면에서 왔든 같다 — 권한만 위에서 갈린다. */
     private StudyApplicationFormResponse replace(Study study, StudyApplicationFormRequest request) {
-        assertUnlocked(study.getId());
+        String lockReason = lockReasonOf(study.getId());
+        if (lockReason != null) {
+            throw new BusinessException(ErrorCode.CONFLICT, lockReason);
+        }
 
         NormalizedApplicationForm form = normalize(request);
         try {
@@ -99,18 +102,7 @@ public class StudyApplicationFormService {
             log.error("신청 폼 직렬화 실패 — studyId={}", study.getId(), e);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
-        return toResponse(study);
-    }
-
-    /** 신청서와 질문이 어긋나지 않도록 잠근다. 막힌 사유를 구분해 준다 — 캡틴이 무엇 때문인지 알아야 다음 행동이 정해진다. */
-    private void assertUnlocked(Long studyId) {
-        if (studyApplicationRepository.existsByStudyId(studyId)) {
-            throw new BusinessException(ErrorCode.CONFLICT, "이미 들어온 신청서가 있어 신청 폼을 수정할 수 없습니다.");
-        }
-        if (studyRecruitmentRepository.existsByStudyIdAndStartAtLessThanEqual(
-                studyId, Instant.now())) {
-            throw new BusinessException(ErrorCode.CONFLICT, "모집이 시작되어 신청 폼을 수정할 수 없습니다.");
-        }
+        return toResponse(study, null);
     }
 
     /** 형식·길이는 요청 DTO 의 Bean Validation 이 막는다. 여기서는 <b>규칙</b>만 본다 — 공백 정리, 플랫폼 문항, id 중복, 타입별 조합. */
@@ -230,8 +222,11 @@ public class StudyApplicationFormService {
     }
 
     private StudyApplicationFormResponse toResponse(Study study) {
+        return toResponse(study, lockReasonOf(study.getId()));
+    }
+
+    private StudyApplicationFormResponse toResponse(Study study, String lockReason) {
         StoredApplicationForm form = storedFormOf(study.getApplicationForm());
-        String lockReason = lockReasonOf(study.getId());
         return new StudyApplicationFormResponse(
                 study.getId(),
                 form.title() != null ? form.title() : study.getTitle(),
