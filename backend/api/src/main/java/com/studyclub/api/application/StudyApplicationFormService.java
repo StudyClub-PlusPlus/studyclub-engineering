@@ -231,6 +231,7 @@ public class StudyApplicationFormService {
 
     private StudyApplicationFormResponse toResponse(Study study) {
         StoredApplicationForm form = storedFormOf(study.getApplicationForm());
+        String lockReason = lockReasonOf(study.getId());
         return new StudyApplicationFormResponse(
                 study.getId(),
                 form.title() != null ? form.title() : study.getTitle(),
@@ -240,7 +241,20 @@ public class StudyApplicationFormService {
                 study.getCategory().name(),
                 study.getOneLineSummary(),
                 study.getDescription(),
-                form.questions());
+                form.questions(),
+                lockReason != null,
+                lockReason);
+    }
+
+    private String lockReasonOf(Long studyId) {
+        if (studyApplicationRepository.existsByStudyId(studyId)) {
+            return "이미 들어온 신청서가 있어 신청 폼을 수정할 수 없습니다.";
+        }
+        if (studyRecruitmentRepository.existsByStudyIdAndStartAtLessThanEqual(
+                studyId, Instant.now())) {
+            return "모집이 시작되어 신청 폼을 수정할 수 없습니다.";
+        }
+        return null;
     }
 
     private Instant recruitDeadlineOf(Long studyId) {

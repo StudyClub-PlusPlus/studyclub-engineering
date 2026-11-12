@@ -93,6 +93,21 @@ describe('신청 폼', () => {
     expect(payload.questions[0]).not.toHaveProperty('allowOther');
   });
 
+  it('조회 응답이 locked=true면 저장 전부터 편집 컨트롤을 제거하고 사유를 표시한다', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(
+        reply({ ...response, locked: true, lockReason: '모집이 시작되어 신청 폼을 수정할 수 없습니다.' }),
+      );
+    vi.stubGlobal('fetch', fetch);
+    mount();
+    expect(await screen.findByRole('alert')).toHaveTextContent('모집이 시작되어');
+    expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '질문 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '설문지 제목·설명 수정' })).not.toBeInTheDocument();
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+  });
+
   it.each([403, 409])('%s 저장 응답이면 편집 컨트롤을 제거한다', async (status) => {
     const fetch = vi
       .fn()

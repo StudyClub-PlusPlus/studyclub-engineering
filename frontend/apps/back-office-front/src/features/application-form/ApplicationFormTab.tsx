@@ -20,7 +20,8 @@ export function ApplicationFormTab({
   const query = useApplicationForm(study.id);
   const mutation = useSaveApplicationForm(study.id);
   const status = mutation.error instanceof ApiError ? mutation.error.status : undefined;
-  const readOnly = status === 403 || status === 409;
+  const locked = query.data?.locked ?? false;
+  const readOnly = locked || status === 403 || status === 409;
 
   useEffect(() => {
     onSavingChange(mutation.isPending);
@@ -54,8 +55,9 @@ export function ApplicationFormTab({
       </div>
     );
   }
-  const message =
-    status === 403
+  const message = locked
+    ? (query.data?.lockReason ?? '신청 폼을 수정할 수 없습니다.')
+    : status === 403
       ? '이 스터디의 신청 폼을 고칠 권한이 없습니다.'
       : status === 409
         ? mutation.error?.message

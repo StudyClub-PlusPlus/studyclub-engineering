@@ -4,6 +4,8 @@ export const applicationFormResponseSchema = z.object({
   studyId: z.number(),
   title: z.string(),
   description: z.union([z.null(), z.string()]),
+  locked: z.boolean().default(false),
+  lockReason: z.string().nullable().optional(),
   questions: z.array(
     z.object({
       id: z.string(),
