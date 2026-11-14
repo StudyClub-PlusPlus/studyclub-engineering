@@ -31,11 +31,12 @@ import { IS_DEV, syncPreview } from '@core/lib/preview';
 import { Button, Checkbox } from '@studyclub/ui';
 import { Check, Pencil } from 'lucide-react';
 
-import { SPEC } from './spec';
+import { MY_EVENTS_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { MyEventsSummary } from '@/proto/events/MyEventsSummary';
 
 /**
- * 마이페이지 — 내 정보만 다룬다.
+ * 마이페이지 — beta 실제 프로필 카드에 행사 신청 요약을 더한다.
  *
  * 스터디 목록은 두지 않는다. 참여 중·참여 종료는 내 스터디룸, 관심은 찜한 스터디가 맡는다.
  * 신청에는 승인 대기가 없다 (POL-0004) — 신청하면 곧 참여라 따로 기다리는 목록이 필요 없다.
@@ -183,10 +184,28 @@ export default function MyPage() {
       <h1 className='type-headline-lg'>마이페이지</h1>
 
       <ScreenSpecRegistrar spec={SPEC} />
-      {/* 닉네임·시간대는 저장으로 함께 확정한다. 연결과 수신 동의는 별도 동작이다. */}
-      {/* 고칠 값이 넷뿐이라 페이지 폭을 다 쓰지 않는다 — 넓히면 이름과 값·동작 사이가 멀어진다 */}
-      <section data-anno='profile:1' className='card mt-5 max-w-xl'>
-        <div className='px-6 pb-5 pt-6'>
+      <ScreenSpecRegistrar spec={MY_EVENTS_SPEC} />
+      {/* beta 실제 화면과 같은 사진·프로필 카드 구조. 닉네임·시간대는 저장으로 함께 확정한다. */}
+      <section
+        data-anno='profile:1'
+        data-clarity-mask='true'
+        className={`card mt-5 ${editing ? '' : 'overflow-hidden'}`}
+      >
+        <div className='flex items-start gap-4 px-6 pb-5 pt-6'>
+          <div className='shrink-0'>
+            {user.picture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.picture} alt='' className='h-14 w-14 rounded-full object-cover' />
+            ) : (
+              <div
+                aria-hidden='true'
+                className='grid h-14 w-14 place-items-center rounded-full bg-surface-2 type-title-lg text-fg-secondary'
+              >
+                {(name || user.email).trim().slice(0, 1).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <div className='min-w-0 flex-1 pt-2'>
           {editing ? (
             /* 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다 — 카드 높이가 그대로다 */
             <div data-anno='profile:2'>
@@ -240,6 +259,7 @@ export default function MyPage() {
               <p className='mt-0.5 truncate type-body-sm text-fg-muted'>{user.email}</p>
             </div>
           )}
+          </div>
         </div>
 
         <dl className='divide-y divide-border border-t border-border type-body-sm'>
@@ -320,7 +340,7 @@ export default function MyPage() {
       </section>
 
       {/* 찾을 수 있되 눈에 띄지 않게 — 카드 안 한 줄을 통째로 내주면 링크 하나에 무게가 실린다 */}
-      <div className='mt-3 max-w-xl px-1'>
+      <div className='mt-3 px-1'>
         <Link
           data-anno='profile:7'
           href={`/proto/core/${locale}/my/leave`}
@@ -329,6 +349,8 @@ export default function MyPage() {
           회원 탈퇴
         </Link>
       </div>
+
+      <MyEventsSummary locale={locale} />
     </div>
   );
 }

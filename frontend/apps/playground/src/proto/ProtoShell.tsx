@@ -10,6 +10,7 @@ import { getUser } from '@core/lib/auth';
 import { enterPreview } from '@core/lib/preview';
 
 import { AnnotateProvider, AnnotateToggle, AnnotationLayer } from '@/proto/annotate';
+import { EventWorkspaceProvider } from '@/proto/events/EventWorkspace';
 
 const LINKS = [
   // href 는 들어가는 문, match 는 "지금 여기에 있는가" 판정. en 으로 보다가도 사용자 사이트가 켜져 있어야 한다.
@@ -25,7 +26,7 @@ const LINKS = [
  * 상단 바는 **일부러 sticky 가 아니다.** 실제 서비스의 헤더가 sticky 라서, 이 바까지 붙어 있으면
  * 스크롤할 때 화면 상단이 두 겹이 되어 시안이 실제와 달라 보인다. 스크롤하면 비켜난다.
  */
-export function ProtoShell({ children }: { children: React.ReactNode }) {
+export function ProtoShell({ children, eventNoticeBody }: { children: React.ReactNode; eventNoticeBody: string }) {
   const pathname = usePathname() || '';
 
   // 마이페이지·내 스터디는 로그인해야 열린다. mock 세션을 미리 깔아 두면
@@ -74,7 +75,7 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
         </Suspense>
         <DiscordPreviewToolbar />
 
-        {children}
+        <EventWorkspaceProvider noticeBody={eventNoticeBody}>{children}</EventWorkspaceProvider>
 
         <RegistrationFeedback />
 

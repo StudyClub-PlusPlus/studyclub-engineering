@@ -2,11 +2,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 
+
 import { getEvent, getEvents, type Locale } from '@core/lib/content';
-import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@core/lib/event-details';
+import { EVENT_DETAILS } from '@core/lib/event-details';
 import { m, t } from '@core/lib/i18n';
 import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@core/lib/layout';
 import { ArrowLeft, CalendarDays, MapPin, Tag, ArrowUpRight } from 'lucide-react';
+
+import { EventGuestDetail } from '@/proto/events/EventGuestDetail';
 
 export async function generateStaticParams() {
   const events = await getEvents();
@@ -18,6 +21,7 @@ function fullDate(iso: string, locale: Locale) {
   if (isNaN(d.getTime())) return iso;
   const loc = locale === 'ko' ? 'ko-KR' : 'en-US';
   return d.toLocaleDateString(loc, {
+    timeZone: iso.includes('T') ? undefined : 'UTC',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -29,6 +33,7 @@ function fullDate(iso: string, locale: Locale) {
 
 export default async function EventDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
   const { locale, id } = await params;
+  if (id.startsWith('preview-event-')) return <EventGuestDetail id={id} locale={locale} />;
   const event = await getEvent(id);
   if (!event) notFound();
   const detail = EVENT_DETAILS[id];
@@ -120,27 +125,6 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
       )}
         </aside>
       </div>
-
-      {/* 공통 — 스터디클럽 행사는 이런 것들 */}
-      <section className='mt-12 rounded-2xl p-6 sm:p-8' style={{ background: 'var(--color-brand-subtle)' }}>
-        <h2 className='type-title-md'>{t({ ko: '스터디클럽 행사는 이렇게 열려요', en: 'How StudyClub events work' }, locale)}</h2>
-        <ul className='mt-4 grid gap-3 sm:grid-cols-2'>
-          {EVENT_KINDS.map((k) => (
-            <li key={k.title.ko} className='rounded-xl bg-[var(--color-bg)] p-4 type-body-sm'>
-              <span className='font-semibold'>{t(k.title, locale)}</span>
-              <span className='text-[var(--color-fg-muted)]'> {t(k.body, locale)}</span>
-            </li>
-          ))}
-        </ul>
-        <div className='mt-6 grid gap-3 md:grid-cols-3'>
-          {EVENT_VOICES.map((v, i) => (
-            <blockquote key={i} className='rounded-xl bg-[var(--color-bg)] p-4 type-body-sm text-[var(--color-fg)]'>
-              “{t(v.quote, locale)}”
-              <footer className='mt-2 type-label-sm text-[var(--color-fg-muted)]'>{t(v.from, locale)}</footer>
-            </blockquote>
-          ))}
-        </div>
-      </section>
 
     </div>
   );
