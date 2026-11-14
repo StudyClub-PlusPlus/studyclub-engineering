@@ -6,10 +6,10 @@
 <!-- NUMBER LEDGER — 모든 ID의 단일 발급처. 수동 편집 금지(에이전트가 갱신). -->
 | prefix | next |
 |---|---|
-| ST | 37 |
+| ST | 39 |
 | EP | 1 |
 | FN | 1 |
-| IA | 39 |
+| IA | 40 |
 | SRC | 1 |
 | POL | 11 |
 
@@ -68,3 +68,5 @@
 | ST-034 | 크루는 스터디클럽 공지를 확인할 수 있다. | 크루 | [PRD](../stories/crew-view-notices/PRD.md) | [사이트 › 공지](https://playground.studyclub.life/proto/core/ko/notices) | [site-notice](../../specs/site-notice/spec.md) | | 비로그인 방문자도 본다. ST-033 과 같은 데이터 |
 | ST-035 | 크루는 캡틴에게 문의/오류신고를 제출할 수 있다. | 크루 | [PRD](../stories/crew-submit-feedback/PRD.md) | [사이트 › 내 문의](https://playground.studyclub.life/proto/core/ko/my/feedbacks) | | | 로그인 필수. 스펙 없음 — API·테이블부터 |
 | ST-036 | 캡틴은 유저가 제출한 문의/오류신고를 조회할 수 있다. | 캡틴 | [PRD](../stories/captain-view-feedbacks/PRD.md) | [콘솔 › 문의·오류 신고](https://playground.studyclub.life/proto/console/feedbacks) | | | 상태 · 회신 · 캡틴 전용 메모. 회신 알림은 알림 조건 「문의 회신」 |
+| ST-037 | 캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다. | 캡틴 | [PRD](../stories/captain-manage-events/PRD.md) | 행사 목록·운영 시안 | | | 플레이그라운드 검토 단계 |
+| ST-038 | 크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다. | 크루 | [PRD](../stories/crew-apply-event/PRD.md) | 행사 목록·신청 시안 | | | 플레이그라운드 검토 단계 |

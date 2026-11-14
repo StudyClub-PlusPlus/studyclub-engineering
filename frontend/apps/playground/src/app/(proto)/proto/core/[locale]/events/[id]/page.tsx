@@ -2,11 +2,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 
+
 import { getEvent, getEvents, type Locale } from '@core/lib/content';
 import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@core/lib/event-details';
 import { m, t } from '@core/lib/i18n';
 import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@core/lib/layout';
 import { ArrowLeft, CalendarDays, MapPin, Tag, ArrowUpRight } from 'lucide-react';
+
+import { EventGuestDetail } from '@/proto/events/EventGuestDetail';
 
 export async function generateStaticParams() {
   const events = await getEvents();
@@ -29,6 +32,7 @@ function fullDate(iso: string, locale: Locale) {
 
 export default async function EventDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
   const { locale, id } = await params;
+  if (id.startsWith('preview-event-')) return <EventGuestDetail id={id} locale={locale} />;
   const event = await getEvent(id);
   if (!event) notFound();
   const detail = EVENT_DETAILS[id];

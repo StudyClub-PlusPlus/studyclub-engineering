@@ -10,6 +10,7 @@ import { getUser } from '@core/lib/auth';
 import { enterPreview } from '@core/lib/preview';
 
 import { AnnotateProvider, AnnotateToggle, AnnotationLayer } from '@/proto/annotate';
+import { EventWorkspaceProvider } from '@/proto/events/EventWorkspace';
 
 const LINKS = [
   // href 는 들어가는 문, match 는 "지금 여기에 있는가" 판정. en 으로 보다가도 사용자 사이트가 켜져 있어야 한다.
@@ -74,7 +75,7 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
         </Suspense>
         <DiscordPreviewToolbar />
 
-        {children}
+        <EventWorkspaceProvider>{children}</EventWorkspaceProvider>
 
         <RegistrationFeedback />
 
