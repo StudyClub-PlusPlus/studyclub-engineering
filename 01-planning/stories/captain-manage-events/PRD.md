@@ -154,18 +154,6 @@ flowchart LR
 
 <!-- spec:end event-manage -->
 
-### 시안 캡처
-
-![상태별 행사 예시 목록](assets/playground-events-overview.jpg)
-
-![행사 플레이그라운드](assets/playground-admin.jpg)
-
-![공통 HTML 틀에 안내 내용을 합친 미리보기](assets/playground-notice-preview.jpg)
-
-![전체·방식별·개별 메일 이력](assets/playground-mail-history.jpg)
-
-![마스킹한 수신자 목록과 단체 메일 미리보기](assets/playground-bulk-mail-preview.jpg)
-
 ## 3. 시스템 요건
 
 ### 개발 범위
@@ -190,7 +178,5 @@ flowchart LR
 - 실제 서비스의 권한·중복 신청·정원 판정은 서버에서 처리. 운영 기능은 캡틴 권한 확인
 - 플레이그라운드는 예시 회원과 브라우저 저장소 사용. 메일은 미리보기 기록 생성
 - 구현 범위 밖: 결제·환불·자동 리마인드·선발형 초과 모집·통계 대시보드
-
-실제 행사 예시: [메인 디스코드 출처와 시안 설정](examples.md)
 
 참고: [Luma 행사 생성](https://help.luma.com/p/creating-an-event), [Luma 참가자 관리](https://help.luma.com/p/managing-your-guest-list)

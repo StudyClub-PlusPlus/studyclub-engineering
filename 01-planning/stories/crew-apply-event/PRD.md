@@ -116,10 +116,6 @@ flowchart LR
 
 <!-- spec:end event-apply -->
 
-### 시안 캡처
-
-![행사 플레이그라운드](assets/playground-guest.jpg)
-
 ## 3. 시스템 요건
 
 ### 개발 범위
