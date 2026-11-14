@@ -1,3 +1,5 @@
+import { EVENT_NOTICE_TEMPLATE, EVENT_STATUS_TEMPLATES } from '@studyclub/mock';
+
 /**
  * 알림 템플릿 (프로토 mock).
  *
@@ -12,13 +14,26 @@
  * 알림은 이름이 아니라 이 값으로 나간다. 조건이 없는 템플릿은 보낼 계기가 없어 영영 발송되지 않는다.
  * 운영자는 조건을 고르고, 저장되는 코드는 그 선택이 정한다 — 코드를 직접 적지 않는다.
  */
-export type NotificationTrigger = 'USER_REGISTERED' | 'USER_WITHDRAWN' | 'FEEDBACK_REPLIED';
+export type NotificationTrigger =
+  | 'USER_REGISTERED'
+  | 'USER_WITHDRAWN'
+  | 'FEEDBACK_REPLIED'
+  | 'EVENT_ANNOUNCEMENT'
+  | 'EVENT_REGISTRATION_PENDING'
+  | 'EVENT_REGISTRATION_CONFIRMED'
+  | 'EVENT_REGISTRATION_DECLINED'
+  | 'EVENT_REGISTRATION_CANCELLED';
 
 export const TRIGGERS: { value: NotificationTrigger; label: string }[] = [
   { value: 'USER_REGISTERED', label: '회원가입' },
   { value: 'USER_WITHDRAWN', label: '회원 탈퇴' },
   // 캡틴이 문의·오류 신고에 회신하면 제출자에게 — 회신 내용은 담지 않고 내 문의 링크만
   { value: 'FEEDBACK_REPLIED', label: '문의 회신' },
+  { value: 'EVENT_ANNOUNCEMENT', label: '행사 안내' },
+  { value: 'EVENT_REGISTRATION_CONFIRMED', label: '행사 참가 확정' },
+  { value: 'EVENT_REGISTRATION_PENDING', label: '행사 확인 대기' },
+  { value: 'EVENT_REGISTRATION_DECLINED', label: '행사 참가 불가' },
+  { value: 'EVENT_REGISTRATION_CANCELLED', label: '행사 신청 취소' },
 ];
 
 export const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(TRIGGERS.map((t) => [t.value, t.label]));
@@ -41,7 +56,9 @@ export type NotificationTemplate = {
 export const TEMPLATE_CHANNEL_LABEL: Record<string, string> = { EMAIL: '메일' };
 
 /** 서버 페이지에서 회원가입·문의 회신 메일 시안 파일을 읽어 전달한다. */
-export const createTemplates = (welcomeBody: string, feedbackBody: string): NotificationTemplate[] => [
+export const createTemplates = (welcomeBody: string, feedbackBody: string, eventNoticeBody: string): NotificationTemplate[] => [
+  { ...structuredClone(EVENT_NOTICE_TEMPLATE), body: eventNoticeBody },
+  ...structuredClone(EVENT_STATUS_TEMPLATES),
   {
     id: 1,
     trigger: 'USER_REGISTERED',

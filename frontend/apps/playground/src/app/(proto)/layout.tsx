@@ -1,5 +1,8 @@
 import './proto.css';
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { ProtoShell } from '@/proto/ProtoShell';
 
 /**
@@ -7,5 +10,6 @@ import { ProtoShell } from '@/proto/ProtoShell';
  * `(site)` 의 max-w-6xl 문서형 크롬을 쓰지 않으려고 라우트 그룹을 나눴다.
  */
 export default function ProtoRootLayout({ children }: { children: React.ReactNode }) {
-  return <ProtoShell>{children}</ProtoShell>;
+  const eventNoticeBody = readFileSync(join(process.cwd(), 'src/proto/mail/templates/event-announcement-email.html'), 'utf8');
+  return <ProtoShell eventNoticeBody={eventNoticeBody}>{children}</ProtoShell>;
 }

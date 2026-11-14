@@ -4,12 +4,14 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 import { TableCard } from '@console/components/ui';
-import type { EventChannel, EventMailPreview, EventRegistration, PreviewEvent } from '@studyclub/types';
-import { Badge, Button, Input, Modal, Select, Tabs, Textarea } from '@studyclub/ui';
-import { ArrowLeft, ArrowUpRight, Mail } from 'lucide-react';
+import { maskEmail } from '@console/lib/mask';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
+import type { EventMailPreview, EventRegistration, PreviewEvent } from '@studyclub/types';
+import { Badge, Button, IconButton, Modal, Tabs } from '@studyclub/ui';
+import { ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react';
 
 import { EventEditor } from './EventEditor';
-import { EventPreviewBar } from './EventPreviewBar';
+import { EventMailComposer } from './EventMailComposer';
 import { useEventWorkspace } from './EventWorkspace';
 import {
   CHANNEL_LABEL,
@@ -19,26 +21,47 @@ import {
   channels,
   eventStatus,
   formatDate,
+  mailAudienceLabel,
   occupiesSeat,
   seatInfo,
   type EventAction,
 } from './model';
 import { SPECS } from '@/app/(proto)/proto/console/events/spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { toPreviewDocument } from '@/proto/mail/render';
+
+function EventEmail({ email, name }: { email: string; name: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <span className='inline-flex items-center gap-1 whitespace-nowrap type-body-sm text-fg-muted'>
+      <span>{shown ? email : maskEmail(email)}</span>
+      <IconButton
+        size='sm'
+        variant='tertiary'
+        icon={shown ? <EyeOff size={15} aria-hidden='true' /> : <Eye size={15} aria-hidden='true' />}
+        aria-label={`${name} 이메일 ${shown ? '가리기' : '보기'}`}
+        aria-pressed={shown}
+        onClick={() => setShown((value) => !value)}
+      />
+    </span>
+  );
+}
 
 export function EventAdminDetail({ id }: { id: string }) {
   const { state, now, dispatch } = useEventWorkspace();
+  const displayTimeZone = useDisplayTimeZone();
   const [tab, setTab] = useState('attendees');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const [confirm, setConfirm] = useState<{ title: string; body: string; action: EventAction } | null>(null);
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    body: string;
+    action: EventAction;
+    kind?: 'CANCEL_EVENT';
+  } | null>(null);
   const [answer, setAnswer] = useState<EventRegistration | null>(null);
   const [mailPreview, setMailPreview] = useState<EventMailPreview | null>(null);
-  const [compose, setCompose] = useState(false);
-  const [channel, setChannel] = useState<EventChannel | 'ALL'>('ALL');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [mailError, setMailError] = useState('');
+  const [compose, setCompose] = useState<'NOTICE' | 'CANCELLATION' | null>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
   const [focusRequest, setFocusRequest] = useState(0);
   useEffect(() => {
@@ -59,10 +82,10 @@ export function EventAdminDetail({ id }: { id: string }) {
     );
   const registrations = state.registrations.filter((r) => r.eventId === id);
   const pending = registrations.filter((r) => r.status === 'PENDING');
-  const mails = state.mails.filter((mail) => mail.eventId === id);
-  const recipients = registrations.filter(
-    (r) => r.status === 'CONFIRMED' && (channel === 'ALL' || r.channel === channel),
-  );
+  const status = eventStatus(state, event, now);
+  const finished = status === '종료';
+  const cancelled = event.status === 'CANCELLED';
+  const mails = state.mails.filter((mail) => mail.eventId === id && mail.kind === 'OPERATOR');
   const run = (action: EventAction, message: string) => {
     const failure = dispatch(action);
     setError(failure ?? '');
@@ -82,7 +105,6 @@ export function EventAdminDetail({ id }: { id: string }) {
       {SPECS.map((spec) => (
         <ScreenSpecRegistrar key={spec.scope} spec={spec} />
       ))}
-      <EventPreviewBar eventId={id} />
       <Link
         href='/proto/console/events'
         className='mb-4 inline-flex items-center gap-1 type-label-sm text-fg-muted hover:text-brand'
@@ -101,41 +123,35 @@ export function EventAdminDetail({ id }: { id: string }) {
         </div>
         <h1 className='type-headline-md'>{event.title}</h1>
         <p className='type-body-sm text-fg-muted'>
-          {formatDate(event.startsAt, event.timeZone)} · 신청 마감 {formatDate(event.deadlineAt, event.timeZone)}
+          {formatDate(event.startsAt, displayTimeZone)} · 신청 마감 {formatDate(event.deadlineAt, displayTimeZone)}
         </p>
         <div className='flex flex-wrap items-center gap-2'>
-          {(event.status === 'DRAFT' || event.status === 'CLOSED') && (
+          {!finished && (event.status === 'DRAFT' || event.status === 'CLOSED') && (
             <Button size='sm' onClick={() => changeStatus('PUBLISHED')}>
               {event.status === 'DRAFT' ? '행사 공개' : '모집 다시 열기'}
             </Button>
           )}
-          {event.status === 'PUBLISHED' && (
+          {!finished && event.status === 'PUBLISHED' && (
             <Button variant='secondary' size='sm' onClick={() => changeStatus('CLOSED')}>
               모집 마감
             </Button>
           )}
-          {event.status === 'PUBLISHED' && !registrations.length && (
+          {!finished && event.status === 'PUBLISHED' && !registrations.length && (
             <Button variant='tertiary' size='sm' onClick={() => changeStatus('DRAFT')}>
               공개 취소
             </Button>
           )}
-          <Link
-            href={`/proto/core/ko/events/${id}`}
-            className='inline-flex items-center gap-1 px-2 type-label-sm text-brand hover:underline'
-          >
-            참가자 화면 보기
-            <ArrowUpRight size={15} />
-          </Link>
-          {event.status !== 'CANCELLED' && (
+          {!finished && !cancelled && (
             <Button
-              className='sm:ml-auto'
+              className='sm:ml-auto [--button-active-bg:var(--color-danger-bg)] [--button-fg:var(--color-danger-fg)] [--button-hover-bg:var(--color-danger-bg)]'
               variant='tertiary'
               size='sm'
               onClick={() =>
                 setConfirm({
                   title: '행사를 취소할까요?',
-                  body: '확인 대기와 참가 확정 신청이 함께 취소됩니다. 참가자에게 안내할 메일 예시도 생성됩니다.',
+                  body: '행사를 취소하면 확인 대기 및 참가 확정 신청도 모두 취소됩니다. 취소 후 신청자에게 보낼 안내 메일 작성창이 열립니다. 취소 사유를 작성해 주세요.',
                   action: { type: 'STATUS', eventId: id, status: 'CANCELLED' },
+                  kind: 'CANCEL_EVENT',
                 })
               }
             >
@@ -180,27 +196,28 @@ export function EventAdminDetail({ id }: { id: string }) {
         items={[
           { key: 'attendees', label: '참가자', badge: pending.length ? `확인 대기 ${pending.length}` : undefined },
           { key: 'info', label: '행사 정보·신청폼' },
-          { key: 'mails', label: '메일 미리보기', badge: mails.length || undefined },
+          { key: 'mails', label: '메일 이력', badge: mails.length || undefined },
         ]}
       />
       <div className='mt-6'>
-        {tab === 'info' &&
-          (event.status === 'CANCELLED' ? (
-            <p className='type-body-sm text-fg-muted'>취소된 행사의 정보는 수정할 수 없습니다.</p>
-          ) : (
-            <EventEditor
-              key={`${event.id}-${event.status}`}
-              event={event}
-              hasRegistrations={registrations.length > 0}
-              onCancel={() => setTab('attendees')}
-              onSave={(next) =>
-                run(
-                  { type: 'SAVE', event: next },
-                  '행사 정보를 저장했습니다. 변경된 일정이나 장소는 안내 메일로 알려 주세요.',
-                )
-              }
-            />
-          ))}
+        {tab === 'info' && (
+          <EventEditor
+            key={`${event.id}-${event.status}`}
+            event={event}
+            confirmationLocked={Date.parse(event.startsAt) <= now}
+            readOnly={event.status === 'CANCELLED'}
+            onCancel={() => setTab('attendees')}
+            onSave={(next) => {
+              const newlyConfirmed = event.confirmation !== 'AUTO' && next.confirmation === 'AUTO' ? pending.length : 0;
+              return run(
+                { type: 'SAVE', event: next },
+                newlyConfirmed
+                  ? `행사 정보를 저장하고 확인 대기 ${newlyConfirmed}명을 참가 확정했습니다.`
+                  : '행사 정보를 저장했습니다. 변경된 일정이나 장소는 안내 메일로 알려 주세요.',
+              );
+            }}
+          />
+        )}
         {tab === 'attendees' && (
           <section data-anno='event-manage:6'>
             <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
@@ -208,35 +225,38 @@ export function EventAdminDetail({ id }: { id: string }) {
               <Button
                 size='sm'
                 variant='secondary'
-                disabled={!registrations.some((r) => r.status === 'CONFIRMED')}
+                className={cancelled ? '[--button-fg:var(--color-danger-fg)] [--button-hover-bg:var(--color-danger-bg)] [--button-active-bg:var(--color-danger-bg)]' : undefined}
                 leadingIcon={<Mail size={15} />}
                 onClick={() => {
-                  setCompose(true);
-                  setMailError('');
-                  setSubject(`${event.title} 참여 안내`);
-                  setBody('');
-                  setChannel('ALL');
+                  setCompose(cancelled ? 'CANCELLATION' : 'NOTICE');
                 }}
               >
-                안내 메일 보내기
+                {cancelled ? '취소 안내 메일 보내기' : '안내 메일 보내기'}
               </Button>
             </div>
             <TableCard>
               <thead>
                 <tr>
                   <th>신청자</th>
+                  <th>이메일</th>
                   <th>참여 방식</th>
                   <th>상태</th>
-                  <th>신청 내용</th>
-                  <th>처리</th>
+                  <th>
+                    <span className='inline-block border-l border-transparent pl-3'>신청 내용</span>
+                  </th>
+                  <th>
+                    <span className='inline-block border-l border-transparent pl-3'>처리</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {registrations.map((r) => (
                   <tr key={r.id}>
-                    <td className='min-w-40'>
+                    <td className='whitespace-nowrap'>
                       <span className='font-semibold'>{r.name}</span>
-                      <p className='mt-1 type-label-sm text-fg-muted'>{r.email}</p>
+                    </td>
+                    <td>
+                      <EventEmail key={r.email} email={r.email} name={r.name} />
                     </td>
                     <td className='whitespace-nowrap'>{CHANNEL_LABEL[r.channel]}</td>
                     <td>
@@ -260,60 +280,61 @@ export function EventAdminDetail({ id }: { id: string }) {
                       </Button>
                     </td>
                     <td>
-                      {r.status === 'PENDING' && event.status !== 'CANCELLED' && Date.parse(event.startsAt) > now ? (
-                        <div className='flex gap-1'>
-                          <Button
-                            size='sm'
-                            onClick={() =>
-                              run(
-                                { type: 'DECIDE', registrationId: r.id, status: 'CONFIRMED' },
-                                `${r.name} 님의 참가가 확정되었습니다.`,
-                              )
-                            }
-                          >
-                            참가 확정
-                          </Button>
+                      <div className='flex min-h-8 w-72 items-center gap-1 whitespace-nowrap'>
+                        {r.status === 'PENDING' && event.status !== 'CANCELLED' && Date.parse(event.startsAt) > now ? (
+                          <>
+                            <Button
+                              size='sm'
+                              onClick={() =>
+                                run(
+                                  { type: 'DECIDE', registrationId: r.id, status: 'CONFIRMED' },
+                                  `${r.name} 님의 참가가 확정되었습니다.`,
+                                )
+                              }
+                            >
+                              참가 확정
+                            </Button>
+                            <Button
+                              size='sm'
+                              variant='tertiary'
+                              onClick={() =>
+                                setConfirm({
+                                  title: '참가 불가로 처리할까요?',
+                                  body: `${r.name} 님의 자리가 반환되고 참가 불가 안내 메일 예시가 생성됩니다.`,
+                                  action: { type: 'DECIDE', registrationId: r.id, status: 'DECLINED' },
+                                })
+                              }
+                            >
+                              참가 불가
+                            </Button>
+                          </>
+                        ) : !(occupiesSeat(r) && event.status !== 'CANCELLED' && Date.parse(event.startsAt) > now) ? (
+                          <span className='inline-flex min-h-8 items-center border border-transparent px-3 type-label-sm text-fg-muted'>
+                            {r.status === 'PENDING' ? '행사 시작으로 처리 불가' : '처리 완료'}
+                          </span>
+                        ) : null}
+                        {occupiesSeat(r) && event.status !== 'CANCELLED' && Date.parse(event.startsAt) > now && (
                           <Button
                             size='sm'
                             variant='tertiary'
                             onClick={() =>
                               setConfirm({
-                                title: '참가 불가로 처리할까요?',
-                                body: `${r.name} 님의 자리가 반환되고 참가 불가 안내 메일 예시가 생성됩니다.`,
-                                action: { type: 'DECIDE', registrationId: r.id, status: 'DECLINED' },
+                                title: '신청을 취소할까요?',
+                                body: `${r.name} 님의 신청을 취소하고 자리를 반환합니다. 취소 안내 메일 예시가 생성됩니다.`,
+                                action: { type: 'ADMIN_CANCEL', registrationId: r.id },
                               })
                             }
                           >
-                            참가 불가
+                            신청 취소
                           </Button>
-                        </div>
-                      ) : (
-                        <span className='type-label-sm text-fg-muted'>
-                          {r.status === 'PENDING' ? '행사 시작으로 처리 불가' : '처리 완료'}
-                        </span>
-                      )}
-                      {occupiesSeat(r) && event.status !== 'CANCELLED' && Date.parse(event.startsAt) > now && (
-                        <Button
-                          size='sm'
-                          variant='tertiary'
-                          className='mt-1'
-                          onClick={() =>
-                            setConfirm({
-                              title: '신청을 취소할까요?',
-                              body: `${r.name} 님의 신청을 취소하고 자리를 반환합니다. 취소 안내 메일 예시가 생성됩니다.`,
-                              action: { type: 'ADMIN_CANCEL', registrationId: r.id },
-                            })
-                          }
-                        >
-                          신청 취소
-                        </Button>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
                 {!registrations.length && (
                   <tr>
-                    <td colSpan={5} className='py-12 text-center text-fg-muted'>
+                    <td colSpan={6} className='py-12 text-center text-fg-muted'>
                       아직 신청자가 없습니다. 행사 링크를 공유해 보세요.
                     </td>
                   </tr>
@@ -324,13 +345,9 @@ export function EventAdminDetail({ id }: { id: string }) {
         )}
         {tab === 'mails' && (
           <section data-anno='event-manage:7' className='space-y-3'>
-            <p className='type-body-sm text-fg-muted'>
-              접수·확정·취소 및 안내 메일의 내용을 확인해 보세요. 실제 메일은 발송되지 않습니다.
-            </p>
+            <p className='type-body-sm text-fg-muted'>운영자가 안내 메일 보내기로 작성한 메일만 표시됩니다.</p>
             {mails.length === 0 ? (
-              <div className='card p-8 text-center type-body-sm text-fg-muted'>
-                아직 생성된 메일이 없습니다. 신청하거나 참가자를 확정하면 확인할 수 있어요.
-              </div>
+              <div className='card p-8 text-center type-body-sm text-fg-muted'>아직 보낸 안내 메일이 없습니다.</div>
             ) : (
               mails.map((mail) => (
                 <button
@@ -340,11 +357,14 @@ export function EventAdminDetail({ id }: { id: string }) {
                 >
                   <span className='min-w-0'>
                     <span className='block type-label-lg'>{mail.subject}</span>
-                    <span className='mt-1 block type-label-sm text-fg-muted'>
-                      {formatDate(mail.createdAt, event.timeZone)}
+                    <span className='mt-1 flex flex-wrap gap-x-3 gap-y-1 type-label-sm text-fg-muted'>
+                      <span>
+                        {mailAudienceLabel(mail)} · {mail.recipients.length}명
+                      </span>
+                      <span>{formatDate(mail.createdAt, displayTimeZone)}</span>
                     </span>
                   </span>
-                  <span className='shrink-0 type-body-sm text-fg-muted'>{mail.recipients.length}명</span>
+                  <span className='shrink-0 type-label-sm text-brand'>내용 보기</span>
                 </button>
               ))
             )}
@@ -363,11 +383,21 @@ export function EventAdminDetail({ id }: { id: string }) {
             <Button
               variant='destructive'
               onClick={() => {
-                if (confirm) run(confirm.action, '처리했습니다. 메일 미리보기에서 안내 내용을 확인할 수 있습니다.');
+                if (confirm) {
+                  const failure = run(
+                    confirm.action,
+                    confirm.kind === 'CANCEL_EVENT'
+                      ? '행사가 취소되었습니다. 신청자에게 보낼 안내 메일을 작성해 주세요.'
+                      : '처리했습니다.',
+                  );
+                  if (!failure && confirm.kind === 'CANCEL_EVENT') {
+                    setCompose('CANCELLATION');
+                  }
+                }
                 setConfirm(null);
               }}
             >
-              처리하기
+              {confirm?.kind === 'CANCEL_EVENT' ? '행사 취소' : '처리하기'}
             </Button>
           </>
         }
@@ -389,72 +419,50 @@ export function EventAdminDetail({ id }: { id: string }) {
         </dl>
         {answer?.questions.length === 0 && <p className='type-body-sm text-fg-muted'>추가 질문이 없는 신청서입니다.</p>}
       </Modal>
-      <Modal
-        open={compose}
-        onClose={() => setCompose(false)}
-        title='참가자 안내 메일'
-        footer={
-          <>
-            <Button variant='secondary' onClick={() => setCompose(false)}>
-              취소
-            </Button>
-            <Button
-              disabled={recipients.length === 0}
-              onClick={() => {
-                const failure = dispatch({ type: 'MAIL', eventId: id, channel, subject, body });
-                setMailError(failure ?? '');
-                if (!failure) {
-                  setCompose(false);
-                  setTab('mails');
-                  setNotice('안내 메일 예시를 생성했습니다. 실제 메일은 발송되지 않습니다.');
-                  setFocusRequest((value) => value + 1);
-                }
-              }}
-            >
-              안내 메일 보내기
-            </Button>
-          </>
-        }
-      >
-        <div className='space-y-4'>
-          <Select
-            label='받는 사람'
-            value={channel}
-            onChange={(e) => setChannel(e.target.value as EventChannel | 'ALL')}
-          >
-            <option value='ALL'>참가 확정자 전체</option>
-            {channels(event).map((mode) => (
-              <option key={mode} value={mode}>
-                {CHANNEL_LABEL[mode]} 참가 확정자
-              </option>
-            ))}
-          </Select>
-          <p className='type-body-sm text-fg-muted'>
-            대상 {recipients.length}명 · 확인 대기·참가 불가·취소 신청자는 제외됩니다.
-          </p>
-          <Input label='메일 제목' value={subject} maxLength={200} onChange={(e) => setSubject(e.target.value)} />
-          <Textarea
-            label='안내 내용'
-            rows={6}
-            maxLength={5000}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder='행사 참여 방법이나 준비물을 알려 주세요.'
-          />
-          {mailError && (
-            <p role='alert' className='type-body-sm text-danger-fg'>
-              {mailError}
-            </p>
-          )}
-        </div>
-      </Modal>
-      <Modal open={Boolean(mailPreview)} onClose={() => setMailPreview(null)} title='메일 미리보기'>
+      {compose && (
+        <EventMailComposer
+          event={event}
+          mode={compose}
+          onClose={() => setCompose(null)}
+          onSent={() => {
+            const sentCancellationMail = compose === 'CANCELLATION';
+            setCompose(null);
+            setTab('mails');
+            setNotice(
+              sentCancellationMail
+                ? '행사 취소 안내 메일 이력을 생성했습니다. 실제 메일은 발송되지 않습니다.'
+                : '안내 메일 이력을 생성했습니다. 실제 메일은 발송되지 않습니다.',
+            );
+            setFocusRequest((value) => value + 1);
+          }}
+        />
+      )}
+      <Modal open={Boolean(mailPreview)} onClose={() => setMailPreview(null)} title='메일 미리보기' size='lg'>
         <div className='space-y-4'>
           <p className='type-label-lg'>{mailPreview?.subject}</p>
-          <p className='break-words type-label-sm text-fg-muted'>받는 사람: {mailPreview?.recipients.join(', ')}</p>
-          <p className='whitespace-pre-wrap break-words border-t border-border pt-4 type-body-md'>
-            {mailPreview?.body}
-          </p>
+          {mailPreview && (
+            <div className='space-y-2 type-body-sm'>
+              <p>{mailAudienceLabel(mailPreview)}</p>
+              <details className='rounded-card border border-border p-3'>
+                <summary tabIndex={0} className='cursor-pointer type-label-sm text-fg-muted'>
+                  받는 사람 {mailPreview.recipients.length}명 보기
+                </summary>
+                <ul className='mt-3 space-y-1 break-all text-fg-muted'>
+                  {mailPreview.recipients.map((email, index) => (
+                    <li key={`${email}-${index}`}>{maskEmail(email)}</li>
+                  ))}
+                </ul>
+              </details>
+            </div>
+          )}
+          {mailPreview && (
+            <iframe
+              title='발송 메일 본문'
+              sandbox=''
+              srcDoc={toPreviewDocument(mailPreview.body, mailPreview.format ?? 'TEXT')}
+              className='h-96 w-full rounded-card border border-border bg-surface-1 sm:h-[32rem]'
+            />
+          )}
         </div>
       </Modal>
     </>

@@ -49,9 +49,17 @@ function TypeChip({ active, onClick, children }: { active: boolean; onClick: () 
   );
 }
 
-export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; locale: Locale }) {
+export function EventBrowser({
+  events,
+  locale,
+  archiveMode = false,
+}: {
+  events: StudyclubEvent[];
+  locale: Locale;
+  archiveMode?: boolean;
+}) {
   const [query, setQuery] = useState('');
-  const [when, setWhen] = useState<WhenTab>('all');
+  const [when, setWhen] = useState<WhenTab>(archiveMode ? 'past' : 'all');
   const [type, setType] = useState<TypeFilter>('all');
 
   /** 시점 탭을 제외한 조건만 적용한 집합 — 탭별 건수의 기준. */
@@ -88,8 +96,8 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
 
   return (
     <div>
-      <div className='mb-3 flex items-center justify-between gap-3'>
-        <div role='tablist' className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'>
+      <div className={`mb-3 flex items-center gap-3 ${archiveMode ? 'justify-end' : 'justify-between'}`}>
+        {!archiveMode && <div role='tablist' className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'>
           {WHEN_ORDER.map((w) => {
             const on = when === w;
             return (
@@ -108,7 +116,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
               </button>
             );
           })}
-        </div>
+        </div>}
 
         <div className='relative w-52 shrink-0'>
           <Search

@@ -10,7 +10,7 @@ const escapeHtml = (s: string) =>
     .replaceAll("'", '&#39;');
 
 /** 알림 템플릿 팝업의 iframe 문서. 치환 변수는 원문 그대로 두고, 일반 텍스트의 줄바꿈을 유지한다. */
-export function toPreviewDocument(body: string): string {
-  if (isHtml(body)) return body;
+export function toPreviewDocument(body: string, format?: 'HTML' | 'TEXT'): string {
+  if (format === 'HTML' || (format === undefined && isHtml(body))) return body;
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"></head><body style="margin:24px;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(body)}</body></html>`;
 }

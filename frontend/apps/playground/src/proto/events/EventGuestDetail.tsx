@@ -3,22 +3,24 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+import { getUser } from '@core/lib/auth';
 import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@core/lib/layout';
+import { getDisplayName } from '@core/lib/me';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { EventChannel, EventRegistration, Locale } from '@studyclub/types';
 import { Badge, Button, Checkbox, Input, Modal, Select, Textarea } from '@studyclub/ui';
 import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, MapPin, Video } from 'lucide-react';
 
-import { EventPreviewBar } from './EventPreviewBar';
 import { useEventWorkspace } from './EventWorkspace';
 import {
   CHANNEL_LABEL,
-  FORMAT_LABEL,
   REGISTRATION_LABEL,
   SELF,
   ZONES,
   channels,
   eventStatus,
   formatDate,
+  normalizeEventAnswers,
   occupiesSeat,
   safeWebUrl,
   seatInfo,
@@ -28,6 +30,7 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
 
 export function EventGuestDetail({ id, locale }: { id: string; locale: Locale }) {
   const { state, now, dispatch } = useEventWorkspace();
+  const displayTimeZone = useDisplayTimeZone();
   const [open, setOpen] = useState(false);
   const [cancel, setCancel] = useState(false);
   const [viewAnswers, setViewAnswers] = useState(false);
@@ -35,13 +38,31 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
   const [answers, setAnswers] = useState<EventRegistration['answers']>({});
   const [error, setError] = useState('');
   const [zone, setZone] = useState('');
+  const [applicant, setApplicant] = useState(SELF);
   const receiptRef = useRef<HTMLHeadingElement>(null);
   const [focusRequest, setFocusRequest] = useState(0);
+  const currentQuestions = state?.events.find((item) => item.id === id)?.questions;
+  useEffect(() => {
+    const user = getUser();
+    if (!user) return;
+    setApplicant({
+      ...SELF,
+      name: getDisplayName() ?? user.nickname ?? SELF.name,
+      email: user.email || '',
+    });
+  }, []);
   useEffect(() => {
     if (!focusRequest) return;
     const timer = setTimeout(() => receiptRef.current?.focus(), 0);
     return () => clearTimeout(timer);
   }, [focusRequest]);
+  useEffect(() => {
+    if (!currentQuestions) return;
+    setAnswers((current) => {
+      const next = normalizeEventAnswers(currentQuestions, current);
+      return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+    });
+  }, [currentQuestions]);
   if (!state)
     return (
       <div className={`${PAGE} py-12`} role='status'>
@@ -59,7 +80,7 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
       </div>
     );
   const registration = state.registrations.find((r) => r.eventId === id && r.memberId === SELF.memberId);
-  const currentZone = zone || event.timeZone;
+  const currentZone = zone || displayTimeZone;
   const status = eventStatus(state, event, now);
   const canApply = status === '모집 중' && (!registration || registration.status === 'CANCELLED');
   function startApplication() {
@@ -71,7 +92,9 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
   const answerChange = (questionId: string, value: string | string[]) =>
     setAnswers((current) => ({ ...current, [questionId]: value }));
   const submit = () => {
-    const failure = dispatch({ type: 'APPLY', eventId: id, channel, answers });
+    const user = getUser();
+    const currentApplicant = user ? { ...applicant, name: getDisplayName() ?? user.nickname ?? SELF.name, email: user.email || '' } : applicant;
+    const failure = dispatch({ type: 'APPLY', eventId: id, channel, answers, applicant: { ...currentApplicant, timeZone: displayTimeZone } });
     setError(failure ?? '');
     if (!failure) {
       setOpen(false);
@@ -83,7 +106,6 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
       {SPECS.map((spec) => (
         <ScreenSpecRegistrar key={spec.scope} spec={spec} />
       ))}
-      <EventPreviewBar eventId={id} />
       <Link
         href={`/proto/core/${locale}/events`}
         className='inline-flex items-center gap-1 type-label-lg text-fg-muted hover:text-brand'
@@ -103,7 +125,6 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
               <Badge tone={status === '모집 중' ? 'recruiting' : 'neutral'} dot>
                 {status}
               </Badge>
-              <Badge>{FORMAT_LABEL[event.format]}</Badge>
             </div>
             <h1 className='type-headline-lg'>{event.title}</h1>
             <p className='type-body-lg text-fg-muted'>{event.summary}</p>
@@ -123,9 +144,9 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
                 value={currentZone}
                 onChange={(e) => setZone(e.target.value)}
               >
-                {ZONES.map((z) => (
-                  <option key={z.value} value={z.value}>
-                    {z.label}
+                {ZONES.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
                   </option>
                 ))}
               </Select>
@@ -137,7 +158,11 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
                   <dt className='type-label-lg'>행사 일정</dt>
                   <dd className='mt-1 text-fg-secondary'>
                     {formatDate(event.startsAt, currentZone)}
-                    <br />~ {formatDate(event.endsAt, currentZone)}
+                    {event.endsAt && (
+                      <>
+                        <br />~ {formatDate(event.endsAt, currentZone)}
+                      </>
+                    )}
                   </dd>
                 </div>
               </div>
@@ -189,11 +214,9 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
               <p className='type-label-lg'>
                 {event.confirmation === 'AUTO' ? '신청하면 바로 참가가 확정돼요' : '운영진 확인 후 참가가 확정돼요'}
               </p>
-              <p className='mt-2 type-body-sm text-fg-muted'>
-                {event.confirmation === 'AUTO'
-                  ? '신청을 마치면 참여 안내를 확인할 수 있어요.'
-                  : '신청 내용을 확인한 뒤 이메일로 알려드려요. 모집 상세의 추가 안내도 확인해 주세요.'}
-              </p>
+              {event.confirmation === 'REVIEW' && (
+                <p className='mt-2 type-body-sm text-fg-muted'>신청 내용을 확인한 뒤 이메일로 알려드려요.</p>
+              )}
             </div>
             <Button className='w-full' size='lg' disabled={!canApply} onClick={startApplication}>
               {canApply
@@ -228,19 +251,19 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
                 {REGISTRATION_LABEL[registration.status]}
               </Badge>
               <p className='mt-3 type-body-sm'>
-                {CHANNEL_LABEL[registration.channel]} 참여 · {SELF.name}
+                {CHANNEL_LABEL[registration.channel]} 참여 · {registration.name}
               </p>
-              <p className='mt-2 type-body-sm text-fg-muted'>
-                {registration.status === 'PENDING'
-                  ? '신청이 접수되었어요. 운영진 확인 후 참가 확정 메일을 보내드려요.'
-                  : registration.status === 'CONFIRMED'
-                    ? '참가가 확정되었어요. 행사에서 만나요!'
+              {registration.status !== 'CONFIRMED' && (
+                <p className='mt-2 type-body-sm text-fg-muted'>
+                  {registration.status === 'PENDING'
+                    ? '신청이 접수되었어요. 운영진이 내용을 확인하고, 참가 가능 여부를 이메일로 안내드립니다.'
                     : registration.status === 'DECLINED'
                       ? '이번 행사에 참가하기 어려워요. 자세한 내용은 운영진에게 문의해 주세요.'
                       : event.status === 'CANCELLED'
                         ? '행사가 취소되어 신청도 함께 취소되었어요.'
                         : '신청이 취소되었어요.'}
-              </p>
+                </p>
+              )}
               {registration.status === 'CONFIRMED' &&
                 (registration.channel === 'ONLINE' ? (
                   event.onlineUrl && safeWebUrl(event.onlineUrl) ? (
@@ -308,10 +331,6 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
           }}
         >
           <p className='type-label-lg'>{event.title}</p>
-          <div className='grid gap-3 sm:grid-cols-2'>
-            <Input label='이름' value={SELF.name} readOnly />
-            <Input label='이메일' value={SELF.email} readOnly />
-          </div>
           <fieldset className='space-y-2'>
             <legend className='mb-2 type-label-lg'>참여 방식</legend>
             {channels(event).map((mode) => {
@@ -406,9 +425,8 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
           })}
           <p className='rounded-control bg-surface-2 p-3 type-body-sm text-fg-secondary'>
             {event.confirmation === 'AUTO'
-              ? '신청하면 바로 참가가 확정됩니다.'
-              : '신청 후 운영진 확인을 거쳐 참가가 확정됩니다.'}{' '}
-            신청 마감 전까지 내 신청 내역에서 취소할 수 있어요.
+              ? '신청하면 바로 참가가 확정됩니다. 신청 마감 전까지 내 신청 내역에서 취소할 수 있어요.'
+              : '신청 후 운영진이 내용을 확인하고, 참가 가능 여부를 이메일로 안내드립니다.'}
           </p>
           {error && (
             <p role='alert' className='type-body-sm text-danger-fg'>
