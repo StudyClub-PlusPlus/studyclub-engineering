@@ -89,8 +89,13 @@ public class Study extends BaseEntity {
     @Column(name = "PUBLISH_AT")
     private Instant publishAt;
 
+    /** 등록한 사람 — 기록만. 권한 판정에 쓰지 않는다 (담당 캡틴은 {@link #ownerCaptainId}). */
     @Column(name = "CREATED_BY")
     private Long createdBy;
+
+    /** 담당 캡틴 — 스터디당 한 명. NULL 이면 담당 캡틴의 일을 캡틴 누구나 한다 (POL-0001). */
+    @Column(name = "OWNER_CAPTAIN_ID")
+    private Long ownerCaptainId;
 
     private static final long CLOSING_SOON_DAYS = 3;
     private static final Pattern PST_PATTERN = Pattern.compile("PST|PDT", Pattern.CASE_INSENSITIVE);
@@ -231,9 +236,14 @@ public class Study extends BaseEntity {
         return StudyTimezone.BOTH;
     }
 
-    /** 담당 캡틴 — 이 스터디를 만든 캡틴(POL-0001). */
-    public boolean isCreatedBy(Long accountId) {
-        return createdBy != null && createdBy.equals(accountId);
+    /** 담당 캡틴인가 — {@code STUDY.OWNER_CAPTAIN_ID} 하나로 판정한다 (POL-0001). 비어 있으면 아무도 아니다. */
+    public boolean isOwnedBy(Long accountId) {
+        return ownerCaptainId != null && ownerCaptainId.equals(accountId);
+    }
+
+    /** 담당 캡틴을 바꾼다. 대상이 캡틴(ADMIN)인지는 호출하는 서비스가 계정을 잠그고 확인한다. */
+    public void changeOwnerCaptain(Long accountId) {
+        this.ownerCaptainId = accountId;
     }
 
     public boolean isPubliclyVisible() {

@@ -7,6 +7,8 @@
   - specs/study-application/spec.md — 됨 (2026-10-14)
 ---
 
+> **2026-11-16 대체됨** — 담당 캡틴 판정은 `CREATED_BY` 가 아니라 새 칸 `STUDY.OWNER_CAPTAIN_ID` 로 한다. 처음 값은 만든 캡틴이고 백오피스 신청자 탭에서 바꾼다 → [2026-11-16 결정](2026-11-16-owner-captain-assignable.md)
+>
 > **2026-10-14 갱신** — 「명부에는 반 편성 때 들어간다」는 원복했다. 담당 캡틴도 참여하려면 크루처럼 신청한다. `CREATED_BY` 판정은 그대로다 → [2026-10-14 결정](2026-10-14-class-title-and-captain-applies.md)
 
 # 담당 캡틴은 「스터디를 만든 사람」 칸으로 판정하고, 명부에는 반 편성 때 들어간다

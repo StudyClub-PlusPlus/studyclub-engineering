@@ -87,6 +87,7 @@ class AdminStudyGroupKickoffIntegrationTest {
                                 .description("설명")
                                 .status(StudyStatus.OPEN)
                                 .createdBy(ADMIN_ID)
+                                .ownerCaptainId(ADMIN_ID)
                                 .build());
         group = studyGroupRepo.save(StudyGroup.create(study.getId(), "킥오프반"));
         firstRegular =

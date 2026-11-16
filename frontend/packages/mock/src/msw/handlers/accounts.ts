@@ -21,6 +21,7 @@ export type ApiAdminAccount = {
   roleChangeBlockedReason:
     | 'CANNOT_CHANGE_OWN_ROLE'
     | 'LAST_ADMIN_REQUIRED'
+    | 'OWNS_STUDY'
     | null;
   discordLinked: boolean;
 };
@@ -169,6 +170,8 @@ const NAVIGATOR_OF: Record<number, { studyId: number; title: string }[]> = {
 };
 
 const ADMIN_IDS = new Set([3, 5, 12]);
+/** 진행 중인 스터디의 담당 캡틴 — 권한을 내릴 수 없다(OWNS_STUDY). */
+const OWNER_IDS = new Set([5]);
 /** 온보딩 전이라 이름이 없는 계정. */
 const NO_NAME_IDS = new Set([9, 17, 27, 40]);
 
@@ -213,6 +216,8 @@ function blockedReason(
   if (a.systemRole === 'ADMIN' && accounts.filter((x) => x.systemRole === 'ADMIN').length <= 1) {
     return 'LAST_ADMIN_REQUIRED';
   }
+  // 5번 캡틴은 진행 중인 스터디의 담당 캡틴이다 — 담당을 넘기기 전에는 내릴 수 없다
+  if (a.systemRole === 'ADMIN' && OWNER_IDS.has(a.id)) return 'OWNS_STUDY';
   return null;
 }
 

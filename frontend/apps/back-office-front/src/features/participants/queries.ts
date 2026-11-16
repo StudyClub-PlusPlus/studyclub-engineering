@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
-import { deleteGroup, editGroup, participants, saveGroupAssignments } from '@/features/participants/repository';
+import {
+  changeOwnerCaptain,
+  deleteGroup,
+  editGroup,
+  participants,
+  saveGroupAssignments,
+} from '@/features/participants/repository';
 import type { GroupChange, ParticipantsResponse } from '@/features/participants/types';
 import { studyKeys } from '@/features/studies/queries';
 import { ApiError } from '@/lib/http';
@@ -10,6 +16,7 @@ export const participantKeys = {
   // 반 배정 저장만 따로 센다 — 반 이름 저장 중에는 이동을 막지 않는다.
   assignments: (studyId: number) => [...participantKeys.list(studyId), 'assignments'] as const,
   groups: (studyId: number) => [...participantKeys.list(studyId), 'groups'] as const,
+  ownerCaptain: (studyId: number) => [...participantKeys.list(studyId), 'owner-captain'] as const,
 };
 
 async function handleParticipantError(client: QueryClient, studyId: number, error: Error) {
@@ -51,6 +58,17 @@ export function useSaveGroupAssignments(studyId: number) {
       );
       return client.invalidateQueries({ queryKey: studyKeys.detail(studyId) });
     },
+  });
+}
+
+/** 담당 캡틴 바꾸기. 저장된 뒤에 명단을 다시 받아 칸과 「캡틴」 표시를 맞춘다. */
+export function useChangeOwnerCaptain(studyId: number) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationKey: participantKeys.ownerCaptain(studyId),
+    onError: (error) => handleParticipantError(client, studyId, error),
+    mutationFn: (accountId: number) => changeOwnerCaptain(studyId, accountId),
+    onSuccess: () => client.invalidateQueries({ queryKey: participantKeys.list(studyId) }),
   });
 }
 

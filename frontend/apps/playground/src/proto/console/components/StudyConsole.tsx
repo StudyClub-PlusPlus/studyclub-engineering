@@ -18,6 +18,7 @@ import { tx } from '@console/lib/l10n';
 import { useStudiesListHref } from '@console/lib/list-return';
 import { type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
+import { studyAuthor } from '@console/lib/users';
 import { ScheduleManager } from '@core/components/ScheduleManager';
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
@@ -103,6 +104,8 @@ export function StudyConsole({ study }: { study: Study }) {
   // 이 스터디를 맡은 크루. 역할은 스터디마다 따로 서므로 전역 역할 값과 섞지 않는다.
   // TODO(api): STUDY_PARTICIPANT 에 담당 표시가 필요하다. 지금은 화면 상태로만 둔다.
   const [navigators, setNavigators] = useState<string[]>([]);
+  // 담당 캡틴 — 스터디당 한 명. 처음 값은 만든 캡틴이다. 명부와 따로 선다 (STUDY.OWNER_CAPTAIN_ID)
+  const [ownerCaptainId, setOwnerCaptainId] = useState<string>(() => studyAuthor(study).id);
   // 참여 중단한 크루 — 출석부에서 고른다. 하차 · 제명을 가르지 않고, 되돌리지 않는다 (사용자 사이트와 같다).
   // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT
   const [left, setLeft] = useState<Record<string, { at: string }>>({});
@@ -480,6 +483,8 @@ export function StudyConsole({ study }: { study: Study }) {
             onRemoveClass={removeClass}
             onAssign={(crewId, id) => setAssign((a) => ({ ...a, [crewId]: id }))}
             navigators={navigators}
+            ownerCaptainId={ownerCaptainId}
+            onOwnerCaptainChange={setOwnerCaptainId}
             onToggleNavigator={(crewId) =>
               setNavigators((ns) => (ns.includes(crewId) ? ns.filter((n) => n !== crewId) : [...ns, crewId]))
             }

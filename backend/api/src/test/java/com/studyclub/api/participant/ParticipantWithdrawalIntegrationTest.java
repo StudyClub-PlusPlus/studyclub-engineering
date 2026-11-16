@@ -55,7 +55,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @AutoConfigureTestRestTemplate
 class ParticipantWithdrawalIntegrationTest {
 
-    private static final Long OWNER_ID = 3101L; // 담당 캡틴 (STUDY.CREATED_BY)
+    private static final Long OWNER_ID = 3101L; // 담당 캡틴 (STUDY.OWNER_CAPTAIN_ID)
     private static final Long OTHER_CAPTAIN_ID = 3102L; // 크루로 참여한 다른 캡틴
     private static final Long NAV_A_ID = 3103L;
     private static final Long CREW_1_ID = 3104L;
@@ -419,6 +419,7 @@ class ParticipantWithdrawalIntegrationTest {
                         .status(status)
                         .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                         .createdBy(OWNER_ID)
+                        .ownerCaptainId(OWNER_ID)
                         .build());
     }
 

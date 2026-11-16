@@ -7,10 +7,11 @@ import { DiscordCell } from '@console/components/DiscordCell';
 import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
+import { captainOptions } from '@console/lib/users';
 import { type Crew } from '@studyclub/types';
-import { Badge, Button, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { Badge, Button, Select, SelectionCount, TableActionBar, cx, toast } from '@studyclub/ui';
 import { MEMBER_REGIONS } from '@studyclub/utils';
-import { Plus } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 
 /**
  * 신청자 탭 — 반, 참여 명단.
@@ -23,6 +24,8 @@ import { Plus } from 'lucide-react';
  *
  * **캡틴도 참여하려면 신청한다.** 스터디를 만든 캡틴이라고 명부에 저절로 들어가지 않는다 — 참여할지는
  * 스터디마다 다르다. 신청하면 크루와 같은 줄로 여기 나온다 (POL-0001).
+ *
+ * **담당 캡틴은 명부와 따로 선다.** 맨 위 「담당 캡틴」 칸은 스터디당 한 명이고, 참여하지 않는 캡틴도 고를 수 있다.
  */
 
 function regionLabel(key: Crew['region']) {
@@ -39,7 +42,12 @@ export function CrewTab({
   onDirtyChange,
   navigators,
   onToggleNavigator,
+  ownerCaptainId,
+  onOwnerCaptainChange,
 }: {
+  /** 담당 캡틴 계정 id — 스터디당 한 명. */
+  ownerCaptainId: string;
+  onOwnerCaptainChange: (captainId: string) => void;
   crew: Crew[];
   classes: StudyClass[];
   assign: Record<string, string>;
@@ -187,6 +195,7 @@ export function CrewTab({
 
   return (
     <div className='flex flex-col gap-6'>
+      <OwnerCaptainField value={ownerCaptainId} onChange={onOwnerCaptainChange} />
       <section data-anno='class:1'>
         <h2 className='flex items-baseline gap-2 type-title-lg'>
           반<span className='tnum type-label-lg text-fg-muted'>{classes.length}</span>
@@ -453,6 +462,53 @@ function withDraft<T>(drafts: Record<string, T>, id: string, value: T | undefine
   if (value === undefined) delete next[id];
   else next[id] = value;
   return next;
+}
+
+/**
+ * 담당 캡틴 — 스터디당 한 명, 캡틴 계정 중에서 고른다. 명부(참여 크루)와 상관없다.
+ *
+ * 명단의 반 · 역할처럼 모았다가 「저장」하지 않고 **고르는 즉시 저장**한다 — 명부 행이 아니라 스터디 한 칸이고,
+ * 한 번에 한 명만 바뀐다. 저장되기 전에는 지금 값 그대로 두고 옆에서 하나가 돈다 (유저 지면 권한 바꾸기와 같다).
+ */
+function OwnerCaptainField({ value, onChange }: { value: string; onChange: (captainId: string) => void }) {
+  const [saving, setSaving] = useState(false);
+  const options = captainOptions();
+  function pick(next: string) {
+    if (next === value) return;
+    setSaving(true);
+    // TODO(api): PATCH /api/admin/studies/{studyId}/owner-captain { accountId }
+    window.setTimeout(() => {
+      setSaving(false);
+      onChange(next);
+      toast.success('담당 캡틴을 바꿨습니다.');
+    }, 600);
+  }
+  return (
+    <section data-anno='attendee:4' className='card flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3'>
+      <h2 className='type-title-md'>담당 캡틴</h2>
+      <div className='flex items-center gap-2'>
+        <Select
+          size='sm'
+          data-anno='attendee:4-1'
+          aria-label='담당 캡틴'
+          value={value}
+          disabled={saving}
+          onChange={(ev) => pick(ev.target.value)}
+          className='w-auto border-border-strong text-neutral-900'
+        >
+          {options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </Select>
+        {saving && <Loader2 size={16} className='animate-spin text-fg-muted' aria-label='저장 중' />}
+      </div>
+      <p data-anno='attendee:4-2' className='type-body-sm text-fg-muted'>
+        신청 폼 수정 · 참여 중단 · 사이트 일정 관리를 맡습니다. 참여하지 않아도 됩니다.
+      </p>
+    </section>
+  );
 }
 
 /** 「반 추가」로 연 새 카드의 자리 표시 id — 저장하면 진짜 id 를 받는다. */

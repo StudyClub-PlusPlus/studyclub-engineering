@@ -14,7 +14,7 @@
 flowchart LR
   A["내 스터디 카드·주간 칸"] --> B["스터디 일정"]
   B --> C["출석 탭"]
-  C --> D{"고칠 수 있는가<br>(네비게이터·만든 캡틴)"}
+  C --> D{"고칠 수 있는가<br>(네비게이터·담당 캡틴)"}
   D -->|아니오| E["보기만 (크루)"]
   D -->|예| F{"회차가 있는가"}
   F -->|없음| G["일정으로 가기"]
@@ -53,7 +53,7 @@ flowchart LR
 - **내용**: 「백오피스 출석부」 버튼. 스터디 정보 카드 오른쪽 바로가기 줄의 맨 앞(「디스코드」 왼쪽)
 - **동작**: 백오피스에서 그 스터디의 출석 탭으로 간다. 다른 반은 거기서 반 칩으로 골라 본다
 - **정책**: 캡틴에게만 보인다. 네비게이터는 백오피스에 들어갈 수 없다. 정보 카드는 탭 위에 있어 일정 탭에서도 보인다
-- **조건**: 그 스터디를 만든 캡틴일 때
+- **조건**: 그 스터디의 담당 캡틴일 때
 
 ### 1-1. 표 제목 줄
 
@@ -152,7 +152,7 @@ erDiagram
   STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "회차 출석"
   ACCOUNT ||--o{ STUDY_ATTENDANCE : ""
   STUDY {
-    bigint CREATED_BY "만든 캡틴"
+    bigint OWNER_CAPTAIN_ID "담당 캡틴"
   }
   STUDY_MEETING {
     varchar MEETING_TYPE "KICKOFF · REGULAR"
@@ -228,14 +228,14 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/me/studies/{studyId}/attendances` | 그 분반 활성 참여자(조회) · 네비게이터 · 만든 캡틴 |
-| POST | `/api/me/studies/{studyId}/attendances` | 그 분반 LEADER · 그 스터디를 만든 캡틴 |
+| GET | `/api/me/studies/{studyId}/attendances` | 그 분반 활성 참여자(조회) · 네비게이터 · 담당 캡틴 |
+| POST | `/api/me/studies/{studyId}/attendances` | 그 분반 LEADER · 그 스터디의 담당 캡틴 |
 
 계약은 [attendance/spec.md](../../../specs/attendance/spec.md).
 
 ### 권한
 
-- 고치기: 그 분반의 `PARTICIPANT_ROLE = LEADER`, 그 스터디를 만든 캡틴(`STUDY.CREATED_BY`). 아니면 403
+- 고치기: 그 분반의 `PARTICIPANT_ROLE = LEADER`, 그 스터디의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`). 아니면 403
 - 다른 캡틴(ADMIN)이 신청해 참여했으면 사용자 사이트에서는 크루다 — 고치기는 백오피스에서 한다
 - 서버에서 검증한다. 화면에서 칸을 막는 것은 편의일 뿐이다
 

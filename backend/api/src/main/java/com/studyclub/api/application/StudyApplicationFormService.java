@@ -84,7 +84,7 @@ public class StudyApplicationFormService {
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         studyCaptainGuard.assertOwnerCaptain(
-                accountId, study.getCreatedBy(), "담당 캡틴만 신청 폼을 수정할 수 있습니다.");
+                accountId, study.getOwnerCaptainId(), "담당 캡틴만 신청 폼을 수정할 수 있습니다.");
         return replace(study, request);
     }
 

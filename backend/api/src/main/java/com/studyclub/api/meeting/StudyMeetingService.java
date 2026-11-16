@@ -93,7 +93,7 @@ public class StudyMeetingService {
         }
         boolean canEdit =
                 studyCaptainGuard.assertCanViewGroup(
-                        accountId, study.getCreatedBy(), groupId, VIEW_FORBIDDEN);
+                        accountId, study.getOwnerCaptainId(), groupId, VIEW_FORBIDDEN);
         return listView(study, group, accountId, canEdit);
     }
 
@@ -591,7 +591,7 @@ public class StudyMeetingService {
             @Override
             public void assertCanEdit(Study study, Long groupId) {
                 studyCaptainGuard.assertCanEditGroup(
-                        accountId, study.getCreatedBy(), groupId, forbidden);
+                        accountId, study.getOwnerCaptainId(), groupId, forbidden);
             }
 
             @Override

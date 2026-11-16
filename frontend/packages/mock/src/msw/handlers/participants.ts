@@ -1,4 +1,5 @@
 import { mockClient, type MockResolveContext } from "../utils";
+import { MOCK_ACTOR_ID, mockAdminAccounts } from "./accounts";
 
 /**
  * 백오피스 참여 명단 — `GET /api/admin/studies/{studyId}/participants` (specs/study-group/spec.md 「참여 명단」,
@@ -82,6 +83,14 @@ const CREW: Row[] = [
   person(13, "yuna", "ACTIVE", { groupId: 2 }),
 ];
 
+/** 스터디별 담당 캡틴 계정 id — 처음 값은 요청자(캡틴). 바꾸면 새로고침 전까지 남는다. */
+const OWNERS = new Map<number, number>();
+const ownerOf = (studyId: number) => {
+  const id = OWNERS.get(studyId) ?? MOCK_ACTOR_ID;
+  const account = mockAdminAccounts.find((a) => a.id === id);
+  return account ? { accountId: account.id, nickname: account.nickname ?? `캡틴 ${account.id}` } : null;
+};
+
 const groupName = (id: number) =>
   GROUPS.find((g) => g.groupId === id)?.name ?? "";
 
@@ -101,6 +110,7 @@ function listOf(studyId: number, all: Row[], includeLeft: boolean) {
       (p) => p.status === "ACTIVE" || p.status === "PAUSED",
     ).length,
     recruitmentCapacity: 20,
+    ownerCaptain: ownerOf(studyId),
     groups: GROUPS,
     participants,
   };
@@ -175,6 +185,30 @@ export const adminParticipantsHandlers = mockClient.createHandlerGroup(
           response: {
             errorCode: "PARTICIPANT_NOT_ACTIVE",
             errorMessage: "participantId 4: 활성 상태의 크루만 변경할 수 있습니다.",
+          },
+        },
+      ],
+    },
+    {
+      method: "PATCH",
+      path: "/:id/owner-captain",
+      presets: [
+        {
+          label: "성공",
+          status: 200,
+          response: async (ctx: MockResolveContext) => {
+            const studyId = studyIdOf(ctx);
+            const { accountId } = (await ctx.request.json()) as { accountId: number };
+            OWNERS.set(studyId, accountId);
+            return { studyId, ownerCaptain: ownerOf(studyId) };
+          },
+        },
+        {
+          label: "캡틴 아님",
+          status: 409,
+          response: {
+            errorCode: "OWNER_CAPTAIN_NOT_ADMIN",
+            errorMessage: "캡틴만 담당 캡틴이 될 수 있습니다.",
           },
         },
       ],

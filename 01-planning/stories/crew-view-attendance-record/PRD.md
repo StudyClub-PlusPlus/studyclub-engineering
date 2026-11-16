@@ -91,7 +91,7 @@ flowchart LR
 
 - **내용**: 이름 옆에 「캡틴」 · 「네비게이터」 칩. 크루는 칩이 없다
 - **정책**: 캡틴은 그 스터디를 **만든** 캡틴뿐이다. 다른 캡틴(ADMIN)이 신청해 참여했으면 크루로 보인다
-- **데이터**: `STUDY.CREATED_BY` · `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER`
+- **데이터**: `STUDY.OWNER_CAPTAIN_ID` · `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER`
 
 ### 1-4. 참여를 중단한 사람
 
@@ -128,7 +128,7 @@ erDiagram
   STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "출석"
   STUDY_PARTICIPANT |o--o{ STUDY_MEETING : "발표"
   STUDY {
-    bigint CREATED_BY "만든 캡틴"
+    bigint OWNER_CAPTAIN_ID "담당 캡틴"
   }
   STUDY_MEETING {
     varchar MEETING_TYPE "KICKOFF · REGULAR"

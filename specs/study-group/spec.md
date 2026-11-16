@@ -3,6 +3,7 @@
 > ERD: [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md)
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
+> 갱신: 2026-11-16 — 담당 캡틴 바꾸기 `PATCH …/owner-captain` 추가, 참여 명단에 `ownerCaptain`. 담당 캡틴 판정을 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
 > 갱신: 2026-11-01 — `PATCH /{groupId}` 구현완료 — daysOfWeek · startTime · timezone 추가 (V54 마이그레이션)
 > 갱신: 2026-10-23 — 참여 명단 `groups[].isDefault` 추가 (기본 반 칩을 서버 판정으로)
 > 갱신: 2026-10-21 — 한 사람씩 바꾸던 `PATCH …/{participantId}/role` · `…/group` 을 일괄 `PATCH …/participants` 하나로 합쳤다
@@ -18,6 +19,7 @@
 |--------|------|------|------|------|
 | GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 |
+| PATCH | /api/admin/studies/{studyId}/owner-captain | 담당 캡틴 바꾸기 (신청자 탭 맨 위 「담당 캡틴」 칸) | O (ADMIN) | 구현완료 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현완료 |
 | DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 구현완료 |
@@ -56,6 +58,7 @@
   "studyId": 3,
   "participantCount": 18,
   "recruitmentCapacity": 20,
+  "ownerCaptain": { "accountId": 5, "nickname": "sora" },
   "groups": [{ "groupId": 7, "name": "A반", "isDefault": true, "canDelete": false }],
   "participants": [
     {
@@ -79,6 +82,8 @@
 |------|------|------|------|------|
 | participantCount | Int | N | `ACTIVE` · `PAUSED` 행 수. 신청한 담당 캡틴도 크루와 같이 센다 | 계산 |
 | recruitmentCapacity | Int | Y | 정원. null 이면 제한 없음 | 최신 STUDY_RECRUITMENT.RECRUITMENT_CAPACITY |
+| ownerCaptain | Object | Y | 담당 캡틴 — 신청자 탭 맨 위 「담당 캡틴」 칸. 명부에 있는지와 상관없다. 없으면 null — 화면은 「없음 · 캡틴 누구나」 | STUDY.OWNER_CAPTAIN_ID |
+| ownerCaptain.accountId · nickname | Long · String | N | 계정 ID · 닉네임 | ACCOUNT.ID · ACCOUNT.NICKNAME |
 | groups[] | Array | N | 그 스터디의 분반. 만든 순서(`ID` 오름차순) | STUDY_GROUP |
 | groups[].isDefault | Boolean | N | 기본 반(그 스터디에서 처음 만든 반)이면 true — 「기본」 칩. 「반 삭제」의 `DEFAULT_GROUP_NOT_DELETABLE` 과 같은 판정 | 계산 |
 | groups[].canDelete | Boolean | N | 이 반을 지울 수 있으면 true — 신청자 탭 「삭제」 버튼. `includeLeft` 와 상관없이 `DELETED` 밖의 명부 행(`ACTIVE` · `PAUSED` · `COMPLETED` · `WITHDRAWN`)도, 탈퇴 회원 밖의 출석 행도 하나도 없을 때만 true. 기본 반은 늘 false. 「반 삭제」 API 와 같은 판정 | 계산 |
@@ -88,7 +93,7 @@
 | participants[].regionGroup | String | Y | `KR` · `NA` · `ETC` | ACCOUNT.REGION_GROUP |
 | participants[].groupId | Long | N | 반. 신청 직후에는 기본 반 (2026-10-20) | STUDY_PARTICIPANT.STUDY_GROUP_ID |
 | participants[].participantRole | String | N | `LEADER` = 네비게이터 · `MEMBER` | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
-| participants[].captain | Boolean | N | 이 행이 담당 캡틴이면 true — 「캡틴」 칩. 담당 캡틴은 신청했을 때만 행이 있다 | 계산: `STUDY.CREATED_BY = ACCOUNT_ID` |
+| participants[].captain | Boolean | N | 이 행이 담당 캡틴이면 true — 「캡틴」 칩. 담당 캡틴은 신청했을 때만 행이 있다 | 계산: `Study.isOwnedBy(ACCOUNT_ID)` — `STUDY.OWNER_CAPTAIN_ID = ACCOUNT_ID` |
 | participants[].status | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` | STUDY_PARTICIPANT.STATUS |
 
 정렬: 네비게이터 → 반 이름 → 닉네임.
@@ -184,6 +189,64 @@
 | 409 | PARTICIPANT_NOT_ACTIVE | 하차 · 탈퇴 · 완주한 행 |
 
 `errorMessage` 에는 걸린 `participantId` 를 적는다 — 화면이 그 줄을 짚어 준다.
+
+---
+
+## 담당 캡틴 바꾸기
+
+### 기본 정보
+
+- **Method**: PATCH
+- **Path**: `/api/admin/studies/{studyId}/owner-captain`
+- **인증**: 필요 — ADMIN. **캡틴이면 누구나** 바꾼다 — 지금 담당 캡틴이 아니어도 된다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-11-16)
+- **설명**: 신청자 탭 맨 위 「담당 캡틴」 칸. 스터디를 만들면 만든 캡틴이 담당 캡틴이 되고, 여기서 다른 캡틴으로 바꾼다. 명부와 상관없다 — 담당 캡틴은 참여하지 않아도 된다 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md)).
+  명단 행의 「저장」(`PATCH …/participants`)과 따로 둔다 — 그쪽은 명부 행을 바꾸고, 이쪽은 스터디 한 칸을 바꾼다. 신청자 탭의 모아서 저장과 섞지 않고 고르는 즉시 저장한다.
+
+### Request Body
+
+```json
+{ "accountId": 5 }
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| accountId | Long | Y | 새 담당 캡틴. `SYSTEM_ROLE = ADMIN` 인 계정. 비우는 요청은 받지 않는다 — 담당 캡틴은 탈퇴 · 권한 해제로만 비워진다 |
+
+후보 목록은 새 API 를 두지 않고 [백오피스 회원 목록](../admin-users/spec.md#회원-목록-조회) `GET /api/admin/users?role=CAPTAIN&limit=100` 을 쓴다.
+
+### 서버 동작
+
+1. 스터디가 없으면 404
+2. **대상 계정을 잠그고 읽는다** (`SELECT … FOR UPDATE`). 없거나 탈퇴했으면 404, `ADMIN` 이 아니면 409 `OWNER_CAPTAIN_NOT_ADMIN`
+   - 왜 잠그나: 캡틴 권한 변경([admin-users](../admin-users/spec.md#처리-규칙))도 `ADMIN` 행을 모두 잠근다. 「B 를 담당 캡틴으로 지정」과 「B 의 캡틴 권한 해제」가 동시에 오면 한쪽이 끝날 때까지 다른 쪽이 기다린다. 잠그지 않으면 권한 해제가 「담당 스터디 없음」을 보고 통과한 직후 지정이 커밋되어, 크루가 담당 캡틴인 스터디가 생긴다
+3. 지금 값과 같으면 아무것도 바꾸지 않고 200. 감사 기록도 남기지 않는다
+4. 끝난 스터디(`ENDED` · `CLOSED`)여도 바꿀 수 있다
+5. `Study.changeOwnerCaptain(accountId)` 로 바꾼다
+6. [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) 한 줄을 같은 트랜잭션에 남긴다 — `ACTION = OWNER_CAPTAIN` · `TARGET_ACCOUNT_ID` = 새 담당 캡틴 · `BEFORE_VALUE` = 옛 담당 캡틴 계정 ID(없었으면 NULL) · `AFTER_VALUE` = 스터디 ID. 보관 기간은 `ROLE_CHANGE` 와 같다
+7. 이벤트는 발행하지 않는다 — 담당 캡틴은 디스코드 role 과 이어져 있지 않다
+
+### Response — 200
+
+```json
+{ "studyId": 3, "ownerCaptain": { "accountId": 5, "nickname": "sora" } }
+```
+
+| 필드 | 타입 | NULL | 설명 | 소스 |
+|------|------|------|------|------|
+| studyId | Long | N | | STUDY.ID |
+| ownerCaptain.accountId · nickname | Long · String | N | 바뀐 뒤 담당 캡틴 | STUDY.OWNER_CAPTAIN_ID → ACCOUNT |
+
+화면은 이 값으로 칸을 다시 그리고, 명단의 「캡틴」 칩(`participants[].captain`)은 참여 명단을 다시 받아 맞춘다.
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 400 | INVALID_INPUT | `accountId` 없음 |
+| 401 | UNAUTHORIZED | 토큰 없음 |
+| 403 | FORBIDDEN | ADMIN 아님 |
+| 404 | NOT_FOUND | 없는 스터디 · 없거나 탈퇴한 계정 |
+| 409 | OWNER_CAPTAIN_NOT_ADMIN | 대상이 캡틴(`ADMIN`)이 아님 |
 
 ---
 

@@ -480,7 +480,8 @@ class AccountDeletionIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 탈퇴한 캡틴이 만든 스터디의 CREATED_BY 가 null 로 초기화돼 다른 캡틴이 담당 캡틴 전용 기능을 쓸 수 있다")
+    @DisplayName(
+            "성공 - 탈퇴한 캡틴의 CREATED_BY · OWNER_CAPTAIN_ID 가 null 로 초기화돼 다른 캡틴이 담당 캡틴 전용 기능을 쓸 수 있다")
     void deletionClearsCreatedByOnOwnedStudies() {
         Account captain = seedAccount();
         Long captainId = captain.getId();
@@ -498,12 +499,20 @@ class AccountDeletionIntegrationTest {
 
         // 탈퇴한 계정이 만든 스터디 → CREATED_BY = null
         assertThat(studyRepository.findById(studyA))
-                .hasValueSatisfying(s -> assertThat(s.getCreatedBy()).isNull());
+                .hasValueSatisfying(
+                        s -> {
+                            assertThat(s.getCreatedBy()).isNull();
+                            assertThat(s.getOwnerCaptainId()).isNull();
+                        });
         assertThat(studyRepository.findById(studyB))
-                .hasValueSatisfying(s -> assertThat(s.getCreatedBy()).isNull());
+                .hasValueSatisfying(s -> assertThat(s.getOwnerCaptainId()).isNull());
         // 다른 계정이 만든 스터디 → 그대로
         assertThat(studyRepository.findById(studyOther))
-                .hasValueSatisfying(s -> assertThat(s.getCreatedBy()).isEqualTo(other.getId()));
+                .hasValueSatisfying(
+                        s -> {
+                            assertThat(s.getCreatedBy()).isEqualTo(other.getId());
+                            assertThat(s.getOwnerCaptainId()).isEqualTo(other.getId());
+                        });
 
         // 정리
         jdbcTemplate.update("DELETE FROM STUDY WHERE ID IN (?, ?, ?)", studyA, studyB, studyOther);
@@ -522,12 +531,13 @@ class AccountDeletionIntegrationTest {
                 now);
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, CATEGORY, STATUS,"
-                        + " CREATED_BY, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, 'ALGORITHM', 'OPEN', ?, ?, ?)",
+                        + " CREATED_BY, OWNER_CAPTAIN_ID, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, 'ALGORITHM', 'OPEN', ?, ?, ?, ?)",
                 id,
                 id,
                 "테스트 스터디 " + id,
                 "요약",
+                createdBy,
                 createdBy,
                 now,
                 now);

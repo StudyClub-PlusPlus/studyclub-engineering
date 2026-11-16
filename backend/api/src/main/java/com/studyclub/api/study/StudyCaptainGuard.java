@@ -93,15 +93,15 @@ public class StudyCaptainGuard {
     }
 
     /**
-     * 출석부에서 참여 중단 — <b>담당 캡틴</b>({@code STUDY.CREATED_BY}, NULL 이면 캡틴 누구나)이거나 <b>그 분반의 살아 있는
+     * 출석부에서 참여 중단 — <b>담당 캡틴</b>({@code STUDY.OWNER_CAPTAIN_ID}, NULL 이면 캡틴 누구나)이거나 <b>그 분반의 살아 있는
      * 네비게이터</b>. 크루로 참여한 다른 캡틴은 막는다 — 출석 쓰기 가드({@link #assertCaptainOrNavigatorOfGroup})는 ADMIN 이면
      * 누구나 통과시키므로 쓰지 않는다 (specs/study-participant/spec.md 권한).
      *
      * @return 담당 캡틴이면 true, 네비게이터면 false — 네비게이터는 같은 분반의 행만 중단할 수 있다
      */
     public boolean assertCanWithdrawInGroup(
-            Long accountId, Long studyCreatedBy, Long studyGroupId, String message) {
-        if (isOwnerCaptain(accountId, account(accountId), studyCreatedBy)) {
+            Long accountId, Long ownerCaptainId, Long studyGroupId, String message) {
+        if (isOwnerCaptain(accountId, account(accountId), ownerCaptainId)) {
             return true;
         }
         boolean navigator =
@@ -117,34 +117,35 @@ public class StudyCaptainGuard {
     }
 
     /**
-     * 백오피스 출석부에서 참여 중단 — <b>담당 캡틴</b>({@code STUDY.CREATED_BY}, NULL 이면 캡틴 누구나)만. 백오피스는 캡틴만 들어오지만,
-     * 담당이 아닌 캡틴은 출석만 고친다 (specs/study-participant/spec.md 권한, 2026-10-23 기획 결정).
+     * 백오피스 출석부에서 참여 중단 — <b>담당 캡틴</b>({@code STUDY.OWNER_CAPTAIN_ID}, NULL 이면 캡틴 누구나)만. 백오피스는 캡틴만
+     * 들어오지만, 담당이 아닌 캡틴은 출석만 고친다 (specs/study-participant/spec.md 권한, 2026-10-23 기획 결정).
      */
-    public void assertOwnerCaptain(Long accountId, Long studyCreatedBy, String message) {
-        if (!isOwnerCaptain(accountId, account(accountId), studyCreatedBy)) {
+    public void assertOwnerCaptain(Long accountId, Long ownerCaptainId, String message) {
+        if (!isOwnerCaptain(accountId, account(accountId), ownerCaptainId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN, message);
         }
     }
 
-    private static boolean isOwnerCaptain(Long accountId, Account caller, Long studyCreatedBy) {
-        return studyCreatedBy == null
+    private static boolean isOwnerCaptain(Long accountId, Account caller, Long ownerCaptainId) {
+        return ownerCaptainId == null
                 ? caller.getSystemRole() == SystemRole.ADMIN
-                : accountId.equals(studyCreatedBy);
+                : accountId.equals(ownerCaptainId);
     }
 
     /**
-     * 사용자 사이트 「스터디 일정」 고치기 — <b>그 스터디를 만든 캡틴</b>({@code STUDY.CREATED_BY})이거나 그 분반 네비게이터(LEADER).
-     * 다른 ADMIN 은 여기서 특별 대우하지 않는다 — 참여했으면 크루다. 운영자 전체 관리는 백오피스 몫 (specs/study-meeting/spec.md 결정 3).
+     * 사용자 사이트 「스터디 일정」 고치기 — <b>그 스터디의 담당 캡틴</b>({@code STUDY.OWNER_CAPTAIN_ID})이거나 그 분반
+     * 네비게이터(LEADER). 다른 ADMIN 은 여기서 특별 대우하지 않는다 — 참여했으면 크루다. 운영자 전체 관리는 백오피스 몫
+     * (specs/study-meeting/spec.md 결정 3).
      */
-    public boolean canEditGroup(Long accountId, Long studyCreatedBy, Long studyGroupId) {
+    public boolean canEditGroup(Long accountId, Long ownerCaptainId, Long studyGroupId) {
         account(accountId);
-        return accountId.equals(studyCreatedBy)
+        return accountId.equals(ownerCaptainId)
                 || isActiveNavigatorOfGroup(accountId, studyGroupId);
     }
 
     public void assertCanEditGroup(
-            Long accountId, Long studyCreatedBy, Long studyGroupId, String message) {
-        if (!canEditGroup(accountId, studyCreatedBy, studyGroupId)) {
+            Long accountId, Long ownerCaptainId, Long studyGroupId, String message) {
+        if (!canEditGroup(accountId, ownerCaptainId, studyGroupId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN, message);
         }
     }
@@ -155,8 +156,8 @@ public class StudyCaptainGuard {
      * @return 고칠 수 있으면 true
      */
     public boolean assertCanViewGroup(
-            Long accountId, Long studyCreatedBy, Long studyGroupId, String message) {
-        if (canEditGroup(accountId, studyCreatedBy, studyGroupId)) {
+            Long accountId, Long ownerCaptainId, Long studyGroupId, String message) {
+        if (canEditGroup(accountId, ownerCaptainId, studyGroupId)) {
             return true;
         }
         boolean member =

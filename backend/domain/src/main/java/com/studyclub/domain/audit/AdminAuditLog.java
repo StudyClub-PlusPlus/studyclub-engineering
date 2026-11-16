@@ -120,7 +120,11 @@ public class AdminAuditLog extends BaseEntity {
                             : participantRole == ParticipantRole.LEADER
                                     ? RetentionPolicy.AUDIT_AUTHORITY_V1
                                     : accessPolicy;
-            case ROLE_CHANGE, PARTICIPANT_ROLE, ACCOUNT_ROLE_REVOKE, PARTICIPANT_REVOKE ->
+            case ROLE_CHANGE,
+                    PARTICIPANT_ROLE,
+                    OWNER_CAPTAIN,
+                    ACCOUNT_ROLE_REVOKE,
+                    PARTICIPANT_REVOKE ->
                     RetentionPolicy.AUDIT_AUTHORITY_V1;
         };
     }
@@ -201,6 +205,20 @@ public class AdminAuditLog extends BaseEntity {
                 targetAccountId,
                 before.name(),
                 after.name());
+    }
+
+    /**
+     * 담당 캡틴 바꾸기. 값이 실제로 바뀐 경우에만 남긴다 — 같은 사람인지는 서비스가 먼저 거른다. 대상은 새 담당 캡틴이고, 옛 담당 캡틴과 스터디는 BEFORE ·
+     * AFTER 에 ID 로 둔다.
+     */
+    public static AdminAuditLog ownerCaptainChange(
+            Long actorAccountId, Long studyId, Long beforeOwnerId, Long afterOwnerId) {
+        return new AdminAuditLog(
+                actorAccountId,
+                AdminAuditAction.OWNER_CAPTAIN,
+                afterOwnerId,
+                beforeOwnerId == null ? null : beforeOwnerId.toString(),
+                studyId.toString());
     }
 
     /**

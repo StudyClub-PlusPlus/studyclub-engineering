@@ -133,6 +133,7 @@ public class AccountDeletionService {
         // StudyCaptainGuard.isOwnerCaptain 이 ADMIN 누구나 담당 캡틴으로 인정해, 탈퇴 후에도 다른 캡틴이
         // 출석부 참여 중단 등 담당 캡틴 전용 기능을 쓸 수 있다 (specs/study-participant/spec.md 권한).
         studyRepository.clearCreatedBy(accountId);
+        studyRepository.clearOwnerCaptain(accountId);
 
         // 참여 기록 — 지우지 않고 DELETED 로 표시한다. 행을 지우면 이미 쌓인 STUDY_ATTENDANCE(ACCOUNT_ID 로만
         // 연결, FK 없음)가 갈 곳을 잃어 출석률 집계에서 전체 이력이 통째로 빠진다 — "하차"와 "결석"이 같은 숫자로

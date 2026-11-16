@@ -130,8 +130,25 @@ public class AdminStudyParticipantQueryService {
                         .map(StudyRecruitment::getRecruitmentCapacity)
                         .orElse(null);
 
+        // 담당 캡틴은 명부에 없을 수 있다 — 계정을 따로 읽는다. 탈퇴로 계정이 없으면 null
+        OwnerCaptainResponse.OwnerCaptain ownerCaptain =
+                study.getOwnerCaptainId() == null
+                        ? null
+                        : accountRepository
+                                .findById(study.getOwnerCaptainId())
+                                .map(
+                                        a ->
+                                                new OwnerCaptainResponse.OwnerCaptain(
+                                                        a.getId(), a.getNickname()))
+                                .orElse(null);
+
         return new StudyParticipantsResponse(
-                studyId, participantCount, recruitmentCapacity, groupResponses, participants);
+                studyId,
+                participantCount,
+                recruitmentCapacity,
+                ownerCaptain,
+                groupResponses,
+                participants);
     }
 
     private static StudyParticipantsResponse.Participant toParticipant(
@@ -146,7 +163,7 @@ public class AdminStudyParticipantQueryService {
                 p.getStudyGroupId(),
                 p.getParticipantRole(),
                 p.getStatus(),
-                p.getAccountId().equals(study.getCreatedBy()),
+                study.isOwnedBy(p.getAccountId()),
                 p.getJoinedAt());
     }
 }

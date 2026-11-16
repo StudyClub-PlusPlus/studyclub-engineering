@@ -47,6 +47,7 @@ const data: ParticipantsResponse = {
   studyId: 20,
   participantCount: 2,
   recruitmentCapacity: 10,
+  ownerCaptain: null,
   groups: [
     { groupId: 1, name: '기본반', isDefault: true, canDelete: false },
     { groupId: 2, name: '목요일반', isDefault: false, canDelete: false },
@@ -488,5 +489,57 @@ describe('참여자 반 편성', () => {
       link.remove();
     }
     await waitFor(() => expect(screen.getByRole('button', { name: '변경 취소 후 이동' })).toBeEnabled());
+  });
+});
+
+describe('담당 캡틴', () => {
+  const captain = (id: number, name: string) => ({
+    id,
+    name,
+    maskedEmail: 'c***@example.com',
+    systemRole: 'ADMIN',
+    navigatorOf: [],
+    dormant: false,
+    joinedAt: '2026-01-01T00:00:00Z',
+    roleChangeBlockedReason: null,
+    discordLinked: true,
+  });
+  const captains = { items: [captain(5, '소라'), captain(6, '민준')], total: 2, offset: 0, limit: 100 };
+
+  function mountWithCaptains(write: (url: string, init: RequestInit) => Promise<Response>) {
+    const fetch = vi.fn((url: string, init: RequestInit) => {
+      if (init.method) return write(url, init);
+      if (url.includes('/api/admin/users')) return Promise.resolve(reply(captains));
+      return Promise.resolve(reply({ ...data, ownerCaptain: { accountId: 5, nickname: '소라' } }));
+    });
+    vi.stubGlobal('fetch', fetch);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <ParticipantsTab studyId={20} />
+      </QueryClientProvider>,
+    );
+    return fetch;
+  }
+
+  it('캡틴 계정 중에서 고르면 바로 PATCH …/owner-captain 을 보내고 알린다', async () => {
+    const fetch = mountWithCaptains(async () => reply({ studyId: 20, ownerCaptain: { accountId: 6, nickname: '민준' } }));
+    const select = await screen.findByRole('combobox', { name: '담당 캡틴' });
+    await waitFor(() => expect(select).toBeEnabled());
+    expect(select).toHaveValue('5');
+
+    await userEvent.selectOptions(select, '6');
+
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('담당 캡틴을 바꿨습니다.'));
+    const patch = fetch.mock.calls.find(([url, init]) => init.method === 'PATCH' && url.includes('/owner-captain'));
+    expect(patch?.[1].body).toBe(JSON.stringify({ accountId: 6 }));
+  });
+
+  it('같은 사람을 고르면 요청하지 않는다', async () => {
+    const fetch = mountWithCaptains(async () => reply({}));
+    const select = await screen.findByRole('combobox', { name: '담당 캡틴' });
+    await waitFor(() => expect(select).toBeEnabled());
+    await userEvent.selectOptions(select, '5');
+    expect(fetch.mock.calls.filter(([, init]) => init.method)).toHaveLength(0);
   });
 });
