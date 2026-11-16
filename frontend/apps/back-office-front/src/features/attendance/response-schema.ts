@@ -39,4 +39,9 @@ export const apiAttendanceSchema = z.object({
   ),
 });
 
+/** 스터디 출석률 요약 — 모든 반 가중평균(0 ~ 1). 체크된 회차가 없으면 null. */
+export const apiAttendanceSummarySchema = z.object({
+  attendanceRate: z.union([z.null(), z.number()]),
+});
+
 export const emptyResponseSchema = z.null();
