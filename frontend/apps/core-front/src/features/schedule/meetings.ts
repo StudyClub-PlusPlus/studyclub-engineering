@@ -64,17 +64,29 @@ export function meetingLabel(m: StudyMeeting): string {
 
 /* ── 날짜·시각 ───────────────────────────────────────────────────────────── */
 
-function zonedParts(instant: Date, iana: string) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: formattingZone(iana, instant),
+// 포매터 생성이 비싸다 — 1년 매일 반복이면 미리보기 한 번에 수천 번 부른다. 시간대마다 하나만 만든다
+const zonedFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function zonedFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = zonedFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       hourCycle: 'h23',
-    })
+    });
+    zonedFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
+function zonedParts(instant: Date, iana: string) {
+  const parts = Object.fromEntries(
+    zonedFormatter(formattingZone(iana, instant))
       .formatToParts(instant)
       .map((p) => [p.type, p.value]),
   );
@@ -245,7 +257,7 @@ export function planDraft(
     if (!draft.until) errors.until = '반복 종료일을 정해 주세요.';
     else if (draft.date && draft.until < draft.date) errors.until = '종료일은 시작 일자보다 뒤여야 합니다.';
     else if (draft.date && draft.until > maxUntil(draft.date))
-      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_LABEL} 안에서만 만들 수 있습니다 (${maxUntil(draft.date)}까지).`;
+      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_LABEL} 안에서만 만들 수 있습니다 (${dateWithDow(maxUntil(draft.date))}까지).`;
   }
   if (errors.date || errors.time || errors.until || errors.weekdays) return { errors };
 

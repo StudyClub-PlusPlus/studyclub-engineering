@@ -113,12 +113,46 @@ class MeetingScheduleTest {
     }
 
     @Test
-    @DisplayName("0개면 INVALID_INPUT")
-    void rejectsEmpty() {
+    @DisplayName("2/29 에 시작하면 다음 해 2/28 까지 — 2/29 를 낀 1년 매일 367개도 통과한다")
+    void leapDayStartEndsOnFeb28() {
         var schedule = new MeetingSchedule("Asia/Seoul", List.of());
+        Instant leapDay = Instant.parse("2028-02-29T11:00:00Z"); // KST 2/29 20:00
+
+        assertThatCode(
+                        () ->
+                                schedule.checkAdd(
+                                        List.of(leapDay, Instant.parse("2029-02-28T11:00:00Z")),
+                                        NOW))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(
+                        () ->
+                                schedule.checkAdd(
+                                        List.of(leapDay, Instant.parse("2029-03-01T11:00:00Z")),
+                                        NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+
+        // KST 2027-03-01 ~ 2028-03-01 — 2/29 를 낀 1년은 367일
+        List<Instant> daily = new ArrayList<>();
+        for (int i = 0; i <= 366; i++) {
+            daily.add(Instant.parse("2027-03-01T11:00:00Z").plusSeconds(86_400L * i));
+        }
+        assertThatCode(() -> schedule.checkAdd(daily, NOW)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("0개 또는 368개면 INVALID_INPUT — 큰 목록은 하나씩 보기 전에 거절한다")
+    void rejectsEmptyOrTooMany() {
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of());
+        List<Instant> tooMany = new ArrayList<>();
+        for (int i = 0; i < 368; i++) {
+            tooMany.add(Instant.parse("2026-10-05T11:00:00Z").plusSeconds(86_400L * i));
+        }
 
         assertThatThrownBy(() -> schedule.checkAdd(List.of(), NOW))
                 .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+        assertThatThrownBy(() -> schedule.checkAdd(tooMany, NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT))
+                .hasMessageContaining("1~367개");
     }
 
     @Test

@@ -107,10 +107,10 @@ export function zoneOfStudy(studyId: string): string {
 }
 
 export const TITLE_MAX = 50;
-/** 반복 종료일로 고를 수 있는 마지막 날. */
 /** 반복으로 한 번에 만들 수 있는 기간 — 시작 일자부터 1년 뒤 같은 날까지(2/29 시작이면 다음 해 2/28). 서버도 같은 상한을 본다. */
 export const REPEAT_SPAN_LABEL = '1년';
 
+/** 반복 종료일로 고를 수 있는 마지막 날. */
 export function maxUntil(date: string): string {
   if (!date) return '';
   const [y, m, d] = date.split('-').map(Number);
@@ -332,17 +332,29 @@ export function bookFromSchedule(meetings: ProtoMeeting[]) {
 /* ── 날짜·시각 ───────────────────────────────────────────────────────────── */
 
 /** 그 시간대에서 본 순간의 벽시계 부품. */
-function zonedParts(instant: Date, iana: string) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: formattingZone(iana, instant),
+// 포매터 생성이 비싸다 — 1년 매일 반복이면 미리보기 한 번에 수천 번 부른다. 시간대마다 하나만 만든다
+const zonedFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function zonedFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = zonedFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       hourCycle: 'h23',
-    })
+    });
+    zonedFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
+function zonedParts(instant: Date, iana: string) {
+  const parts = Object.fromEntries(
+    zonedFormatter(formattingZone(iana, instant))
       .formatToParts(instant)
       .map((p) => [p.type, p.value]),
   );
@@ -558,7 +570,7 @@ export function planDraft(
     if (!draft.until) errors.until = '반복 종료일을 정해 주세요.';
     else if (draft.date && draft.until < draft.date) errors.until = '종료일은 시작 일자보다 뒤여야 합니다.';
     else if (draft.date && draft.until > maxUntil(draft.date))
-      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_LABEL} 안에서만 만들 수 있습니다 (${maxUntil(draft.date)}까지).`;
+      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_LABEL} 안에서만 만들 수 있습니다 (${dateWithDow(maxUntil(draft.date))}까지).`;
   }
   if (errors.date || errors.time || errors.until || errors.weekdays) return { errors };
 

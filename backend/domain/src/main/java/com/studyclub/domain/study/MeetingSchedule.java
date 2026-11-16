@@ -30,6 +30,8 @@ public class MeetingSchedule {
 
     // 첫 날부터 1년 뒤 같은 날까지 (2/29 시작이면 다음 해 2/28). 같은 날 중복이 막히므로 개수도 여기서 묶인다
     static final int MAX_SPAN_YEARS = 1;
+    // 1년 안의 서로 다른 날은 많아야 367일(2/29 를 낀 1년 + 끝날). 이보다 길면 하나씩 보기 전에 거절한다
+    static final int MAX_MEETINGS_PER_ADD = 367;
 
     private static final DateTimeFormatter SHORT_DAY =
             DateTimeFormatter.ofPattern("M/d(E)", Locale.KOREAN);
@@ -51,8 +53,9 @@ public class MeetingSchedule {
      * 뺐으니, 남아 있다면 그 사이 누가 그 날에 회차를 만든 것이다.
      */
     public void checkAdd(Collection<Instant> scheduledAts, Instant now) {
-        if (scheduledAts.isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "추가할 회차를 하나 이상 보내 주세요.");
+        if (scheduledAts.isEmpty() || scheduledAts.size() > MAX_MEETINGS_PER_ADD) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "회차는 한 번에 1~" + MAX_MEETINGS_PER_ADD + "개까지 추가합니다.");
         }
         Set<LocalDate> days = new HashSet<>();
         for (Instant scheduledAt : scheduledAts) {
@@ -64,7 +67,8 @@ public class MeetingSchedule {
         LocalDate first = days.stream().min(LocalDate::compareTo).orElseThrow();
         LocalDate last = days.stream().max(LocalDate::compareTo).orElseThrow();
         if (last.isAfter(first.plusYears(MAX_SPAN_YEARS))) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "반복은 시작일부터 1년 안에서만 만듭니다.");
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "반복은 시작일부터 " + MAX_SPAN_YEARS + "년 안에서만 만듭니다.");
         }
         for (LocalDate day : days) {
             assertAfterKickoff(day, null);

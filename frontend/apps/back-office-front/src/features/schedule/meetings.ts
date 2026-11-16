@@ -1,4 +1,4 @@
-import { addDaysYmd, dayLabel, DOW_LABEL, dowOf, type StudyTz, tzAbbr, zonedInstant } from '@/features/schedule/time';
+import { addDaysYmd, dateWithDow, dayLabel, DOW_LABEL, dowOf, type StudyTz, tzAbbr, zonedInstant } from '@/features/schedule/time';
 
 /**
  * 반(STUDY_GROUP)과 회차(STUDY_MEETING).
@@ -136,7 +136,7 @@ export function planDraft(
     if (!draft.until) errors.until = '반복 종료일을 정해 주세요.';
     else if (draft.date && draft.until < draft.date) errors.until = '종료일은 시작 일자보다 뒤여야 합니다.';
     else if (draft.date && draft.until > maxUntil(draft.date))
-      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_LABEL} 안에서만 만들 수 있습니다 (${maxUntil(draft.date)}까지).`;
+      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_LABEL} 안에서만 만들 수 있습니다 (${dateWithDow(maxUntil(draft.date))}까지).`;
   }
   if (errors.date || errors.time || errors.until || errors.weekdays) return { errors };
 
