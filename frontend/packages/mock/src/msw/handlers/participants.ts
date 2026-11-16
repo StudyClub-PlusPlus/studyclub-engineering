@@ -27,11 +27,11 @@ const person = (
     groupId?: number;
     role?: "LEADER" | "MEMBER";
     region?: "KR" | "NA" | "ETC" | null;
-    captain?: boolean;
+    accountId?: number;
   } = {},
 ) => ({
   participantId: id,
-  accountId: 1000 + id,
+  accountId: extra.accountId ?? 1000 + id,
   nickname,
   discordNickname: extra.discordNickname ?? null,
   email: `crew${id}@example.com`,
@@ -39,7 +39,8 @@ const person = (
   groupId: extra.groupId ?? 1,
   participantRole: extra.role ?? "MEMBER",
   status,
-  captain: extra.captain ?? false,
+  /** 서버처럼 담당 캡틴(ownerCaptain)과 같은 계정이면 true — `listOf` 가 채운다. */
+  captain: false,
   joinedAt: `2026-10-${String(1 + (id % 9)).padStart(2, "0")}T01:00:00Z`,
 });
 
@@ -54,9 +55,10 @@ const CREW: Row[] = [
     discordNickname: "제이미/BE/서울/분산시스템",
     role: "LEADER",
   }),
-  person(2, "seeun", "ACTIVE", {
-    discordNickname: "세은/PM/서울",
-    captain: true,
+  // 담당 캡틴(캡틴 계정 3 · 다온)이 크루로도 신청한 줄
+  person(2, "daon", "ACTIVE", {
+    discordNickname: "다온/PM/서울",
+    accountId: MOCK_ACTOR_ID,
   }),
   person(3, "doyun", "ACTIVE", {
     discordNickname: "도윤/FE/시애틀",
@@ -95,8 +97,10 @@ const groupName = (id: number) =>
   GROUPS.find((g) => g.groupId === id)?.name ?? "";
 
 function listOf(studyId: number, all: Row[], includeLeft: boolean) {
+  const owner = ownerOf(studyId);
   const participants = all
     .filter((p) => includeLeft || p.status !== "WITHDRAWN")
+    .map((p) => ({ ...p, captain: p.accountId === owner?.accountId }))
     .sort(
       (a, b) =>
         Number(b.participantRole === "LEADER") -
@@ -110,7 +114,7 @@ function listOf(studyId: number, all: Row[], includeLeft: boolean) {
       (p) => p.status === "ACTIVE" || p.status === "PAUSED",
     ).length,
     recruitmentCapacity: 20,
-    ownerCaptain: ownerOf(studyId),
+    ownerCaptain: owner,
     groups: GROUPS,
     participants,
   };
