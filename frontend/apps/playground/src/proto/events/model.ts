@@ -1,3 +1,4 @@
+import { resolveWallInput } from '@core/lib/meetings';
 import { zoneAbbreviation } from '@core/lib/schedule-timezone';
 import { EVENT_PREVIEW_MEMBER } from '@studyclub/mock/data';
 import type {
@@ -12,6 +13,18 @@ import type {
 } from '@studyclub/types';
 
 export const SELF = EVENT_PREVIEW_MEMBER;
+export const EVENT_LIMITS = {
+  title: 60,
+  summary: 120,
+  description: 5000,
+  location: 300,
+  questionLabel: 200,
+  optionLabel: 100,
+  questions: 20,
+  minOptions: 2,
+  maxOptions: 10,
+} as const;
+const ADMIN_PAGE_SIZE = 20;
 export const CHANNEL_LABEL = { ONLINE: '온라인', OFFLINE: '오프라인' };
 export const FORMAT_LABEL = { ...CHANNEL_LABEL, HYBRID: '온라인·오프라인' };
 export const CONFIRM_LABEL = { AUTO: '자동 확정', REVIEW: '운영진 확인 후 확정' };
@@ -65,26 +78,28 @@ export function wallTime(iso: string, timeZone: string) {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
-/** DST로 사라지거나 두 번 나타나는 시각은 임의로 선택하지 않는다. */
-export function wallTimeToIso(value: string, zone: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
-  const naive = Date.parse(`${value}:00Z`);
-  if (!Number.isFinite(naive)) return null;
-  const offsets = new Set(
-    [-24, 0, 24].map((hours) => {
-      const sample = new Date(naive + hours * 3600000).toISOString();
-      return Date.parse(`${wallTime(sample, zone)}:00Z`) - Date.parse(sample);
-    }),
-  );
-  const matches = [...offsets]
-    .map((offset) => new Date(naive - offset).toISOString())
-    .filter((iso) => wallTime(iso, zone) === value);
-  return matches.length === 1 ? matches[0]! : null;
+export function resolveEventInput(
+  value: string,
+  timeZone: string,
+  saved?: { iso: string; timeZone: string },
+  selectedIso?: string,
+) {
+  const [date = '', time = ''] = value.split('T');
+  const savedIso = saved?.timeZone === timeZone ? saved.iso : undefined;
+  const resolution = resolveWallInput(date, time, timeZone, [selectedIso, savedIso]);
+  const iso = resolution.instant?.getTime() === Date.parse(savedIso ?? '')
+    ? savedIso
+    : resolution.instant?.toISOString();
+  return { ...resolution, iso };
 }
 
-export function eventInputToIso(value: string, timeZone: string, savedIso: string, savedTimeZone: string) {
-  if (savedIso && timeZone === savedTimeZone && value === wallTime(savedIso, savedTimeZone)) return savedIso;
-  return wallTimeToIso(value, timeZone);
+export function eventAdminPage(events: PreviewEvent[], page: number) {
+  const pageCount = Math.max(1, Math.ceil(events.length / ADMIN_PAGE_SIZE));
+  const current = Math.min(page, pageCount);
+  const rows = [...events]
+    .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt) || a.id.localeCompare(b.id))
+    .slice((current - 1) * ADMIN_PAGE_SIZE, current * ADMIN_PAGE_SIZE);
+  return { rows, current, pageCount };
 }
 
 export function formatDate(iso: string, zone: string, locale = 'ko-KR', includeTimeZone = true) {
@@ -143,7 +158,13 @@ export function validateEvent(event: PreviewEvent, state: EventPreviewState, now
   const previous = state.events.find((e) => e.id === event.id);
   if (!event.title.trim() || !event.summary.trim() || !event.description.trim())
     return '행사명, 한 줄 소개, 모집 상세를 입력해 주세요.';
-  if (event.title.length > 60) return '행사명은 60자 이내로 입력해 주세요.';
+  for (const [key, label] of [
+    ['title', '행사명은'],
+    ['summary', '한 줄 소개는'],
+    ['description', '모집 상세는'],
+  ] as const) {
+    if (event[key].length > EVENT_LIMITS[key]) return `${label} ${EVENT_LIMITS[key]}자 이내로 입력해 주세요.`;
+  }
   if (
     ![event.startsAt, event.deadlineAt].every((x) => Number.isFinite(Date.parse(x))) ||
     (event.endsAt && !Number.isFinite(Date.parse(event.endsAt)))
@@ -166,16 +187,29 @@ export function validateEvent(event: PreviewEvent, state: EventPreviewState, now
       return '정원은 1명부터 10,000명까지 입력해 주세요.';
     if (info.capacity < info.pending + info.confirmed) return '확인 대기와 참가 확정 인원보다 정원을 줄일 수 없습니다.';
   }
-  if (channels(event).includes('OFFLINE') && !event.location.trim()) return '오프라인 장소를 입력해 주세요.';
+  if (channels(event).includes('OFFLINE')) {
+    if (!event.location.trim()) return '오프라인 장소를 입력해 주세요.';
+    if (event.location.length > EVENT_LIMITS.location)
+      return `오프라인 장소는 ${EVENT_LIMITS.location}자 이내로 입력해 주세요.`;
+  }
   if (event.onlineUrl && !safeWebUrl(event.onlineUrl))
     return '온라인 참여 링크는 http 또는 https 주소로 입력해 주세요.';
+  if (event.questions.length > EVENT_LIMITS.questions)
+    return `신청 질문은 최대 ${EVENT_LIMITS.questions}개까지 추가할 수 있습니다.`;
   for (const q of event.questions) {
     if (!q.label.trim()) return '질문 제목을 입력해 주세요.';
-    if (
-      ['RADIO', 'CHECKBOX', 'SELECT'].includes(q.type) &&
-      (q.options.length < 2 || q.options.some((x) => !x.trim()) || new Set(q.options).size !== q.options.length)
-    )
-      return '선택지는 서로 다른 내용으로 2개 이상 입력해 주세요.';
+    if (q.label.length > EVENT_LIMITS.questionLabel)
+      return `질문 제목은 ${EVENT_LIMITS.questionLabel}자 이내로 입력해 주세요.`;
+    if (['RADIO', 'CHECKBOX', 'SELECT'].includes(q.type)) {
+      const options = q.options.map((option) => option.trim());
+      if (
+        options.length < EVENT_LIMITS.minOptions || options.length > EVENT_LIMITS.maxOptions ||
+        options.some((option) => !option) || new Set(options).size !== options.length
+      )
+        return `서로 다른 선택지를 ${EVENT_LIMITS.minOptions}~${EVENT_LIMITS.maxOptions}개 입력해 주세요.`;
+      if (q.options.some((option) => option.length > EVENT_LIMITS.optionLabel))
+        return `선택지는 하나당 ${EVENT_LIMITS.optionLabel}자 이내로 입력해 주세요.`;
+    }
   }
   if (previous?.status === 'CANCELLED') return '취소된 행사는 수정할 수 없습니다.';
   if (

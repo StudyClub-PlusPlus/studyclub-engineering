@@ -22,7 +22,7 @@ try {
     outExtension: { '.js': '.mjs' },
     logLevel: 'silent',
   });
-  const { transition, seatInfo, wallTime, wallTimeToIso, eventInputToIso, isEventPublic, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates } = await import(
+  const { transition, seatInfo, wallTime, resolveEventInput, eventAdminPage, EVENT_LIMITS, isEventPublic, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates } = await import(
     pathToFileURL(path.join(temp, 'model.mjs'))
   );
   const { toPreviewDocument } = await import(pathToFileURL(path.join(temp, 'render.mjs')));
@@ -70,6 +70,48 @@ try {
   const newEvent = {
     ...fullSeed.events[0], id: 'preview-new-event', publishedAt: undefined, format: 'ONLINE', confirmation: 'AUTO', questions: [],
   };
+  const unsorted = Array.from({ length: 21 }, (_, i) => ({
+    ...newEvent, id: String(i), startsAt: new Date(now + i * 3600000).toISOString(),
+  }));
+  const firstPage = eventAdminPage(unsorted, 1);
+  assert.equal(firstPage.pageCount, 2);
+  assert.deepEqual(firstPage.rows.map(({ id }) => Number(id)), Array.from({ length: 20 }, (_, i) => 20 - i));
+  assert.deepEqual(eventAdminPage(unsorted, 2).rows, [unsorted[0]]);
+  assert.equal(unsorted[0].id, '0');
+  console.log('✓ 행사 시작 시각 내림차순, 20건 단위 페이지');
+
+  const maxLengthEvent = {
+    ...newEvent,
+    format: 'OFFLINE',
+    title: '가'.repeat(EVENT_LIMITS.title),
+    summary: '가'.repeat(EVENT_LIMITS.summary),
+    description: '가'.repeat(EVENT_LIMITS.description),
+    location: '가'.repeat(EVENT_LIMITS.location),
+    questions: Array.from({ length: EVENT_LIMITS.questions }, (_, i) => ({
+      id: String(i), label: '가'.repeat(EVENT_LIMITS.questionLabel), type: i ? 'TEXT' : 'RADIO',
+      required: false,
+      options: i ? [] : Array.from({ length: EVENT_LIMITS.maxOptions }, (_, option) => String(option) + '가'.repeat(EVENT_LIMITS.optionLabel - 1)),
+    })),
+  };
+  assert.equal(transition(populated, { type: 'CREATE', event: maxLengthEvent }, now).events[0].questions.length, 20);
+  for (const key of ['title', 'summary', 'description', 'location']) {
+    assert.throws(
+      () => transition(populated, { type: 'CREATE', event: { ...maxLengthEvent, [key]: maxLengthEvent[key] + '가' } }, now),
+      new RegExp(`${EVENT_LIMITS[key]}자 이내`),
+    );
+  }
+  const [choiceQuestion, ...remainingQuestions] = maxLengthEvent.questions;
+  const saveWithQuestion = (question) => transition(
+    populated, { type: 'CREATE', event: { ...maxLengthEvent, questions: [question, ...remainingQuestions] } }, now,
+  );
+  assert.throws(() => saveWithQuestion({ ...choiceQuestion, label: choiceQuestion.label + '가' }), /200자 이내/);
+  assert.throws(() => saveWithQuestion({ ...choiceQuestion, options: [...choiceQuestion.options, '하나 더'] }), /2~10개/);
+  assert.throws(() => saveWithQuestion({ ...choiceQuestion, options: ['짧은 선택지', '가'.repeat(101)] }), /100자 이내/);
+  assert.throws(() => transition(populated, {
+    type: 'CREATE', event: { ...maxLengthEvent, questions: [...maxLengthEvent.questions, { ...choiceQuestion, id: '20' }] },
+  }, now), /최대 20개/);
+  console.log('✓ 행사 기본 정보와 신청 질문의 입력 범위');
+
   const created = transition(populated, { type: 'CREATE', event: newEvent }, now);
   assert.equal(created.events[0].status, 'PUBLISHED');
   assert.equal(created.events[0].publishedAt, new Date(now).toISOString());
@@ -457,7 +499,7 @@ try {
   const timedState = { ...created, events: [timedEvent] };
   const editedTimes = Object.fromEntries(
     ['startsAt', 'endsAt', 'deadlineAt'].map((field) => [
-      field, eventInputToIso(wallTime(timedEvent[field], timedEvent.timeZone), timedEvent.timeZone, timedEvent[field], timedEvent.timeZone),
+      field, resolveEventInput(wallTime(timedEvent[field], timedEvent.timeZone), timedEvent.timeZone, { iso: timedEvent[field], timeZone: timedEvent.timeZone }).iso,
     ]),
   );
   assert.deepEqual(editedTimes, {
@@ -497,11 +539,22 @@ try {
   assert.throws(() => transition(fullSeed, { type: 'APPLY', eventId: fullSeed.events[0].id, channel: 'ONLINE', answers: {}, applicant: { ...SELF, email: '' } }, now), /이메일/);
   console.log('✓ 종료 미입력 행사의 현지 자정·서머타임, 종료 후 상태 변경 제한, 계정 이메일 검증');
 
-  assert.equal(wallTimeToIso('2026-11-14T09:00', 'Asia/Seoul'), '2026-11-14T00:00:00.000Z');
-  assert.equal(wallTimeToIso('2026-11-13T19:00', 'America/Toronto'), '2026-11-14T00:00:00.000Z');
-  assert.equal(wallTimeToIso('2026-07-01T19:00', 'America/New_York'), '2026-07-01T23:00:00.000Z');
-  assert.equal(wallTimeToIso('2026-03-08T02:30', 'America/New_York'), null);
-  assert.equal(wallTimeToIso('2026-11-01T01:30', 'America/New_York'), null);
+  assert.equal(resolveEventInput('2026-11-14T09:00', 'Asia/Seoul').iso, '2026-11-14T00:00:00.000Z');
+  assert.equal(resolveEventInput('2026-11-13T19:00', 'America/Toronto').iso, '2026-11-14T00:00:00.000Z');
+  assert.equal(resolveEventInput('2026-07-01T19:00', 'America/New_York').iso, '2026-07-01T23:00:00.000Z');
+  const missingTime = resolveEventInput('2026-03-08T02:30', 'America/New_York');
+  assert.equal(missingTime.iso, undefined);
+  assert.match(missingTime.errors.time, /사라지는 시각/);
+  const repeatedTime = '2026-11-01T01:30';
+  const repeatedZone = 'America/New_York';
+  const repeated = resolveEventInput(repeatedTime, repeatedZone);
+  assert.equal(repeated.iso, undefined);
+  assert.deepEqual(repeated.choices.map(({ scheduledAt }) => scheduledAt), ['2026-11-01T05:30:00.000Z', '2026-11-01T06:30:00.000Z']);
+  for (const { scheduledAt } of repeated.choices)
+    assert.equal(resolveEventInput(repeatedTime, repeatedZone, undefined, scheduledAt).iso, scheduledAt);
+  const storedOccurrence = { iso: '2026-11-01T06:30:24.100Z', timeZone: repeatedZone };
+  assert.equal(resolveEventInput(repeatedTime, repeatedZone, storedOccurrence).iso, storedOccurrence.iso);
+  assert.equal(resolveEventInput(repeatedTime, 'America/Toronto', storedOccurrence).iso, undefined);
   assert.match(formatDate('2026-11-14T00:00:00.000Z', 'Asia/Seoul'), /KST$/);
   assert.match(formatDate('2026-11-14T00:00:00.000Z', 'America/Toronto'), /EST$/);
   assert.match(formatDate('2026-07-01T23:00:00.000Z', 'America/New_York'), /EDT$/);

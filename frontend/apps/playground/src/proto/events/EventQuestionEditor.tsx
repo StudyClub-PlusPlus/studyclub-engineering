@@ -4,6 +4,8 @@ import type { EventQuestion } from '@studyclub/types';
 import { Button, Checkbox, Input, Select } from '@studyclub/ui';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 
+import { EVENT_LIMITS } from './model';
+
 export function EventQuestionEditor({
   questions,
   readOnly,
@@ -22,6 +24,7 @@ export function EventQuestionEditor({
   };
   const addOption = (questionIndex: number, focusIndex?: number) => {
     const question = questions[questionIndex]!;
+    if (question.options.length >= EVENT_LIMITS.maxOptions) return;
     update(questionIndex, { options: [...question.options, ''] });
     if (focusIndex !== undefined)
       window.setTimeout(() => document.getElementById(`question-${question.id}-option-${focusIndex}`)?.focus(), 0);
@@ -48,7 +51,7 @@ export function EventQuestionEditor({
             <Input
               label='질문 제목'
               required
-              maxLength={200}
+              maxLength={EVENT_LIMITS.questionLabel}
               value={question.label}
               onChange={(e) => update(index, { label: e.target.value })}
               placeholder='이번 행사에서 어떤 이야기를 나누고 싶나요?'
@@ -87,6 +90,7 @@ export function EventQuestionEditor({
                           id={`question-${question.id}-option-${optionIndex}`}
                           aria-label={`질문 ${index + 1} 선택지 ${optionIndex + 1}`}
                           value={option}
+                          maxLength={EVENT_LIMITS.optionLabel}
                           placeholder={`선택지 ${optionIndex + 1}`}
                           onChange={(e) =>
                             update(index, {
@@ -108,7 +112,7 @@ export function EventQuestionEditor({
                           variant='tertiary'
                           size='sm'
                           aria-label={`질문 ${index + 1} 선택지 ${optionIndex + 1} 삭제`}
-                          disabled={question.options.length <= 2}
+                          disabled={question.options.length <= EVENT_LIMITS.minOptions}
                           onClick={() =>
                             update(index, { options: question.options.filter((_, i) => i !== optionIndex) })
                           }
@@ -126,6 +130,7 @@ export function EventQuestionEditor({
                     size='sm'
                     className='mt-2'
                     leadingIcon={<Plus size={15} />}
+                    disabled={question.options.length >= EVENT_LIMITS.maxOptions}
                     onClick={() => addOption(index, question.options.length)}
                   >
                     선택지 추가
@@ -186,7 +191,7 @@ export function EventQuestionEditor({
           type='button'
           variant='secondary'
           size='sm'
-          disabled={questions.length >= 10}
+          disabled={questions.length >= EVENT_LIMITS.questions}
           leadingIcon={<Plus size={16} />}
           onClick={() =>
             onChange([...questions, { id: crypto.randomUUID(), label: '', type: 'TEXT', required: false, options: [] }])
