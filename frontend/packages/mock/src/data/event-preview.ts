@@ -11,7 +11,7 @@ export const EVENT_NOTICE_TEMPLATE: EventNoticeTemplate = {
   updatedAt: "2026-11-14T00:00:00Z",
 };
 
-const eventStatusBody = (label: string, content: string, detailTitle: string, detail: string) => `<!DOCTYPE html>
+const eventStatusBody = (label: string, content: string, detailTitle?: string, detail?: string) => `<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -34,10 +34,10 @@ const eventStatusBody = (label: string, content: string, detailTitle: string, de
               <div style="font-size:15px;line-height:25px;color:#282A43;">
                 ${content}
               </div>
-              <div style="margin-top:24px;padding:18px;background:#F5F7FF;border-radius:8px;">
+              ${detailTitle && detail ? `<div style="margin-top:24px;padding:18px;background:#F5F7FF;border-radius:8px;">
                 <p style="margin:0 0 10px;font-size:14px;font-weight:700;">${detailTitle}</p>
                 ${detail}
-              </div>
+              </div>` : ''}
               <div style="height:1px;background:#E2E1E9;margin:28px 0 22px;"></div>
               <p style="margin:0;font-size:14px;line-height:22px;color:#626476;">
                 궁금한 사항이 있다면 운영진에게 문의해 주세요.<br><br>
@@ -52,6 +52,15 @@ const eventStatusBody = (label: string, content: string, detailTitle: string, de
   </table>
 </body>
 </html>`;
+
+export const EVENT_CANCELLATION_TEMPLATE: EventNoticeTemplate = {
+  id: 8,
+  trigger: "EVENT_CANCELLATION",
+  channel: "EMAIL",
+  subject: "[StudyClub] {{eventTitle}} 행사 취소 안내",
+  body: eventStatusBody("행사 취소 안내", "{{notice}}"),
+  updatedAt: "2026-11-15T00:00:00Z",
+};
 
 export const EVENT_STATUS_TEMPLATES: PreviewNotificationTemplate[] = [
   {
@@ -242,9 +251,13 @@ export function createEventPreviewState(now = new Date(), noticeBody = EVENT_NOT
   }
   return {
     version: 2,
-    eventTemplates: [{ ...structuredClone(EVENT_NOTICE_TEMPLATE), body: noticeBody }],
+    eventTemplates: [
+      { ...structuredClone(EVENT_NOTICE_TEMPLATE), body: noticeBody },
+      structuredClone(EVENT_CANCELLATION_TEMPLATE),
+    ],
     notificationTemplates: [
       { ...structuredClone(EVENT_NOTICE_TEMPLATE), body: noticeBody },
+      structuredClone(EVENT_CANCELLATION_TEMPLATE),
       ...structuredClone(EVENT_STATUS_TEMPLATES),
     ],
     events,

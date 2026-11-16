@@ -65,7 +65,7 @@ export type EventMailPreview = {
 };
 export type EventNoticeTemplate = {
   id: number;
-  trigger: "EVENT_ANNOUNCEMENT";
+  trigger: "EVENT_ANNOUNCEMENT" | "EVENT_CANCELLATION";
   channel: "EMAIL";
   subject: string;
   body: string;
@@ -77,6 +77,7 @@ export type PreviewNotificationTemplate = Omit<EventNoticeTemplate, "trigger"> &
     | "USER_WITHDRAWN"
     | "FEEDBACK_REPLIED"
     | "EVENT_ANNOUNCEMENT"
+    | "EVENT_CANCELLATION"
     | "EVENT_REGISTRATION_PENDING"
     | "EVENT_REGISTRATION_CONFIRMED"
     | "EVENT_REGISTRATION_DECLINED"

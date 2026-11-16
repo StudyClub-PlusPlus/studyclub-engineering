@@ -41,6 +41,22 @@ export const ZONES = [
   { value: 'America/Los_Angeles', label: '미국 (로스앤젤레스)' },
 ];
 
+export function eventQuestionVersion(questions: EventQuestion[]) {
+  return JSON.stringify(questions.map(({ id, label, type, required, options }) => [id, label, type, required, options]));
+}
+
+export function answersForUnchangedQuestions(
+  previous: EventQuestion[],
+  current: EventQuestion[],
+  answers: EventRegistration['answers'],
+) {
+  const previousById = new Map(previous.map((question) => [question.id, eventQuestionVersion([question])]));
+  return normalizeEventAnswers(
+    current.filter((question) => previousById.get(question.id) === eventQuestionVersion([question])),
+    answers,
+  );
+}
+
 export function normalizeEventAnswers(
   questions: EventQuestion[],
   source: EventRegistration['answers'],
@@ -121,6 +137,18 @@ export function channels(event: PreviewEvent): EventChannel[] {
 }
 export function isEventPublic(event: PreviewEvent) {
   return Boolean(event.publishedAt);
+}
+
+export function latestRegistrationsByEvent(registrations: EventRegistration[], memberId: string) {
+  const latest = new Map<string, EventRegistration>();
+  for (const registration of registrations) {
+    if (registration.memberId !== memberId) continue;
+    const previous = latest.get(registration.eventId);
+    if (!previous || Date.parse(registration.createdAt) > Date.parse(previous.createdAt)) {
+      latest.set(registration.eventId, registration);
+    }
+  }
+  return latest;
 }
 
 export function occupiesSeat(r: EventRegistration) {
@@ -212,6 +240,8 @@ export function validateEvent(event: PreviewEvent, state: EventPreviewState, now
     }
   }
   if (previous?.status === 'CANCELLED') return '취소된 행사는 수정할 수 없습니다.';
+  if (previous && Date.parse(previous.startsAt) <= now && Date.parse(event.startsAt) > now)
+    return '이미 시작한 행사의 시작 시각을 미래로 옮길 수 없습니다.';
   if (
     previous &&
     previous.confirmation !== event.confirmation &&
@@ -228,13 +258,19 @@ export function validateEvent(event: PreviewEvent, state: EventPreviewState, now
   return null;
 }
 
-const NOTICE_VARIABLES = ['nickname', 'eventTitle', 'eventSchedule', 'participation', 'channel', 'notice'];
-const AUTOMATIC_EVENT_VARIABLES = ['nickname', 'eventTitle', 'eventSchedule', 'participation', 'channel'];
+const CANCELLATION_VARIABLES = ['nickname', 'eventTitle', 'notice'];
+const NOTICE_VARIABLES = [...CANCELLATION_VARIABLES, 'eventSchedule', 'participation', 'channel'];
+const AUTOMATIC_EVENT_VARIABLES = ['nickname', 'eventTitle', 'eventSchedule', 'channel'];
+
+export function isEventNoticeTemplate(template: PreviewNotificationTemplate): template is EventNoticeTemplate {
+  return template.trigger === 'EVENT_ANNOUNCEMENT' || template.trigger === 'EVENT_CANCELLATION';
+}
 export function validateEventTemplate(template: EventNoticeTemplate): string | null {
   if (!template.subject.trim() || !template.body.trim()) return '템플릿 제목과 본문을 입력해 주세요.';
   if (!/{{\s*notice\s*}}/.test(template.body)) return '행사 안내 내용이 들어갈 {{notice}}를 본문에 넣어 주세요.';
+  const allowed = template.trigger === 'EVENT_CANCELLATION' ? CANCELLATION_VARIABLES : NOTICE_VARIABLES;
   const unknown = [...`${template.subject} ${template.body}`.matchAll(/{{([\s\S]*?)}}/g)].find(
-    (match) => !NOTICE_VARIABLES.includes(match[1]!.trim()),
+    (match) => !allowed.includes(match[1]!.trim()),
   );
   return unknown ? `지원하지 않는 변수입니다: ${unknown[0]}` : null;
 }
@@ -252,8 +288,11 @@ export function mergeNotificationTemplates(
 
 function validateAutomaticEventTemplate(template: PreviewNotificationTemplate): string | null {
   if (!template.subject.trim() || !template.body.trim()) return '템플릿 제목과 본문을 입력해 주세요.';
+  const allowed = template.trigger === 'EVENT_REGISTRATION_CONFIRMED'
+    ? [...AUTOMATIC_EVENT_VARIABLES, 'participation']
+    : AUTOMATIC_EVENT_VARIABLES;
   const unknown = [...`${template.subject} ${template.body}`.matchAll(/{{([\s\S]*?)}}/g)].find(
-    (match) => !AUTOMATIC_EVENT_VARIABLES.includes(match[1]!.trim()),
+    (match) => !allowed.includes(match[1]!.trim()),
   );
   return unknown ? `지원하지 않는 변수입니다: ${unknown[0]}` : null;
 }
@@ -300,7 +339,10 @@ export function renderEventNoticePreview(
   notice: string,
   displayTimeZone = event.timeZone,
 ) {
-  return renderNoticeValues(template, { ...eventNoticeValues(event, channel, displayTimeZone), notice: notice.trim() });
+  const values = template.trigger === 'EVENT_CANCELLATION'
+    ? { eventTitle: event.title }
+    : eventNoticeValues(event, channel, displayTimeZone);
+  return renderNoticeValues(template, { ...values, notice: notice.trim() });
 }
 
 /** 구버전 공통 미리보기의 빈 행사 정보만 한 번 채운다. 개인별 발송 결과는 변경하지 않는다. */
@@ -308,7 +350,8 @@ export function fillLegacyEventMailPreview(mail: EventMailPreview, event: Previe
   if (!mail.deliveries || mail.previewVersion === 2) return mail;
   const channel = mail.audience === 'ONLINE' || mail.audience === 'OFFLINE' ? mail.audience : 'ALL';
   // 개별 치환본에도 남은 변수는 운영진이 본문에 직접 쓴 문자열일 수 있어 그대로 둔다.
-  const values = Object.fromEntries(Object.entries(eventNoticeValues(event, channel)).filter(([key]) => {
+  const eventValues = mail.audience === 'CANCELLED_ACTIVE' ? { eventTitle: event.title } : eventNoticeValues(event, channel);
+  const values = Object.fromEntries(Object.entries(eventValues).filter(([key]) => {
     const literal = new RegExp(`{{\\s*${key}\\s*}}`);
     return !mail.deliveries!.some((delivery) => literal.test(delivery.body) || literal.test(delivery.subject));
   }));
@@ -322,8 +365,11 @@ export function renderEventNotice(
   notice: string,
   displayTimeZone = recipient.timeZone ?? event.timeZone,
 ) {
+  const values = template.trigger === 'EVENT_CANCELLATION'
+    ? { eventTitle: event.title }
+    : eventNoticeValues(event, recipient.channel, displayTimeZone);
   return renderNoticeValues(template, {
-    ...eventNoticeValues(event, recipient.channel, displayTimeZone),
+    ...values,
     nickname: recipient.name,
     notice: notice.trim(),
   });
@@ -342,8 +388,10 @@ function renderAutomaticEventMail(
   event: PreviewEvent,
   registration: EventRegistration,
 ) {
+  const values = eventNoticeValues(event, registration.channel, registration.timeZone ?? event.timeZone);
   return renderNoticeValues(template, {
-    ...eventNoticeValues(event, registration.channel, registration.timeZone ?? event.timeZone),
+    ...values,
+    participation: registration.status === 'CONFIRMED' ? values.participation : '',
     nickname: registration.name,
     channel: CHANNEL_LABEL[registration.channel],
   });
@@ -389,24 +437,11 @@ export function createEventNoticeMail(
   };
 }
 
-export function cancellationEventTemplate(template: EventNoticeTemplate): EventNoticeTemplate {
-  return {
-    ...template,
-    subject: '[StudyClub] {{eventTitle}} 행사 취소 안내',
-    body: template.body
-      .replace('>행사 안내</p>', '>행사 취소 안내</p>')
-      .replace(
-        '이 메일은 참가가 확정된 {{eventTitle}} 행사의 운영 안내를 위해 발송되었습니다.',
-        '이 메일은 {{eventTitle}} 행사 취소 안내를 위해 발송되었습니다.',
-      ),
-  };
-}
-
 export type EventAction =
   | { type: 'CREATE'; event: PreviewEvent }
   | { type: 'SAVE'; event: PreviewEvent }
   | { type: 'STATUS'; eventId: string; status: PreviewEvent['status'] }
-  | { type: 'APPLY'; eventId: string; channel: EventChannel; answers: EventRegistration['answers']; applicant?: typeof SELF & { timeZone?: string } }
+  | { type: 'APPLY'; eventId: string; channel: EventChannel; questionVersion: string; answers: EventRegistration['answers']; applicant?: typeof SELF & { timeZone?: string } }
   | { type: 'DECIDE'; registrationId: string; status: 'CONFIRMED' | 'DECLINED' }
   | { type: 'CANCEL'; registrationId: string }
   | { type: 'ADMIN_CANCEL'; registrationId: string }
@@ -453,7 +488,7 @@ export function transition(current: EventPreviewState, action: EventAction, now 
     throw new Error(message);
   };
   if (action.type === 'TEMPLATES') {
-    const eventTemplates = action.templates.filter((t): t is EventNoticeTemplate => t.trigger === 'EVENT_ANNOUNCEMENT');
+    const eventTemplates = action.templates.filter(isEventNoticeTemplate);
     if (new Set(action.templates.map((t) => t.id)).size !== action.templates.length)
       fail('템플릿 ID가 중복되었습니다.');
     for (const template of eventTemplates) {
@@ -563,6 +598,8 @@ export function transition(current: EventPreviewState, action: EventAction, now 
       fail('이미 신청한 행사입니다. 내 신청 내역을 확인해 주세요.');
     if (!channels(event).includes(action.channel) || seatInfo(state, event, action.channel).remaining === 0)
       fail('선택한 참여 방식의 정원이 찼습니다.');
+    if (action.questionVersion !== eventQuestionVersion(event.questions))
+      fail('신청 질문이 변경되었습니다. 변경된 질문을 확인해 주세요.');
     const answers = normalizeEventAnswers(event.questions, action.answers);
     for (const q of event.questions) {
       const answer = answers[q.id];
@@ -593,8 +630,9 @@ export function transition(current: EventPreviewState, action: EventAction, now 
     if (!isCancellationMail && event.status === 'CANCELLED') fail('취소된 행사에는 안내 메일을 보낼 수 없습니다.');
     if (isCancellationMail && event.status !== 'CANCELLED') fail('취소된 행사에만 취소 안내 메일을 보낼 수 있습니다.');
     if (!action.notice.trim()) fail('안내 내용을 입력해 주세요.');
-    const template =
-      state.eventTemplates.find((item) => item.id === action.templateId) ?? fail('등록된 행사 안내 템플릿이 없습니다.');
+    const trigger = isCancellationMail ? 'EVENT_CANCELLATION' : 'EVENT_ANNOUNCEMENT';
+    const template = state.eventTemplates.find((item) => item.id === action.templateId && item.trigger === trigger)
+      ?? fail(isCancellationMail ? '등록된 행사 취소 안내 템플릿이 없습니다.' : '등록된 행사 안내 템플릿이 없습니다.');
     const templateError = validateEventTemplate(template);
     if (templateError) fail(templateError);
     const recipients = isCancellationMail
@@ -606,10 +644,9 @@ export function transition(current: EventPreviewState, action: EventAction, now 
             (action.channel === 'ALL' || r.channel === action.channel),
         );
     if (!recipients.length) fail(isCancellationMail ? '취소 안내 메일을 받을 신청자가 없습니다.' : '선택한 대상에 참가 확정자가 없습니다.');
-    const mailTemplate = isCancellationMail ? cancellationEventTemplate(template) : template;
     state.mails.unshift(
       createEventNoticeMail(
-        mailTemplate,
+        template,
         event,
         recipients,
         action.notice,

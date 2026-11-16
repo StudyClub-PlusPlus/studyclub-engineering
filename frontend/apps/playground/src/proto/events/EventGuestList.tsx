@@ -10,7 +10,7 @@ import { Badge } from '@studyclub/ui';
 import { ArrowUpRight } from 'lucide-react';
 
 import { useEventWorkspace } from './EventWorkspace';
-import { FORMAT_LABEL, REGISTRATION_LABEL, SELF, eventStatus, isEventPublic } from './model';
+import { FORMAT_LABEL, REGISTRATION_LABEL, SELF, eventStatus, isEventPublic, latestRegistrationsByEvent } from './model';
 import { SPECS } from '@/app/(proto)/proto/core/[locale]/events/_application/spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 
@@ -28,6 +28,7 @@ export function EventGuestList({
   const { state, now } = useEventWorkspace();
   const displayTimeZone = useDisplayTimeZone();
   const [view, setView] = useState<EventListView>('upcoming');
+  const latest = latestRegistrationsByEvent(state?.registrations ?? [], SELF.memberId);
   const publishedEvents =
     state?.events.filter(isEventPublic) ?? [];
   const isPast = (event: (typeof publishedEvents)[number]) => {
@@ -124,9 +125,7 @@ export function EventGuestList({
               }
               const { event } = item;
               const status = eventStatus(state, event, now);
-              const registration = state.registrations.find(
-                (r) => r.eventId === event.id && r.memberId === SELF.memberId,
-              );
+              const registration = latest.get(event.id);
               return (
                 <Link
                   key={event.id}

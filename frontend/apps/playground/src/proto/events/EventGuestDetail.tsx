@@ -7,7 +7,7 @@ import { getUser } from '@core/lib/auth';
 import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@core/lib/layout';
 import { getDisplayName } from '@core/lib/me';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
-import type { EventChannel, EventRegistration, Locale } from '@studyclub/types';
+import type { EventChannel, EventQuestion, EventRegistration, Locale } from '@studyclub/types';
 import { Badge, Button, Checkbox, Input, Modal, Select, Textarea } from '@studyclub/ui';
 import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, MapPin, Video } from 'lucide-react';
 
@@ -17,11 +17,13 @@ import {
   REGISTRATION_LABEL,
   SELF,
   ZONES,
+  answersForUnchangedQuestions,
   channels,
+  eventQuestionVersion,
   eventStatus,
   isEventPublic,
   formatDate,
-  normalizeEventAnswers,
+  latestRegistrationsByEvent,
   occupiesSeat,
   safeWebUrl,
   seatInfo,
@@ -37,6 +39,8 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
   const [viewAnswers, setViewAnswers] = useState(false);
   const [channel, setChannel] = useState<EventChannel>('ONLINE');
   const [answers, setAnswers] = useState<EventRegistration['answers']>({});
+  const [formQuestions, setFormQuestions] = useState<EventQuestion[]>([]);
+  const [questionsUpdated, setQuestionsUpdated] = useState(false);
   const [error, setError] = useState('');
   const [zone, setZone] = useState('');
   const [applicant, setApplicant] = useState(SELF);
@@ -58,12 +62,11 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
     return () => clearTimeout(timer);
   }, [focusRequest]);
   useEffect(() => {
-    if (!currentQuestions) return;
-    setAnswers((current) => {
-      const next = normalizeEventAnswers(currentQuestions, current);
-      return JSON.stringify(next) === JSON.stringify(current) ? current : next;
-    });
-  }, [currentQuestions]);
+    if (!open || !currentQuestions || eventQuestionVersion(formQuestions) === eventQuestionVersion(currentQuestions)) return;
+    setAnswers((current) => answersForUnchangedQuestions(formQuestions, currentQuestions, current));
+    setFormQuestions(currentQuestions);
+    setQuestionsUpdated(true);
+  }, [currentQuestions, formQuestions, open]);
   if (!state)
     return (
       <div className={`${PAGE} py-12`} role='status'>
@@ -80,13 +83,15 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
         </Link>
       </div>
     );
-  const registration = state.registrations.find((r) => r.eventId === id && r.memberId === SELF.memberId);
+  const registration = latestRegistrationsByEvent(state.registrations, SELF.memberId).get(id);
   const currentZone = zone || displayTimeZone;
   const status = eventStatus(state, event, now);
   const canApply = status === '모집 중' && (!registration || registration.status === 'CANCELLED');
   function startApplication() {
     setChannel(channels(event!).find((mode) => seatInfo(state!, event!, mode).remaining > 0) ?? channels(event!)[0]!);
     setAnswers({});
+    setFormQuestions(event!.questions);
+    setQuestionsUpdated(false);
     setError('');
     setOpen(true);
   }
@@ -95,7 +100,10 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
   const submit = () => {
     const user = getUser();
     const currentApplicant = user ? { ...applicant, name: getDisplayName() ?? user.nickname ?? SELF.name, email: user.email || '' } : applicant;
-    const failure = dispatch({ type: 'APPLY', eventId: id, channel, answers, applicant: { ...currentApplicant, timeZone: displayTimeZone } });
+    const failure = dispatch({
+      type: 'APPLY', eventId: id, channel, answers, questionVersion: eventQuestionVersion(formQuestions),
+      applicant: { ...currentApplicant, timeZone: displayTimeZone },
+    });
     setError(failure ?? '');
     if (!failure) {
       setOpen(false);
@@ -352,7 +360,12 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
               );
             })}
           </fieldset>
-          {event.questions.map((q) => {
+          {questionsUpdated && (
+            <p role='status' className='rounded-control bg-warning-bg p-3 type-body-sm text-warning-fg'>
+              신청 질문이 바뀌었어요. 변경된 질문을 확인한 뒤 신청해 주세요.
+            </p>
+          )}
+          {formQuestions.map((q) => {
             const label = `${q.label}${q.required ? ' (필수)' : ''}`;
             if (q.type === 'TEXT' || q.type === 'TEXTAREA') {
               const Component = q.type === 'TEXT' ? Input : Textarea;

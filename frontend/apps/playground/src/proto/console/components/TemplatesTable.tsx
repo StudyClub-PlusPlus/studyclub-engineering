@@ -230,11 +230,15 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
                           helper={
                             draft.trigger === 'EVENT_ANNOUNCEMENT'
                               ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{participation}} 참여 안내, {{nickname}} 닉네임. 운영진이 작성한 내용은 {{notice}}에 들어갑니다. 본문에 {{notice}}를 포함해 주세요.'
-                              : draft.trigger.startsWith('EVENT_REGISTRATION_')
-                                ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{channel}} 참여 방식, {{nickname}} 닉네임을 사용할 수 있습니다. 참가 확정 템플릿은 {{participation}}으로 장소·링크를 표시합니다.'
-                              : draft.trigger === 'FEEDBACK_REPLIED'
-                                ? '{{nickname}} 으로 닉네임, {{feedbackUrl}} 로 답변 확인 링크 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
-                                : '{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                              : draft.trigger === 'EVENT_CANCELLATION'
+                                ? '{{eventTitle}} 행사명, {{nickname}} 닉네임을 사용할 수 있습니다. 본문에 취소 안내 내용이 들어갈 {{notice}}를 포함해 주세요.'
+                                : draft.trigger === 'EVENT_REGISTRATION_CONFIRMED'
+                                  ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{channel}} 참여 방식, {{nickname}} 닉네임, {{participation}} 장소·링크를 사용할 수 있습니다.'
+                                  : draft.trigger.startsWith('EVENT_REGISTRATION_')
+                                    ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{channel}} 참여 방식, {{nickname}} 닉네임을 사용할 수 있습니다.'
+                                    : draft.trigger === 'FEEDBACK_REPLIED'
+                                      ? '{{nickname}} 으로 닉네임, {{feedbackUrl}} 로 답변 확인 링크 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                                      : '{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
                           }
                         />
                       </div>

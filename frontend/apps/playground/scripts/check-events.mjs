@@ -22,7 +22,7 @@ try {
     outExtension: { '.js': '.mjs' },
     logLevel: 'silent',
   });
-  const { transition, seatInfo, wallTime, resolveEventInput, eventAdminPage, EVENT_LIMITS, isEventPublic, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates } = await import(
+  const { transition: applyTransition, answersForUnchangedQuestions, eventQuestionVersion, seatInfo, wallTime, resolveEventInput, eventAdminPage, EVENT_LIMITS, isEventPublic, latestRegistrationsByEvent, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates } = await import(
     pathToFileURL(path.join(temp, 'model.mjs'))
   );
   const { toPreviewDocument } = await import(pathToFileURL(path.join(temp, 'render.mjs')));
@@ -35,6 +35,13 @@ try {
     fixture.registrations = fixture.registrations.filter((row) => ['sample-1', 'sample-2', 'sample-3'].includes(row.id));
     return fixture;
   };
+  const transition = (state, action, now) => applyTransition(
+    state,
+    action.type === 'APPLY'
+      ? { questionVersion: eventQuestionVersion(state.events.find((event) => event.id === action.eventId)?.questions ?? []), ...action }
+      : action,
+    now,
+  );
   const now = Date.parse('2026-11-13T12:00:00Z');
   const fullSeed = createState(new Date(now), noticeBody);
   assert.equal(fullSeed.notificationTemplates.filter((template) => template.trigger.startsWith('EVENT_REGISTRATION_')).length, 4);
@@ -45,10 +52,25 @@ try {
   const populated = populateEventExamples(fullSeed, fullSeed, now);
   assert.equal(populated.events.length, 8);
   assert.ok(!fullSeed.events.some((event) => event.id === 'preview-event-draft'));
-  assert.equal(populated.registrations.length, 98);
+  assert.equal(populated.registrations.length, 99);
   const previewMemberRows = populated.registrations.filter(({ memberId }) => memberId === SELF.memberId);
   assert.ok(previewMemberRows.length > 0);
   assert.ok(previewMemberRows.every(({ name, email }) => name === SELF.name && email === SELF.email));
+  const reappliedEventId = 'preview-event-finished';
+  const attempts = previewMemberRows.filter((row) => row.eventId === reappliedEventId);
+  const currentAttempt = attempts.find((row) => row.status === 'CONFIRMED');
+  const previousAttempt = attempts.find((row) => row.status === 'CANCELLED');
+  assert.equal(attempts.length, 2);
+  assert.ok(Date.parse(currentAttempt.createdAt) > Date.parse(previousAttempt.createdAt));
+  assert.deepEqual(latestRegistrationsByEvent([previousAttempt, currentAttempt], SELF.memberId).get(reappliedEventId), currentAttempt);
+  const beforeReapplyExample = {
+    ...populated, exampleRevision: 11,
+    registrations: populated.registrations.filter((row) => row.id !== previousAttempt.id),
+  };
+  const upgradedExample = populateEventExamples(beforeReapplyExample, fullSeed, now);
+  assert.deepEqual(upgradedExample.registrations, populated.registrations);
+  assert.deepEqual(populateEventExamples(upgradedExample, fullSeed, now), upgradedExample);
+  console.log('✓ 마이페이지는 행사별 최신 신청만 표시, 운영진은 재신청 이력 전체 조회');
   for (const sampleEvent of populated.events) {
     const rows = populated.registrations.filter((row) => row.eventId === sampleEvent.id);
     assert.ok(isEventPublic(sampleEvent));
@@ -201,6 +223,7 @@ try {
   assert.equal(cancelledExampleMail.kind, 'OPERATOR');
   assert.equal(cancelledExampleMail.audience, 'CANCELLED_ACTIVE');
   assert.ok(cancelledExampleMail.body.includes('행사 취소 안내'));
+  assert.doesNotMatch(cancelledExampleMail.body, /참여 안내|Washington Park/);
   console.log(`✓ 행사 ${populated.events.length}개·신청 ${populated.registrations.length}건·메일 ${populated.mails.length}건, 전체/방식별 일괄 발송·개별 치환·기존 상태 보존`);
 
 
@@ -292,6 +315,18 @@ try {
     now,
   );
   assert.deepEqual(questionsChanged.registrations[0].questions, existingQuestionSnapshot);
+  assert.throws(() => transition(
+    questionsChanged, { ...apply, channel: 'ONLINE', questionVersion: eventQuestionVersion(questionEvent.questions) }, now,
+  ), /신청 질문이 변경/);
+  const renamedQuestion = { ...questionEvent.questions[0], label: '의미가 바뀐 질문' };
+  const unchanged = questionEvent.questions[1];
+  const unchangedAnswer = unchanged.options[0] ?? '유지할 답변';
+  assert.deepEqual(
+    answersForUnchangedQuestions(questionEvent.questions, [renamedQuestion, unchanged], {
+      [renamedQuestion.id]: '프로젝트 경험', [unchanged.id]: unchangedAnswer,
+    }),
+    { [unchanged.id]: unchangedAnswer },
+  );
   const appliedAfterQuestionChange = transition(
     questionsChanged,
     { ...apply, channel: 'ONLINE' },
@@ -394,7 +429,12 @@ try {
   assert.equal(composedPreview.format, 'HTML');
   const originalMail = structuredClone(state.mails[0]);
   const custom = { ...state.eventTemplates[0], subject: '[StudyClub] {{eventTitle}} 공지', body: '<p>{{nickname}}</p><p>{{notice}}</p>' };
-  state = transition(state, { type: 'TEMPLATES', templates: [custom] }, now);
+  const cancellationTemplate = state.eventTemplates.find((template) => template.trigger === 'EVENT_CANCELLATION');
+  state = transition(state, { type: 'TEMPLATES', templates: [custom, cancellationTemplate] }, now);
+  assert.throws(() => transition(state, {
+    type: 'TEMPLATES', templates: [custom, { ...cancellationTemplate, body: '{{notice}} {{participation}}' }],
+  }, now), /지원하지 않는 변수/);
+  assert.ok(mergeNotificationTemplates([custom], fullSeed.notificationTemplates).some((template) => template.trigger === 'EVENT_CANCELLATION'));
   const rendered = renderEventNotice(custom, state.events[0], state.registrations.find((r) => r.id === 'sample-3'), '<img src=x>\n{{nickname}}');
   assert.ok(rendered.body.includes('&lt;img src=x&gt;<br>{{nickname}}'));
   assert.deepEqual(state.mails[0], originalMail);
@@ -430,12 +470,16 @@ try {
   assert.equal(eventStatus(state, state.events[0], now), '행사 취소');
   assert.ok(state.registrations.filter((r) => r.eventId === event.id).every((r) => r.status === 'CANCELLED'));
   assert.equal(state.mails.length, mailCountBeforeCancellation);
+  state.events[0].onlineUrl = 'https://example.com/other-participation';
+  assert.throws(() => transition(state, {
+    type: 'CANCELLATION_MAIL', eventId: event.id, templateId: custom.id, notice: '취소 안내 테스트',
+  }, now), /행사 취소 안내 템플릿이 없습니다/);
   state = transition(
     state,
     {
       type: 'CANCELLATION_MAIL',
       eventId: event.id,
-      templateId: custom.id,
+      templateId: cancellationTemplate.id,
       notice: '운영 사정으로 행사가 취소되었습니다.',
     },
     now,
@@ -444,9 +488,11 @@ try {
   assert.equal(state.mails[0].audience, 'CANCELLED_ACTIVE');
   assert.equal(state.mails[0].recipients.length, cancellationRecipientIds.length);
   assert.match(state.mails[0].subject, /행사 취소 안내/);
+  assert.doesNotMatch(state.mails[0].body, /참여 안내|other-participation/);
+  assert.ok(state.mails[0].deliveries.every((item) => !item.body.includes('other-participation') && !item.body.includes('참여 안내')));
   assert.deepEqual(state.events[0].cancellationRecipientIds, cancellationRecipientIds);
   const reopenedCancellation = transition(JSON.parse(JSON.stringify(state)), {
-    type: 'CANCELLATION_MAIL', eventId: event.id, templateId: custom.id, notice: '추가 취소 안내',
+    type: 'CANCELLATION_MAIL', eventId: event.id, templateId: cancellationTemplate.id, notice: '추가 취소 안내',
   }, now);
   assert.deepEqual(reopenedCancellation.mails[0].recipients, state.mails[0].recipients);
   const priorWithdrawals = createState(new Date(now), noticeBody);
@@ -510,6 +556,14 @@ try {
   }, afterTimedDeadline).events[0];
   assert.equal(savedEvent.title, '수정한 행사명');
   assert.equal(savedEvent.deadlineAt, timedEvent.deadlineAt);
+  const whileStarted = Date.parse(timedEvent.startsAt) + 1000;
+  assert.throws(() => transition(timedState, {
+    type: 'SAVE',
+    event: { ...timedEvent, startsAt: '2026-11-15T18:30:00Z', deadlineAt: '2026-11-15T18:20:00Z' },
+  }, whileStarted), /이미 시작한 행사/);
+  assert.equal(transition(timedState, {
+    type: 'SAVE', event: { ...timedEvent, onlineUrl: 'https://example.com/live-correction' },
+  }, whileStarted).events[0].onlineUrl, 'https://example.com/live-correction');
   const futureEvent = {
     ...timedEvent, startsAt: '2026-11-20T18:00:00Z', endsAt: '2026-11-20T19:00:00Z', deadlineAt: '2026-11-19T18:00:00Z',
   };

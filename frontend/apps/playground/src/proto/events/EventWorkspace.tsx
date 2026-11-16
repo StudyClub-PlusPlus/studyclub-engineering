@@ -7,7 +7,7 @@ import { createEventPreviewState, EVENT_NOTICE_TEMPLATE } from '@studyclub/mock'
 import type { EventPreviewState } from '@studyclub/types';
 
 import { populateEventExamples } from './examples';
-import { SELF, mergeNotificationTemplates, transition, type EventAction } from './model';
+import { SELF, isEventNoticeTemplate, mergeNotificationTemplates, transition, type EventAction } from './model';
 
 const STORAGE_KEY = 'studyclub-event-preview-v1';
 const LEGACY_PREVIEW_EMAIL = 'me@example.test';
@@ -98,7 +98,7 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
     const previous = JSON.stringify(next);
     next = normalizeStoredWorkspace(next);
     next.notificationTemplates = mergeNotificationTemplates(
-      next.notificationTemplates ?? [], defaults.notificationTemplates ?? [], next.deletedTemplateTriggers,
+      next.notificationTemplates ?? next.eventTemplates, defaults.notificationTemplates ?? [], next.deletedTemplateTriggers,
     );
     const compactHtml = (value: string) => value.replace(/>\s+</g, '><').trim();
     next.notificationTemplates = next.notificationTemplates.map((template) => {
@@ -171,11 +171,6 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
       ),
     ]);
     // 이전 기본 양식만 최신 프레임으로 교체한다. 직접 수정한 템플릿은 유지한다.
-    next.eventTemplates = next.eventTemplates.map((template) =>
-      template.id === 3 && (template.body === EVENT_NOTICE_TEMPLATE.body || defaultNoticeBodies.has(template.body))
-        ? { ...template, body: noticeBody }
-        : template,
-    );
     next.notificationTemplates = next.notificationTemplates?.map((template) =>
       template.id === 3 &&
       template.trigger === 'EVENT_ANNOUNCEMENT' &&
@@ -183,6 +178,7 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
         ? { ...template, body: noticeBody }
         : template,
     );
+    next.eventTemplates = next.notificationTemplates.filter(isEventNoticeTemplate);
     next.events = next.events.map((event) =>
       event.id === 'preview-event-community'
         ? { ...event, summary: anonymize(event.summary), description: anonymize(event.description) }

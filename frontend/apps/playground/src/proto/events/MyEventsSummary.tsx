@@ -9,7 +9,7 @@ import { Badge } from '@studyclub/ui';
 import { ArrowRight, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { useEventWorkspace } from './EventWorkspace';
-import { CHANNEL_LABEL, REGISTRATION_LABEL, SELF, formatDate } from './model';
+import { CHANNEL_LABEL, REGISTRATION_LABEL, SELF, formatDate, latestRegistrationsByEvent } from './model';
 
 const STATUS_TONE: Record<keyof typeof REGISTRATION_LABEL, BadgeTone> = {
   PENDING: 'closingsoon',
@@ -18,13 +18,12 @@ const STATUS_TONE: Record<keyof typeof REGISTRATION_LABEL, BadgeTone> = {
   CANCELLED: 'neutral',
 };
 
-/** 마이페이지에서는 최근 신청만 짧게 보여 주고, 각 행에서 행사 상세로 이동한다. */
 export function MyEventsSummary({ locale }: { locale: string }) {
   const { state } = useEventWorkspace();
   const displayTimeZone = useDisplayTimeZone();
   const [expanded, setExpanded] = useState(false);
-  const rows = (state?.registrations ?? [])
-    .filter((registration) => registration.memberId === SELF.memberId)
+  const latest = latestRegistrationsByEvent(state?.registrations ?? [], SELF.memberId);
+  const rows = [...latest.values()]
     .map((registration) => ({
       registration,
       event: state?.events.find((event) => event.id === registration.eventId),
@@ -35,7 +34,7 @@ export function MyEventsSummary({ locale }: { locale: string }) {
   const visible = expanded ? rows : recent;
 
   return (
-    <section data-anno='my-events:1' className='mt-10'>
+    <section data-anno='my-events:6' className='mt-10'>
       <div className='mb-3 flex items-center justify-between gap-4'>
         <div className='flex items-baseline gap-2'>
           <h2 className='type-title-md'>내 행사</h2>
