@@ -1,4 +1,8 @@
-import { apiAttendanceSchema, emptyResponseSchema } from '@/features/attendance/response-schema';
+import {
+  apiAttendanceSchema,
+  apiAttendanceSummarySchema,
+  emptyResponseSchema,
+} from '@/features/attendance/response-schema';
 import { http, qs } from '@/lib/http';
 
 // 출석 탭의 서버 호출 — 백오피스 출석 명부 조회 · 저장 (specs/attendance/spec.md 「출석 명부 조회」 · 「출석 생성/수정 (upsert)」).
@@ -49,6 +53,10 @@ const attendanceRepository = {
   /** 반 출석 명부. `includeWithdrawn` 이면 참여를 중단한 사람(WITHDRAWN · DELETED)까지 — 출석부 맨 아래 흐린 줄. */
   fetchBook(studyId: number, studyGroupId: number, signal?: AbortSignal) {
     return http(`${BASE(studyId)}${qs({ studyGroupId, includeWithdrawn: 'true' })}`, apiAttendanceSchema, { signal });
+  },
+  /** 스터디 출석률 — 모든 반을 합친 가중평균. 상세 위 요약 카드 (specs/attendance 「스터디 출석률 요약」). */
+  fetchSummary(studyId: number, signal?: AbortSignal) {
+    return http(`${BASE(studyId)}/summary`, apiAttendanceSummarySchema, { signal });
   },
   /**
    * 출석과 참여 중단을 **한 요청 · 한 트랜잭션**으로. 204.

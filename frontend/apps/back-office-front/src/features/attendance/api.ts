@@ -74,16 +74,28 @@ export function useGroupAttendance(studyId: number, groupId: number | undefined)
   });
 }
 
+/** 스터디 전체(모든 반) 출석률 0 ~ 1 — 상세 위 카드. 체크된 회차가 없으면 null. */
+export function useStudyAttendanceRate(studyId: number) {
+  return useQuery({
+    queryKey: studyKeys.attendanceSummary(studyId),
+    queryFn: ({ signal }) => attendanceRepository.fetchSummary(studyId, signal),
+    select: (res) => res.attendanceRate,
+  });
+}
+
 /** 출석과 참여 중단을 한 요청으로. */
 export function useSaveAttendance(studyId: number, groupId: number) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (body: Omit<AttendanceSavePayload, 'studyGroupId'>) =>
       attendanceRepository.save(studyId, { studyGroupId: groupId, ...body }),
-    // 출석만이면 그 반(출석 · 회차)만. 참여 중단은 참여 명단 · 다른 탭 숫자도 바꿔 스터디 아래를 모두 다시 읽는다
+    // 출석만이면 그 반(출석 · 회차)과 위 카드의 출석률만. 참여 중단은 참여 명단 · 다른 탭 숫자도 바꿔 스터디 아래를 모두 다시 읽는다
     onSettled: (_data, _error, body) =>
-      client.invalidateQueries({
-        queryKey: body.withdrawals.length > 0 ? studyKeys.detail(studyId) : scheduleKeys.group(studyId, groupId),
-      }),
+      body.withdrawals.length > 0
+        ? client.invalidateQueries({ queryKey: studyKeys.detail(studyId) })
+        : Promise.all([
+            client.invalidateQueries({ queryKey: scheduleKeys.group(studyId, groupId) }),
+            client.invalidateQueries({ queryKey: studyKeys.attendanceSummary(studyId), exact: true }),
+          ]),
   });
 }

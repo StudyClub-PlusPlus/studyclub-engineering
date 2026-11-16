@@ -222,7 +222,7 @@ private StudyDetailResponse toDetail(Study study) {
 >
 > **운영 콘솔 목록 갱신(2026-09-29)**: **작성자** 열을 추가하고 **출석률** 열을 뺐다. 작성자는 등록한
 > 캡틴의 닉네임(`ACCOUNT.NICKNAME`)이고 `STUDY.CREATED_BY` 로 찾는다 — 컬럼이 없던 시절
-> 등록된 스터디는 비어 있어 「—」로 보인다. 출석률은 기수 운영 화면의 출석 탭에서만 본다 — 목록 응답에
+> 등록된 스터디는 비어 있어 「—」로 보인다. 출석률은 기수 운영 화면(위 요약 카드 · 출석 탭)에서 본다 — 목록 응답에
 > 넣지 않는다. 정본: [captain-list-all-studies PRD](../../01-planning/stories/captain-list-all-studies/PRD.md)
 
 ---
