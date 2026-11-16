@@ -48,7 +48,6 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- next/og(Satori)는 next/image 를 그리지 못한다 */}
         <img src={LOGO_MARK} width={58} height={60} alt='' />
         <div style={{ display: 'flex', fontSize: 44, fontWeight: 800 }}>
           <span>Study</span>
