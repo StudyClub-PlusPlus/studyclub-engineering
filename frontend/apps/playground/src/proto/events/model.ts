@@ -164,10 +164,20 @@ export function seatInfo(state: EventPreviewState, event: PreviewEvent, channel:
     remaining: Math.max(0, capacity - rows.length),
   };
 }
+function hasEventEnded(event: PreviewEvent, now: number) {
+  if (event.endsAt) return Date.parse(event.endsAt) <= now;
+  const currentDay = wallTime(new Date(now).toISOString(), event.timeZone).slice(0, 10);
+  const eventDay = wallTime(event.startsAt, event.timeZone).slice(0, 10);
+  return currentDay > eventDay;
+}
+
+export function canManageEventRegistrations(event: PreviewEvent, now: number) {
+  return event.status !== 'CANCELLED' && !hasEventEnded(event, now);
+}
+
 export function eventStatus(state: EventPreviewState, event: PreviewEvent, now = Date.now()) {
   if (event.status === 'CANCELLED') return '행사 취소';
-  if (event.endsAt && Date.parse(event.endsAt) <= now) return '종료';
-  if (!event.endsAt && wallTime(new Date(now).toISOString(), event.timeZone).slice(0, 10) > wallTime(event.startsAt, event.timeZone).slice(0, 10)) return '종료';
+  if (hasEventEnded(event, now)) return '종료';
   if (event.status === 'CLOSED' || Date.parse(event.deadlineAt) <= now || Date.parse(event.startsAt) <= now)
     return '모집 마감';
   if (channels(event).every((channel) => seatInfo(state, event, channel).remaining === 0)) return '정원 마감';
@@ -449,41 +459,51 @@ export type EventAction =
   | { type: 'MAIL'; eventId: string; channel: EventChannel | 'ALL'; templateId: number; notice: string; displayTimeZone?: string }
   | { type: 'CANCELLATION_MAIL'; eventId: string; templateId: number; notice: string; displayTimeZone?: string };
 
+function appendAutomaticEventMail(
+  state: EventPreviewState,
+  trigger: EventAutomaticTrigger,
+  event: PreviewEvent,
+  registration: EventRegistration,
+  now: number,
+  mailId?: string,
+) {
+  const template = state.notificationTemplates?.find((item) => item.trigger === trigger);
+  if (!template) return;
+  const { subject, body, format } = renderAutomaticEventMail(template, event, registration);
+  state.mails.unshift({
+    id: mailId ?? crypto.randomUUID(),
+    eventId: event.id,
+    recipients: [registration.email],
+    subject: subject.startsWith('[StudyClub]') ? subject : `[StudyClub] ${subject}`,
+    body,
+    format,
+    kind: 'AUTOMATIC',
+    createdAt: new Date(now).toISOString(),
+  });
+}
+
+export function settleEndedRegistrations(current: EventPreviewState, now: number): EventPreviewState {
+  const endedEvents = new Map(
+    current.events
+      .filter((event) => event.status !== 'CANCELLED' && hasEventEnded(event, now))
+      .map((event) => [event.id, event]),
+  );
+  if (!current.registrations.some((row) => row.status === 'PENDING' && endedEvents.has(row.eventId))) return current;
+
+  const next = structuredClone(current);
+  for (const row of next.registrations) {
+    const event = endedEvents.get(row.eventId);
+    if (row.status !== 'PENDING' || !event) continue;
+    row.status = 'DECLINED';
+    appendAutomaticEventMail(next, 'EVENT_REGISTRATION_DECLINED', event, row, now, `event-end-declined-${row.id}`);
+  }
+  return next;
+}
+
 /** 플레이그라운드의 단일 판정 지점. 실제 연동에서는 동일한 판정을 서버가 반환해야 한다. */
 export function transition(current: EventPreviewState, action: EventAction, now = Date.now()): EventPreviewState {
   const state: EventPreviewState = structuredClone(current);
   const id = () => crypto.randomUUID();
-  const mail = (
-    event: PreviewEvent,
-    recipients: string[],
-    subject: string,
-    body: string,
-    format: 'HTML' | 'TEXT' = 'TEXT',
-    audience?: EventMailPreview['audience'],
-  ) => {
-    if (recipients.length)
-      state.mails.unshift({
-        id: id(),
-        eventId: event.id,
-        recipients,
-        audience,
-        format,
-        subject: subject.startsWith('[StudyClub]') ? subject : `[StudyClub] ${subject}`,
-        body,
-        kind: 'AUTOMATIC',
-        createdAt: new Date(now).toISOString(),
-      });
-  };
-  const automaticMail = (
-    trigger: EventAutomaticTrigger,
-    event: PreviewEvent,
-    registration: EventRegistration,
-  ) => {
-    const template = state.notificationTemplates?.find((item) => item.trigger === trigger);
-    if (!template) return;
-    const rendered = renderAutomaticEventMail(template, event, registration);
-    mail(event, [registration.email], rendered.subject, rendered.body, rendered.format);
-  };
   const fail = (message: string): never => {
     throw new Error(message);
   };
@@ -532,7 +552,7 @@ export function transition(current: EventPreviewState, action: EventAction, now 
       );
       for (const registration of pending) {
         registration.status = 'CONFIRMED';
-        automaticMail('EVENT_REGISTRATION_CONFIRMED', event, registration);
+        appendAutomaticEventMail(state, 'EVENT_REGISTRATION_CONFIRMED', event, registration, now);
       }
     }
     return state;
@@ -541,27 +561,24 @@ export function transition(current: EventPreviewState, action: EventAction, now 
     const registration =
       state.registrations.find((r) => r.id === action.registrationId) ?? fail('신청 내역을 찾을 수 없습니다.');
     const event = state.events.find((e) => e.id === registration.eventId) ?? fail('행사를 찾을 수 없습니다.');
+    if (action.type !== 'CANCEL' && !canManageEventRegistrations(event, now))
+      fail('종료되거나 취소된 행사의 신청은 처리할 수 없습니다.');
     if (action.type === 'CANCEL' || action.type === 'ADMIN_CANCEL') {
       if (!occupiesSeat(registration) || (action.type === 'CANCEL' && registration.memberId !== SELF.memberId))
         fail('취소할 수 없는 신청입니다.');
       if (action.type === 'CANCEL' && Date.parse(event.deadlineAt) <= now)
         fail('신청 마감 후에는 운영진에게 취소를 요청해 주세요.');
-      if (action.type === 'ADMIN_CANCEL' && Date.parse(event.startsAt) <= now)
-        fail('행사 시작 후에는 신청을 취소할 수 없습니다.');
       registration.status = 'CANCELLED';
-      automaticMail(
-        'EVENT_REGISTRATION_CANCELLED',
-        event,
-        registration,
-      );
+      appendAutomaticEventMail(state, 'EVENT_REGISTRATION_CANCELLED', event, registration, now);
     } else {
-      if (registration.status !== 'PENDING' || event.status === 'CANCELLED' || Date.parse(event.startsAt) <= now)
-        fail('현재 상태에서는 처리할 수 없습니다.');
+      if (registration.status !== 'PENDING') fail('현재 상태에서는 처리할 수 없습니다.');
       registration.status = action.status;
-      automaticMail(
+      appendAutomaticEventMail(
+        state,
         action.status === 'CONFIRMED' ? 'EVENT_REGISTRATION_CONFIRMED' : 'EVENT_REGISTRATION_DECLINED',
         event,
         registration,
+        now,
       );
     }
     return state;
@@ -620,10 +637,12 @@ export function transition(current: EventPreviewState, action: EventAction, now 
       questions: structuredClone(event.questions),
       createdAt: new Date(now).toISOString(),
     });
-    automaticMail(
+    appendAutomaticEventMail(
+      state,
       status === 'CONFIRMED' ? 'EVENT_REGISTRATION_CONFIRMED' : 'EVENT_REGISTRATION_PENDING',
       event,
       state.registrations[0]!,
+      now,
     );
   } else if (action.type === 'MAIL' || action.type === 'CANCELLATION_MAIL') {
     const isCancellationMail = action.type === 'CANCELLATION_MAIL';

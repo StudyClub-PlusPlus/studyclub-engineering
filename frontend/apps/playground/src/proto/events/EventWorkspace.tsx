@@ -7,7 +7,7 @@ import { createEventPreviewState, EVENT_NOTICE_TEMPLATE } from '@studyclub/mock'
 import type { EventPreviewState } from '@studyclub/types';
 
 import { populateEventExamples } from './examples';
-import { SELF, isEventNoticeTemplate, mergeNotificationTemplates, transition, type EventAction } from './model';
+import { SELF, isEventNoticeTemplate, mergeNotificationTemplates, settleEndedRegistrations, transition, type EventAction } from './model';
 
 const STORAGE_KEY = 'studyclub-event-preview-v1';
 const LEGACY_PREVIEW_EMAIL = 'me@example.test';
@@ -184,7 +184,9 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
         ? { ...event, summary: anonymize(event.summary), description: anonymize(event.description) }
         : event,
     );
-    next = populateEventExamples(next, createEventPreviewState(new Date(), noticeBody), Date.now(), getTimeZone());
+    const loadedAt = Date.now();
+    next = populateEventExamples(next, createEventPreviewState(new Date(loadedAt), noticeBody), loadedAt, getTimeZone());
+    next = settleEndedRegistrations(next, loadedAt);
     if (JSON.stringify(next) !== previous) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -194,8 +196,17 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
     }
     ref.current = next;
     setState(next);
-    setNow(Date.now());
-    const timer = window.setInterval(() => setNow(Date.now()), 15000);
+    setNow(loadedAt);
+    const refresh = () => {
+      const currentTime = Date.now();
+      const current = ref.current;
+      if (current) {
+        const settled = settleEndedRegistrations(current, currentTime);
+        if (settled !== current) commit(settled);
+      }
+      setNow(currentTime);
+    };
+    const timer = window.setInterval(refresh, 15000);
     const sync = (event: StorageEvent) => {
       if (event.key !== STORAGE_KEY || !event.newValue) return;
       try {
@@ -210,26 +221,32 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
           const next = normalizeStoredWorkspace(saved);
           ref.current = next;
           setState(next);
-          setNow(Date.now());
+          refresh();
         }
       } catch {
         /* 다른 탭에서 저장한 값이 잘못되면 현재 시안을 유지한다. */
       }
     };
+    window.addEventListener('focus', refresh);
     window.addEventListener('storage', sync);
     return () => {
       window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
       window.removeEventListener('storage', sync);
     };
-  }, [noticeBody]);
+  }, [commit, noticeBody]);
   const dispatch = useCallback(
     (action: EventAction) => {
-      if (!ref.current) return '예시를 불러오는 중입니다.';
+      const current = ref.current;
+      if (!current) return '예시를 불러오는 중입니다.';
+      const currentTime = Date.now();
+      const settled = settleEndedRegistrations(current, currentTime);
+      setNow(currentTime);
       try {
-        commit(transition(ref.current, action));
-        setNow(Date.now());
+        commit(transition(settled, action, currentTime));
         return null;
       } catch (error) {
+        if (settled !== current) commit(settled);
         return error instanceof Error ? error.message : '처리하지 못했습니다. 다시 시도해 주세요.';
       }
     },

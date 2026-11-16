@@ -18,6 +18,7 @@ import {
   CONFIRM_LABEL,
   FORMAT_LABEL,
   REGISTRATION_LABEL,
+  canManageEventRegistrations,
   channels,
   eventStatus,
   formatDate,
@@ -88,6 +89,7 @@ export function EventAdminDetail({ id }: { id: string }) {
   const status = eventStatus(state, event, now);
   const finished = status === '종료';
   const cancelled = event.status === 'CANCELLED';
+  const canManageRegistrations = canManageEventRegistrations(event, now);
   const hasCancellationRecipients = cancelled
     ? Boolean(event.cancellationRecipientIds?.length)
     : registrations.some(occupiesSeat);
@@ -305,7 +307,7 @@ export function EventAdminDetail({ id }: { id: string }) {
                     </td>
                     <td>
                       <div className='flex min-h-8 w-72 items-center gap-1 whitespace-nowrap'>
-                        {r.status === 'PENDING' && event.status !== 'CANCELLED' && Date.parse(event.startsAt) > now ? (
+                        {r.status === 'PENDING' && canManageRegistrations ? (
                           <>
                             <Button
                               size='sm'
@@ -332,12 +334,12 @@ export function EventAdminDetail({ id }: { id: string }) {
                               참가 불가
                             </Button>
                           </>
-                        ) : !(occupiesSeat(r) && event.status !== 'CANCELLED' && Date.parse(event.startsAt) > now) ? (
+                        ) : !(occupiesSeat(r) && canManageRegistrations) ? (
                           <span className='inline-flex min-h-8 items-center border border-transparent px-3 type-label-sm text-fg-muted'>
-                            {r.status === 'PENDING' ? '행사 시작으로 처리 불가' : '처리 완료'}
+                            처리 완료
                           </span>
                         ) : null}
-                        {occupiesSeat(r) && event.status !== 'CANCELLED' && Date.parse(event.startsAt) > now && (
+                        {occupiesSeat(r) && canManageRegistrations && (
                           <Button
                             size='sm'
                             variant='tertiary'

@@ -22,7 +22,7 @@ try {
     outExtension: { '.js': '.mjs' },
     logLevel: 'silent',
   });
-  const { transition: applyTransition, answersForUnchangedQuestions, eventQuestionVersion, seatInfo, wallTime, resolveEventInput, eventAdminPage, EVENT_LIMITS, isEventPublic, latestRegistrationsByEvent, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates } = await import(
+  const { transition: applyTransition, answersForUnchangedQuestions, eventQuestionVersion, seatInfo, wallTime, resolveEventInput, eventAdminPage, EVENT_LIMITS, isEventPublic, latestRegistrationsByEvent, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates, settleEndedRegistrations } = await import(
     pathToFileURL(path.join(temp, 'model.mjs'))
   );
   const { toPreviewDocument } = await import(pathToFileURL(path.join(temp, 'render.mjs')));
@@ -527,13 +527,45 @@ try {
   state = transition(state, { type: 'ADMIN_CANCEL', registrationId: 'sample-3' }, afterDeadline);
   assert.equal(state.registrations.find((r) => r.id === 'sample-3').status, 'CANCELLED');
   assert.equal(seatInfo(state, state.events[0], 'OFFLINE').remaining, seatsBeforeCancel + 1);
-  assert.throws(
-    () => transition(state, { type: 'ADMIN_CANCEL', registrationId: 'sample-1' }, Date.parse(event.startsAt)),
-    /행사 시작 후/,
-  );
   assert.equal(isEventPublic({ ...newEvent, status: 'CANCELLED' }), false);
   assert.equal(isEventPublic(cancelledWithoutApplicants.events[0]), true);
-  console.log('✓ 마감 후 정보 수정·운영진 취소, 행사 시작 후 처리 제한, 공개된 행사만 크루에게 표시');
+  console.log('✓ 마감 후 정보 수정·운영진 취소, 공개된 행사만 크루에게 표시');
+
+  const startedAt = Date.parse(event.startsAt);
+  const endedAt = Date.parse(event.endsAt);
+  const pendingFixture = createEventPreviewState(new Date(now));
+  const declineAction = { type: 'DECIDE', registrationId: 'sample-1', status: 'DECLINED' };
+  const confirmAction = { type: 'DECIDE', registrationId: 'sample-1', status: 'CONFIRMED' };
+  const cancelAction = { type: 'ADMIN_CANCEL', registrationId: 'sample-1' };
+  const declined = transition(pendingFixture, declineAction, startedAt);
+  assert.equal(declined.registrations[0].status, 'DECLINED');
+  const confirmed = transition(pendingFixture, confirmAction, startedAt);
+  assert.equal(confirmed.registrations[0].status, 'CONFIRMED');
+  assert.equal(transition(confirmed, cancelAction, startedAt).registrations[0].status, 'CANCELLED');
+  assert.equal(transition(pendingFixture, cancelAction, startedAt).registrations[0].status, 'CANCELLED');
+
+  const cancelledDuringEvent = transition(pendingFixture, { type: 'STATUS', eventId: event.id, status: 'CANCELLED' }, startedAt);
+  for (const action of [declineAction, confirmAction, cancelAction]) {
+    assert.throws(() => transition(pendingFixture, action, endedAt), /종료되거나 취소된 행사/);
+    assert.throws(() => transition(cancelledDuringEvent, action, startedAt), /종료되거나 취소된 행사/);
+  }
+  assert.strictEqual(settleEndedRegistrations(cancelledDuringEvent, endedAt), cancelledDuringEvent);
+  assert.strictEqual(settleEndedRegistrations(pendingFixture, endedAt - 1), pendingFixture);
+  const settled = settleEndedRegistrations(pendingFixture, endedAt);
+  assert.deepEqual(settled.registrations.map(({ status }) => status), ['DECLINED', 'DECLINED', 'CONFIRMED']);
+  assert.equal(pendingFixture.registrations[0].status, 'PENDING');
+  const automatedMails = settled.mails.slice(0, 2);
+  assert.equal(settled.mails.length, pendingFixture.mails.length + 2);
+  assert.ok(automatedMails.every((mail) => mail.kind === 'AUTOMATIC'));
+  const manualMail = declined.mails[0];
+  const automatedMail = automatedMails.find((mail) => mail.recipients.includes(manualMail.recipients[0]));
+  assert.deepEqual(
+    [automatedMail.subject, automatedMail.body, automatedMail.format],
+    [manualMail.subject, manualMail.body, manualMail.format],
+  );
+  const reloaded = JSON.parse(JSON.stringify(settled));
+  assert.strictEqual(settleEndedRegistrations(reloaded, endedAt + 1000), reloaded);
+  console.log('✓ 행사 시작 후 참가 처리, 종료 시 확인 대기만 참가 불가 전환 및 동일 메일, 중복 방지');
 
   const afterTimedDeadline = Date.parse('2026-11-14T12:00:00Z');
   const timedEvent = {
@@ -575,6 +607,9 @@ try {
   const withoutEnd = { ...fullSeed.events[0], startsAt: '2026-11-14T23:00:00.000Z', endsAt: '', timeZone: 'America/Toronto' };
   assert.equal(eventStatus(fullSeed, withoutEnd, Date.parse('2026-11-15T04:59:59Z')), '모집 마감');
   assert.equal(eventStatus(fullSeed, withoutEnd, Date.parse('2026-11-15T05:00:00Z')), '종료');
+  const untimedPending = { ...pendingFixture, events: [withoutEnd] };
+  assert.strictEqual(settleEndedRegistrations(untimedPending, Date.parse('2026-11-15T04:59:59Z')), untimedPending);
+  assert.equal(settleEndedRegistrations(untimedPending, Date.parse('2026-11-15T05:00:00Z')).registrations[0].status, 'DECLINED');
   const seoulWithoutEnd = { ...withoutEnd, startsAt: '2026-11-14T09:00:00.000Z', timeZone: 'Asia/Seoul' };
   assert.equal(eventStatus(fullSeed, seoulWithoutEnd, Date.parse('2026-11-14T14:59:59Z')), '모집 마감');
   assert.equal(eventStatus(fullSeed, seoulWithoutEnd, Date.parse('2026-11-14T15:00:00Z')), '종료');
