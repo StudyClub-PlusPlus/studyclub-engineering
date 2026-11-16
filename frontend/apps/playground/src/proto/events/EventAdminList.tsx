@@ -37,7 +37,7 @@ export function EventAdminList() {
       onlineUrl: '',
       location: '',
       questions: [],
-      status: 'DRAFT',
+      status: 'PUBLISHED',
       publishedAt: undefined,
       endsAt: '',
     });
@@ -103,6 +103,7 @@ export function EventAdminList() {
         </TableCard>
       )}
       <Modal open={Boolean(draft)} onClose={() => setDraft(null)} title='행사 등록' size='lg'>
+        <p className='mb-4 type-body-sm text-fg-muted'>저장하면 크루 행사 목록에 바로 공개됩니다.</p>
         {draft && (
           <EventEditor
             key={draft.id}
@@ -110,7 +111,7 @@ export function EventAdminList() {
             confirmationLocked={false}
             onCancel={() => setDraft(null)}
             onSave={(event) => {
-              const error = dispatch({ type: 'SAVE', event });
+              const error = dispatch({ type: 'CREATE', event });
               if (!error) {
                 setDraft(null);
                 router.push(`/proto/console/events/${event.id}`);

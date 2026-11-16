@@ -10,7 +10,7 @@ import { Badge } from '@studyclub/ui';
 import { ArrowUpRight } from 'lucide-react';
 
 import { useEventWorkspace } from './EventWorkspace';
-import { FORMAT_LABEL, REGISTRATION_LABEL, SELF, eventStatus } from './model';
+import { FORMAT_LABEL, REGISTRATION_LABEL, SELF, eventStatus, isEventPublic } from './model';
 import { SPECS } from '@/app/(proto)/proto/core/[locale]/events/_application/spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 
@@ -29,7 +29,7 @@ export function EventGuestList({
   const displayTimeZone = useDisplayTimeZone();
   const [view, setView] = useState<EventListView>('upcoming');
   const publishedEvents =
-    state?.events.filter((event) => event.status !== 'DRAFT' && Boolean(event.publishedAt)) ?? [];
+    state?.events.filter(isEventPublic) ?? [];
   const isPast = (event: (typeof publishedEvents)[number]) => {
     const status = eventStatus(state!, event, now);
     return status === '종료' || status === '행사 취소';

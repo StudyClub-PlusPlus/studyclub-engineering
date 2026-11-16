@@ -6,9 +6,11 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 
 export function EventQuestionEditor({
   questions,
+  readOnly,
   onChange,
 }: {
   questions: EventQuestion[];
+  readOnly: boolean;
   onChange: (questions: EventQuestion[]) => void;
 }) {
   const update = (index: number, patch: Partial<EventQuestion>) =>
@@ -28,13 +30,15 @@ export function EventQuestionEditor({
     <section data-anno='event-manage:4' className='space-y-4'>
       <div>
         <h2 className='type-title-md'>신청 질문</h2>
-        <p className='mt-1 type-body-sm text-fg-muted'>
-          변경한 질문은 이후 신청부터 적용됩니다.
-        </p>
+        {!readOnly && (
+          <p className='mt-1 type-body-sm text-fg-muted'>
+            변경한 질문은 이후 신청부터 적용됩니다.
+          </p>
+        )}
       </div>
       {questions.length === 0 && (
         <p className='rounded-card border border-dashed border-border p-5 type-body-sm text-fg-muted'>
-          추가 질문 없이 기본 정보만으로 신청받습니다.
+          {readOnly ? '추가 신청 질문이 없습니다.' : '추가 질문 없이 기본 정보만으로 신청받습니다.'}
         </p>
       )}
       {questions.map((question, index) => (
@@ -98,31 +102,35 @@ export function EventQuestionEditor({
                           }}
                         />
                       </div>
-                      <Button
-                        type='button'
-                        variant='tertiary'
-                        size='sm'
-                        aria-label={`질문 ${index + 1} 선택지 ${optionIndex + 1} 삭제`}
-                        disabled={question.options.length <= 2}
-                        onClick={() =>
-                          update(index, { options: question.options.filter((_, i) => i !== optionIndex) })
-                        }
-                      >
-                        <Trash2 size={16} />
-                      </Button>
+                      {!readOnly && (
+                        <Button
+                          type='button'
+                          variant='tertiary'
+                          size='sm'
+                          aria-label={`질문 ${index + 1} 선택지 ${optionIndex + 1} 삭제`}
+                          disabled={question.options.length <= 2}
+                          onClick={() =>
+                            update(index, { options: question.options.filter((_, i) => i !== optionIndex) })
+                          }
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
-                <Button
-                  type='button'
-                  variant='tertiary'
-                  size='sm'
-                  className='mt-2'
-                  leadingIcon={<Plus size={15} />}
-                  onClick={() => addOption(index, question.options.length)}
-                >
-                  선택지 추가
-                </Button>
+                {!readOnly && (
+                  <Button
+                    type='button'
+                    variant='tertiary'
+                    size='sm'
+                    className='mt-2'
+                    leadingIcon={<Plus size={15} />}
+                    onClick={() => addOption(index, question.options.length)}
+                  >
+                    선택지 추가
+                  </Button>
+                )}
               </div>
               <Checkbox
                 label='복수 응답 허용'
@@ -137,52 +145,56 @@ export function EventQuestionEditor({
               checked={question.required}
               onChange={(e) => update(index, { required: e.target.checked })}
             />
-            <div className='ml-auto flex gap-1'>
-              <Button
-                type='button'
-                variant='tertiary'
-                size='sm'
-                aria-label={`질문 ${index + 1} 위로`}
-                disabled={index === 0}
-                onClick={() => move(index, -1)}
-              >
-                <ArrowUp size={16} />
-              </Button>
-              <Button
-                type='button'
-                variant='tertiary'
-                size='sm'
-                aria-label={`질문 ${index + 1} 아래로`}
-                disabled={index === questions.length - 1}
-                onClick={() => move(index, 1)}
-              >
-                <ArrowDown size={16} />
-              </Button>
-              <Button
-                type='button'
-                variant='tertiary'
-                size='sm'
-                aria-label={`질문 ${index + 1} 삭제`}
-                onClick={() => onChange(questions.filter((_, i) => i !== index))}
-              >
-                <Trash2 size={16} />
-              </Button>
-            </div>
+            {!readOnly && (
+              <div className='ml-auto flex gap-1'>
+                <Button
+                  type='button'
+                  variant='tertiary'
+                  size='sm'
+                  aria-label={`질문 ${index + 1} 위로`}
+                  disabled={index === 0}
+                  onClick={() => move(index, -1)}
+                >
+                  <ArrowUp size={16} />
+                </Button>
+                <Button
+                  type='button'
+                  variant='tertiary'
+                  size='sm'
+                  aria-label={`질문 ${index + 1} 아래로`}
+                  disabled={index === questions.length - 1}
+                  onClick={() => move(index, 1)}
+                >
+                  <ArrowDown size={16} />
+                </Button>
+                <Button
+                  type='button'
+                  variant='tertiary'
+                  size='sm'
+                  aria-label={`질문 ${index + 1} 삭제`}
+                  onClick={() => onChange(questions.filter((_, i) => i !== index))}
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </div>
+            )}
           </div>
         </fieldset>
       ))}
-      <Button
-        type='button'
-        variant='secondary'
-        size='sm'
-        disabled={questions.length >= 10}
-        leadingIcon={<Plus size={16} />}
-        onClick={() =>
-          onChange([...questions, { id: crypto.randomUUID(), label: '', type: 'TEXT', required: false, options: [] }])
-        }
-      >
-        질문 추가
-      </Button>
+      {!readOnly && (
+        <Button
+          type='button'
+          variant='secondary'
+          size='sm'
+          disabled={questions.length >= 10}
+          leadingIcon={<Plus size={16} />}
+          onClick={() =>
+            onChange([...questions, { id: crypto.randomUUID(), label: '', type: 'TEXT', required: false, options: [] }])
+          }
+        >
+          질문 추가
+        </Button>
+      )}
     </section>
   );
 }

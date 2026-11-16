@@ -19,6 +19,7 @@ import {
   ZONES,
   channels,
   eventStatus,
+  isEventPublic,
   formatDate,
   normalizeEventAnswers,
   occupiesSeat,
@@ -70,7 +71,7 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
       </div>
     );
   const event = state.events.find((item) => item.id === id);
-  if (!event)
+  if (!event || !isEventPublic(event))
     return (
       <div className={`${PAGE} space-y-4 py-12`}>
         <p>행사를 찾을 수 없습니다.</p>
@@ -113,11 +114,6 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
         <ArrowLeft size={16} />
         행사 목록
       </Link>
-      {event.status === 'DRAFT' && (
-        <p className='mt-4 rounded-control bg-warning-bg p-3 type-body-sm text-warning-fg'>
-          아직 공개 전인 행사입니다. 운영진 화면에서 공개한 뒤 신청할 수 있어요.
-        </p>
-      )}
       <div className={`mt-6 ${DETAIL_GRID}`}>
         <article className='min-w-0'>
           <header data-anno='event-apply:2' className='space-y-4 border-b border-border pb-7'>

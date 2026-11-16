@@ -7,9 +7,34 @@ import { createEventPreviewState, EVENT_NOTICE_TEMPLATE } from '@studyclub/mock'
 import type { EventPreviewState } from '@studyclub/types';
 
 import { populateEventExamples } from './examples';
-import { mergeNotificationTemplates, transition, type EventAction } from './model';
+import { SELF, mergeNotificationTemplates, transition, type EventAction } from './model';
 
 const STORAGE_KEY = 'studyclub-event-preview-v1';
+const LEGACY_PREVIEW_EMAIL = 'me@example.test';
+// 이전 플레이그라운드에 저장된 행사와 예시 참가자를 현재 표시 형식에 맞춘다.
+function normalizeStoredWorkspace(state: EventPreviewState): EventPreviewState {
+  return {
+    ...state,
+    events: state.events.filter(({ status }) => status === 'PUBLISHED' || status === 'CLOSED' || status === 'CANCELLED'),
+    registrations: state.registrations.map((registration) =>
+      registration.memberId === SELF.memberId && registration.email === LEGACY_PREVIEW_EMAIL
+        ? { ...registration, email: SELF.email, name: registration.name === '코딩구름' ? SELF.name : registration.name }
+        : registration,
+    ),
+    mails: state.mails.map((mail) =>
+      mail.id.startsWith('example-mail-') && mail.recipients.includes(LEGACY_PREVIEW_EMAIL)
+        ? {
+            ...mail,
+            recipients: mail.recipients.map((email) => email === LEGACY_PREVIEW_EMAIL ? SELF.email : email),
+            deliveries: mail.deliveries?.map((delivery) =>
+              delivery.recipient === LEGACY_PREVIEW_EMAIL ? { ...delivery, recipient: SELF.email } : delivery,
+            ),
+          }
+        : mail,
+    ),
+  };
+}
+
 type Workspace = {
   state: EventPreviewState | null;
   now: number;
@@ -61,7 +86,6 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
             'sample-1': '바이트나무',
             'sample-2': '오로라킴',
             'sample-3': '모카코더',
-            'preview-self': '코딩구름',
           };
           next.registrations = saved.registrations.map((r) => ({ ...r, name: names[r.memberId] ?? r.name }));
           next.mails = saved.mails;
@@ -72,6 +96,7 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
       setWarning('저장된 예시를 불러오지 못해 기본 예시로 시작합니다.');
     }
     const previous = JSON.stringify(next);
+    next = normalizeStoredWorkspace(next);
     next.notificationTemplates = mergeNotificationTemplates(
       next.notificationTemplates ?? [], defaults.notificationTemplates ?? [], next.deletedTemplateTriggers,
     );
@@ -186,8 +211,9 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
           Array.isArray(saved.mails) &&
           Array.isArray(saved.eventTemplates)
         ) {
-          ref.current = saved;
-          setState(saved);
+          const next = normalizeStoredWorkspace(saved);
+          ref.current = next;
+          setState(next);
           setNow(Date.now());
         }
       } catch {

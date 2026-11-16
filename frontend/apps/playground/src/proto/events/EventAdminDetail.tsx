@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TableCard } from '@console/components/ui';
 import { maskEmail } from '@console/lib/mask';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
-import type { EventMailPreview, EventRegistration, PreviewEvent } from '@studyclub/types';
+import type { EventMailPreview, EventRegistration } from '@studyclub/types';
 import { Badge, Button, IconButton, Modal, Tabs } from '@studyclub/ui';
 import { ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react';
 
@@ -29,6 +29,8 @@ import {
 import { SPECS } from '@/app/(proto)/proto/console/events/spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 import { toPreviewDocument } from '@/proto/mail/render';
+
+const DANGER_ACTION_CLASS = 'sm:ml-auto [--button-active-bg:var(--color-danger-bg)] [--button-fg:var(--color-danger-fg)] [--button-hover-bg:var(--color-danger-bg)]';
 
 function EventEmail({ email, name }: { email: string; name: string }) {
   const [shown, setShown] = useState(false);
@@ -56,8 +58,9 @@ export function EventAdminDetail({ id }: { id: string }) {
   const [confirm, setConfirm] = useState<{
     title: string;
     body: string;
-    action: EventAction;
-    kind?: 'CANCEL_EVENT';
+    action?: EventAction;
+    label?: string;
+    message?: string;
   } | null>(null);
   const [answer, setAnswer] = useState<EventRegistration | null>(null);
   const [mailPreview, setMailPreview] = useState<EventMailPreview | null>(null);
@@ -85,6 +88,9 @@ export function EventAdminDetail({ id }: { id: string }) {
   const status = eventStatus(state, event, now);
   const finished = status === '종료';
   const cancelled = event.status === 'CANCELLED';
+  const hasCancellationRecipients = cancelled
+    ? Boolean(event.cancellationRecipientIds?.length)
+    : registrations.some(occupiesSeat);
   const mails = state.mails.filter((mail) => mail.eventId === id && mail.kind === 'OPERATOR');
   const run = (action: EventAction, message: string) => {
     const failure = dispatch(action);
@@ -95,11 +101,29 @@ export function EventAdminDetail({ id }: { id: string }) {
     }
     return failure;
   };
-  const changeStatus = (status: PreviewEvent['status']) =>
-    run(
-      { type: 'STATUS', eventId: id, status },
-      status === 'PUBLISHED' ? '행사가 공개되었습니다.' : '모집 상태를 변경했습니다.',
-    );
+  const changeStatus = (status: 'PUBLISHED' | 'CLOSED') => {
+    if (status === 'PUBLISHED' && Date.parse(event.deadlineAt) <= now) {
+      setConfirm({
+        title: '모집을 다시 열 수 없어요',
+        body: Date.parse(event.startsAt) <= now
+          ? '이미 시작한 행사에는 새 신청을 받을 수 없어요.'
+          : '신청 마감 시간이 지났어요. 행사 정보·신청폼에서 신청 마감 시간을 미래로 바꾼 뒤 다시 열어 주세요.',
+      });
+      return;
+    }
+    const reopening = status === 'PUBLISHED';
+    setConfirm({
+      title: reopening ? '모집을 다시 열까요?' : '모집을 마감할까요?',
+      body: reopening
+        ? '크루는 자리가 남은 참여 방식에 신청 마감 시간까지 다시 신청할 수 있어요.'
+        : '크루는 새로 신청할 수 없어요. 행사는 예정된 행사에 계속 표시되고 기존 신청 내역도 볼 수 있어요.',
+      label: reopening ? '모집 다시 열기' : '모집 마감',
+      message: reopening ? '모집을 다시 열었습니다.' : '모집을 마감했습니다.',
+      action: { type: 'STATUS', eventId: id, status },
+    });
+  };
+  const isCancellation = confirm?.action?.type === 'STATUS' && confirm.action.status === 'CANCELLED';
+  const isRecruitmentChange = confirm?.action?.type === 'STATUS' && !isCancellation;
   return (
     <>
       {SPECS.map((spec) => (
@@ -126,9 +150,9 @@ export function EventAdminDetail({ id }: { id: string }) {
           {formatDate(event.startsAt, displayTimeZone)} · 신청 마감 {formatDate(event.deadlineAt, displayTimeZone)}
         </p>
         <div className='flex flex-wrap items-center gap-2'>
-          {!finished && (event.status === 'DRAFT' || event.status === 'CLOSED') && (
+          {!finished && event.status === 'CLOSED' && (
             <Button size='sm' onClick={() => changeStatus('PUBLISHED')}>
-              {event.status === 'DRAFT' ? '행사 공개' : '모집 다시 열기'}
+              모집 다시 열기
             </Button>
           )}
           {!finished && event.status === 'PUBLISHED' && (
@@ -136,22 +160,20 @@ export function EventAdminDetail({ id }: { id: string }) {
               모집 마감
             </Button>
           )}
-          {!finished && event.status === 'PUBLISHED' && !registrations.length && (
-            <Button variant='tertiary' size='sm' onClick={() => changeStatus('DRAFT')}>
-              공개 취소
-            </Button>
-          )}
           {!finished && !cancelled && (
             <Button
-              className='sm:ml-auto [--button-active-bg:var(--color-danger-bg)] [--button-fg:var(--color-danger-fg)] [--button-hover-bg:var(--color-danger-bg)]'
+              className={DANGER_ACTION_CLASS}
               variant='tertiary'
               size='sm'
               onClick={() =>
                 setConfirm({
                   title: '행사를 취소할까요?',
-                  body: '행사를 취소하면 확인 대기 및 참가 확정 신청도 모두 취소됩니다. 취소 후 신청자에게 보낼 안내 메일 작성창이 열립니다. 취소 사유를 작성해 주세요.',
+                  body: hasCancellationRecipients
+                    ? '크루 화면에서 행사는 지난 행사로 이동하고 행사 취소로 표시돼요. 확인 대기와 참가 확정 신청도 모두 취소되며, 취소 사유를 담은 안내 메일 작성창이 열려요.'
+                    : '크루 화면에서 행사는 지난 행사로 이동하고 행사 취소로 표시돼요. 새 신청은 받을 수 없어요.',
                   action: { type: 'STATUS', eventId: id, status: 'CANCELLED' },
-                  kind: 'CANCEL_EVENT',
+                  label: '행사 취소',
+                  message: '행사가 취소되었습니다.',
                 })
               }
             >
@@ -202,10 +224,10 @@ export function EventAdminDetail({ id }: { id: string }) {
       <div className='mt-6'>
         {tab === 'info' && (
           <EventEditor
-            key={`${event.id}-${event.status}`}
+            key={`${event.id}-${event.status}-${finished}`}
             event={event}
             confirmationLocked={Date.parse(event.startsAt) <= now}
-            readOnly={event.status === 'CANCELLED'}
+            readOnly={finished || cancelled}
             onCancel={() => setTab('attendees')}
             onSave={(next) => {
               const newlyConfirmed = event.confirmation !== 'AUTO' && next.confirmation === 'AUTO' ? pending.length : 0;
@@ -222,17 +244,19 @@ export function EventAdminDetail({ id }: { id: string }) {
           <section data-anno='event-manage:6'>
             <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
               <p className='type-body-sm text-fg-muted'>전체 신청 이력 {registrations.length}건</p>
-              <Button
-                size='sm'
-                variant='secondary'
-                className={cancelled ? '[--button-fg:var(--color-danger-fg)] [--button-hover-bg:var(--color-danger-bg)] [--button-active-bg:var(--color-danger-bg)]' : undefined}
-                leadingIcon={<Mail size={15} />}
-                onClick={() => {
-                  setCompose(cancelled ? 'CANCELLATION' : 'NOTICE');
-                }}
-              >
-                {cancelled ? '취소 안내 메일 보내기' : '안내 메일 보내기'}
-              </Button>
+              {(!cancelled || hasCancellationRecipients) && (
+                <Button
+                  size='sm'
+                  variant='secondary'
+                  className={cancelled ? '[--button-fg:var(--color-danger-fg)] [--button-hover-bg:var(--color-danger-bg)] [--button-active-bg:var(--color-danger-bg)]' : undefined}
+                  leadingIcon={<Mail size={15} />}
+                  onClick={() => {
+                    setCompose(cancelled ? 'CANCELLATION' : 'NOTICE');
+                  }}
+                >
+                  {cancelled ? '취소 안내 메일 보내기' : '안내 메일 보내기'}
+                </Button>
+              )}
             </div>
             <TableCard>
               <thead>
@@ -378,27 +402,23 @@ export function EventAdminDetail({ id }: { id: string }) {
         footer={
           <>
             <Button variant='secondary' data-autofocus onClick={() => setConfirm(null)}>
-              돌아가기
+              {confirm?.action ? '돌아가기' : '닫기'}
             </Button>
-            <Button
-              variant='destructive'
-              onClick={() => {
-                if (confirm) {
-                  const failure = run(
-                    confirm.action,
-                    confirm.kind === 'CANCEL_EVENT'
-                      ? '행사가 취소되었습니다. 신청자에게 보낼 안내 메일을 작성해 주세요.'
-                      : '처리했습니다.',
-                  );
-                  if (!failure && confirm.kind === 'CANCEL_EVENT') {
+            {confirm?.action && (
+              <Button
+                variant={isRecruitmentChange ? 'primary' : 'destructive'}
+                onClick={() => {
+                  if (!confirm.action) return;
+                  const failure = run(confirm.action, confirm.message ?? '처리했습니다.');
+                  if (!failure && isCancellation && hasCancellationRecipients) {
                     setCompose('CANCELLATION');
                   }
-                }
-                setConfirm(null);
-              }}
-            >
-              {confirm?.kind === 'CANCEL_EVENT' ? '행사 취소' : '처리하기'}
-            </Button>
+                  setConfirm(null);
+                }}
+              >
+                {confirm.label ?? '처리하기'}
+              </Button>
+            )}
           </>
         }
       >

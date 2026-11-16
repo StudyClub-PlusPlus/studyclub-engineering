@@ -22,7 +22,7 @@ try {
     outExtension: { '.js': '.mjs' },
     logLevel: 'silent',
   });
-  const { transition, seatInfo, wallTimeToIso, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates } = await import(
+  const { transition, seatInfo, wallTime, wallTimeToIso, eventInputToIso, isEventPublic, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates } = await import(
     pathToFileURL(path.join(temp, 'model.mjs'))
   );
   const { toPreviewDocument } = await import(pathToFileURL(path.join(temp, 'render.mjs')));
@@ -43,17 +43,17 @@ try {
   assert.ok(noticeBody.indexOf('{{notice}}') < noticeBody.indexOf('참여 안내'));
   assert.ok(noticeBody.indexOf('참여 안내') < noticeBody.indexOf('일정: {{eventSchedule}}'));
   const populated = populateEventExamples(fullSeed, fullSeed, now);
-  assert.equal(populated.events.length, 9);
+  assert.equal(populated.events.length, 8);
+  assert.ok(!fullSeed.events.some((event) => event.id === 'preview-event-draft'));
   assert.equal(populated.registrations.length, 98);
+  const previewMemberRows = populated.registrations.filter(({ memberId }) => memberId === SELF.memberId);
+  assert.ok(previewMemberRows.length > 0);
+  assert.ok(previewMemberRows.every(({ name, email }) => name === SELF.name && email === SELF.email));
   for (const sampleEvent of populated.events) {
     const rows = populated.registrations.filter((row) => row.eventId === sampleEvent.id);
-    if (sampleEvent.status === 'DRAFT') {
-      assert.equal(rows.length, 0);
-      assert.ok(!populated.mails.some((mail) => mail.eventId === sampleEvent.id));
-      continue;
-    }
+    assert.ok(isEventPublic(sampleEvent));
     assert.ok(rows.length >= 8);
-    assert.ok(rows.every((row) => (/^[a-z]+\d+@(gmail\.com|naver\.com|kakao\.com|daum\.net|outlook\.com)$/.test(row.email) || row.email === SELF.email)));
+    assert.ok(rows.every((row) => /^[a-z]+\d+@(gmail\.com|naver\.com|kakao\.com|daum\.net|outlook\.com)$/.test(row.email)));
     assert.ok(rows.every((row) => row.questions.length && Object.keys(row.answers).length));
     const mailRows = populated.mails.filter((mail) => mail.eventId === sampleEvent.id);
     assert.ok(mailRows.length >= 3);
@@ -64,9 +64,36 @@ try {
   }
   for (const [id, status] of Object.entries({
     'preview-event-closed': '모집 마감', 'preview-event-finished': '종료',
-    'preview-event-cancelled': '행사 취소', 'preview-event-draft': '작성 중',
-    'preview-event-full': '정원 마감', 'preview-event-live': '진행 중',
+    'preview-event-cancelled': '행사 취소',
+    'preview-event-full': '정원 마감', 'preview-event-live': '모집 마감',
   })) assert.equal(eventStatus(populated, populated.events.find((event) => event.id === id), now), status);
+  const newEvent = {
+    ...fullSeed.events[0], id: 'preview-new-event', publishedAt: undefined, format: 'ONLINE', confirmation: 'AUTO', questions: [],
+  };
+  const created = transition(populated, { type: 'CREATE', event: newEvent }, now);
+  assert.equal(created.events[0].status, 'PUBLISHED');
+  assert.equal(created.events[0].publishedAt, new Date(now).toISOString());
+  assert.equal(eventStatus(created, created.events[0], now), '모집 중');
+  assert.equal(
+    transition(created, { type: 'APPLY', eventId: newEvent.id, channel: 'ONLINE', answers: {} }, now).registrations[0].status,
+    'CONFIRMED',
+  );
+  assert.throws(
+    () => transition(populated, { type: 'CREATE', event: { ...newEvent, deadlineAt: new Date(now).toISOString() } }, now),
+    /현재보다 늦게/,
+  );
+  console.log('✓ 신규 등록 즉시 공개 및 신청, 지난 마감 차단');
+  assert.throws(() => transition(created, { type: 'STATUS', eventId: newEvent.id, status: 'DRAFT' }, now), /지원하지 않는 행사 상태/);
+  const closedAfterPublish = transition(created, { type: 'STATUS', eventId: newEvent.id, status: 'CLOSED' }, now);
+  assert.equal(eventStatus(closedAfterPublish, closedAfterPublish.events[0], now), '모집 마감');
+  const reopenedAfterClose = transition(closedAfterPublish, { type: 'STATUS', eventId: newEvent.id, status: 'PUBLISHED' }, now);
+  assert.equal(eventStatus(reopenedAfterClose, reopenedAfterClose.events[0], now), '모집 중');
+  const cancelledWithoutApplicants = transition(reopenedAfterClose, { type: 'STATUS', eventId: newEvent.id, status: 'CANCELLED' }, now);
+  assert.equal(cancelledWithoutApplicants.events[0].status, 'CANCELLED');
+  assert.equal(cancelledWithoutApplicants.events[0].publishedAt, created.events[0].publishedAt);
+  assert.deepEqual(cancelledWithoutApplicants.events[0].cancellationRecipientIds, []);
+  assert.deepEqual(cancelledWithoutApplicants.mails, created.mails);
+  console.log('✓ 미지원 상태 차단, 모집 마감·재모집 및 신청 이력 없는 행사 취소');
   const fullEvent = populated.events.find((event) => event.id === 'preview-event-full');
   const fullApplicant = populated.registrations.find((row) => row.eventId === fullEvent.id);
   const reopenedSeat = transition(populated, { type: 'ADMIN_CANCEL', registrationId: fullApplicant.id }, now);
@@ -276,7 +303,7 @@ try {
   assert.equal(transition(cleared, { type: 'SAVE', event: { ...cleared.events[0], format: 'ONLINE' } }, now).events[0].format, 'ONLINE');
   const noEnd = transition(state, { type: 'SAVE', event: { ...state.events[0], endsAt: '' } }, now);
   assert.equal(noEnd.events[0].endsAt, '');
-  assert.equal(eventStatus(noEnd, noEnd.events[0], Date.parse(event.startsAt)), '행사 시작');
+  assert.equal(eventStatus(noEnd, noEnd.events[0], Date.parse(event.startsAt)), '모집 마감');
   console.log('✓ 방식별 정원, 확정 방식의 확인 대기 반영, 질문 변경 전후 신청서 스냅샷, 모집 정책 변경 제한');
 
   const auto = state.events[1];
@@ -386,8 +413,8 @@ try {
   const cancelledWithHistory = transition(priorWithdrawals, { type: 'STATUS', eventId: cancellationEvent.id, status: 'CANCELLED' }, now);
   assert.deepEqual(cancelledWithHistory.events[0].cancellationRecipientIds, eligibleIds);
   assert.ok(priorWithdrawals.registrations.some((r) => r.eventId === cancellationEvent.id && ['DECLINED', 'CANCELLED'].includes(r.status) && !eligibleIds.includes(r.id)));
-  assert.throws(() => transition(state, { type: 'STATUS', eventId: event.id, status: 'PUBLISHED' }, now), /다시 공개/);
-  console.log('✓ 자동 확정, 안내 메일 대상 제한, 행사 취소 후 운영진 안내와 재공개 제한');
+  assert.throws(() => transition(state, { type: 'STATUS', eventId: event.id, status: 'PUBLISHED' }, now), /취소된 행사는 모집 상태를 변경할 수 없습니다/);
+  console.log('✓ 자동 확정, 안내 메일 대상 제한, 행사 취소 후 운영진 안내와 모집 상태 변경 제한');
 
   state = createEventPreviewState(new Date(now));
   const afterDeadline = Date.parse(state.events[0].deadlineAt) + 1;
@@ -416,23 +443,54 @@ try {
     () => transition(state, { type: 'ADMIN_CANCEL', registrationId: 'sample-1' }, Date.parse(event.startsAt)),
     /행사 시작 후/,
   );
-  const draft = { ...state.events[1], id: 'preview-event-private', status: 'DRAFT', publishedAt: undefined };
-  state = transition(state, { type: 'SAVE', event: draft }, now);
-  state = transition(state, { type: 'STATUS', eventId: draft.id, status: 'CANCELLED' }, now);
-  assert.equal(state.events.find((e) => e.id === draft.id).publishedAt, undefined);
-  assert.ok(!state.events.filter((e) => e.status !== 'DRAFT' && e.publishedAt).some((e) => e.id === draft.id));
-  console.log('✓ 마감 후 정보 수정·운영진 취소, 행사 시작 후 처리 제한, 미공개 행사 비노출');
+  assert.equal(isEventPublic({ ...newEvent, status: 'CANCELLED' }), false);
+  assert.equal(isEventPublic(cancelledWithoutApplicants.events[0]), true);
+  console.log('✓ 마감 후 정보 수정·운영진 취소, 행사 시작 후 처리 제한, 공개된 행사만 크루에게 표시');
+
+  const afterTimedDeadline = Date.parse('2026-11-14T12:00:00Z');
+  const timedEvent = {
+    ...created.events[0],
+    startsAt: '2026-11-15T18:00:19.100Z',
+    endsAt: '2026-11-15T19:00:25.200Z',
+    deadlineAt: '2026-11-14T11:00:37.300Z',
+  };
+  const timedState = { ...created, events: [timedEvent] };
+  const editedTimes = Object.fromEntries(
+    ['startsAt', 'endsAt', 'deadlineAt'].map((field) => [
+      field, eventInputToIso(wallTime(timedEvent[field], timedEvent.timeZone), timedEvent.timeZone, timedEvent[field], timedEvent.timeZone),
+    ]),
+  );
+  assert.deepEqual(editedTimes, {
+    startsAt: timedEvent.startsAt, endsAt: timedEvent.endsAt, deadlineAt: timedEvent.deadlineAt,
+  });
+  const savedEvent = transition(timedState, {
+    type: 'SAVE', event: { ...timedEvent, ...editedTimes, title: '수정한 행사명', onlineUrl: 'https://example.com/join' },
+  }, afterTimedDeadline).events[0];
+  assert.equal(savedEvent.title, '수정한 행사명');
+  assert.equal(savedEvent.deadlineAt, timedEvent.deadlineAt);
+  const futureEvent = {
+    ...timedEvent, startsAt: '2026-11-20T18:00:00Z', endsAt: '2026-11-20T19:00:00Z', deadlineAt: '2026-11-19T18:00:00Z',
+  };
+  assert.throws(() => transition(timedState, { type: 'SAVE', event: futureEvent }, Date.parse(timedEvent.endsAt)), /종료된 행사는 수정할 수 없습니다/);
+  const noEndState = { ...timedState, events: [{ ...timedEvent, endsAt: '' }] };
+  assert.throws(() => transition(noEndState, { type: 'SAVE', event: futureEvent }, Date.parse('2026-11-17T00:00:00Z')), /종료된 행사는 수정할 수 없습니다/);
+  console.log('✓ 마감 후 일정의 초 단위 보존, 종료된 행사와 종료 시각 미설정 지난 행사의 수정 차단');
 
   const withoutEnd = { ...fullSeed.events[0], startsAt: '2026-11-14T23:00:00.000Z', endsAt: '', timeZone: 'America/Toronto' };
-  assert.equal(eventStatus(fullSeed, withoutEnd, Date.parse('2026-11-15T04:59:59Z')), '행사 시작');
+  assert.equal(eventStatus(fullSeed, withoutEnd, Date.parse('2026-11-15T04:59:59Z')), '모집 마감');
   assert.equal(eventStatus(fullSeed, withoutEnd, Date.parse('2026-11-15T05:00:00Z')), '종료');
   const seoulWithoutEnd = { ...withoutEnd, startsAt: '2026-11-14T09:00:00.000Z', timeZone: 'Asia/Seoul' };
-  assert.equal(eventStatus(fullSeed, seoulWithoutEnd, Date.parse('2026-11-14T14:59:59Z')), '행사 시작');
+  assert.equal(eventStatus(fullSeed, seoulWithoutEnd, Date.parse('2026-11-14T14:59:59Z')), '모집 마감');
   assert.equal(eventStatus(fullSeed, seoulWithoutEnd, Date.parse('2026-11-14T15:00:00Z')), '종료');
   const dstWithoutEnd = { ...withoutEnd, startsAt: '2026-11-01T04:00:00.000Z' };
-  assert.equal(eventStatus(fullSeed, dstWithoutEnd, Date.parse('2026-11-02T04:59:59Z')), '행사 시작');
+  assert.equal(eventStatus(fullSeed, dstWithoutEnd, Date.parse('2026-11-02T04:59:59Z')), '모집 마감');
   assert.equal(eventStatus(fullSeed, dstWithoutEnd, Date.parse('2026-11-02T05:00:00Z')), '종료');
-  assert.equal(eventStatus(fullSeed, { ...withoutEnd, endsAt: '2026-11-15T07:00:00Z' }, Date.parse('2026-11-15T05:00:00Z')), '진행 중');
+  assert.equal(eventStatus(fullSeed, { ...withoutEnd, endsAt: '2026-11-15T07:00:00Z' }, Date.parse('2026-11-15T05:00:00Z')), '모집 마감');
+
+  assert.throws(
+    () => transition(fullSeed, { type: 'APPLY', eventId: 'preview-event-live', channel: 'ONLINE', answers: {} }, now),
+    /현재 신청할 수 없는 행사/,
+  );
   for (const status of ['CANCELLED', 'PUBLISHED', 'CLOSED']) {
     assert.throws(() => transition(fullSeed, { type: 'STATUS', eventId: 'preview-event-finished', status }, now), /종료된 행사/);
   }

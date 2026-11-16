@@ -1,4 +1,5 @@
 import { zoneAbbreviation } from '@core/lib/schedule-timezone';
+import { EVENT_PREVIEW_MEMBER } from '@studyclub/mock/data';
 import type {
   EventChannel,
   EventQuestion,
@@ -10,7 +11,7 @@ import type {
   PreviewEvent,
 } from '@studyclub/types';
 
-export const SELF = { memberId: 'preview-self', name: '코딩구름', email: 'me@example.test' };
+export const SELF = EVENT_PREVIEW_MEMBER;
 export const CHANNEL_LABEL = { ONLINE: '온라인', OFFLINE: '오프라인' };
 export const FORMAT_LABEL = { ...CHANNEL_LABEL, HYBRID: '온라인·오프라인' };
 export const CONFIRM_LABEL = { AUTO: '자동 확정', REVIEW: '운영진 확인 후 확정' };
@@ -81,6 +82,11 @@ export function wallTimeToIso(value: string, zone: string): string | null {
   return matches.length === 1 ? matches[0]! : null;
 }
 
+export function eventInputToIso(value: string, timeZone: string, savedIso: string, savedTimeZone: string) {
+  if (savedIso && timeZone === savedTimeZone && value === wallTime(savedIso, savedTimeZone)) return savedIso;
+  return wallTimeToIso(value, timeZone);
+}
+
 export function formatDate(iso: string, zone: string, locale = 'ko-KR', includeTimeZone = true) {
   const at = new Date(iso);
   const formatted = new Intl.DateTimeFormat(locale, {
@@ -98,6 +104,10 @@ export function formatDate(iso: string, zone: string, locale = 'ko-KR', includeT
 export function channels(event: PreviewEvent): EventChannel[] {
   return event.format === 'HYBRID' ? ['ONLINE', 'OFFLINE'] : [event.format];
 }
+export function isEventPublic(event: PreviewEvent) {
+  return Boolean(event.publishedAt);
+}
+
 export function occupiesSeat(r: EventRegistration) {
   return r.status === 'PENDING' || r.status === 'CONFIRMED';
 }
@@ -112,12 +122,11 @@ export function seatInfo(state: EventPreviewState, event: PreviewEvent, channel:
   };
 }
 export function eventStatus(state: EventPreviewState, event: PreviewEvent, now = Date.now()) {
-  if (event.status === 'DRAFT') return '작성 중';
   if (event.status === 'CANCELLED') return '행사 취소';
   if (event.endsAt && Date.parse(event.endsAt) <= now) return '종료';
   if (!event.endsAt && wallTime(new Date(now).toISOString(), event.timeZone).slice(0, 10) > wallTime(event.startsAt, event.timeZone).slice(0, 10)) return '종료';
-  if (Date.parse(event.startsAt) <= now) return event.endsAt ? '진행 중' : '행사 시작';
-  if (event.status === 'CLOSED' || Date.parse(event.deadlineAt) <= now) return '모집 마감';
+  if (event.status === 'CLOSED' || Date.parse(event.deadlineAt) <= now || Date.parse(event.startsAt) <= now)
+    return '모집 마감';
   if (channels(event).every((channel) => seatInfo(state, event, channel).remaining === 0)) return '정원 마감';
   return '모집 중';
 }
@@ -360,6 +369,7 @@ export function cancellationEventTemplate(template: EventNoticeTemplate): EventN
 }
 
 export type EventAction =
+  | { type: 'CREATE'; event: PreviewEvent }
   | { type: 'SAVE'; event: PreviewEvent }
   | { type: 'STATUS'; eventId: string; status: PreviewEvent['status'] }
   | { type: 'APPLY'; eventId: string; channel: EventChannel; answers: EventRegistration['answers']; applicant?: typeof SELF & { timeZone?: string } }
@@ -429,26 +439,31 @@ export function transition(current: EventPreviewState, action: EventAction, now 
     ])].filter((trigger) => !action.templates.some((template) => template.trigger === trigger));
     return state;
   }
-  if (action.type === 'SAVE') {
-    const error = validateEvent(action.event, state, now);
+  if (action.type === 'CREATE') {
+    if (state.events.some((event) => event.id === action.event.id))
+      fail('이미 사용한 행사 정보입니다. 행사 등록을 다시 열어 주세요.');
+    const event: PreviewEvent = { ...action.event, status: 'PUBLISHED', publishedAt: new Date(now).toISOString() };
+    const error = validateEvent(event, state, now);
     if (error) fail(error);
+    state.events.unshift(event);
+    return state;
+  }
+  if (action.type === 'SAVE') {
     const index = state.events.findIndex((e) => e.id === action.event.id);
-    if (index < 0) state.events.unshift(action.event);
-    else {
-      const changedToAuto = state.events[index]!.confirmation !== 'AUTO' && action.event.confirmation === 'AUTO';
-      state.events[index] = action.event;
-      if (changedToAuto) {
-        const pending = state.registrations.filter(
-          (registration) => registration.eventId === action.event.id && registration.status === 'PENDING',
-        );
-        for (const registration of pending) {
-          registration.status = 'CONFIRMED';
-          automaticMail(
-            'EVENT_REGISTRATION_CONFIRMED',
-            action.event,
-            registration,
-          );
-        }
+    if (index < 0) fail('행사를 찾을 수 없습니다.');
+    const previous = state.events[index]!;
+    if (eventStatus(state, previous, now) === '종료') fail('종료된 행사는 수정할 수 없습니다.');
+    const event = { ...action.event, status: previous.status, publishedAt: previous.publishedAt };
+    const error = validateEvent(event, state, now);
+    if (error) fail(error);
+    state.events[index] = event;
+    if (previous.confirmation !== 'AUTO' && event.confirmation === 'AUTO') {
+      const pending = state.registrations.filter(
+        (registration) => registration.eventId === event.id && registration.status === 'PENDING',
+      );
+      for (const registration of pending) {
+        registration.status = 'CONFIRMED';
+        automaticMail('EVENT_REGISTRATION_CONFIRMED', event, registration);
       }
     }
     return state;
@@ -484,10 +499,10 @@ export function transition(current: EventPreviewState, action: EventAction, now 
   }
   const event = state.events.find((e) => e.id === action.eventId) ?? fail('행사를 찾을 수 없습니다.');
   if (action.type === 'STATUS') {
-    if (event.status === 'CANCELLED') fail('취소된 행사는 다시 공개할 수 없습니다.');
+    if (action.status !== 'PUBLISHED' && action.status !== 'CLOSED' && action.status !== 'CANCELLED')
+      fail('지원하지 않는 행사 상태입니다.');
+    if (event.status === 'CANCELLED') fail('취소된 행사는 모집 상태를 변경할 수 없습니다.');
     if (eventStatus(state, event, now) === '종료') fail('종료된 행사는 취소하거나 모집 상태를 변경할 수 없습니다.');
-    if (action.status === 'DRAFT' && state.registrations.some((r) => r.eventId === event.id))
-      fail('신청 이력이 있는 행사는 공개를 취소할 수 없습니다.');
     if (action.status === 'PUBLISHED') {
       if (Date.parse(event.deadlineAt) <= now) fail('신청 마감시간을 현재보다 늦게 설정해 주세요.');
       const error = validateEvent({ ...event, status: 'PUBLISHED' }, state, now);
@@ -503,7 +518,7 @@ export function transition(current: EventPreviewState, action: EventAction, now 
       });
     }
   } else if (action.type === 'APPLY') {
-    if (eventStatus(state, event, now) !== '모집 중') fail('현재 신청할 수 없는 행사입니다.');
+    if (!isEventPublic(event) || eventStatus(state, event, now) !== '모집 중') fail('현재 신청할 수 없는 행사입니다.');
     const applicant = action.applicant ?? SELF;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicant.email)) fail('로그인 계정의 이메일을 확인한 뒤 다시 신청해 주세요.');
     if (

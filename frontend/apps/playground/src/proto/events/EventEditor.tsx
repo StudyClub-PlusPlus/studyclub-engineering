@@ -6,7 +6,7 @@ import type { PreviewEvent } from '@studyclub/types';
 import { Button, Input, Select, Textarea } from '@studyclub/ui';
 
 import { EventQuestionEditor } from './EventQuestionEditor';
-import { ZONES, wallTime, wallTimeToIso } from './model';
+import { ZONES, eventInputToIso, wallTime } from './model';
 
 export function EventEditor({
   event,
@@ -31,9 +31,11 @@ export function EventEditor({
   const set = <K extends keyof PreviewEvent>(key: K, value: PreviewEvent[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
   function save() {
-    const startsAt = wallTimeToIso(dates.startsAt, draft.timeZone),
-      endsAt = dates.endsAt ? wallTimeToIso(dates.endsAt, draft.timeZone) : '',
-      deadlineAt = wallTimeToIso(dates.deadlineAt, draft.timeZone);
+    const toIso = (field: keyof typeof dates) =>
+      eventInputToIso(dates[field], draft.timeZone, event[field], event.timeZone);
+    const startsAt = toIso('startsAt');
+    const endsAt = dates.endsAt ? toIso('endsAt') : '';
+    const deadlineAt = toIso('deadlineAt');
     if (!startsAt || endsAt === null || !deadlineAt) {
       setError('일정을 확인해 주세요. 서머타임 전환으로 없거나 중복되는 시각은 다른 시각을 선택해 주세요.');
       return;
@@ -53,7 +55,9 @@ export function EventEditor({
     >
       {readOnly && (
         <p className='rounded-control bg-surface-2 p-3 type-body-sm text-fg-secondary'>
-          취소된 행사입니다. 등록했던 정보와 신청폼을 조회할 수 있습니다.
+          {event.status === 'CANCELLED'
+            ? '취소된 행사입니다. 등록했던 정보와 신청폼을 조회할 수 있습니다.'
+            : '종료된 행사입니다. 등록했던 정보와 신청폼을 조회할 수 있습니다.'}
         </p>
       )}
       <fieldset disabled={readOnly} className='min-w-0 space-y-7 border-0 p-0'>
@@ -111,7 +115,7 @@ export function EventEditor({
             required
             value={dates.deadlineAt}
             onChange={(e) => setDates({ ...dates, deadlineAt: e.target.value })}
-            helper='행사 시작 시각까지로 설정해 주세요.'
+            helper={readOnly ? undefined : '행사 시작 시각까지로 설정해 주세요.'}
           />
         </section>
         <section data-anno='event-manage:3' className='space-y-4 border-t border-border pt-6'>
@@ -172,7 +176,7 @@ export function EventEditor({
               value={draft.onlineUrl}
               onChange={(e) => set('onlineUrl', e.target.value)}
               placeholder='https://'
-              helper='참가 확정자에게만 보여요. 아직 정해지지 않았다면 나중에 입력할 수 있습니다.'
+              helper={readOnly ? undefined : '참가 확정자에게만 보여요. 아직 정해지지 않았다면 나중에 입력할 수 있습니다.'}
             />
           )}
           <fieldset className='space-y-2'>
@@ -191,7 +195,7 @@ export function EventEditor({
             ).map(([value, label, detail]) => (
               <label
                 key={value}
-                className={`flex cursor-pointer items-start gap-3 rounded-control border p-4 ${draft.confirmation === value ? 'border-brand bg-brand-subtle' : 'border-border'}`}
+                className={`flex items-start gap-3 rounded-control border p-4 ${readOnly || confirmationLocked ? '' : 'cursor-pointer'} ${draft.confirmation === value ? 'border-brand bg-brand-subtle' : 'border-border'}`}
               >
                 <input
                   className='mt-1 accent-(--color-brand)'
@@ -211,7 +215,11 @@ export function EventEditor({
           </fieldset>
         </section>
         <div className='border-t border-border pt-6'>
-          <EventQuestionEditor questions={draft.questions} onChange={(questions) => set('questions', questions)} />
+          <EventQuestionEditor
+            questions={draft.questions}
+            readOnly={readOnly}
+            onChange={(questions) => set('questions', questions)}
+          />
         </div>
         {!readOnly && (
           <div className='border-t border-border pt-5'>
