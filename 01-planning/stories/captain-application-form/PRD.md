@@ -223,7 +223,7 @@ erDiagram
   - 저장 → 완료 문구 표시
   - 처리 중 스피너로 중복 제출 차단
 - **정책**: 모집 시작 전에는 저장할 수 있다. 모집 시작 이후 수정은 막아야 한다 — 프로토타입은 아직 막지 않는다
-- **데이터**: PUT /api/admin/studies/{studyId}/application-form — 담당 캡틴(STUDY.CREATED_BY)만. 담당 판정 미구현
+- **데이터**: PUT /api/admin/studies/{studyId}/application-form — 담당 캡틴(STUDY.OWNER_CAPTAIN_ID)만. 담당 판정 미구현
 
 <!-- spec:end form -->
 

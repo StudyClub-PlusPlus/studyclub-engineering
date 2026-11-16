@@ -218,7 +218,7 @@
 
 1. 스터디가 없으면 404
 2. **대상 계정을 잠그고 읽는다** (`SELECT … FOR UPDATE`). 없거나 탈퇴했으면 404, `ADMIN` 이 아니면 409 `OWNER_CAPTAIN_NOT_ADMIN`
-   - 왜 잠그나: 캡틴 권한 변경([admin-users](../admin-users/spec.md#처리-규칙))도 `ADMIN` 행을 모두 잠근다. 「B 를 담당 캡틴으로 지정」과 「B 의 캡틴 권한 해제」가 동시에 오면 한쪽이 끝날 때까지 다른 쪽이 기다린다. 잠그지 않으면 권한 해제가 「담당 스터디 없음」을 보고 통과한 직후 지정이 커밋되어, 크루가 담당 캡틴인 스터디가 생긴다
+   - 왜 잠그나: 캡틴 권한 변경([admin-users](../admin-users/spec.md#계정-권한-변경))도 `ADMIN` 행을 모두 잠근다. 「B 를 담당 캡틴으로 지정」과 「B 의 캡틴 권한 해제」가 동시에 오면 한쪽이 끝날 때까지 다른 쪽이 기다린다. 잠그지 않으면 권한 해제가 「담당 스터디 없음」을 보고 통과한 직후 지정이 커밋되어, 크루가 담당 캡틴인 스터디가 생긴다
 3. 지금 값과 같으면 아무것도 바꾸지 않고 200. 감사 기록도 남기지 않는다
 4. 끝난 스터디(`ENDED` · `CLOSED`)여도 바꿀 수 있다
 5. `Study.changeOwnerCaptain(accountId)` 로 바꾼다
@@ -386,6 +386,8 @@
 
 - ✅ `STUDY_GROUP` 에 `DAYS_OF_WEEK VARCHAR(30) NULL` 추가 — V54 마이그레이션 완료. 스터디 시간 수정 창과 「회차 추가」 기본 요일이 읽는다. 시작일 · 종료일 컬럼은 두지 않는다(기간은 회차에서 계산)
 - ✅ `ErrorCode` 에 `PARTICIPANT_NOT_ACTIVE(409)` · `GROUP_NOT_EMPTY(409)` 추가
+- ✅ `STUDY` 에 `OWNER_CAPTAIN_ID BIGINT NULL` · 인덱스 `idx_study_owner_captain` 추가, 기존 행은 `CREATED_BY` 값으로 채움 — V58 마이그레이션 (2026-11-16)
+- ✅ `ErrorCode` 에 `OWNER_CAPTAIN_NOT_ADMIN(409)` 추가 · 감사 액션 `OWNER_CAPTAIN` 추가
 
 ## 프론트엔드 사용처
 

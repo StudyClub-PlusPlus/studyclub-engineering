@@ -131,8 +131,8 @@ flowchart LR
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front `/users` 역할 바꾸기 · 기본 권한 표 | 있음 — `RoleBadgeSelect` · `PermissionMatrixDialog` 가 API 연결 없음 — `OWNS_STUDY` 문구 반영 (2026-11-16) |
-| BE | `PATCH /api/admin/users/{accountId}/system-role` · `GET /api/admin/role-permissions` | 구현완료 없음 — `409 OWNS_STUDY` · 끝난 스터디 담당 칸 비우기 구현 (2026-11-16) |
+| FE | back-office-front `/users` 역할 바꾸기 · 기본 권한 표 | 있음 — `RoleBadgeSelect` · `PermissionMatrixDialog` 가 API 연결. `OWNS_STUDY` 문구 반영 (2026-11-16) | 없음 |
+| BE | `PATCH /api/admin/users/{accountId}/system-role` · `GET /api/admin/role-permissions` | 구현완료 — `409 OWNS_STUDY` · 끝난 스터디 담당 칸 비우기 (2026-11-16) | 없음 |
 
 ### 데이터 관계
 
@@ -160,7 +160,7 @@ erDiagram
 - 요청자 본인의 권한 변경은 거절한다
 - 대상이 마지막 `ADMIN` 이고 `MEMBER` 로 내리는 요청은 거절한다. 판정은 같은 트랜잭션 안에서 `ADMIN` 수를 세서 한다
 - **저장되기 전에는 화면을 바꾸지 않는다.** 실패하면 바뀐 것이 없으므로 배지도 그대로다
-- 서버가 거절하면 그 사유를 적어 알린다 — 본인 변경(`CANNOT_CHANGE_OWN_ROLE`) · 마지막 캡틴(`LAST_ADMIN_REQUIRED`)
+- 서버가 거절하면 그 사유를 적어 알린다 — 본인 변경(`CANNOT_CHANGE_OWN_ROLE`) · 마지막 캡틴(`LAST_ADMIN_REQUIRED`) · 진행 중 스터디의 담당 캡틴(`OWNS_STUDY`)
 - 백오피스 로그인은 `SYSTEM_ROLE = ADMIN` 만 통과하므로, 캡틴으로 올린 회원은 다음 로그인부터 백오피스에 들어온다 — [back-office-login/spec.md](../../../specs/back-office-login/spec.md)
 
 ### API
@@ -169,7 +169,7 @@ erDiagram
 | --- | --- | --- |
 | PATCH | `/api/admin/users/{accountId}/system-role` | 캡틴 |
 
-계약은 [admin-users/spec.md](../../../specs/admin-users/spec.md). 본인 변경은 409 `CANNOT_CHANGE_OWN_ROLE`, 마지막 캡틴 강등은 409 `LAST_ADMIN_REQUIRED`.
+계약은 [admin-users/spec.md](../../../specs/admin-users/spec.md). 본인 변경은 409 `CANNOT_CHANGE_OWN_ROLE`, 마지막 캡틴 강등은 409 `LAST_ADMIN_REQUIRED`, 진행 중 스터디의 담당 캡틴 강등은 409 `OWNS_STUDY`.
 
 ### 권한
 

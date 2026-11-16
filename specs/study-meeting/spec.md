@@ -86,7 +86,7 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 · 9~12 는 기획(세은님
 
 **발표 신청·취소**: 그 분반에 내 활성 명부 행이 있어야 한다. **캡틴 우회 없음** — 발표자 칸에 넣을 명부 행이 없으면 신청할 수 없다. 명부에 없는 (만든) 캡틴은 회차 수정(PUT)으로 지정한다.
 
-> 기존 `@RequireCaptainOrNavigator` · `StudyCaptainGuard` 는 `SYSTEM_ROLE = ADMIN` 이면 누구나 통과시킨다. 이 스펙의 사용자 사이트 API 에서는 「그 스터디를 만든 캡틴」으로 좁혀야 한다 (구현 메모).
+> 기존 `@RequireCaptainOrNavigator` · `StudyCaptainGuard` 는 `SYSTEM_ROLE = ADMIN` 이면 누구나 통과시킨다. 이 스펙의 사용자 사이트 API 에서는 「그 스터디의 담당 캡틴」(`STUDY.OWNER_CAPTAIN_ID`)으로 좁혀야 한다 (구현 메모).
 
 > 기존 `StudyCaptainGuard.assertCaptainOrNavigator` 는 **스터디** 범위로 본다. 회차는 **분반** 범위라 같은 스터디의 다른 분반 네비게이터는 통과하면 안 된다 — 분반 범위 판정이 따로 필요하다.
 >
@@ -343,7 +343,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 ### 서버 동작
 
 1. 분반 잠금 → 권한 판정 → 분반 회차 잠금 순서로 읽는다 (위 「잠금」).
-2. 대상이 킥오프면 403 — 킥오프는 백오피스에서 캡틴이 정한다 (결정 11). 스터디를 만든 캡틴도 이 API 로는 못 고친다.
+2. 대상이 킥오프면 403 — 킥오프는 백오피스에서 캡틴이 정한다 (결정 11). 담당 캡틴도 이 API 로는 못 고친다.
 3. 대상 회차가 시작했으면 409.
 4. 검증 후 `SCHEDULED_AT`·`TITLE`·`PRESENTER1·2_PARTICIPANT_ID` 갱신. `SERIES_ID`·`MEETING_TYPE` 은 건드리지 않는다 — 시각을 옮겨도 같은 묶음이다.
 
@@ -523,7 +523,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - **Method**: GET
 - **Path**: `/api/admin/studies/{studyId}/groups/{groupId}/meetings`
 - **인증**: 필요 (ADMIN — 캡틴)
-- **설명**: 백오피스 일정 탭이 고른 반의 회차를 읽는다. 캡틴은 **어느 스터디의 어느 반이든** 본다 — 사이트 목록(`GET /api/studies/{studyId}/meetings`)은 스터디를 만든 캡틴 · 그 분반 참여자만 봐서 다른 캡틴이 만든 스터디는 403 이다.
+- **설명**: 백오피스 일정 탭이 고른 반의 회차를 읽는다. 캡틴은 **어느 스터디의 어느 반이든** 본다 — 사이트 목록(`GET /api/studies/{studyId}/meetings`)은 담당 캡틴 · 그 분반 참여자만 봐서 다른 캡틴이 담당인 스터디는 403 이다.
 
 ### Response — 200
 
@@ -613,7 +613,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | DELETE | `/api/admin/studies/{studyId}/groups/{groupId}/meetings` | [회차 삭제 (일괄)](#회차-삭제-일괄) |
 | PUT | `/api/admin/studies/{studyId}/groups/{groupId}/rules` | [스터디 규칙 저장](#스터디-규칙-저장) |
 
-- **인증**: 필요 (ADMIN — 캡틴). **어느 스터디의 어느 반이든** 고친다 — 사이트 API 는 그 스터디를 만든 캡틴 · 그 반 네비게이터만 통과해, 다른 캡틴은 백오피스에서 회차를 고칠 수 없었다 (2026-10-24).
+- **인증**: 필요 (ADMIN — 캡틴). **어느 스터디의 어느 반이든** 고친다 — 사이트 API 는 그 스터디의 담당 캡틴 · 그 반 네비게이터만 통과해, 다른 캡틴은 백오피스에서 회차를 고칠 수 없었다 (2026-10-24).
 - **설명**: 백오피스 일정 탭이 부른다. 동작 · 검증 · 잠금 · 출석 행(추가 시 ABSENT 생성, 삭제 시 출석 · 휴가 삭제)은 사이트 API 와 **같은 서비스 코드**다. 다른 것은 권한과, 반을 경로로 받는다는 것뿐이다.
 
 ### Path Parameters

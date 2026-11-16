@@ -113,6 +113,9 @@ flowchart LR
 | --- | --- | --- |
 | 기본 | 머리 · 명단 · 인원 | `참여 크루 N/M` |
 | 공개 전 | 머리 | `미공개` · 「사이트 공개」 스위치 꺼짐 |
+| 담당 캡틴 없음 | 담당 캡틴 칸 | `없음 · 캡틴 누구나` |
+| 담당 캡틴 저장 중 | 담당 캡틴 칸 | 드롭다운 잠김 · 옆에 스피너 |
+| 담당 캡틴 저장 실패 | 담당 캡틴 칸 · 토스트 | 지금 값 그대로. 서버 문구(예: `캡틴만 담당 캡틴이 될 수 있습니다.`) |
 
 ### 데이터 관계
 
@@ -304,8 +307,8 @@ erDiagram
   - 고를 수 있는 사람은 캡틴 계정뿐이다. 크루는 목록에 나오지 않는다
   - 저장되기 전에는 지금 값 그대로 둔다 — 실패해도 바뀐 것처럼 남지 않게
 - **데이터**
-  - PATCH /api/admin/studies/{studyId}/owner-captain { accountId } — 미구현
-  - 후보: GET /api/admin/users?role=CAPTAIN
+  - PATCH /api/admin/studies/{studyId}/owner-captain { accountId }
+  - 후보: GET /api/admin/users?role=CAPTAIN&limit=100
 
 #### 4-2 — 담당 캡틴 안내
 
