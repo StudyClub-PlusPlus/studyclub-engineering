@@ -1,6 +1,7 @@
 package com.studyclub.api.attendance;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
@@ -204,6 +205,62 @@ class AdminAttendanceIntegrationTest {
                         new StudyGroup(other.getId(), "다른반", Instant.now(), "Asia/Seoul", 10));
 
         assertError(get(otherGroup.getId(), OWNER_ID), HttpStatus.BAD_REQUEST, "INVALID_INPUT");
+    }
+
+    // ── 스터디 출석률 요약 ────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("요약 성공 - 모든 반을 가중평균한다 (킥오프·휴가 제외, 하차 전 결석은 산입)")
+    void summaryWeightsAcrossGroups() {
+        // A반: crew1 출석(setUp) · navA 휴가(분모 제외) · 킥오프 결석(출석률 제외)
+        saveAttendance(NAV_A_ID, groupA, meeting, AttendanceStatus.EXCUSED);
+        StudyMeeting kickoffA =
+                studyMeetingRepo.save(
+                        StudyMeeting.kickoff(
+                                groupA.getId(), Instant.now().minus(14, ChronoUnit.DAYS)));
+        saveAttendance(CREW_1_ID, groupA, kickoffA, AttendanceStatus.ABSENT);
+        // B반: crewB 지각 · navB 결석 후 하차 → 떠나기 전 결석은 그대로 센다
+        StudyMeeting meetingB =
+                studyMeetingRepo.save(
+                        new StudyMeeting(
+                                groupB.getId(),
+                                Instant.now().minus(7, ChronoUnit.DAYS),
+                                null,
+                                null));
+        saveAttendance(CREW_B_ID, groupB, meetingB, AttendanceStatus.LATE);
+        saveAttendance(NAV_B_ID, groupB, meetingB, AttendanceStatus.ABSENT);
+        navB.markWithdrawn(Instant.now().minus(3, ChronoUnit.DAYS));
+        studyParticipantRepo.save(navB);
+
+        var response = getSummary(study.getId(), OTHER_CAPTAIN_ID);
+
+        // (1 + 0.5 + 0) / 3 = 0.5 — 반별 평균(A 1.0 · B 0.25)의 단순 평균 0.625 가 아니다
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(((Number) response.getBody().get("attendanceRate")).doubleValue())
+                .isCloseTo(0.5, within(1e-9));
+    }
+
+    @Test
+    @DisplayName("요약 성공 - 체크된 회차가 없으면 null")
+    void summaryNullWithoutCheckedMeetings() {
+        studyAttendanceRepo.deleteAll();
+
+        var response = getSummary(study.getId(), OWNER_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("attendanceRate", null);
+    }
+
+    @Test
+    @DisplayName("요약 실패 - 캡틴이 아니면 403")
+    void summaryNavigatorForbidden() {
+        assertError(getSummary(study.getId(), NAV_A_ID), HttpStatus.FORBIDDEN, "FORBIDDEN");
+    }
+
+    @Test
+    @DisplayName("요약 실패 - 없는 스터디 → 404")
+    void summaryUnknownStudy() {
+        assertError(getSummary(999_999L, OWNER_ID), HttpStatus.NOT_FOUND, "NOT_FOUND");
     }
 
     // ── 저장 + 참여 중단 ──────────────────────────────────────────────────────
@@ -484,6 +541,28 @@ class AdminAttendanceIntegrationTest {
             body.put("withdrawals", withdrawals);
         }
         return body;
+    }
+
+    private void saveAttendance(
+            Long accountId, StudyGroup group, StudyMeeting meeting, AttendanceStatus status) {
+        studyAttendanceRepo.save(
+                StudyAttendance.builder()
+                        .accountId(accountId)
+                        .studyId(group.getStudyId())
+                        .studyGroupId(group.getId())
+                        .studyMeetingId(meeting.getId())
+                        .status(status)
+                        .build());
+    }
+
+    @SuppressWarnings("rawtypes")
+    private ResponseEntity<Map> getSummary(Long studyId, Long callerAccountId) {
+        return rest.exchange(
+                "/api/admin/studies/{studyId}/attendances/summary",
+                HttpMethod.GET,
+                authenticatedRequest(null, callerAccountId),
+                Map.class,
+                studyId);
     }
 
     @SuppressWarnings("rawtypes")

@@ -10,6 +10,7 @@ import { ArrowLeft } from 'lucide-react';
 
 import { ApplicationFormTab } from '@/features/application-form/ApplicationFormTab';
 import { ApplicationResultsTab } from '@/features/application-results/ApplicationResultsTab';
+import { useStudyAttendanceRate } from '@/features/attendance/api';
 import { AttendanceTab } from '@/features/attendance/AttendanceTab';
 import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupChangesDialog';
 import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
@@ -164,6 +165,8 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
 
   const participantQuery = useParticipants(detail.id, tab === 'crew');
   const participantCount = participantQuery.data?.participantCount;
+  // 모든 반을 합친 출석률 — 서버가 출석 탭과 같은 산식으로 계산한다(specs/attendance 「스터디 출석률 요약」)
+  const attendanceRate = useStudyAttendanceRate(detail.id).data;
   const open = detail.recruitStatus === 'RECRUITING';
   const deadline = detail.recruitDeadlineAt
     ? new Date(detail.recruitDeadlineAt).toLocaleDateString('sv-SE', { timeZone: displayTz })
@@ -229,7 +232,11 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
           value={participantCount == null ? '-' : String(participantCount)}
           sub={detail.capacity == null ? '정원 제한 없음' : `정원 ${detail.capacity}명`}
         />
-        <Stat label='출석률' value='-' />
+        <Stat
+          label='출석률'
+          value={attendanceRate == null ? '-' : `${Math.round(attendanceRate * 100)}%`}
+          sub='모든 반 · 지각 포함'
+        />
       </div>
 
       <nav className='mt-6 flex gap-1 border-b border-border'>

@@ -284,3 +284,23 @@ export const attendanceHandlers = mockClient.createHandlerGroup('/api/me/studies
     ],
   },
 ]);
+
+/**
+ * TODO(api): GET /api/admin/studies/:studyId/attendances/summary — 스터디 출석률(모든 반 가중평균, 0 ~ 1)
+ * 백오피스 스터디 상세 위 요약 카드 (specs/attendance 「스터디 출석률 요약」).
+ */
+export const adminAttendanceSummaryHandlers = mockClient.createHandlerGroup('/api/admin/studies', [
+  {
+    method: 'GET',
+    path: '/:studyId/attendances/summary',
+    presets: [
+      { label: '정상 (82%)', status: 200, response: { attendanceRate: 0.82 } },
+      { label: '체크된 회차 없음', status: 200, response: { attendanceRate: null } },
+      {
+        label: '서버 오류',
+        status: 500,
+        response: { errorMessage: '서버 오류가 발생했습니다.' },
+      },
+    ],
+  },
+]);

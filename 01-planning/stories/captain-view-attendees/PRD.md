@@ -26,6 +26,7 @@ flowchart LR
 5. 신청한 캡틴은 크루와 같은 줄로 표시. 신청하지 않은 캡틴 줄 없음
 6. 반 · 지역 드롭다운 필터 — 제목 아래 줄. 둘 다 고르면 둘 다 맞는 크루만
 7. 체크박스로 여러 명을 골라 반 · 역할 일괄 변경. 표 맨 위 작업 바 「n명 선택」 · 「반 변경」 · 「역할 변경」 (마우스로 고르는 순간(키보드는 화살표로 옮긴 뒤 Enter 를 누르거나 칸을 떠날 때) 적용, 「적용」 버튼 없음), 저장으로 반영. 고르기 전에는 드롭다운이 옅은 회색
+8. 머리 아래 요약 카드(진행 일정 · 참석자 · 출석률)가 어느 탭에서나 보인다. 출석률은 모든 반을 합친 서버 값
 
 ## 2. 화면명세
 
@@ -47,6 +48,16 @@ flowchart LR
 - **정책**
   - 머리는 상태만 말한다. 마감일의 실제 날짜는 정보 탭에 있다
   - 모집 상태는 `recruitState()` 한 곳에서 계산한다. 사용자 사이트와 같다
+
+### 1-4. 요약 카드 — 진행 일정 · 참석자 · 출석률
+
+- **내용**
+  - 머리 아래, 탭 위에 카드 셋. 어느 탭을 보고 있어도 보인다
+  - 진행 일정(없으면 「미정 · 신청자 조율」) · 참석자 수(「정원 N명」 · 「정원 제한 없음」) · 출석률(정수 %, 「모든 반 · 지각 포함」, 체크된 회차가 없으면 「-」)
+- **정책**
+  - 운영자가 매일 확인하는 숫자라 탭을 옮겨 다니지 않아도 보이게 둔다 (2026-11-16 결정 — 백오피스 · 프로토 통일)
+  - 출석률은 모든 반 크루의 분자 · 분모를 합친 가중평균. 산식은 출석 탭과 같다 — 화면이 아니라 서버가 계산한다
+  - 출석 저장 · 회차 수정 뒤 다시 읽는다
 
 ### 2. 탭
 
@@ -146,6 +157,23 @@ erDiagram
   - 공개는 모집 시작이다 — 켜면 오늘이 모집 시작일이 되고 스터디 상태가 「개설」이 된다
   - 이 프로토는 화면 상태로만 바꾼다. 새로고침하면 되돌아간다
 - **데이터**: STUDY.STATUS · STUDY_RECRUITMENT.START_AT (쓰기) · 신청 폼 질문 수 (읽기)
+
+#### 1-4 — 요약 카드 — 진행 일정 · 참석자 · 출석률
+
+- **내용**
+  - 헤더 아래, 탭 위에 카드 셋. 어느 탭을 보고 있어도 늘 보인다
+  - 진행 일정: 스터디 일정 글. 없으면 「미정 · 신청자 조율」
+  - 참석자: 참여 인원 숫자, 아래에 「정원 N명」 또는 「정원 제한 없음」
+  - 출석률: 모든 반을 합친 정수 %, 아래에 「모든 반 · 지각 포함」. 체크된 회차가 없으면 「-」
+- **동작**: 출석 탭에서 저장하거나 일정 탭에서 회차를 고치면 출석률이 다시 계산돼 바뀐다
+- **정책**
+  - **운영자가 매일 확인하는 숫자다** — 탭을 옮겨 다니지 않아도 보이게 위에 둔다 (2026-11-16 기획 결정, 백오피스와 통일)
+  - 출석률은 반별 평균을 다시 평균하지 않는다 — 모든 반 크루의 분자 · 분모를 합친다. 크루 수가 다른 반이 같은 무게로 섞이면 안 된다
+  - 산식은 출석 탭과 같다: 지각 0.5, 휴가 · 킥오프 · 체크 안 한 회차는 빼고, 참여를 중단한 크루는 중단 뒤 회차를 뺀다. 중단 전 기록은 센다
+  - **화면이 계산하지 않는다** — 서버가 출석 탭과 같은 계산기로 내려준 값을 그린다. 반별 숫자는 출석 탭에서 본다
+- **데이터**
+  - 진행 일정: STUDY.SCHEDULE · 참석자: 참여 명단 participantCount · 정원: STUDY_RECRUITMENT.CAPACITY
+  - 출석률: GET /api/admin/studies/{studyId}/attendances/summary → attendanceRate (0 ~ 1, null 이면 「-」)
 
 ### 2 — 탭
 
@@ -255,6 +283,8 @@ erDiagram
 | FE | back-office-front 신청자 탭 | 있음 (#302 · 역할 2026-10-31) — `ParticipantsTab`: 참여 크루 명단 · 행 반 · 역할 드롭다운 · 체크박스 반 · 역할 일괄 변경 · 저장 바. #302 는 반만 붙였고 역할(3-2 드롭다운 · 3-7 「역할 변경」)은 같은 저장 흐름에 2026-10-31 붙였다. `ApplicationsTab` 은 지웠다. `CrewTab` 은 mock 이고 쓰지 않는다 | 없음 — 명단 `GET` 은 구현됐다(#324). 10-18 변경 표는 모두 반영 |
 | BE | `GET /api/admin/studies/{studyId}/applications` 의 `completionRate` | 구현완료 | 신청자 탭에서 쓰지 않는다. 다른 화면이 쓰지 않으면 응답에서 뺄지 정한다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
 | BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 구현완료 (#324) · 구현완료 (#303) | 없음 |
+| FE | back-office-front 요약 카드 출석률 (1-4) | 있음 (2026-11-16) — `StudyConsole` 의 `Stat` 이 `useStudyAttendanceRate` 값을 그린다. 전에는 「-」 고정 | 없음 |
+| BE | `GET /api/admin/studies/{studyId}/attendances/summary` | 구현완료 (2026-11-16) | 없음 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업
 
@@ -277,6 +307,7 @@ erDiagram
 ### 계산 규칙 (단일 정의)
 
 - 모집 상태: `recruitState()` — [study-recruit-status/spec.md](../../../specs/study-recruit-status/spec.md)
+- 요약 카드 출석률: `AttendanceRateCalculator` — [attendance/spec.md 「스터디 출석률 요약」](../../../specs/attendance/spec.md)
 
 ### API
 
@@ -284,8 +315,9 @@ erDiagram
 | --- | --- | --- |
 | GET | `/api/admin/studies/{studyId}/participants` | 캡틴 |
 | PATCH | `/api/admin/studies/{studyId}/participants` — 반 · 역할 한 번에 | 캡틴 |
+| GET | `/api/admin/studies/{studyId}/attendances/summary` — 요약 카드 출석률 | 캡틴 |
 
-계약은 [study-group/spec.md](../../../specs/study-group/spec.md).
+계약은 [study-group/spec.md](../../../specs/study-group/spec.md) · 출석률 요약은 [attendance/spec.md](../../../specs/attendance/spec.md).
 
 ### 권한
 

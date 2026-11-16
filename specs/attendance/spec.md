@@ -5,6 +5,7 @@
 > 생성일: 2026-09-15
 > 상태: 스펙확정
 > 갱신: 2026-10-23 — 백오피스 경로 조회에 통합 테스트를 붙여 구현완료. 백오피스 저장도 `withdrawals[]` 를 받는다 — 담당 캡틴이 크루 · 네비게이터를 중단 (2026-10-23 기획 결정)
+> 갱신: 2026-11-16 — 스터디 출석률 요약(`GET /api/admin/studies/{studyId}/attendances/summary`) 추가. 백오피스 스터디 상세 위 요약 카드의 「출석률」이 이 값을 그린다 — 운영자가 매일 보는 숫자라 탭을 열지 않아도 보이게 둔다
 
 ## 엔드포인트 목록
 
@@ -14,6 +15,7 @@
 | POST | /api/me/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (네비게이터 — 그 분반 LEADER) | 구현완료 |
 | GET | /api/admin/studies/{studyId}/attendances | 출석 명부 조회 | O (캡틴) | 구현완료 |
 | POST | /api/admin/studies/{studyId}/attendances | 출석 생성/수정 (upsert) · 참여 중단 | O (캡틴 — 중단은 담당 캡틴만) | 구현완료 |
+| GET | /api/admin/studies/{studyId}/attendances/summary | 스터디 출석률 요약 (모든 반) | O (캡틴) | 구현완료 |
 
 > 이번 스코프는 명부 화면을 띄우는 데 필요한 **조회 1개 + 생성 1개** API만 다룬다. 세션 취소, 휴가 신청·승인, 정정 이력 조회 등 나머지 CRUD는 별도 스펙.
 > `[OPEN]` = 캡틴 확정 전 제안 기본값 / 팀 확인 필요.
@@ -215,6 +217,58 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 | 400 | — | includeWithdrawn에 Boolean 외 값 → Spring 타입 바인딩 실패로 자동 처리 |
 
 미팅이 하나도 없으면 200, `meetings: []`, `participants[].attendances: []`, `study.avgAttendanceRate: null`.
+
+---
+
+## 스터디 출석률 요약
+
+### 기본 정보
+
+- **Method**: GET
+- **Path**: `/api/admin/studies/{studyId}/attendances/summary`
+- **인증**: 필요 (Bearer) — 캡틴(SYSTEM_ROLE=ADMIN)만
+- **설명**: 스터디의 **모든 반**을 합친 출석률 하나. 백오피스 스터디 상세 위 요약 카드(진행 일정 · 참석자 · 출석률)의 「출석률」이 이 값을 그린다. 반을 고르지 않는다 — 반별 숫자는 출석 탭(명부 `study.avgAttendanceRate`)에서 본다.
+
+### Path Parameters
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| studyId | Long | 스터디 ID |
+
+### 조회 로직
+
+```
+1. STUDY             WHERE id = studyId                 → 404 if not found
+2. STUDY_GROUP       WHERE study_id = studyId           → 반 ID 목록
+3. STUDY_MEETING     WHERE study_group_id IN (2)         → 반별 회차
+4. STUDY_PARTICIPANT WHERE study_id = studyId           → 모든 상태 (하차·탈퇴도 떠나기 전 기록은 센다)
+5. STUDY_ATTENDANCE  WHERE study_meeting_id IN (3)
+6. 참가자마다 **지금 소속 반의 회차만** 넘겨 AttendanceRateCalculator.components() → 분자·분모
+   반이 없는 참가자(미배정)는 건너뛴다
+7. attendanceRate = Σ분자 / Σ분모 (분모 0인 참가자 제외 · 가중평균). Σ분모 = 0 이면 null
+```
+
+반별 평균을 다시 평균하지 않는다 — 크루 수가 다른 반이 같은 무게로 섞인다. 산식은 [출석률 산식](#출석률-산식)과 같다: 킥오프 · 휴가 · 미체크 회차는 빼고, 하차한 사람은 떠난 뒤 회차를 뺀다.
+명부 `avgAttendanceRate` 는 `includeWithdrawn=false` 면 ACTIVE 만 세지만, 요약은 늘 모든 상태를 센다 — 하차한 크루가 남긴 결석이 사라지면 숫자가 실제보다 좋아 보인다.
+
+### Response — 200
+
+```json
+{ "attendanceRate": 0.82 }
+```
+
+| 필드 | 타입 | NULL | 설명 | 소스 |
+|------|------|------|------|------|
+| attendanceRate | Double | Y | 스터디 전체 가중평균 (0 ~ 1). 체크된 회차가 없으면 null → 화면 「-」. 화면은 정수 `%` | 계산: 위 조회 로직 |
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 404 | NOT_FOUND | 존재하지 않는 studyId |
+| 403 | FORBIDDEN | 캡틴이 아님 |
+
+반 · 회차 · 출석이 없으면 200, `attendanceRate: null`.
 
 ---
 
