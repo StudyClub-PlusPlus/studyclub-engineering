@@ -26,7 +26,7 @@ export type PreviewEvent = {
   onlineCapacity: number;
   offlineCapacity: number;
   confirmation: EventConfirmation;
-  status: "DRAFT" | "PUBLISHED" | "CLOSED" | "CANCELLED";
+  status: "PUBLISHED" | "CLOSED" | "CANCELLED";
   publishedAt?: string;
   /** 행사 취소 직전 확인 대기·참가 확정 신청자의 ID. */
   cancellationRecipientIds?: string[];
@@ -65,7 +65,7 @@ export type EventMailPreview = {
 };
 export type EventNoticeTemplate = {
   id: number;
-  trigger: "EVENT_ANNOUNCEMENT";
+  trigger: "EVENT_ANNOUNCEMENT" | "EVENT_CANCELLATION";
   channel: "EMAIL";
   subject: string;
   body: string;
@@ -77,6 +77,7 @@ export type PreviewNotificationTemplate = Omit<EventNoticeTemplate, "trigger"> &
     | "USER_WITHDRAWN"
     | "FEEDBACK_REPLIED"
     | "EVENT_ANNOUNCEMENT"
+    | "EVENT_CANCELLATION"
     | "EVENT_REGISTRATION_PENDING"
     | "EVENT_REGISTRATION_CONFIRMED"
     | "EVENT_REGISTRATION_DECLINED"

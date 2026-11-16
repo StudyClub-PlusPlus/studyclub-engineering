@@ -7,9 +7,34 @@ import { createEventPreviewState, EVENT_NOTICE_TEMPLATE } from '@studyclub/mock'
 import type { EventPreviewState } from '@studyclub/types';
 
 import { populateEventExamples } from './examples';
-import { mergeNotificationTemplates, transition, type EventAction } from './model';
+import { SELF, isEventNoticeTemplate, mergeNotificationTemplates, settleEndedRegistrations, transition, type EventAction } from './model';
 
 const STORAGE_KEY = 'studyclub-event-preview-v1';
+const LEGACY_PREVIEW_EMAIL = 'me@example.test';
+// 이전 플레이그라운드에 저장된 행사와 예시 참가자를 현재 표시 형식에 맞춘다.
+function normalizeStoredWorkspace(state: EventPreviewState): EventPreviewState {
+  return {
+    ...state,
+    events: state.events.filter(({ status }) => status === 'PUBLISHED' || status === 'CLOSED' || status === 'CANCELLED'),
+    registrations: state.registrations.map((registration) =>
+      registration.memberId === SELF.memberId && registration.email === LEGACY_PREVIEW_EMAIL
+        ? { ...registration, email: SELF.email, name: registration.name === '코딩구름' ? SELF.name : registration.name }
+        : registration,
+    ),
+    mails: state.mails.map((mail) =>
+      mail.id.startsWith('example-mail-') && mail.recipients.includes(LEGACY_PREVIEW_EMAIL)
+        ? {
+            ...mail,
+            recipients: mail.recipients.map((email) => email === LEGACY_PREVIEW_EMAIL ? SELF.email : email),
+            deliveries: mail.deliveries?.map((delivery) =>
+              delivery.recipient === LEGACY_PREVIEW_EMAIL ? { ...delivery, recipient: SELF.email } : delivery,
+            ),
+          }
+        : mail,
+    ),
+  };
+}
+
 type Workspace = {
   state: EventPreviewState | null;
   now: number;
@@ -61,7 +86,6 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
             'sample-1': '바이트나무',
             'sample-2': '오로라킴',
             'sample-3': '모카코더',
-            'preview-self': '코딩구름',
           };
           next.registrations = saved.registrations.map((r) => ({ ...r, name: names[r.memberId] ?? r.name }));
           next.mails = saved.mails;
@@ -72,8 +96,9 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
       setWarning('저장된 예시를 불러오지 못해 기본 예시로 시작합니다.');
     }
     const previous = JSON.stringify(next);
+    next = normalizeStoredWorkspace(next);
     next.notificationTemplates = mergeNotificationTemplates(
-      next.notificationTemplates ?? [], defaults.notificationTemplates ?? [], next.deletedTemplateTriggers,
+      next.notificationTemplates ?? next.eventTemplates, defaults.notificationTemplates ?? [], next.deletedTemplateTriggers,
     );
     const compactHtml = (value: string) => value.replace(/>\s+</g, '><').trim();
     next.notificationTemplates = next.notificationTemplates.map((template) => {
@@ -146,11 +171,6 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
       ),
     ]);
     // 이전 기본 양식만 최신 프레임으로 교체한다. 직접 수정한 템플릿은 유지한다.
-    next.eventTemplates = next.eventTemplates.map((template) =>
-      template.id === 3 && (template.body === EVENT_NOTICE_TEMPLATE.body || defaultNoticeBodies.has(template.body))
-        ? { ...template, body: noticeBody }
-        : template,
-    );
     next.notificationTemplates = next.notificationTemplates?.map((template) =>
       template.id === 3 &&
       template.trigger === 'EVENT_ANNOUNCEMENT' &&
@@ -158,12 +178,15 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
         ? { ...template, body: noticeBody }
         : template,
     );
+    next.eventTemplates = next.notificationTemplates.filter(isEventNoticeTemplate);
     next.events = next.events.map((event) =>
       event.id === 'preview-event-community'
         ? { ...event, summary: anonymize(event.summary), description: anonymize(event.description) }
         : event,
     );
-    next = populateEventExamples(next, createEventPreviewState(new Date(), noticeBody), Date.now(), getTimeZone());
+    const loadedAt = Date.now();
+    next = populateEventExamples(next, createEventPreviewState(new Date(loadedAt), noticeBody), loadedAt, getTimeZone());
+    next = settleEndedRegistrations(next, loadedAt);
     if (JSON.stringify(next) !== previous) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -173,8 +196,17 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
     }
     ref.current = next;
     setState(next);
-    setNow(Date.now());
-    const timer = window.setInterval(() => setNow(Date.now()), 15000);
+    setNow(loadedAt);
+    const refresh = () => {
+      const currentTime = Date.now();
+      const current = ref.current;
+      if (current) {
+        const settled = settleEndedRegistrations(current, currentTime);
+        if (settled !== current) commit(settled);
+      }
+      setNow(currentTime);
+    };
+    const timer = window.setInterval(refresh, 15000);
     const sync = (event: StorageEvent) => {
       if (event.key !== STORAGE_KEY || !event.newValue) return;
       try {
@@ -186,28 +218,35 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
           Array.isArray(saved.mails) &&
           Array.isArray(saved.eventTemplates)
         ) {
-          ref.current = saved;
-          setState(saved);
-          setNow(Date.now());
+          const next = normalizeStoredWorkspace(saved);
+          ref.current = next;
+          setState(next);
+          refresh();
         }
       } catch {
         /* 다른 탭에서 저장한 값이 잘못되면 현재 시안을 유지한다. */
       }
     };
+    window.addEventListener('focus', refresh);
     window.addEventListener('storage', sync);
     return () => {
       window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
       window.removeEventListener('storage', sync);
     };
-  }, [noticeBody]);
+  }, [commit, noticeBody]);
   const dispatch = useCallback(
     (action: EventAction) => {
-      if (!ref.current) return '예시를 불러오는 중입니다.';
+      const current = ref.current;
+      if (!current) return '예시를 불러오는 중입니다.';
+      const currentTime = Date.now();
+      const settled = settleEndedRegistrations(current, currentTime);
+      setNow(currentTime);
       try {
-        commit(transition(ref.current, action));
-        setNow(Date.now());
+        commit(transition(settled, action, currentTime));
         return null;
       } catch (error) {
+        if (settled !== current) commit(settled);
         return error instanceof Error ? error.message : '처리하지 못했습니다. 다시 시도해 주세요.';
       }
     },

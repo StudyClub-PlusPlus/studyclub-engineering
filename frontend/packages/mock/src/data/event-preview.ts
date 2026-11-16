@@ -1,5 +1,7 @@
 import type { EventNoticeTemplate, EventPreviewState, EventRegistration, PreviewEvent, PreviewNotificationTemplate } from "@studyclub/types";
 
+export const EVENT_PREVIEW_MEMBER = { memberId: 'preview-self', name: '수현', email: 'suhyeon74@naver.com' };
+
 export const EVENT_NOTICE_TEMPLATE: EventNoticeTemplate = {
   id: 3,
   trigger: "EVENT_ANNOUNCEMENT",
@@ -9,7 +11,7 @@ export const EVENT_NOTICE_TEMPLATE: EventNoticeTemplate = {
   updatedAt: "2026-11-14T00:00:00Z",
 };
 
-const eventStatusBody = (label: string, content: string, detailTitle: string, detail: string) => `<!DOCTYPE html>
+const eventStatusBody = (label: string, content: string, detailTitle?: string, detail?: string) => `<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -32,10 +34,10 @@ const eventStatusBody = (label: string, content: string, detailTitle: string, de
               <div style="font-size:15px;line-height:25px;color:#282A43;">
                 ${content}
               </div>
-              <div style="margin-top:24px;padding:18px;background:#F5F7FF;border-radius:8px;">
+              ${detailTitle && detail ? `<div style="margin-top:24px;padding:18px;background:#F5F7FF;border-radius:8px;">
                 <p style="margin:0 0 10px;font-size:14px;font-weight:700;">${detailTitle}</p>
                 ${detail}
-              </div>
+              </div>` : ''}
               <div style="height:1px;background:#E2E1E9;margin:28px 0 22px;"></div>
               <p style="margin:0;font-size:14px;line-height:22px;color:#626476;">
                 궁금한 사항이 있다면 운영진에게 문의해 주세요.<br><br>
@@ -50,6 +52,15 @@ const eventStatusBody = (label: string, content: string, detailTitle: string, de
   </table>
 </body>
 </html>`;
+
+export const EVENT_CANCELLATION_TEMPLATE: EventNoticeTemplate = {
+  id: 8,
+  trigger: "EVENT_CANCELLATION",
+  channel: "EMAIL",
+  subject: "[StudyClub] {{eventTitle}} 행사 취소 안내",
+  body: eventStatusBody("행사 취소 안내", "{{notice}}"),
+  updatedAt: "2026-11-15T00:00:00Z",
+};
 
 export const EVENT_STATUS_TEMPLATES: PreviewNotificationTemplate[] = [
   {
@@ -217,20 +228,6 @@ export function createEventPreviewState(now = new Date(), noticeBody = EVENT_NOT
       status: 'CANCELLED', startsAt: relative(2), endsAt: relative(2, 3), deadlineAt: relative(-2),
     },
     {
-      ...lecture, id: 'preview-event-draft', title: 'AI 논문 읽기, 첫걸음',
-      summary: '처음 논문을 읽는 크루를 위한 온라인 모임을 준비하고 있습니다.',
-      description: '짧은 논문 한 편을 함께 읽으며 배경, 핵심 아이디어, 실험 결과를 차례로 살펴봅니다.\n\n참가 조건은 없습니다. 읽기 전에 궁금한 점을 신청폼으로 남겨 주세요. 노트북과 메모할 도구가 있으면 좋습니다.',
-      status: 'DRAFT', publishedAt: undefined, startsAt: relative(28), endsAt: '', deadlineAt: relative(26),
-      timeZone: 'America/Toronto', confirmation: 'REVIEW', onlineCapacity: 20,
-      questions: [
-        { id: 'q-draft-role', label: '현재 관심 있는 분야를 알려 주세요.', type: 'TEXT', required: true, options: [] },
-        { id: 'q-draft-experience', label: '논문을 읽어 본 경험이 있나요?', type: 'RADIO', required: true, options: ['처음이에요', '몇 편 읽어 봤어요', '꾸준히 읽고 있어요'] },
-        { id: 'q-draft-topic', label: '함께 읽고 싶은 분야를 골라 주세요.', type: 'CHECKBOX', required: false, options: ['강화학습', '자연어 처리', '컴퓨터 비전', '추천 시스템'] },
-        { id: 'q-draft-source', label: '모임을 어디서 알게 되셨나요?', type: 'RADIO', required: false, options: ['디스코드 공지', '스터디 크루 추천', '홈페이지'] },
-        { id: 'q-draft-question', label: '모임에서 얻고 싶은 점을 알려 주세요.', type: 'TEXTAREA', required: false, options: [] },
-      ],
-    },
-    {
       ...picnic, id: 'preview-event-full', title: '주말 산책과 커리어 대화',
       summary: '공원을 걸으며 개발과 커리어 이야기를 나누는 소규모 모임입니다.',
       description: '가볍게 공원을 걸으며 개발과 커리어 이야기를 나눕니다.\n\n서로 충분히 이야기할 수 있도록 8명만 함께합니다. 편한 신발과 물을 준비해 주세요.\n\n관심 있는 분야와 요즘의 고민을 편하게 나누며 새로운 크루를 만나 보세요.',
@@ -254,9 +251,13 @@ export function createEventPreviewState(now = new Date(), noticeBody = EVENT_NOT
   }
   return {
     version: 2,
-    eventTemplates: [{ ...structuredClone(EVENT_NOTICE_TEMPLATE), body: noticeBody }],
+    eventTemplates: [
+      { ...structuredClone(EVENT_NOTICE_TEMPLATE), body: noticeBody },
+      structuredClone(EVENT_CANCELLATION_TEMPLATE),
+    ],
     notificationTemplates: [
       { ...structuredClone(EVENT_NOTICE_TEMPLATE), body: noticeBody },
+      structuredClone(EVENT_CANCELLATION_TEMPLATE),
       ...structuredClone(EVENT_STATUS_TEMPLATES),
     ],
     events,
@@ -281,7 +282,9 @@ const PEOPLE = [
 const DOMAINS = ['gmail.com', 'naver.com', 'kakao.com', 'daum.net', 'outlook.com'];
 
 function createExampleRegistrations(events: PreviewEvent[], now: Date): EventRegistration[] {
-  return events.flatMap((event, group) => {
+  return events.flatMap((event, eventIndex) => {
+    // 없어진 초안의 번호를 비워 기존에 저장된 가상 참가자와 예시 ID를 유지한다.
+    const group = eventIndex < 6 ? eventIndex : eventIndex + 1;
     const count = [18, 14, 12, 10, 16, 10, 0, 8, 10][group]!;
     const theme = [0, 1, 2, 0, 1, 2, 1, 2, 1][group]!;
     return Array.from({ length: count }, (_, index): EventRegistration => {
@@ -311,9 +314,13 @@ function createExampleRegistrations(events: PreviewEvent[], now: Date): EventReg
       return {
         id: group === 0 && index < 3 ? `sample-${index + 1}` : `sample-${event.id}-${index + 1}`,
         eventId: event.id,
-        memberId: previewMember ? 'preview-self' : group === 0 && index < 3 ? `sample-${index + 1}` : `sample-person-${(index + group * 8) % PEOPLE.length}`,
-        name: previewMember ? '코딩구름' : person[0],
-        email: previewMember ? 'me@example.test' : `${person[1]}@${DOMAINS[((index + group * 8) % PEOPLE.length) % DOMAINS.length]}`,
+        ...(previewMember
+          ? EVENT_PREVIEW_MEMBER
+          : {
+              memberId: group === 0 && index < 3 ? `sample-${index + 1}` : `sample-person-${(index + group * 8) % PEOPLE.length}`,
+              name: person[0],
+              email: `${person[1]}@${DOMAINS[((index + group * 8) % PEOPLE.length) % DOMAINS.length]}`,
+            }),
         channel: event.format === 'ONLINE' ? 'ONLINE' : event.format === 'OFFLINE' ? 'OFFLINE' : index % 2 ? 'ONLINE' : 'OFFLINE',
         status,
         createdAt: new Date(Math.min(now.getTime(), Date.parse(event.deadlineAt)) - (count - index) * 5 * 3600000).toISOString(),
