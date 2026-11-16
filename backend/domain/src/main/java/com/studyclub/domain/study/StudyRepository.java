@@ -49,7 +49,11 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
             @Param("accountId") Long accountId,
             @Param("statuses") Collection<StudyStatus> statuses);
 
-    /** 이 계정이 담당 캡틴인 스터디 중 상태가 {@code statuses} 밖인 것 — 진행 중 담당 스터디(OWNS_STUDY). */
+    /**
+     * 이 계정이 담당 캡틴인 스터디 중 상태가 {@code statuses} 밖인 것 — 진행 중 담당 스터디(OWNS_STUDY). 캡틴 권한 해제가 판정에 쓰므로 잠그고
+     * 읽는다: 스냅숏 시점에 기대지 않고, 판정이 끝날 때까지 이 스터디들의 담당 캡틴이 바뀌지 않게 한다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<Study> findByOwnerCaptainIdAndStatusNotIn(
             Long ownerCaptainId, Collection<StudyStatus> statuses);
 

@@ -75,7 +75,9 @@ public class StudyApplicationFormService {
         return toResponse(study);
     }
 
-    /** 백오피스 저장 — 권한은 {@code @RequireAdmin}. 담당 캡틴({@code STUDY.CREATED_BY})만, NULL 이면 캡틴 누구나. */
+    /**
+     * 백오피스 저장 — 권한은 {@code @RequireAdmin}. 담당 캡틴({@code STUDY.OWNER_CAPTAIN_ID})만, NULL 이면 캡틴 누구나.
+     */
     @Transactional
     public StudyApplicationFormResponse replaceFormFromBackOffice(
             Long studyId, Long accountId, StudyApplicationFormRequest request) {

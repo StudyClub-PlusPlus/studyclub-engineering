@@ -18,6 +18,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -30,6 +31,8 @@ import org.hibernate.type.SqlTypes;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+// 바뀐 칸만 UPDATE 한다 — 잠그지 않고 읽은 스터디 수정이 그사이 바뀐 담당 캡틴(OWNER_CAPTAIN_ID)을 옛 값으로 되돌리지 않게
+@DynamicUpdate
 public class Study extends BaseEntity {
 
     @Id

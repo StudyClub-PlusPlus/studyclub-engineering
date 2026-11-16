@@ -35,14 +35,10 @@ public class AdminStudyOwnerCaptainService {
 
     @Transactional
     public OwnerCaptainResponse change(Long studyId, Long accountId, Long actorAccountId) {
-        // 1. 스터디
-        Study study =
-                studyRepository
-                        .findById(studyId)
-                        .orElseThrow(
-                                () ->
-                                        new BusinessException(
-                                                ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
+        // 1. 스터디가 있는지 (404 는 스터디 먼저)
+        if (!studyRepository.existsById(studyId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
+        }
 
         // 2. 대상 계정을 잠그고 ADMIN 인지 본다. 캡틴 권한 해제도 ADMIN 행을 잠그므로, 「B 를 담당으로」와 「B 권한 해제」가 동시에 와도
         //    한쪽이 끝날 때까지 다른 쪽이 기다린다 — 크루가 담당 캡틴인 스터디가 생기지 않는다
@@ -54,6 +50,16 @@ public class AdminStudyOwnerCaptainService {
         if (target.getSystemRole() != SystemRole.ADMIN) {
             throw new BusinessException(ErrorCode.OWNER_CAPTAIN_NOT_ADMIN);
         }
+
+        // 2-1. 스터디 행을 잠그고 읽는다 — 동시에 온 두 바꾸기가 같은 옛 값을 BEFORE 로 남기지 않게. 잠금 순서는 「계정 → 스터디」로
+        //      캡틴 권한 해제(「ADMIN 행 → 담당 스터디」)와 같다
+        Study study =
+                studyRepository
+                        .findByIdForUpdate(studyId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
 
         // 3. 같은 사람이면 아무것도 바꾸지 않는다 — 감사 기록도 남기지 않는다
         Long before = study.getOwnerCaptainId();

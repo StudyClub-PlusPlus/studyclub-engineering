@@ -9,6 +9,7 @@ import {
 } from '@/features/participants/repository';
 import type { GroupChange, ParticipantsResponse } from '@/features/participants/types';
 import { studyKeys } from '@/features/studies/queries';
+import { userKeys } from '@/features/users/queries';
 import { ApiError } from '@/lib/http';
 
 export const participantKeys = {
@@ -66,9 +67,20 @@ export function useChangeOwnerCaptain(studyId: number) {
   const client = useQueryClient();
   return useMutation({
     mutationKey: participantKeys.ownerCaptain(studyId),
-    onError: (error) => handleParticipantError(client, studyId, error),
+    onError: async (error) => {
+      // 후보가 그새 캡틴이 아니게 됐을 수 있다(409 OWNER_CAPTAIN_NOT_ADMIN · 404) — 후보 목록도 다시 받는다
+      if (error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 401) {
+        await client.invalidateQueries({ queryKey: userKeys.all });
+      }
+      return handleParticipantError(client, studyId, error);
+    },
     mutationFn: (accountId: number) => changeOwnerCaptain(studyId, accountId),
-    onSuccess: () => client.invalidateQueries({ queryKey: participantKeys.list(studyId) }),
+    // 옛 · 새 담당 캡틴의 권한 잠금(OWNS_STUDY)이 바뀌므로 유저 목록도 다시 받는다
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: participantKeys.list(studyId) }),
+        client.invalidateQueries({ queryKey: userKeys.all }),
+      ]),
   });
 }
 

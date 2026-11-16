@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 
 import { useChangeOwnerCaptain } from '@/features/participants/queries';
 import type { OwnerCaptain } from '@/features/participants/types';
+import { displayName } from '@/features/users/labels';
 import { useUsers } from '@/features/users/queries';
 import { ApiError } from '@/lib/http';
 
@@ -44,17 +45,22 @@ export function OwnerCaptainSection({ studyId, owner }: { studyId: number; owner
           value={owner ? String(owner.accountId) : ''}
           disabled={mutation.isPending || captains.isPending}
           onChange={(ev) => pick(ev.target.value)}
-          className='w-auto border-border-strong text-neutral-900'
+          className='w-auto'
         >
           {!owner && <option value=''>없음 · 캡틴 누구나</option>}
           {showOwnerOption && <option value={owner.accountId}>{owner.nickname}</option>}
           {options.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name ?? c.maskedEmail}
+              {displayName(c)}
             </option>
           ))}
         </Select>
-        {mutation.isPending && <Loader2 size={16} className='animate-spin text-fg-muted' aria-label='저장 중' />}
+        {mutation.isPending && (
+          <span role='status' className='inline-flex'>
+            <Loader2 size={16} className='animate-spin text-fg-muted' aria-hidden />
+            <span className='sr-only'>저장 중</span>
+          </span>
+        )}
       </div>
       <p className='type-body-sm text-fg-muted'>신청 폼 수정 · 참여 중단 · 사이트 일정 관리를 맡습니다. 참여하지 않아도 됩니다.</p>
     </section>

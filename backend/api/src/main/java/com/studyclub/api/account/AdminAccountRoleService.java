@@ -53,8 +53,9 @@ public class AdminAccountRoleService {
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.NOT_FOUND, "회원을 찾을 수 없습니다."));
 
-        // 진행 중 담당 스터디. 담당 캡틴 바꾸기도 대상 계정 행을 잠그고 ADMIN 인지 보므로, 2 의 잠금 뒤에 읽은 이 값은
-        // 이 트랜잭션이 끝날 때까지 새 담당 지정으로 늘지 않는다 (specs/study-group/spec.md 「담당 캡틴 바꾸기」)
+        // 진행 중 담당 스터디 — 잠그고 읽는다. 담당 캡틴 바꾸기는 「새 담당 계정 → 스터디」 순서로 잠그므로(이 트랜잭션은 「ADMIN 행 → 스터디」)
+        // 교착 없이 한쪽이 끝날 때까지 기다린다. 새 담당 지정으로 늘지도, 다른 캡틴에게 넘어가며 줄지도 않은 값으로 판정한다
+        // (specs/study-group/spec.md 「담당 캡틴 바꾸기」)
         List<Study> ownedOngoing =
                 studyRepository.findByOwnerCaptainIdAndStatusNotIn(
                         targetId, StudyStatus.ENDED_STATUSES);

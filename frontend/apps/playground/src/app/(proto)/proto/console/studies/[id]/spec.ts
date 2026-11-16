@@ -219,8 +219,8 @@ export const ATTENDEE_SPEC: ScreenSpec = {
         '저장되기 전에는 지금 값 그대로 둔다 — 실패해도 바뀐 것처럼 남지 않게',
       ],
       data: [
-        'PATCH /api/admin/studies/{studyId}/owner-captain { accountId } — 미구현',
-        '후보: GET /api/admin/users?role=CAPTAIN',
+        'PATCH /api/admin/studies/{studyId}/owner-captain { accountId }',
+        '후보: GET /api/admin/users?role=CAPTAIN&limit=100',
       ],
     },
     {
@@ -1010,7 +1010,7 @@ export const FORM_SPEC: ScreenSpec = {
       title: '저장',
       behavior: ['저장 → 완료 문구 표시', '처리 중 스피너로 중복 제출 차단'],
       policy: ['모집 시작 전에는 저장할 수 있다. 모집 시작 이후 수정은 막아야 한다 — 프로토타입은 아직 막지 않는다'],
-      data: ['PUT /api/admin/studies/{studyId}/application-form — 담당 캡틴(STUDY.CREATED_BY)만. 담당 판정 미구현'],
+      data: ['PUT /api/admin/studies/{studyId}/application-form — 담당 캡틴(STUDY.OWNER_CAPTAIN_ID)만. 담당 판정 미구현'],
     },
   ],
 };

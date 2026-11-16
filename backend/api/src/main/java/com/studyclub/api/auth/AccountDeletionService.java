@@ -129,7 +129,7 @@ public class AccountDeletionService {
         // 동의 이력 파기 — DB cascade 는 Flyway 로 만든 스키마에만 있어서 코드로 명시적으로 지운다.
         accountConsentRepository.deleteByAccountId(accountId);
 
-        // 담당 캡틴 필드 초기화 — 이 계정이 만든 스터디의 CREATED_BY 를 null 로 비운다. null 이면
+        // 등록한 사람(CREATED_BY)과 담당 캡틴(OWNER_CAPTAIN_ID)을 null 로 비운다. 담당 캡틴이 null 이면
         // StudyCaptainGuard.isOwnerCaptain 이 ADMIN 누구나 담당 캡틴으로 인정해, 탈퇴 후에도 다른 캡틴이
         // 출석부 참여 중단 등 담당 캡틴 전용 기능을 쓸 수 있다 (specs/study-participant/spec.md 권한).
         studyRepository.clearCreatedBy(accountId);
