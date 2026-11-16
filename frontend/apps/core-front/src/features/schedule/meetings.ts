@@ -37,10 +37,14 @@ export type ScheduleRole = ManageRole | 'crew';
 export const SCHEDULE_ROLE_LABEL: Record<ScheduleRole, string> = { ...MANAGE_ROLE_LABEL, crew: '크루' };
 
 export const TITLE_MAX = 50;
-export const REPEAT_SPAN_DAYS = 31;
+/** 반복으로 한 번에 만들 수 있는 기간 — 시작 일자부터 1년 뒤 같은 날까지(2/29 시작이면 다음 해 2/28). 서버도 같은 상한을 본다. */
+export const REPEAT_SPAN_LABEL = '1년';
 
 export function maxUntil(date: string): string {
-  return date ? addDaysYmd(date, REPEAT_SPAN_DAYS - 1) : '';
+  if (!date) return '';
+  const [y, m, d] = date.split('-').map(Number);
+  const lastDay = new Date(Date.UTC(y + 1, m, 0)).getUTCDate();
+  return `${y + 1}-${String(m).padStart(2, '0')}-${String(Math.min(d, lastDay)).padStart(2, '0')}`;
 }
 
 /* ── 킥오프 ─────────────────────────────────────────────────────────────── */
@@ -241,7 +245,7 @@ export function planDraft(
     if (!draft.until) errors.until = '반복 종료일을 정해 주세요.';
     else if (draft.date && draft.until < draft.date) errors.until = '종료일은 시작 일자보다 뒤여야 합니다.';
     else if (draft.date && draft.until > maxUntil(draft.date))
-      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_DAYS}일 안에서만 만들 수 있습니다 (${dayLabel(maxUntil(draft.date))}까지).`;
+      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_LABEL} 안에서만 만들 수 있습니다 (${maxUntil(draft.date)}까지).`;
   }
   if (errors.date || errors.time || errors.until || errors.weekdays) return { errors };
 
@@ -289,12 +293,12 @@ export function planDraft(
   if (keep.length === 0)
     return { errors: { ...errors, form: '고른 기간의 모든 날에 이미 회차가 있습니다.' }, ambiguousTimes };
 
-  // 서버는 생성할 회차의 반 현지 날짜 max-min <= 30일을 검사한다. 입력 지역의 31일과 별개다.
+  // 서버는 생성할 회차의 반 현지 날짜가 첫 날부터 1년 안인지 검사한다. 입력 지역의 1년과 별개다.
   const calendarDates = keep.map(calendarDate).sort();
   const lastAllowed = maxUntil(calendarDates[0]);
   if (calendarDates[calendarDates.length - 1] > lastAllowed) {
     const inputUntil = keep.filter((date) => calendarDate(date) <= lastAllowed).at(-1)!;
-    errors.until = `${zoneTitle(calendarZone)} 기준으로 ${REPEAT_SPAN_DAYS}일 범위를 넘어요. 입력 종료일을 ${inputUntil}까지로 줄여 주세요.`;
+    errors.until = `${zoneTitle(calendarZone)} 기준으로 ${REPEAT_SPAN_LABEL} 범위를 넘어요. 입력 종료일을 ${inputUntil}까지로 줄여 주세요.`;
     return { errors, ambiguousTimes };
   }
   if (Object.keys(errors).length) return { errors, ambiguousTimes };
