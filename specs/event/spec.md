@@ -1,8 +1,8 @@
 # 행사 API Spec: 캡틴이 백오피스에서 등록·수정·조회한다
 
-> ERD: 없음. 행사 테이블이 아직 없다. 아래 「데이터 모델 제안」이 초안이고, 스펙 확정 뒤 `docs/erd/` 에 테이블 문서를 만든다
+> ERD: [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md), [CLUB_EVENT_CHANNEL](../../docs/erd/CLUB_EVENT_CHANNEL.md), [CLUB_EVENT_QUESTION](../../docs/erd/CLUB_EVENT_QUESTION.md) (`V59__create_club_event.sql`). 신청 테이블은 신청 스펙에서 만든다
 > 생성일: 2026-11-14 · 리뷰 반영: 2026-11-17 (PR #470 리뷰 · PR #471 결정)
-> 상태: 스펙작성중
+> 상태: 구현중 — BE PR(등록·수정·조회 API). 신청 수 집계·일괄 확정은 `ClubEventRegistrationPort` 임시 어댑터(0건·no-op), back-office-front 연결은 후속 FE PR ([plan](./plan.md))
 >
 > Story PRD:
 > - [캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다](../../01-planning/stories/captain-manage-events/PRD.md) (ST-037)
@@ -17,10 +17,10 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/admin/events | 운영 행사 목록: 행사명 · 일정 · 표시 상태. 시작 시각 내림차순 20개씩 | O (ADMIN) | 스펙작성중 |
-| POST | /api/admin/events | 행사 등록: 저장하면 바로 크루에게 공개(`PUBLISHED`) | O (ADMIN) | 스펙작성중 |
-| GET | /api/admin/events/{eventId} | 운영 상세: 편집 폼 값 + 참여 방식별 모집 현황 + 버전 | O (ADMIN) | 스펙작성중 |
-| PUT | /api/admin/events/{eventId} | 행사 수정: 기본 정보 · 모집 설정 · 신청 질문 전체를 한 번에 저장 | O (ADMIN) | 스펙작성중 |
+| GET | /api/admin/events | 운영 행사 목록: 행사명 · 일정 · 표시 상태. 시작 시각 내림차순 20개씩 | O (ADMIN) | 구현중 |
+| POST | /api/admin/events | 행사 등록: 저장하면 바로 크루에게 공개(`PUBLISHED`) | O (ADMIN) | 구현중 |
+| GET | /api/admin/events/{eventId} | 운영 상세: 편집 폼 값 + 참여 방식별 모집 현황 + 버전 | O (ADMIN) | 구현중 |
+| PUT | /api/admin/events/{eventId} | 행사 수정: 기본 정보 · 모집 설정 · 신청 질문 전체를 한 번에 저장 | O (ADMIN) | 구현중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
