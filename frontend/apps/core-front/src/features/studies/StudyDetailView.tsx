@@ -3,7 +3,7 @@
 import Link from 'next/link';
 
 import type { Locale, Study } from '@studyclub/types';
-import { categoryArtUrl, categoryMeta, categoryTint } from '@studyclub/ui';
+import { categoryArtUrl, categoryMeta, categoryTint, ButtonLink } from '@studyclub/ui';
 import { ArrowLeft, CalendarClock, Globe, Rocket, Users } from 'lucide-react';
 
 import { MarkdownLite } from '@/features/applications/ApplicationFormUi';
@@ -43,12 +43,9 @@ export function StudyDetailView({ id, locale, initial }: { id: number; locale: L
                 locale,
               )}
         </p>
-        <Link
-          href={`/${locale}/studies`}
-          className='mt-4 inline-flex items-center gap-1.5 rounded-pill border border-border px-4 py-2 type-label-lg text-fg transition-colors hover:border-border-interactive hover:text-brand'
-        >
-          <ArrowLeft size={15} /> {m('common.back_studies', locale)}
-        </Link>
+        <ButtonLink linkAs={Link} href={`/${locale}/studies`} variant='secondary' size='sm' leadingIcon={<ArrowLeft />} className='mt-4'>
+          {m('common.back_studies', locale)}
+        </ButtonLink>
       </div>
     );
   }

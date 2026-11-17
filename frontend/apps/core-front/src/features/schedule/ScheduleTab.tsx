@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Study } from '@studyclub/types';
-import { Button, Input, Modal, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { Button, Checkbox, Input, Modal, Select, SelectionCount, TableActionBar, cx, FilterChip } from '@studyclub/ui';
 import { Mic, Plus, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
@@ -52,8 +52,6 @@ import { type ApiMeetingList } from '@/features/schedule/types';
 import { track } from '@/lib/analytics';
 import { ApiError } from '@/lib/http';
 
-const CHECKBOX =
-  'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 function PresenterCell({
   label,
@@ -82,21 +80,17 @@ function PresenterCell({
   if (!started && myId && !isMeWithdrawn) {
     if (!slotValue && otherValue !== myId) {
       return (
-        <button
-          type='button'
-          aria-label={`${label} 신청`}
-          onClick={() => onSign(true)}
-          className='inline-flex h-7 w-full items-center justify-center rounded-pill border border-brand type-label-lg text-brand transition-colors hover:bg-brand-subtle'
-        >
+        <Button type='button' variant='secondary' size='sm' aria-label={`${label} 신청`} onClick={() => onSign(true)} className='w-full rounded-pill'>
           신청
-        </button>
+        </Button>
       );
     }
     if (slotValue === myId) {
       return (
-        <span className='relative inline-flex h-7 w-full min-w-0 items-center rounded-pill bg-brand-subtle px-1 type-label-sm text-brand'>
+        <span className='relative inline-flex h-8 w-full min-w-16 items-center rounded-pill bg-brand-subtle px-1 type-label-sm text-brand'>
           <span className='flex-1 truncate text-center'>{name}</span>
           <button
+            // ui-native: 내 이름 칩 안의 빼기 표시 — 칩의 일부
             type='button'
             aria-label={`${label} 신청 취소`}
             title='신청 취소'
@@ -254,20 +248,9 @@ function AddMeetingForm({
             {repeatOptions.map((o) => {
               const on = draft.repeat === o.key;
               return (
-                <button
-                  key={o.key}
-                  type='button'
-                  aria-pressed={on}
-                  onClick={() => change({ repeat: o.key })}
-                  className={cx(
-                    'h-9 rounded-control border px-3 type-label-lg transition-colors',
-                    on
-                      ? 'border-brand bg-brand text-white'
-                      : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2',
-                  )}
-                >
+                <FilterChip key={o.key} selected={on} selectMode='single' onClick={() => change({ repeat: o.key })}>
                   {o.label}
-                </button>
+                </FilterChip>
               );
             })}
           </div>
@@ -277,21 +260,16 @@ function AddMeetingForm({
                 {WEEK_ORDER.map((d) => {
                   const on = draft.weekdays.includes(d);
                   return (
-                    <button
+                    <FilterChip
                       key={d}
-                      type='button'
-                      aria-pressed={on}
+                      selected={on}
+                      selectMode='single'
                       aria-label={`${DOW_LABEL[d]}요일`}
                       onClick={() => toggleWeekday(d)}
-                      className={cx(
-                        'h-9 w-9 rounded-control border type-label-lg transition-colors',
-                        on
-                          ? 'border-brand bg-brand text-white'
-                          : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2',
-                      )}
+                      className='w-9 justify-center px-0'
                     >
                       {DOW_LABEL[d]}
-                    </button>
+                    </FilterChip>
                   );
                 })}
               </div>
@@ -920,15 +898,12 @@ export function ScheduleTab({
                   <tr className='text-left type-label-sm text-fg-muted'>
                     {canEdit && (
                       <th className='border-b border-border py-3 pl-4 align-middle'>
-                        <input
-                          type='checkbox'
-                          aria-label='지울 수 있는 회차 전체 선택'
-                          className={CHECKBOX}
+                        <Checkbox
+                          label='지울 수 있는 회차 전체 선택'
+                          hideLabel
                           checked={allChecked}
                           disabled={deletable.length === 0}
-                          ref={(el) => {
-                            if (el) el.indeterminate = picked.length > 0 && !allChecked;
-                          }}
+                          indeterminate={picked.length > 0 && !allChecked}
                           onChange={() => setChecked(allChecked ? new Set() : new Set(deletable.map((m) => m.id)))}
                         />
                       </th>
@@ -991,10 +966,9 @@ export function ScheduleTab({
                       {canEdit && (
                         <td className='py-3 pl-4 align-middle'>
                           {canDelete && (
-                            <input
-                              type='checkbox'
-                              aria-label={`${meetingLabel(m)} 선택`}
-                              className={CHECKBOX}
+                            <Checkbox
+                              label={`${meetingLabel(m)} 선택`}
+                              hideLabel
                               checked={checked.has(m.id)}
                               onChange={() => toggle(m.id)}
                             />

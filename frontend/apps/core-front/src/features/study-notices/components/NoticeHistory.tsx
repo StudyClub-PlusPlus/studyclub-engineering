@@ -109,9 +109,9 @@ function NoticeRow({
         {n.body}
       </p>
       {long && (
-        <button type='button' className='mt-1 type-label-lg text-brand hover:underline' onClick={onToggle}>
+        <Button type='button' variant='tertiary' size='sm' className='mt-1' onClick={onToggle}>
           {expanded ? '접기' : '모두 보기'}
-        </button>
+        </Button>
       )}
       <div className='mt-2 flex flex-wrap gap-x-4 gap-y-1 type-label-sm text-fg-muted'>
         {mail && <span>{mail}</span>}

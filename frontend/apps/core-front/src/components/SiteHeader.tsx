@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import type { Locale } from '@studyclub/types';
+import { ButtonLink } from '@studyclub/ui';
 
 import { MobileNav } from '@/components/MobileNav';
 import { MyStudiesLink } from '@/components/MyStudiesLink';
@@ -48,16 +49,15 @@ export function SiteHeader({
           >
             {other.toUpperCase()}
           </Link>
-          <a
+          <ButtonLink
+            variant='tertiary'
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='sc-button hidden type-label-lg sm:inline-flex'
-            data-variant='tertiary'
-            data-size='md'
+            className='hidden sm:inline-flex'
           >
             {m('nav.join', locale)}
-          </a>
+          </ButtonLink>
           <MyStudiesLink locale={locale} />
           <MobileNav
             locale={locale}

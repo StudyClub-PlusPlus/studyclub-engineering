@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Locale } from '@studyclub/types';
-import { Button, Checkbox, toast, useImageUpload } from '@studyclub/ui';
+import { Button, Checkbox, toast, useImageUpload, IconButton } from '@studyclub/ui';
 import { Check, Pencil } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
@@ -334,27 +334,17 @@ export function ProfileCard({
             )}
             {!preview && (
               <div className='flex items-center gap-2 type-label-sm'>
-                <button
-                  type='button'
-                  onClick={photo.pick}
-                  disabled={photoLocked}
-                  className='text-fg-secondary underline-offset-4 hover:text-fg hover:underline disabled:opacity-50'
-                >
+                <Button type='button' variant='tertiary' size='sm' onClick={photo.pick} disabled={photoLocked}>
                   {photo.isUploading ? '올리는 중' : '바꾸기'}
-                </button>
+                </Button>
                 {user.picture && (
-                  <button
-                    type='button'
-                    onClick={removePhoto}
-                    disabled={photoLocked}
-                    className='text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline disabled:opacity-50'
-                  >
+                  <Button type='button' variant='tertiary' size='sm' onClick={removePhoto} disabled={photoLocked}>
                     지우기
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
-            <input {...photo.inputProps} className='hidden' aria-label='프로필 사진 파일' />
+            <input /* ui-native: 숨긴 파일 선택 칸 — 바꾸기 버튼이 연다 */ {...photo.inputProps} className='hidden' aria-label='프로필 사진 파일' />
           </div>
 
           <div className='min-w-0 flex-1 pt-2'>
@@ -363,6 +353,7 @@ export function ProfileCard({
               <div>
                 <div className='flex items-center gap-2'>
                   <input
+                    // ui-native: 닉네임 바로 고치기 — 이름 줄이 그대로 밑줄 칸이 되어 카드 높이를 지킨다
                     {...nicknameField}
                     ref={nicknameRef}
                     onCompositionStart={() => setComposing(true)}
@@ -392,16 +383,15 @@ export function ProfileCard({
               <div>
                 <div className='flex min-w-0 items-center gap-1.5'>
                   <p className='truncate type-title-lg text-fg'>{user.nickname ?? user.email}</p>
-                  <button
-                    type='button'
+                  <IconButton
+                    variant='tertiary'
+                    size='sm'
                     onClick={openEditor}
                     disabled={opening}
                     title='내 정보 수정'
                     aria-label='내 정보 수정'
-                    className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-                  >
-                    <Pencil size={14} />
-                  </button>
+                    icon={<Pencil />}
+                  />
                   <Saved show={savedFlash} />
                 </div>
                 <p className='mt-0.5 truncate type-body-sm text-fg-muted'>{user.email}</p>

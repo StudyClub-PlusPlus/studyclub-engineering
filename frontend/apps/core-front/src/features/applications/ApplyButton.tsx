@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import type { Locale, Study } from '@studyclub/types';
-import { Loader2 } from 'lucide-react';
+import { Button, ButtonLink } from '@studyclub/ui';
 import { createPortal } from 'react-dom';
 
 import { ApplyDialog } from '@/features/applications/ApplyDialog';
@@ -109,11 +109,6 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
 
   const isClosed = state === 'closed' || Boolean(deadlineLabel);
 
-  const card = 'inline-flex items-center justify-center rounded-pill px-8 py-3 type-label-lg';
-  const live =
-    'bg-brand text-on-brand shadow-sm transition-[background-color,transform] hover:bg-brand-hover hover:scale-[1.02] focus-visible:outline-none focus-visible:shadow-(--ring)';
-  const idle = 'bg-surface-2 text-fg-placeholder';
-
   async function requestApply() {
     if (alreadyApplied || checking) return;
     track({
@@ -168,11 +163,12 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   // 외부 신청 폼(구글 폼 등)이 있으면 그쪽으로 보낸다.
   if (study.recruit_url && !isClosed) {
     return (
-      <a
+      // 바깥 신청 폼으로 가는 링크 — 아래 신청 버튼과 같은 알약 모양 · 너비 100%
+      <ButtonLink
         href={study.recruit_url}
-        target='_blank'
-        rel='noopener noreferrer'
-        className={`${card} ${live}`}
+        external
+        size='lg'
+        className='w-full rounded-pill'
         onClick={() => {
           track({
             name: 'Study Apply CTA Clicked',
@@ -191,27 +187,24 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
         }}
       >
         {applyLabel}
-      </a>
+      </ButtonLink>
     );
   }
 
+  // 스터디 상세의 신청 버튼만 예외로 알약 모양 · 카드 너비 100% 를 쓴다 — 마감 · 신청 완료 · 신청하기가 같은 자리 같은 크기로 바뀐다
   const trigger = isClosed ? (
-    <span className={`${card} ${idle}`}>{applyLabel}</span>
-  ) : ready && alreadyApplied ? (
-    <button type='button' disabled className={`${card} ${idle}`}>
-      {doneLabel}
-    </button>
-  ) : (
-    <button
-      type='button'
-      onClick={requestApply}
-      disabled={checking}
-      aria-busy={checking}
-      className={`${card} ${live} gap-2 disabled:cursor-wait disabled:opacity-80`}
-    >
-      {checking && <Loader2 size={16} className='animate-spin' aria-hidden />}
+    <Button type='button' size='lg' className='w-full rounded-pill' disabled>
       {applyLabel}
-    </button>
+    </Button>
+  ) : ready && alreadyApplied ? (
+    <Button type='button' size='lg' className='w-full rounded-pill' disabled>
+      {doneLabel}
+    </Button>
+  ) : (
+    // 확인 중에는 loading 으로 막는다 — design-system §9-1 은 버튼 안 스피너를 쓰지 않는다
+    <Button type='button' size='lg' className='w-full rounded-pill' onClick={requestApply} loading={checking}>
+      {applyLabel}
+    </Button>
   );
 
   if (isClosed) return trigger;

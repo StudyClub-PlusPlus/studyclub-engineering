@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { Locale, Study } from '@studyclub/types';
-import { Button, Card, EmptyState, categoryGradient, categoryMeta } from '@studyclub/ui';
+import { Button, Card, EmptyState, IconButton, categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Heart } from 'lucide-react';
 
 import { getUser } from '@/features/auth/auth';
@@ -103,14 +103,12 @@ export default function SavedStudiesPage() {
                     </Link>
                     <p className='mt-0.5 type-body-sm text-fg-muted'>{label}</p>
                   </div>
-                  <button
-                    type='button'
+                  <IconButton
+                    variant='tertiary'
                     aria-label='찜한 스터디에서 빼기'
-                    className='grid h-9 w-9 place-items-center rounded-full text-error-500 hover:bg-surface-2'
+                    icon={<Heart strokeWidth={2} className='fill-current text-error-500' />}
                     onClick={() => unsave(study.id)}
-                  >
-                    <Heart size={16} strokeWidth={2} className='fill-current' />
-                  </button>
+                  />
                 </Card>
               </li>
             );
