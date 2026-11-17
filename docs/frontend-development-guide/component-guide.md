@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [컴포넌트 분류](#컴포넌트-분류)
+  - [공용 UI — `@studyclub/ui` 먼저](#공용-ui--studyclubui-먼저)
 - [네이밍 규칙](#네이밍-규칙)
 - [컴포넌트 작성 패턴](#컴포넌트-작성-패턴)
 - [스타일링](#스타일링)
@@ -17,21 +18,70 @@
 | 기능 전용 UI | `src/features/<기능>/` | 신청 폼·출석부·알림 편집 |
 | 앱 공통 UI | `src/components/` | AppShell, Footer |
 
-공유 컴포넌트 라이브러리 `@studyclub/ui` (`packages/ui`) 가 존재한다. 세 앱 모두 이 패키지에 의존하고 있으므로, **새 컴포넌트를 앱 로컬에 직접 만들기 전에 먼저 확인할 것**.
+### 공용 UI — `@studyclub/ui` 먼저
 
-**`@studyclub/ui` 제공 컴포넌트**: `Button` `Badge` `Card` `FieldShell` `Input` `Select` `Textarea` `FilterChip` `Avatar` `StatCard` `CapacityBar` `Checkbox` `Modal` `EmptyState` `Toaster` `StudyCard` `AttendanceTable` `Tabs` `Nav` `Segmented` `Pagination`
-
-> `Input` · `Select` · `Textarea` · `FieldShell` 은 `Field.tsx` 에서 함께 export 된다.
-> `FilterChip` 은 `Chip.tsx` 에서 export 된다.
-> `Toaster` · `toast` 는 `Toast.tsx` 에서 함께 export 된다.
-> `StudyCard` · `AttendanceTable` · `Tabs` · `Nav` · `Segmented` · `Pagination` 은 각각 해당 파일에서 export 된다.
+공유 컴포넌트 라이브러리 `@studyclub/ui` (`packages/ui`) 가 있다. 세 앱(core-front · back-office-front · playground) 모두 이 패키지에 의존한다.
+제공 부품의 정본은 [`frontend/packages/ui/src/index.ts`](../../frontend/packages/ui/src/index.ts) 의 export 목록이다 — 이 문서에 목록을 옮겨 적지 않는다.
 
 ```typescript
-import { Button, Badge, Card, StudyCard, Tabs } from '@studyclub/ui';
+import { Button, Input, Select, Checkbox } from '@studyclub/ui';
 ```
 
-두 앱에 걸쳐 공유되는 새 컴포넌트는 `packages/ui/src/` 에 추가하고 `src/index.ts` 에 export 한다.
-앱 전용 컴포넌트 중 한 기능에서만 쓰는 것은 `src/features/<기능>/`, 여러 기능이 공유하는 것은 `src/components/`에 둔다.
+화면을 만들거나 고칠 때 이 순서를 따른다. playground 프로토도 같다.
+여러 화면에 되풀이되는 모양이 대상이다 — 한 곳에만 있고 일부러 다르게 꾸민 것(설문 빌더의 밑줄 칸, 카드형 라디오)은 억지로 부품에 맞추지 않는다.
+
+1. **있으면 쓴다** — HTML 요소를 직접 쓰기 전에 대응하는 부품을 찾는다
+
+   | HTML 요소 | `@studyclub/ui` |
+   | --- | --- |
+   | `<input>` (글자·숫자·날짜·검색) | `Input` |
+   | `<input type="search">` | `Input` + `leadingIcon` (돋보기) |
+   | `<input type="checkbox">` | `Checkbox` · 표의 행 선택은 `hideLabel` |
+   | `<input type="radio">` | `Radio` · 묶음 제목은 `fieldset` + `legend` |
+   | `<select>` | `Select` |
+   | `<textarea>` | `Textarea` · 높이가 늘어나면 `AutoTextarea` |
+   | `<button>` | `Button` · 아이콘만 있으면 `IconButton` |
+   | 켜고 끄기 (`role="switch"`) | `Switch` |
+   | 알약 토글 · 요일 고르기 | `FilterChip` · 폼 값으로 하나만 고르면 `role='radio'` |
+   | 화면 전환 알약 줄 · 밑줄 탭 | `Segmented` · `Tabs` |
+   | 표 칸 · 글줄 안의 작은 아이콘 | `IconButton size='xs'` |
+   | 페이지 번호 | `Pagination` |
+   | 버튼 모양의 링크 (`<a>` · `<Link>`) | `ButtonLink` — 앱 안은 `linkAs={Link}`, 바깥 사이트는 `external`. `sc-button` 을 손으로 붙이지 않는다 |
+   | 제목 · 값 옆 「?」 도움말 말풍선 | `HelpPopover` · 확인 · 입력 창은 `Modal` |
+
+   **예외는 여는 태그 안에 이유를 적는다** — 표시가 없으면 drift 검사가 막는다(기준선 0).
+
+   ```tsx
+   <button
+     // ui-native: 출석부 칸 — 칸 전체가 누르는 곳이고 누를 때마다 상태가 돈다
+     type='button'
+   ```
+
+   인정하는 예외는 이것뿐이다. 새 종류가 필요하면 먼저 ui 부품으로 담을 수 있는지 본다.
+
+   | 예외 | 예 |
+   | --- | --- |
+   | 영역 전체가 누르는 곳 | 출석부 칸 · 달력 일정 · 첨부 썸네일 · 업로드 영역 · 카드형 라디오 |
+   | 고유 팝오버 위젯의 단추 · 항목 | 시간대 · 처리 상태 · 역할 listbox, 아바타 메뉴 |
+   | 표 머리 정렬 · 제목 링크 | 정렬 머리 글자, 눌러서 줄을 여는 제목 |
+   | 칩 · 썸네일 · 검색창 안에 겹친 작은 표시 | 내 이름 칩의 ×, 썸네일의 빼기, 늘어나는 검색창의 단추 |
+   | 고유 동작 · 테마 | 찜 하트 애니메이션, 크레딧 BGM, 말풍선 붙은 되돌리기 |
+   | 브랜드 규정 | 구글 · 애플 로그인 |
+   | 구글 폼 모양 설문 | 신청 폼의 객관식 · 「기타」 밑줄 칸, 닉네임 바로 고치기 |
+   | 숨긴 파일 선택 칸 | 업로드 버튼이 여는 `<input type='file' hidden>` |
+   | playground 검토 도구 | 주석 모드, 정책 문서 목차 |
+   | 라벨·도움말·오류 묶음 | `FieldShell` (또는 `Input` 의 `label` · `hint` · `error`) |
+
+2. **모양이 조금 다르면 부품을 고친다** — 화면에서 className 으로 덮어쓰거나 HTML 요소로 새로 짜지 않는다. `packages/ui` 부품에 variant · size · props 를 추가하고 스토리에도 그 경우를 넣는다
+3. **없으면 `packages/ui` 에 만든다** — 입력칸·선택지·칩·뱃지처럼 **도메인 데이터를 모르는 디자인 부품**은 지금 한 화면에서만 써도 `packages/ui` 에 둔다
+   - **먼저 디자인 문서를 읽는다** — [`design-system.md`](../../frontend/packages/design/docs/design-system.md) §9 Components 에서 같은·비슷한 부품의 스펙을, §2 색 · §3 타이포 · §4 간격 · §5 라운딩 · §6 그림자 · §7 모션에서 쓸 토큰을, §11 에서 접근성 조건을 확인한다. 시각 레퍼런스는 `packages/design/docs/styleguide.html`, 토큰 값은 `packages/design/tokens.css`. 2번처럼 기존 부품을 바꿀 때도 같다
+   - §9 에 없는 부품이면 같은 PR 에서 §9 에 스펙을 추가한다(9-8 표 한 줄 또는 새 절). 맞는 토큰이 없으면 `tokens.css` 와 해당 절에 먼저 추가한다 — 문서에 없는 값을 부품에서 지어내지 않는다
+   - `frontend/` 에서 `pnpm --filter @studyclub/ui new-component {Name}` — `src/{Name}.tsx` · `src/{Name}.stories.tsx` · `index.ts` export · playground `/components` 카탈로그(`apps/playground/src/app/(site)/components/page.tsx`) 칸이 함께 생긴다. 본체 · 스토리 · 카탈로그 칸을 상태별로 채운 뒤 화면에서 `@studyclub/ui` 로 import 한다
+   - 스토리가 없거나 카탈로그에 안 보이는 부품은 drift 검사가 막는다(기준선 없음)
+   - 작성 규칙(토큰만 · 클래스명 동적 조립 금지 · Props 이름)은 [`packages/ui/docs/component-guide.md`](../../frontend/packages/ui/docs/component-guide.md), 스토리는 [`stories-guide.md`](../../frontend/packages/ui/docs/stories-guide.md)
+4. **검사** — 레포 루트에서 `node scripts/check-component-drift.mjs`. ui 부품이 있는데 직접 쓴 `<input>` · `<select>` · `<textarea>` · `<button>`, 버튼처럼 꾸민 링크, 손으로 짠 말풍선(`role="dialog"`), ui 와 같은 이름의 사본, 토큰 우회가 기준선보다 늘면 실패한다. 줄였으면 `--update` 로 기준선을 낮춰 같이 커밋한다
+
+도메인 데이터·API·규칙을 아는 컴포넌트(신청 폼, 출석부)는 앱에 둔다 — 한 기능에서만 쓰면 `src/features/<기능>/`, 여러 기능이 공유하면 `src/components/`. 이런 컴포넌트도 안쪽 부품은 `@studyclub/ui` 로 조립한다.
 
 UI에서 사용하는 공용 타입은 `@studyclub/types`, 계산 함수·상수는 `@studyclub/utils`에서 가져온다. 타입을 얻기 위해 `@studyclub/mock`을 import하거나 공용 유틸을 컴포넌트 파일에 복제하지 않는다.
 
