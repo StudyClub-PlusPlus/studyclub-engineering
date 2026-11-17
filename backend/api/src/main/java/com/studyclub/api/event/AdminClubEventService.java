@@ -145,6 +145,7 @@ public class AdminClubEventService {
     public AdminClubEventDetailResponse update(
             Long accountId, Long eventId, AdminClubEventRequest request) {
         EventDraft draft = ClubEventRequestMapper.toUpdateDraft(request);
+        long expectedVersion = ClubEventRequestMapper.version(request);
         // 1
         ClubEvent event =
                 clubEventRepository
@@ -152,7 +153,7 @@ public class AdminClubEventService {
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         EventSeatCounts counts = registrationPort.countActiveSeats(eventId);
         // 2 ~ 12, 14
-        boolean switchedToAuto = event.edit(draft, request.version(), Instant.now(), counts);
+        boolean switchedToAuto = event.edit(draft, expectedVersion, Instant.now(), counts);
         // 13
         if (switchedToAuto) {
             List<Long> confirmed = registrationPort.confirmPendingRegistrations(eventId);

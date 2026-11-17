@@ -19,6 +19,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -113,7 +114,8 @@ public class ClubEvent extends BaseEntity {
 
     private ClubEvent(EventDraft draft, Long createdBy, String createIdempotencyKey, Instant now) {
         this.status = EventStatus.PUBLISHED;
-        this.publishedAt = now;
+        // DATETIME(6) 과 같은 정밀도 — 첫 응답과 재시도·조회 응답의 공개 시각이 소수점까지 같게
+        this.publishedAt = now.truncatedTo(ChronoUnit.MICROS);
         this.version = 0L;
         this.createdBy = Objects.requireNonNull(createdBy);
         this.createIdempotencyKey = Objects.requireNonNull(createIdempotencyKey);

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -12,6 +14,7 @@ import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.event.ClubEventRegistrationPort;
 import com.studyclub.domain.event.ClubEventRegistrationsConfirmedEvent;
+import com.studyclub.domain.event.ClubEventRepository;
 import com.studyclub.domain.event.EventSeatCounts;
 import java.net.URI;
 import java.sql.Timestamp;
@@ -36,6 +39,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -52,6 +56,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /**
  * 백오피스 행사 — 목록 · 등록 · 상세 · 수정 (specs/event/spec.md). 신청 테이블은 아직 없어 {@link
@@ -75,6 +80,7 @@ class AdminClubEventIntegrationTest {
     @Autowired ConfirmedEventRecorder recorder;
 
     @MockitoBean ClubEventRegistrationPort registrationPort;
+    @MockitoSpyBean ClubEventRepository clubEventRepository;
 
     private Instant now;
 
@@ -336,6 +342,16 @@ class AdminClubEventIntegrationTest {
         cases.put(
                 "offline.location", b -> b.put("offline", Map.of("capacity", 10, "location", " ")));
         cases.put("confirmation", b -> b.put("confirmation", "MANUAL"));
+        // MySQL DATETIME(6) 범위 밖 — 저장 때 500 이 아니라 입력에서 400
+        cases.put("startsAt ", b -> b.put("startsAt", "+10000-01-01T00:00:00Z"));
+        cases.put("deadlineAt  ", b -> b.put("deadlineAt", "0999-12-31T23:59:59Z"));
+        cases.put("endsAt ", b -> b.put("endsAt", "9999-12-31T23:59:59.500Z"));
+        // 소수 정원은 정수로 잘려 통과하지 않는다 — 40.0 도 소수다
+        cases.put(
+                "offline.capacity ",
+                b -> b.put("offline", Map.of("capacity", 10_000.9, "location", "강남")));
+        cases.put("online.capacity ", b -> b.put("online", Map.of("capacity", 40.0)));
+        cases.put("online.capacity  ", b -> b.put("online", Map.of("capacity", 10_000_000_000L)));
         cases.put("questions", b -> b.put("questions", repeat(question("TEXT"), 21)));
         cases.put(
                 "questions[0].type",
@@ -374,6 +390,21 @@ class AdminClubEventIntegrationTest {
                     assertThat(message(response)).as(field).startsWith(field.strip() + ":");
                 });
         assertThat(eventCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("등록 — DATETIME(6) 범위의 끝 시각은 받는다 (9999-12-31T23:59:59Z 까지)")
+    void acceptsLastStorableInstant() {
+        Map<String, Object> body = body();
+        body.put("startsAt", "9999-12-31T00:00:00Z");
+        body.put("endsAt", "9999-12-31T23:59:59Z");
+        body.put("deadlineAt", "9999-12-30T00:00:00Z");
+
+        ResponseEntity<Map> response = send(HttpMethod.POST, PATH, ADMIN_ID, body, newKey());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // 분 단위로 맞춰 저장한다
+        assertThat(response.getBody()).containsEntry("endsAt", "9999-12-31T23:59:00Z");
     }
 
     @Test
@@ -567,6 +598,21 @@ class AdminClubEventIntegrationTest {
             assertThat(message(response)).startsWith(field + ":");
         }
 
+        // 소수 버전은 0 으로 잘려 「같은 버전」으로 통과하지 않는다
+        for (Object fractional : List.of(0.9, 0.0)) {
+            Map<String, Object> body = editable(created);
+            body.put("version", fractional);
+            ResponseEntity<Map> response = send(HttpMethod.PUT, path, ADMIN_ID, body, null);
+            assertError(response, HttpStatus.BAD_REQUEST, "INVALID_INPUT");
+            assertThat(message(response)).startsWith("version:");
+        }
+        Map<String, Object> fractionalCapacity = editable(created);
+        fractionalCapacity.put("online", Map.of("capacity", 100.5));
+        ResponseEntity<Map> capacityResponse =
+                send(HttpMethod.PUT, path, ADMIN_ID, fractionalCapacity, null);
+        assertError(capacityResponse, HttpStatus.BAD_REQUEST, "INVALID_INPUT");
+        assertThat(message(capacityResponse)).startsWith("online.capacity:");
+
         Map<String, Object> noVersion = editable(created);
         noVersion.remove("version");
         String missing = PATH + "/" + MISSING_EVENT_ID;
@@ -659,6 +705,25 @@ class AdminClubEventIntegrationTest {
                 .containsEntry("canChangeConfirmation", false)
                 .containsEntry("canSetFutureStart", false);
         verify(registrationPort, never()).confirmPendingRegistrations(anyLong());
+    }
+
+    @Test
+    @DisplayName("수정 — 행사 행 쓰기 잠금이 첫 조회다. 신청 수·일괄 확정은 잠금 뒤에 부르고, 잠그지 않는 조회로 행사를 먼저 읽지 않는다 (Q8)")
+    void updateLocksBeforeCounting() {
+        Map<String, Object> created = createDetail(now.plus(Duration.ofDays(5)));
+        long eventId = longOf(created, "eventId");
+        Map<String, Object> body = editable(created);
+        body.put("confirmation", "AUTO");
+        clearInvocations(clubEventRepository, registrationPort);
+
+        assertThat(send(HttpMethod.PUT, PATH + "/" + eventId, ADMIN_ID, body, null).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
+        InOrder order = inOrder(clubEventRepository, registrationPort);
+        order.verify(clubEventRepository).findByIdForUpdate(eventId);
+        order.verify(registrationPort).countActiveSeats(eventId);
+        order.verify(registrationPort).confirmPendingRegistrations(eventId);
+        verify(clubEventRepository, never()).findById(anyLong());
     }
 
     @Test

@@ -416,6 +416,17 @@ class ClubEventTest {
         }
 
         @Test
+        @DisplayName("NBSP·BOM 같은 공백도 JS trim() 처럼 지운다 — 화면이 「필수」로 막는 제목을 서버가 받지 않게 (Q7)")
+        void trimsLikeJavaScript() {
+            Draft nbsp = draft();
+            nbsp.title = "\u00A0\u202F\uFEFF";
+            assertInvalid(nbsp::build, "title");
+            Draft padded = draft();
+            padded.title = "\u00A0밋업\u3000";
+            assertThat(padded.build().title()).isEqualTo("밋업");
+        }
+
+        @Test
         @DisplayName("행사명 61자 · 공백뿐 · null 은 400 title")
         void titleLength() {
             Draft over = draft();

@@ -44,7 +44,13 @@ public record AdminClubEventDetailResponse(
 
     public record Offline(int capacity, String location) {}
 
-    public record Online(int capacity, String url) {}
+    /** 캡틴에게는 그대로 보이지만 로그에는 남기지 않는다 — {@code toString} 이 링크를 가린다. */
+    public record Online(int capacity, String url) {
+        @Override
+        public String toString() {
+            return "Online[capacity=" + capacity + ", url=" + (url == null ? null : "***") + "]";
+        }
+    }
 
     public record Question(
             String questionId,

@@ -32,6 +32,20 @@ public record ChannelDraft(EventChannel channel, int capacity, String location, 
         return new ChannelDraft(EventChannel.ONLINE, capacity, null, onlineUrl);
     }
 
+    /** 참여 링크는 가린다 — 이 값이 로그·예외 메시지에 실려도 링크가 새지 않게. */
+    @Override
+    public String toString() {
+        return "ChannelDraft[channel="
+                + channel
+                + ", capacity="
+                + capacity
+                + ", location="
+                + location
+                + ", onlineUrl="
+                + (onlineUrl == null ? null : "***")
+                + "]";
+    }
+
     void validate() {
         String prefix = channel.fieldName();
         if (capacity < EventLimits.CAPACITY_MIN || capacity > EventLimits.CAPACITY_MAX) {
