@@ -37,7 +37,7 @@
 | `SCHEDULED` | `START_AT IS NULL AND now() < SCHEDULED_AT` |
 | `IN_PROGRESS` | `START_AT IS NOT NULL AND now() < endsAt` |
 | `DONE` | `START_AT IS NOT NULL AND now() ≥ endsAt` |
-| `MISSED` | `START_AT IS NULL AND now() > SCHEDULED_AT + 2시간` — 열리지 않은 회차. 2시간은 디스코드 출석이 회차를 열 수 있는 창(`MEETING_PICK_WINDOW`) |
+| `MISSED` | `START_AT IS NULL AND now() > SCHEDULED_AT + 2시간` — 열리지 않은 회차. 2시간은 디스코드 출석이 회차를 열 수 있는 창(`StudyMeeting.OPEN_WINDOW` · `isOpenable(now)`) |
 
 ## 제약
 - 인덱스 `(STUDY_GROUP_ID, SCHEDULED_AT)` — `idx_study_meeting_group_scheduled`

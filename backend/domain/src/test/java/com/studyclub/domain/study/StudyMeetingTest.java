@@ -68,6 +68,25 @@ class StudyMeetingTest {
     }
 
     @Test
+    @DisplayName("예정 시각 ±2시간 안의 안 열린 회차만 열 수 있다 — 경계 포함")
+    void openableWithinWindow() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, NOW, null);
+
+        assertThat(meeting.isOpenable(NOW.minus(StudyMeeting.OPEN_WINDOW))).isTrue();
+        assertThat(meeting.isOpenable(NOW.plus(StudyMeeting.OPEN_WINDOW))).isTrue();
+        assertThat(meeting.isOpenable(NOW.plus(StudyMeeting.OPEN_WINDOW).plusSeconds(1))).isFalse();
+    }
+
+    @Test
+    @DisplayName("이미 연 회차는 창 안이어도 다시 열 수 없다")
+    void openedIsNotOpenable() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, NOW, null);
+        meeting.start(NOW);
+
+        assertThat(meeting.isOpenable(NOW)).isFalse();
+    }
+
+    @Test
     @DisplayName("열리지 않은 회차는 진행 중이 아니다")
     void notOpenedIsNotInProgress() {
         assertThat(StudyMeeting.schedule(1L, NOW, null).isInProgress(NOW)).isFalse();

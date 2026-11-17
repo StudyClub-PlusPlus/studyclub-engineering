@@ -88,7 +88,11 @@ export function ymdInTz(at: Date, tz: WallTz): string {
   }).format(at);
 }
 
-/** 회차 길이 컬럼이 없어 예정 종료는 시작 + 120분으로 본다 (specs/my-studies 「화면이 응답에서 계산하는 것」). */
+/**
+ * 회차 길이 컬럼이 없어 예정 종료는 시작 + 120분으로 본다 (specs/my-studies 「화면이 응답에서 계산하는 것」).
+ * 서버 `StudyMeeting.DURATION` 과 같은 값이어야 한다 — 한쪽만 바꾸면 화면과 서버의 「끝난 회차」 판정이 갈라진다.
+ * 서버가 `endsAt` 을 내려 주게 되면 이 상수는 지운다 (docs/share/2026-11-17-meeting-end.md 질문 3).
+ */
 const MEETING_MIN = 120;
 
 /** 회차 종료 기준 — 실제 종료가 있으면 그것, 없으면 예정 시각 + 120분. */

@@ -293,5 +293,5 @@ CREATE TABLE STUDY_DISCORD_LINK (
 | 호출자 검증 | 요청에 `callerDiscordUserId` 포함, 백엔드가 반장 여부 확인 | 봇 역할은 길드 전체 하나라 스터디를 구분 못 한다 |
 | 서비스 인증 | `X-API-Key` 단일 키, `discord.api-key` 프로퍼티로 주입 | 키가 비면 **아무도 통과시키지 않는다** — 설정 누락이 공개 엔드포인트가 되지 않게 |
 
-`±2h` 는 운영 정책이라 상수 하나(`DiscordAttendanceService.MEETING_PICK_WINDOW`)로 뒀다.
+`±2h` 는 운영 정책이라 상수 하나(`StudyMeeting.OPEN_WINDOW`)로 뒀다. ERD 의 `MISSED` 판정도 같은 값을 쓰므로 도메인에 둔다 (2026-11-17).
 스키마와 무관하니 쓰다가 좁히거나 넓히면 된다.

@@ -31,6 +31,12 @@ public class StudyMeeting extends BaseEntity {
     /** 회차 길이. 길이 컬럼이 없어 종료 기준을 이 값으로 계산한다 — core-front {@code MEETING_MIN} 과 같다. */
     public static final Duration DURATION = Duration.ofMinutes(120);
 
+    /**
+     * 열리지 않은 회차를 디스코드 출석이 열어 줄 수 있는 폭 — 예정 시각 앞뒤로 이만큼. 이 폭을 넘기고도 안 열린 회차가 ERD 의 {@code MISSED} 다.
+     * 운영 정책이라 스키마와 무관하다.
+     */
+    public static final Duration OPEN_WINDOW = Duration.ofHours(2);
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -282,6 +288,12 @@ public class StudyMeeting extends BaseEntity {
         }
         Instant base = startAt != null && startAt.isAfter(scheduledAt) ? startAt : scheduledAt;
         return base.plus(DURATION);
+    }
+
+    /** 지금 열 수 있는 회차인지 — 아직 안 열렸고 예정 시각이 지금 ±{@link #OPEN_WINDOW} 안이다. 경계는 포함한다. */
+    public boolean isOpenable(Instant now) {
+        return startAt == null
+                && Duration.between(scheduledAt, now).abs().compareTo(OPEN_WINDOW) <= 0;
     }
 
     /** 아직 시작하지 않았는지. */

@@ -42,9 +42,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DiscordAttendanceService {
 
-    /** 예정 회차를 자동으로 시작시켜 줄 여유 폭. 운영 정책이라 스키마와 무관하다. */
-    static final Duration MEETING_PICK_WINDOW = Duration.ofHours(2);
-
     private static final Set<ParticipantRole> LEADER_ROLES = EnumSet.of(ParticipantRole.LEADER);
 
     /** 명부에 살아 있는 상태. WITHDRAWN·COMPLETED 는 출석 대상이 아니다. */
@@ -218,8 +215,7 @@ public class DiscordAttendanceService {
         // 시작할 회차도 같은 규칙 — 예정 시각이 지금에 가장 가까운 것.
         Optional<StudyMeeting> startable =
                 meetings.stream()
-                        .filter(StudyMeeting::isNotStarted)
-                        .filter(m -> withinWindow(m.getScheduledAt(), now))
+                        .filter(m -> m.isOpenable(now))
                         .min(
                                 Comparator.comparing(
                                         m -> Duration.between(m.getScheduledAt(), now).abs()));
@@ -230,10 +226,6 @@ public class DiscordAttendanceService {
         StudyMeeting meeting = startable.get();
         meeting.start(now);
         return Optional.of(new PickedMeeting(meeting, true));
-    }
-
-    private boolean withinWindow(Instant scheduledAt, Instant now) {
-        return Duration.between(scheduledAt, now).abs().compareTo(MEETING_PICK_WINDOW) <= 0;
     }
 
     /** 같은 계정에 명부 행이 둘 이상이면 ACTIVE·PAUSED 를 우선한다. 둘 다 같은 등급이면 먼저 나온 행. */
