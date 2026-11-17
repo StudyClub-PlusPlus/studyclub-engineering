@@ -175,14 +175,9 @@ function SiteNoticeEditor({
       <>
         {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 사이트에서 바로 내려간다 */}
         {editing && (
-          <button
-            type='button'
-            onClick={() => setConfirmDelete(true)}
-            disabled={saving}
-            className='mr-auto h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
-          >
+          <Button type='button' variant='danger' onClick={() => setConfirmDelete(true)} disabled={saving} className='mr-auto'>
             공지 삭제
-          </button>
+          </Button>
         )}
         {/* 입력·설정 모달이라 취소를 두지 않는다 — 닫는 길은 X 와 Esc 다 (POL-0008) */}
         <Button onClick={submit} loading={create.isPending || update.isPending} disabled={saving}>

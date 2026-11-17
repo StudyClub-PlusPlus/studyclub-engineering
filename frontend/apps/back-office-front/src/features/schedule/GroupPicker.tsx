@@ -1,3 +1,5 @@
+import { FilterChip } from '@studyclub/ui';
+
 import type { ScheduleGroup } from '@/features/schedule/meetings';
 
 /**
@@ -17,19 +19,9 @@ export function GroupPicker({
   return (
     <nav aria-label='반' className='mb-4 flex flex-wrap gap-1.5'>
       {groups.map((g) => (
-        <button
-          key={g.id}
-          type='button'
-          aria-pressed={g.id === groupId}
-          onClick={() => g.id !== groupId && onPick(g.id)}
-          className={`rounded-pill border px-3 py-1.5 type-label-lg transition-colors ${
-            g.id === groupId
-              ? 'border-brand bg-brand text-white'
-              : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
-          }`}
-        >
+        <FilterChip key={g.id} selected={g.id === groupId} selectMode='single' onClick={() => g.id !== groupId && onPick(g.id)}>
           {g.title}
-        </button>
+        </FilterChip>
       ))}
     </nav>
   );

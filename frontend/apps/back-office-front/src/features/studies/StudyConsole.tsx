@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { Badge, Button, Modal } from '@studyclub/ui';
+import { Badge, Button, Modal, Tabs } from '@studyclub/ui';
 import { useIsMutating } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 
@@ -239,26 +239,18 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
         />
       </div>
 
-      <nav className='mt-6 flex gap-1 border-b border-border'>
-        {TABS.map((tb) => (
-          <button
-            key={tb.key}
-            type='button'
-            disabled={savingForm || savingParticipants}
-            onClick={() => {
-              if (tb.key === tab) return;
-              // 신청자 탭(반 편성)과 일정 탭은 저장 전 고침을 따로 묻는다 — 한 번에 한 탭만 열려 있다
-              if (dirtyParticipants) setPendingTab(tb.key);
-              else guard(() => setTab(tb.key));
-            }}
-            className={`-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors ${
-              tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
-            }`}
-          >
-            {tb.label}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        className='mt-6'
+        activeKey={tab}
+        items={TABS.map((tb) => ({ key: tb.key, label: tb.label, disabled: savingForm || savingParticipants }))}
+        onChange={(key) => {
+          const next = key as (typeof TABS)[number]['key'];
+          if (next === tab) return;
+          // 신청자 탭(반 편성)과 일정 탭은 저장 전 고침을 따로 묻는다 — 한 번에 한 탭만 열려 있다
+          if (dirtyParticipants) setPendingTab(next);
+          else guard(() => setTab(next));
+        }}
+      />
 
       <div className='mt-5'>
         {tab === 'results' && <ApplicationResultsTab studyId={detail.id} onEditForm={() => setTab('form')} />}

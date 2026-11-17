@@ -6,7 +6,8 @@
 import { useRouter } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Button, Pagination } from '@studyclub/ui';
+import { Button, Input, Pagination } from '@studyclub/ui';
+import { Search } from 'lucide-react';
 
 import { PageHeader } from '@/components/ui';
 import { FeedbacksNotice, FeedbacksSkeleton, FeedbacksTable } from '@/features/feedbacks/components/FeedbacksTable';
@@ -88,14 +89,16 @@ function FeedbacksList() {
       <PageHeader title='문의·오류 신고' />
 
       <div className='mb-3 flex flex-wrap items-center gap-2'>
-        <input
+        <Input
           type='search'
+          size='sm'
+          leadingIcon={<Search size={15} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder='제목·내용 검색'
           aria-label='제목·내용 검색'
           maxLength={SEARCH_MAX}
-          className='h-9 w-52 shrink-0 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='w-52'
         />
         <FilterSelect
           label='유형'

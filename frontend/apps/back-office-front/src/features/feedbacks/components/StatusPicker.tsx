@@ -76,6 +76,7 @@ export function StatusPicker({
   return (
     <div ref={ref} className='relative'>
       <button
+        // ui-native: 처리 상태 고르기 열기 — 상태 색 알약 모양의 고유 listbox 팝오버 단추
         type='button'
         aria-haspopup='listbox'
         aria-expanded={open}
@@ -103,6 +104,7 @@ export function StatusPicker({
             return (
               <li key={s.value}>
                 <button
+                  // ui-native: 처리 상태 목록의 한 줄 — listbox 팝오버의 option
                   type='button'
                   role='option'
                   aria-selected={s.value === value}
