@@ -7,7 +7,7 @@ import { getUser } from '@core/lib/auth';
 import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@core/lib/layout';
 import { getDisplayName } from '@core/lib/me';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
-import type { EventChannel, EventRegistration, Locale } from '@studyclub/types';
+import type { EventChannel, EventQuestion, EventRegistration, Locale } from '@studyclub/types';
 import { Badge, Button, Checkbox, Input, Modal, Select, Textarea } from '@studyclub/ui';
 import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, MapPin, Video } from 'lucide-react';
 
@@ -17,10 +17,13 @@ import {
   REGISTRATION_LABEL,
   SELF,
   ZONES,
+  answersForUnchangedQuestions,
   channels,
+  eventQuestionVersion,
   eventStatus,
+  isEventPublic,
   formatDate,
-  normalizeEventAnswers,
+  latestRegistrationsByEvent,
   occupiesSeat,
   safeWebUrl,
   seatInfo,
@@ -36,6 +39,8 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
   const [viewAnswers, setViewAnswers] = useState(false);
   const [channel, setChannel] = useState<EventChannel>('ONLINE');
   const [answers, setAnswers] = useState<EventRegistration['answers']>({});
+  const [formQuestions, setFormQuestions] = useState<EventQuestion[]>([]);
+  const [questionsUpdated, setQuestionsUpdated] = useState(false);
   const [error, setError] = useState('');
   const [zone, setZone] = useState('');
   const [applicant, setApplicant] = useState(SELF);
@@ -57,12 +62,11 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
     return () => clearTimeout(timer);
   }, [focusRequest]);
   useEffect(() => {
-    if (!currentQuestions) return;
-    setAnswers((current) => {
-      const next = normalizeEventAnswers(currentQuestions, current);
-      return JSON.stringify(next) === JSON.stringify(current) ? current : next;
-    });
-  }, [currentQuestions]);
+    if (!open || !currentQuestions || eventQuestionVersion(formQuestions) === eventQuestionVersion(currentQuestions)) return;
+    setAnswers((current) => answersForUnchangedQuestions(formQuestions, currentQuestions, current));
+    setFormQuestions(currentQuestions);
+    setQuestionsUpdated(true);
+  }, [currentQuestions, formQuestions, open]);
   if (!state)
     return (
       <div className={`${PAGE} py-12`} role='status'>
@@ -70,7 +74,7 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
       </div>
     );
   const event = state.events.find((item) => item.id === id);
-  if (!event)
+  if (!event || !isEventPublic(event))
     return (
       <div className={`${PAGE} space-y-4 py-12`}>
         <p>행사를 찾을 수 없습니다.</p>
@@ -79,13 +83,15 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
         </Link>
       </div>
     );
-  const registration = state.registrations.find((r) => r.eventId === id && r.memberId === SELF.memberId);
+  const registration = latestRegistrationsByEvent(state.registrations, SELF.memberId).get(id);
   const currentZone = zone || displayTimeZone;
   const status = eventStatus(state, event, now);
   const canApply = status === '모집 중' && (!registration || registration.status === 'CANCELLED');
   function startApplication() {
     setChannel(channels(event!).find((mode) => seatInfo(state!, event!, mode).remaining > 0) ?? channels(event!)[0]!);
     setAnswers({});
+    setFormQuestions(event!.questions);
+    setQuestionsUpdated(false);
     setError('');
     setOpen(true);
   }
@@ -94,7 +100,10 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
   const submit = () => {
     const user = getUser();
     const currentApplicant = user ? { ...applicant, name: getDisplayName() ?? user.nickname ?? SELF.name, email: user.email || '' } : applicant;
-    const failure = dispatch({ type: 'APPLY', eventId: id, channel, answers, applicant: { ...currentApplicant, timeZone: displayTimeZone } });
+    const failure = dispatch({
+      type: 'APPLY', eventId: id, channel, answers, questionVersion: eventQuestionVersion(formQuestions),
+      applicant: { ...currentApplicant, timeZone: displayTimeZone },
+    });
     setError(failure ?? '');
     if (!failure) {
       setOpen(false);
@@ -113,11 +122,6 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
         <ArrowLeft size={16} />
         행사 목록
       </Link>
-      {event.status === 'DRAFT' && (
-        <p className='mt-4 rounded-control bg-warning-bg p-3 type-body-sm text-warning-fg'>
-          아직 공개 전인 행사입니다. 운영진 화면에서 공개한 뒤 신청할 수 있어요.
-        </p>
-      )}
       <div className={`mt-6 ${DETAIL_GRID}`}>
         <article className='min-w-0'>
           <header data-anno='event-apply:2' className='space-y-4 border-b border-border pb-7'>
@@ -356,7 +360,12 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
               );
             })}
           </fieldset>
-          {event.questions.map((q) => {
+          {questionsUpdated && (
+            <p role='status' className='rounded-control bg-warning-bg p-3 type-body-sm text-warning-fg'>
+              신청 질문이 바뀌었어요. 변경된 질문을 확인한 뒤 신청해 주세요.
+            </p>
+          )}
+          {formQuestions.map((q) => {
             const label = `${q.label}${q.required ? ' (필수)' : ''}`;
             if (q.type === 'TEXT' || q.type === 'TEXTAREA') {
               const Component = q.type === 'TEXT' ? Input : Textarea;

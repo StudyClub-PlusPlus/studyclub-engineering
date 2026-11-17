@@ -7,7 +7,7 @@ import type { EventChannel, PreviewEvent } from '@studyclub/types';
 import { Button, Modal, Select, Tabs, Textarea } from '@studyclub/ui';
 
 import { useEventWorkspace } from './EventWorkspace';
-import { CHANNEL_LABEL, cancellationEventTemplate, channels, renderEventNoticePreview } from './model';
+import { CHANNEL_LABEL, channels, renderEventNoticePreview } from './model';
 import { toPreviewDocument } from '@/proto/mail/render';
 
 export function EventMailComposer({
@@ -33,15 +33,16 @@ export function EventMailComposer({
   );
   const [tab, setTab] = useState('write');
   const [error, setError] = useState('');
-  const template = state?.eventTemplates[0];
-  const mailTemplate = isCancellation && template ? cancellationEventTemplate(template) : template;
+  const templateLabel = isCancellation ? '행사 취소 안내' : '행사 안내';
+  const trigger = isCancellation ? 'EVENT_CANCELLATION' : 'EVENT_ANNOUNCEMENT';
+  const template = state?.eventTemplates.find((item) => item.trigger === trigger);
   const recipients =
     state?.registrations.filter((r) =>
       isCancellation
         ? r.eventId === event.id && recipientIds.includes(r.id)
         : r.eventId === event.id && r.status === 'CONFIRMED' && (channel === 'ALL' || r.channel === channel),
     ) ?? [];
-  const rendered = mailTemplate ? renderEventNoticePreview(mailTemplate, event, channel, notice, displayTimeZone) : null;
+  const rendered = template ? renderEventNoticePreview(template, event, channel, notice, displayTimeZone) : null;
   return (
     <Modal
       open
@@ -112,7 +113,7 @@ export function EventMailComposer({
         )}
         {!template && (
           <p role='status' className='type-body-sm text-fg-muted'>
-            등록된 행사 안내 템플릿이 없습니다.
+            등록된 {templateLabel} 템플릿이 없습니다.
           </p>
         )}
         <Tabs
@@ -146,7 +147,7 @@ export function EventMailComposer({
                 />
               </>
             ) : (
-              <p className='type-body-sm text-fg-muted'>행사 안내 템플릿이 등록되면 메일을 미리 볼 수 있습니다.</p>
+              <p className='type-body-sm text-fg-muted'>{templateLabel} 템플릿이 등록되면 메일을 미리 볼 수 있습니다.</p>
             )}
           </div>
         )}

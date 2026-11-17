@@ -10,7 +10,7 @@
 flowchart LR
   A["유저 목록"] --> B["회원의 현재 권한"]
   B --> C{"바꿀 수 있는 줄인가"}
-  C -->|"아니오 — 본인·마지막 캡틴"| D["이유 안내"]
+  C -->|"아니오 — 본인·마지막 캡틴·담당 중인 스터디"| D["이유 안내"]
   C -->|예| E["캡틴 / 크루 고르기"]
   E --> F["즉시 반영"]
   E -->|"바깥·Esc"| A
@@ -23,9 +23,10 @@ flowchart LR
 2. 선택 즉시 반영
 3. 자기 권한 변경 차단
 4. 마지막 캡틴 강등 차단
-5. 변경 불가 행 구분 및 사유 안내
-6. 역할별 기본 권한 표 열람
-7. 네비게이터는 이 화면에서 주지 않음 — 스터디 크루 명단에서 지정
+5. 진행 중인 스터디의 담당 캡틴 강등 차단 — 사유에 스터디 제목. 끝난 스터디만 맡았으면 강등되고 그 스터디들의 담당 캡틴 비움
+6. 변경 불가 행 구분 및 사유 안내
+7. 역할별 기본 권한 표 열람
+8. 네비게이터는 이 화면에서 주지 않음 — 스터디 크루 명단에서 지정
 
 ## 2. 화면명세
 
@@ -76,6 +77,7 @@ flowchart LR
   - **지금 값을 따로 표시하지 않는다** — 닫힌 자리에 이미 보이므로 목록 안에서 또 말하면 같은 말이 두 번이다
   - 자기 권한은 스스로 바꿀 수 없다
   - 마지막 캡틴은 내릴 수 없다 — 되돌릴 사람이 사라진다
+  - **진행 중인 스터디의 담당 캡틴은 크루로 내릴 수 없다** — 짚으면 「담당 중인 스터디가 있습니다: {제목들}. 스터디 신청자 탭에서 담당 캡틴을 먼저 바꿔 주세요.」. 끝난 스터디만 맡았으면 내릴 수 있고, 그 스터디들의 담당 캡틴은 비워진다
   - **디스코드 역할은 이 화면이 바꾸지 못한다** — 바꾼 사람이 그 자리에서 알아야 한다. 나중에 알면 권한만 올라가고 디스코드는 그대로인 사람이 남는다
   - 결과는 **토스트로 한 번만** 알린다. 창으로 띄우지 않는다 ([POL-0008](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0008-screen-rules.md))
 - **데이터**: 계정 권한 값 (쓰기)
@@ -105,7 +107,7 @@ flowchart LR
 
 - **내용**
   - 기본 — 지금 권한 하나
-  - 바꿀 수 없음 — 구분된 칸, 짚으면 이유(본인 · 마지막 캡틴)
+  - 바꿀 수 없음 — 구분된 칸, 짚으면 이유(본인 · 마지막 캡틴 · 담당 중인 스터디)
   - 고르는 중 — 캡틴 · 크루
   - **변경 중 — 원래 배지 그대로, 옆에서 하나가 돈다. 그 줄은 다시 고를 수 없다**
   - 완료 — 바뀐 배지와 알림 한 번(디스코드 안내 포함)
@@ -129,8 +131,8 @@ flowchart LR
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front `/users` 역할 바꾸기 · 기본 권한 표 | 있음 — `RoleBadgeSelect` · `PermissionMatrixDialog` 가 API 연결 | 없음 |
-| BE | `PATCH /api/admin/users/{accountId}/system-role` · `GET /api/admin/role-permissions` | 구현완료 | 없음 |
+| FE | back-office-front `/users` 역할 바꾸기 · 기본 권한 표 | 있음 — `RoleBadgeSelect` · `PermissionMatrixDialog` 가 API 연결. `OWNS_STUDY` 문구 반영 (2026-11-16) | 없음 |
+| BE | `PATCH /api/admin/users/{accountId}/system-role` · `GET /api/admin/role-permissions` | 구현완료 — `409 OWNS_STUDY` · 끝난 스터디 담당 칸 비우기 (2026-11-16) | 없음 |
 
 ### 데이터 관계
 
@@ -158,7 +160,7 @@ erDiagram
 - 요청자 본인의 권한 변경은 거절한다
 - 대상이 마지막 `ADMIN` 이고 `MEMBER` 로 내리는 요청은 거절한다. 판정은 같은 트랜잭션 안에서 `ADMIN` 수를 세서 한다
 - **저장되기 전에는 화면을 바꾸지 않는다.** 실패하면 바뀐 것이 없으므로 배지도 그대로다
-- 서버가 거절하면 그 사유를 적어 알린다 — 본인 변경(`CANNOT_CHANGE_OWN_ROLE`) · 마지막 캡틴(`LAST_ADMIN_REQUIRED`)
+- 서버가 거절하면 그 사유를 적어 알린다 — 본인 변경(`CANNOT_CHANGE_OWN_ROLE`) · 마지막 캡틴(`LAST_ADMIN_REQUIRED`) · 진행 중 스터디의 담당 캡틴(`OWNS_STUDY`)
 - 백오피스 로그인은 `SYSTEM_ROLE = ADMIN` 만 통과하므로, 캡틴으로 올린 회원은 다음 로그인부터 백오피스에 들어온다 — [back-office-login/spec.md](../../../specs/back-office-login/spec.md)
 
 ### API
@@ -167,7 +169,7 @@ erDiagram
 | --- | --- | --- |
 | PATCH | `/api/admin/users/{accountId}/system-role` | 캡틴 |
 
-계약은 [admin-users/spec.md](../../../specs/admin-users/spec.md). 본인 변경은 409 `CANNOT_CHANGE_OWN_ROLE`, 마지막 캡틴 강등은 409 `LAST_ADMIN_REQUIRED`.
+계약은 [admin-users/spec.md](../../../specs/admin-users/spec.md). 본인 변경은 409 `CANNOT_CHANGE_OWN_ROLE`, 마지막 캡틴 강등은 409 `LAST_ADMIN_REQUIRED`, 진행 중 스터디의 담당 캡틴 강등은 409 `OWNS_STUDY`.
 
 ### 권한
 

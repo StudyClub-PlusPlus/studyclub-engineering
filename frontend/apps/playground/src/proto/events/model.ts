@@ -1,4 +1,6 @@
+import { resolveWallInput } from '@core/lib/meetings';
 import { zoneAbbreviation } from '@core/lib/schedule-timezone';
+import { EVENT_PREVIEW_MEMBER } from '@studyclub/mock/data';
 import type {
   EventChannel,
   EventQuestion,
@@ -10,7 +12,19 @@ import type {
   PreviewEvent,
 } from '@studyclub/types';
 
-export const SELF = { memberId: 'preview-self', name: '코딩구름', email: 'me@example.test' };
+export const SELF = EVENT_PREVIEW_MEMBER;
+export const EVENT_LIMITS = {
+  title: 60,
+  summary: 120,
+  description: 5000,
+  location: 300,
+  questionLabel: 200,
+  optionLabel: 100,
+  questions: 20,
+  minOptions: 2,
+  maxOptions: 10,
+} as const;
+const ADMIN_PAGE_SIZE = 20;
 export const CHANNEL_LABEL = { ONLINE: '온라인', OFFLINE: '오프라인' };
 export const FORMAT_LABEL = { ...CHANNEL_LABEL, HYBRID: '온라인·오프라인' };
 export const CONFIRM_LABEL = { AUTO: '자동 확정', REVIEW: '운영진 확인 후 확정' };
@@ -26,6 +40,22 @@ export const ZONES = [
   { value: 'America/New_York', label: '미국 (뉴욕)' },
   { value: 'America/Los_Angeles', label: '미국 (로스앤젤레스)' },
 ];
+
+export function eventQuestionVersion(questions: EventQuestion[]) {
+  return JSON.stringify(questions.map(({ id, label, type, required, options }) => [id, label, type, required, options]));
+}
+
+export function answersForUnchangedQuestions(
+  previous: EventQuestion[],
+  current: EventQuestion[],
+  answers: EventRegistration['answers'],
+) {
+  const previousById = new Map(previous.map((question) => [question.id, eventQuestionVersion([question])]));
+  return normalizeEventAnswers(
+    current.filter((question) => previousById.get(question.id) === eventQuestionVersion([question])),
+    answers,
+  );
+}
 
 export function normalizeEventAnswers(
   questions: EventQuestion[],
@@ -64,21 +94,28 @@ export function wallTime(iso: string, timeZone: string) {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
-/** DST로 사라지거나 두 번 나타나는 시각은 임의로 선택하지 않는다. */
-export function wallTimeToIso(value: string, zone: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
-  const naive = Date.parse(`${value}:00Z`);
-  if (!Number.isFinite(naive)) return null;
-  const offsets = new Set(
-    [-24, 0, 24].map((hours) => {
-      const sample = new Date(naive + hours * 3600000).toISOString();
-      return Date.parse(`${wallTime(sample, zone)}:00Z`) - Date.parse(sample);
-    }),
-  );
-  const matches = [...offsets]
-    .map((offset) => new Date(naive - offset).toISOString())
-    .filter((iso) => wallTime(iso, zone) === value);
-  return matches.length === 1 ? matches[0]! : null;
+export function resolveEventInput(
+  value: string,
+  timeZone: string,
+  saved?: { iso: string; timeZone: string },
+  selectedIso?: string,
+) {
+  const [date = '', time = ''] = value.split('T');
+  const savedIso = saved?.timeZone === timeZone ? saved.iso : undefined;
+  const resolution = resolveWallInput(date, time, timeZone, [selectedIso, savedIso]);
+  const iso = resolution.instant?.getTime() === Date.parse(savedIso ?? '')
+    ? savedIso
+    : resolution.instant?.toISOString();
+  return { ...resolution, iso };
+}
+
+export function eventAdminPage(events: PreviewEvent[], page: number) {
+  const pageCount = Math.max(1, Math.ceil(events.length / ADMIN_PAGE_SIZE));
+  const current = Math.min(page, pageCount);
+  const rows = [...events]
+    .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt) || a.id.localeCompare(b.id))
+    .slice((current - 1) * ADMIN_PAGE_SIZE, current * ADMIN_PAGE_SIZE);
+  return { rows, current, pageCount };
 }
 
 export function formatDate(iso: string, zone: string, locale = 'ko-KR', includeTimeZone = true) {
@@ -98,6 +135,22 @@ export function formatDate(iso: string, zone: string, locale = 'ko-KR', includeT
 export function channels(event: PreviewEvent): EventChannel[] {
   return event.format === 'HYBRID' ? ['ONLINE', 'OFFLINE'] : [event.format];
 }
+export function isEventPublic(event: PreviewEvent) {
+  return Boolean(event.publishedAt);
+}
+
+export function latestRegistrationsByEvent(registrations: EventRegistration[], memberId: string) {
+  const latest = new Map<string, EventRegistration>();
+  for (const registration of registrations) {
+    if (registration.memberId !== memberId) continue;
+    const previous = latest.get(registration.eventId);
+    if (!previous || Date.parse(registration.createdAt) > Date.parse(previous.createdAt)) {
+      latest.set(registration.eventId, registration);
+    }
+  }
+  return latest;
+}
+
 export function occupiesSeat(r: EventRegistration) {
   return r.status === 'PENDING' || r.status === 'CONFIRMED';
 }
@@ -111,13 +164,22 @@ export function seatInfo(state: EventPreviewState, event: PreviewEvent, channel:
     remaining: Math.max(0, capacity - rows.length),
   };
 }
+function hasEventEnded(event: PreviewEvent, now: number) {
+  if (event.endsAt) return Date.parse(event.endsAt) <= now;
+  const currentDay = wallTime(new Date(now).toISOString(), event.timeZone).slice(0, 10);
+  const eventDay = wallTime(event.startsAt, event.timeZone).slice(0, 10);
+  return currentDay > eventDay;
+}
+
+export function canManageEventRegistrations(event: PreviewEvent, now: number) {
+  return event.status !== 'CANCELLED' && !hasEventEnded(event, now);
+}
+
 export function eventStatus(state: EventPreviewState, event: PreviewEvent, now = Date.now()) {
-  if (event.status === 'DRAFT') return '작성 중';
   if (event.status === 'CANCELLED') return '행사 취소';
-  if (event.endsAt && Date.parse(event.endsAt) <= now) return '종료';
-  if (!event.endsAt && wallTime(new Date(now).toISOString(), event.timeZone).slice(0, 10) > wallTime(event.startsAt, event.timeZone).slice(0, 10)) return '종료';
-  if (Date.parse(event.startsAt) <= now) return event.endsAt ? '진행 중' : '행사 시작';
-  if (event.status === 'CLOSED' || Date.parse(event.deadlineAt) <= now) return '모집 마감';
+  if (hasEventEnded(event, now)) return '종료';
+  if (event.status === 'CLOSED' || Date.parse(event.deadlineAt) <= now || Date.parse(event.startsAt) <= now)
+    return '모집 마감';
   if (channels(event).every((channel) => seatInfo(state, event, channel).remaining === 0)) return '정원 마감';
   return '모집 중';
 }
@@ -134,7 +196,13 @@ export function validateEvent(event: PreviewEvent, state: EventPreviewState, now
   const previous = state.events.find((e) => e.id === event.id);
   if (!event.title.trim() || !event.summary.trim() || !event.description.trim())
     return '행사명, 한 줄 소개, 모집 상세를 입력해 주세요.';
-  if (event.title.length > 60) return '행사명은 60자 이내로 입력해 주세요.';
+  for (const [key, label] of [
+    ['title', '행사명은'],
+    ['summary', '한 줄 소개는'],
+    ['description', '모집 상세는'],
+  ] as const) {
+    if (event[key].length > EVENT_LIMITS[key]) return `${label} ${EVENT_LIMITS[key]}자 이내로 입력해 주세요.`;
+  }
   if (
     ![event.startsAt, event.deadlineAt].every((x) => Number.isFinite(Date.parse(x))) ||
     (event.endsAt && !Number.isFinite(Date.parse(event.endsAt)))
@@ -157,18 +225,33 @@ export function validateEvent(event: PreviewEvent, state: EventPreviewState, now
       return '정원은 1명부터 10,000명까지 입력해 주세요.';
     if (info.capacity < info.pending + info.confirmed) return '확인 대기와 참가 확정 인원보다 정원을 줄일 수 없습니다.';
   }
-  if (channels(event).includes('OFFLINE') && !event.location.trim()) return '오프라인 장소를 입력해 주세요.';
+  if (channels(event).includes('OFFLINE')) {
+    if (!event.location.trim()) return '오프라인 장소를 입력해 주세요.';
+    if (event.location.length > EVENT_LIMITS.location)
+      return `오프라인 장소는 ${EVENT_LIMITS.location}자 이내로 입력해 주세요.`;
+  }
   if (event.onlineUrl && !safeWebUrl(event.onlineUrl))
     return '온라인 참여 링크는 http 또는 https 주소로 입력해 주세요.';
+  if (event.questions.length > EVENT_LIMITS.questions)
+    return `신청 질문은 최대 ${EVENT_LIMITS.questions}개까지 추가할 수 있습니다.`;
   for (const q of event.questions) {
     if (!q.label.trim()) return '질문 제목을 입력해 주세요.';
-    if (
-      ['RADIO', 'CHECKBOX', 'SELECT'].includes(q.type) &&
-      (q.options.length < 2 || q.options.some((x) => !x.trim()) || new Set(q.options).size !== q.options.length)
-    )
-      return '선택지는 서로 다른 내용으로 2개 이상 입력해 주세요.';
+    if (q.label.length > EVENT_LIMITS.questionLabel)
+      return `질문 제목은 ${EVENT_LIMITS.questionLabel}자 이내로 입력해 주세요.`;
+    if (['RADIO', 'CHECKBOX', 'SELECT'].includes(q.type)) {
+      const options = q.options.map((option) => option.trim());
+      if (
+        options.length < EVENT_LIMITS.minOptions || options.length > EVENT_LIMITS.maxOptions ||
+        options.some((option) => !option) || new Set(options).size !== options.length
+      )
+        return `서로 다른 선택지를 ${EVENT_LIMITS.minOptions}~${EVENT_LIMITS.maxOptions}개 입력해 주세요.`;
+      if (q.options.some((option) => option.length > EVENT_LIMITS.optionLabel))
+        return `선택지는 하나당 ${EVENT_LIMITS.optionLabel}자 이내로 입력해 주세요.`;
+    }
   }
   if (previous?.status === 'CANCELLED') return '취소된 행사는 수정할 수 없습니다.';
+  if (previous && Date.parse(previous.startsAt) <= now && Date.parse(event.startsAt) > now)
+    return '이미 시작한 행사의 시작 시각을 미래로 옮길 수 없습니다.';
   if (
     previous &&
     previous.confirmation !== event.confirmation &&
@@ -185,13 +268,19 @@ export function validateEvent(event: PreviewEvent, state: EventPreviewState, now
   return null;
 }
 
-const NOTICE_VARIABLES = ['nickname', 'eventTitle', 'eventSchedule', 'participation', 'channel', 'notice'];
-const AUTOMATIC_EVENT_VARIABLES = ['nickname', 'eventTitle', 'eventSchedule', 'participation', 'channel'];
+const CANCELLATION_VARIABLES = ['nickname', 'eventTitle', 'notice'];
+const NOTICE_VARIABLES = [...CANCELLATION_VARIABLES, 'eventSchedule', 'participation', 'channel'];
+const AUTOMATIC_EVENT_VARIABLES = ['nickname', 'eventTitle', 'eventSchedule', 'channel'];
+
+export function isEventNoticeTemplate(template: PreviewNotificationTemplate): template is EventNoticeTemplate {
+  return template.trigger === 'EVENT_ANNOUNCEMENT' || template.trigger === 'EVENT_CANCELLATION';
+}
 export function validateEventTemplate(template: EventNoticeTemplate): string | null {
   if (!template.subject.trim() || !template.body.trim()) return '템플릿 제목과 본문을 입력해 주세요.';
   if (!/{{\s*notice\s*}}/.test(template.body)) return '행사 안내 내용이 들어갈 {{notice}}를 본문에 넣어 주세요.';
+  const allowed = template.trigger === 'EVENT_CANCELLATION' ? CANCELLATION_VARIABLES : NOTICE_VARIABLES;
   const unknown = [...`${template.subject} ${template.body}`.matchAll(/{{([\s\S]*?)}}/g)].find(
-    (match) => !NOTICE_VARIABLES.includes(match[1]!.trim()),
+    (match) => !allowed.includes(match[1]!.trim()),
   );
   return unknown ? `지원하지 않는 변수입니다: ${unknown[0]}` : null;
 }
@@ -209,8 +298,11 @@ export function mergeNotificationTemplates(
 
 function validateAutomaticEventTemplate(template: PreviewNotificationTemplate): string | null {
   if (!template.subject.trim() || !template.body.trim()) return '템플릿 제목과 본문을 입력해 주세요.';
+  const allowed = template.trigger === 'EVENT_REGISTRATION_CONFIRMED'
+    ? [...AUTOMATIC_EVENT_VARIABLES, 'participation']
+    : AUTOMATIC_EVENT_VARIABLES;
   const unknown = [...`${template.subject} ${template.body}`.matchAll(/{{([\s\S]*?)}}/g)].find(
-    (match) => !AUTOMATIC_EVENT_VARIABLES.includes(match[1]!.trim()),
+    (match) => !allowed.includes(match[1]!.trim()),
   );
   return unknown ? `지원하지 않는 변수입니다: ${unknown[0]}` : null;
 }
@@ -257,7 +349,10 @@ export function renderEventNoticePreview(
   notice: string,
   displayTimeZone = event.timeZone,
 ) {
-  return renderNoticeValues(template, { ...eventNoticeValues(event, channel, displayTimeZone), notice: notice.trim() });
+  const values = template.trigger === 'EVENT_CANCELLATION'
+    ? { eventTitle: event.title }
+    : eventNoticeValues(event, channel, displayTimeZone);
+  return renderNoticeValues(template, { ...values, notice: notice.trim() });
 }
 
 /** 구버전 공통 미리보기의 빈 행사 정보만 한 번 채운다. 개인별 발송 결과는 변경하지 않는다. */
@@ -265,7 +360,8 @@ export function fillLegacyEventMailPreview(mail: EventMailPreview, event: Previe
   if (!mail.deliveries || mail.previewVersion === 2) return mail;
   const channel = mail.audience === 'ONLINE' || mail.audience === 'OFFLINE' ? mail.audience : 'ALL';
   // 개별 치환본에도 남은 변수는 운영진이 본문에 직접 쓴 문자열일 수 있어 그대로 둔다.
-  const values = Object.fromEntries(Object.entries(eventNoticeValues(event, channel)).filter(([key]) => {
+  const eventValues = mail.audience === 'CANCELLED_ACTIVE' ? { eventTitle: event.title } : eventNoticeValues(event, channel);
+  const values = Object.fromEntries(Object.entries(eventValues).filter(([key]) => {
     const literal = new RegExp(`{{\\s*${key}\\s*}}`);
     return !mail.deliveries!.some((delivery) => literal.test(delivery.body) || literal.test(delivery.subject));
   }));
@@ -279,8 +375,11 @@ export function renderEventNotice(
   notice: string,
   displayTimeZone = recipient.timeZone ?? event.timeZone,
 ) {
+  const values = template.trigger === 'EVENT_CANCELLATION'
+    ? { eventTitle: event.title }
+    : eventNoticeValues(event, recipient.channel, displayTimeZone);
   return renderNoticeValues(template, {
-    ...eventNoticeValues(event, recipient.channel, displayTimeZone),
+    ...values,
     nickname: recipient.name,
     notice: notice.trim(),
   });
@@ -299,8 +398,10 @@ function renderAutomaticEventMail(
   event: PreviewEvent,
   registration: EventRegistration,
 ) {
+  const values = eventNoticeValues(event, registration.channel, registration.timeZone ?? event.timeZone);
   return renderNoticeValues(template, {
-    ...eventNoticeValues(event, registration.channel, registration.timeZone ?? event.timeZone),
+    ...values,
+    participation: registration.status === 'CONFIRMED' ? values.participation : '',
     nickname: registration.name,
     channel: CHANNEL_LABEL[registration.channel],
   });
@@ -346,23 +447,11 @@ export function createEventNoticeMail(
   };
 }
 
-export function cancellationEventTemplate(template: EventNoticeTemplate): EventNoticeTemplate {
-  return {
-    ...template,
-    subject: '[StudyClub] {{eventTitle}} 행사 취소 안내',
-    body: template.body
-      .replace('>행사 안내</p>', '>행사 취소 안내</p>')
-      .replace(
-        '이 메일은 참가가 확정된 {{eventTitle}} 행사의 운영 안내를 위해 발송되었습니다.',
-        '이 메일은 {{eventTitle}} 행사 취소 안내를 위해 발송되었습니다.',
-      ),
-  };
-}
-
 export type EventAction =
+  | { type: 'CREATE'; event: PreviewEvent }
   | { type: 'SAVE'; event: PreviewEvent }
   | { type: 'STATUS'; eventId: string; status: PreviewEvent['status'] }
-  | { type: 'APPLY'; eventId: string; channel: EventChannel; answers: EventRegistration['answers']; applicant?: typeof SELF & { timeZone?: string } }
+  | { type: 'APPLY'; eventId: string; channel: EventChannel; questionVersion: string; answers: EventRegistration['answers']; applicant?: typeof SELF & { timeZone?: string } }
   | { type: 'DECIDE'; registrationId: string; status: 'CONFIRMED' | 'DECLINED' }
   | { type: 'CANCEL'; registrationId: string }
   | { type: 'ADMIN_CANCEL'; registrationId: string }
@@ -370,46 +459,56 @@ export type EventAction =
   | { type: 'MAIL'; eventId: string; channel: EventChannel | 'ALL'; templateId: number; notice: string; displayTimeZone?: string }
   | { type: 'CANCELLATION_MAIL'; eventId: string; templateId: number; notice: string; displayTimeZone?: string };
 
+function appendAutomaticEventMail(
+  state: EventPreviewState,
+  trigger: EventAutomaticTrigger,
+  event: PreviewEvent,
+  registration: EventRegistration,
+  now: number,
+  mailId?: string,
+) {
+  const template = state.notificationTemplates?.find((item) => item.trigger === trigger);
+  if (!template) return;
+  const { subject, body, format } = renderAutomaticEventMail(template, event, registration);
+  state.mails.unshift({
+    id: mailId ?? crypto.randomUUID(),
+    eventId: event.id,
+    recipients: [registration.email],
+    subject: subject.startsWith('[StudyClub]') ? subject : `[StudyClub] ${subject}`,
+    body,
+    format,
+    kind: 'AUTOMATIC',
+    createdAt: new Date(now).toISOString(),
+  });
+}
+
+export function settleEndedRegistrations(current: EventPreviewState, now: number): EventPreviewState {
+  const endedEvents = new Map(
+    current.events
+      .filter((event) => event.status !== 'CANCELLED' && hasEventEnded(event, now))
+      .map((event) => [event.id, event]),
+  );
+  if (!current.registrations.some((row) => row.status === 'PENDING' && endedEvents.has(row.eventId))) return current;
+
+  const next = structuredClone(current);
+  for (const row of next.registrations) {
+    const event = endedEvents.get(row.eventId);
+    if (row.status !== 'PENDING' || !event) continue;
+    row.status = 'DECLINED';
+    appendAutomaticEventMail(next, 'EVENT_REGISTRATION_DECLINED', event, row, now, `event-end-declined-${row.id}`);
+  }
+  return next;
+}
+
 /** 플레이그라운드의 단일 판정 지점. 실제 연동에서는 동일한 판정을 서버가 반환해야 한다. */
 export function transition(current: EventPreviewState, action: EventAction, now = Date.now()): EventPreviewState {
   const state: EventPreviewState = structuredClone(current);
   const id = () => crypto.randomUUID();
-  const mail = (
-    event: PreviewEvent,
-    recipients: string[],
-    subject: string,
-    body: string,
-    format: 'HTML' | 'TEXT' = 'TEXT',
-    audience?: EventMailPreview['audience'],
-  ) => {
-    if (recipients.length)
-      state.mails.unshift({
-        id: id(),
-        eventId: event.id,
-        recipients,
-        audience,
-        format,
-        subject: subject.startsWith('[StudyClub]') ? subject : `[StudyClub] ${subject}`,
-        body,
-        kind: 'AUTOMATIC',
-        createdAt: new Date(now).toISOString(),
-      });
-  };
-  const automaticMail = (
-    trigger: EventAutomaticTrigger,
-    event: PreviewEvent,
-    registration: EventRegistration,
-  ) => {
-    const template = state.notificationTemplates?.find((item) => item.trigger === trigger);
-    if (!template) return;
-    const rendered = renderAutomaticEventMail(template, event, registration);
-    mail(event, [registration.email], rendered.subject, rendered.body, rendered.format);
-  };
   const fail = (message: string): never => {
     throw new Error(message);
   };
   if (action.type === 'TEMPLATES') {
-    const eventTemplates = action.templates.filter((t): t is EventNoticeTemplate => t.trigger === 'EVENT_ANNOUNCEMENT');
+    const eventTemplates = action.templates.filter(isEventNoticeTemplate);
     if (new Set(action.templates.map((t) => t.id)).size !== action.templates.length)
       fail('템플릿 ID가 중복되었습니다.');
     for (const template of eventTemplates) {
@@ -429,26 +528,31 @@ export function transition(current: EventPreviewState, action: EventAction, now 
     ])].filter((trigger) => !action.templates.some((template) => template.trigger === trigger));
     return state;
   }
-  if (action.type === 'SAVE') {
-    const error = validateEvent(action.event, state, now);
+  if (action.type === 'CREATE') {
+    if (state.events.some((event) => event.id === action.event.id))
+      fail('이미 사용한 행사 정보입니다. 행사 등록을 다시 열어 주세요.');
+    const event: PreviewEvent = { ...action.event, status: 'PUBLISHED', publishedAt: new Date(now).toISOString() };
+    const error = validateEvent(event, state, now);
     if (error) fail(error);
+    state.events.unshift(event);
+    return state;
+  }
+  if (action.type === 'SAVE') {
     const index = state.events.findIndex((e) => e.id === action.event.id);
-    if (index < 0) state.events.unshift(action.event);
-    else {
-      const changedToAuto = state.events[index]!.confirmation !== 'AUTO' && action.event.confirmation === 'AUTO';
-      state.events[index] = action.event;
-      if (changedToAuto) {
-        const pending = state.registrations.filter(
-          (registration) => registration.eventId === action.event.id && registration.status === 'PENDING',
-        );
-        for (const registration of pending) {
-          registration.status = 'CONFIRMED';
-          automaticMail(
-            'EVENT_REGISTRATION_CONFIRMED',
-            action.event,
-            registration,
-          );
-        }
+    if (index < 0) fail('행사를 찾을 수 없습니다.');
+    const previous = state.events[index]!;
+    if (eventStatus(state, previous, now) === '종료') fail('종료된 행사는 수정할 수 없습니다.');
+    const event = { ...action.event, status: previous.status, publishedAt: previous.publishedAt };
+    const error = validateEvent(event, state, now);
+    if (error) fail(error);
+    state.events[index] = event;
+    if (previous.confirmation !== 'AUTO' && event.confirmation === 'AUTO') {
+      const pending = state.registrations.filter(
+        (registration) => registration.eventId === event.id && registration.status === 'PENDING',
+      );
+      for (const registration of pending) {
+        registration.status = 'CONFIRMED';
+        appendAutomaticEventMail(state, 'EVENT_REGISTRATION_CONFIRMED', event, registration, now);
       }
     }
     return state;
@@ -457,37 +561,34 @@ export function transition(current: EventPreviewState, action: EventAction, now 
     const registration =
       state.registrations.find((r) => r.id === action.registrationId) ?? fail('신청 내역을 찾을 수 없습니다.');
     const event = state.events.find((e) => e.id === registration.eventId) ?? fail('행사를 찾을 수 없습니다.');
+    if (action.type !== 'CANCEL' && !canManageEventRegistrations(event, now))
+      fail('종료되거나 취소된 행사의 신청은 처리할 수 없습니다.');
     if (action.type === 'CANCEL' || action.type === 'ADMIN_CANCEL') {
       if (!occupiesSeat(registration) || (action.type === 'CANCEL' && registration.memberId !== SELF.memberId))
         fail('취소할 수 없는 신청입니다.');
       if (action.type === 'CANCEL' && Date.parse(event.deadlineAt) <= now)
         fail('신청 마감 후에는 운영진에게 취소를 요청해 주세요.');
-      if (action.type === 'ADMIN_CANCEL' && Date.parse(event.startsAt) <= now)
-        fail('행사 시작 후에는 신청을 취소할 수 없습니다.');
       registration.status = 'CANCELLED';
-      automaticMail(
-        'EVENT_REGISTRATION_CANCELLED',
-        event,
-        registration,
-      );
+      appendAutomaticEventMail(state, 'EVENT_REGISTRATION_CANCELLED', event, registration, now);
     } else {
-      if (registration.status !== 'PENDING' || event.status === 'CANCELLED' || Date.parse(event.startsAt) <= now)
-        fail('현재 상태에서는 처리할 수 없습니다.');
+      if (registration.status !== 'PENDING') fail('현재 상태에서는 처리할 수 없습니다.');
       registration.status = action.status;
-      automaticMail(
+      appendAutomaticEventMail(
+        state,
         action.status === 'CONFIRMED' ? 'EVENT_REGISTRATION_CONFIRMED' : 'EVENT_REGISTRATION_DECLINED',
         event,
         registration,
+        now,
       );
     }
     return state;
   }
   const event = state.events.find((e) => e.id === action.eventId) ?? fail('행사를 찾을 수 없습니다.');
   if (action.type === 'STATUS') {
-    if (event.status === 'CANCELLED') fail('취소된 행사는 다시 공개할 수 없습니다.');
+    if (action.status !== 'PUBLISHED' && action.status !== 'CLOSED' && action.status !== 'CANCELLED')
+      fail('지원하지 않는 행사 상태입니다.');
+    if (event.status === 'CANCELLED') fail('취소된 행사는 모집 상태를 변경할 수 없습니다.');
     if (eventStatus(state, event, now) === '종료') fail('종료된 행사는 취소하거나 모집 상태를 변경할 수 없습니다.');
-    if (action.status === 'DRAFT' && state.registrations.some((r) => r.eventId === event.id))
-      fail('신청 이력이 있는 행사는 공개를 취소할 수 없습니다.');
     if (action.status === 'PUBLISHED') {
       if (Date.parse(event.deadlineAt) <= now) fail('신청 마감시간을 현재보다 늦게 설정해 주세요.');
       const error = validateEvent({ ...event, status: 'PUBLISHED' }, state, now);
@@ -503,7 +604,7 @@ export function transition(current: EventPreviewState, action: EventAction, now 
       });
     }
   } else if (action.type === 'APPLY') {
-    if (eventStatus(state, event, now) !== '모집 중') fail('현재 신청할 수 없는 행사입니다.');
+    if (!isEventPublic(event) || eventStatus(state, event, now) !== '모집 중') fail('현재 신청할 수 없는 행사입니다.');
     const applicant = action.applicant ?? SELF;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicant.email)) fail('로그인 계정의 이메일을 확인한 뒤 다시 신청해 주세요.');
     if (
@@ -514,6 +615,8 @@ export function transition(current: EventPreviewState, action: EventAction, now 
       fail('이미 신청한 행사입니다. 내 신청 내역을 확인해 주세요.');
     if (!channels(event).includes(action.channel) || seatInfo(state, event, action.channel).remaining === 0)
       fail('선택한 참여 방식의 정원이 찼습니다.');
+    if (action.questionVersion !== eventQuestionVersion(event.questions))
+      fail('신청 질문이 변경되었습니다. 변경된 질문을 확인해 주세요.');
     const answers = normalizeEventAnswers(event.questions, action.answers);
     for (const q of event.questions) {
       const answer = answers[q.id];
@@ -534,18 +637,21 @@ export function transition(current: EventPreviewState, action: EventAction, now 
       questions: structuredClone(event.questions),
       createdAt: new Date(now).toISOString(),
     });
-    automaticMail(
+    appendAutomaticEventMail(
+      state,
       status === 'CONFIRMED' ? 'EVENT_REGISTRATION_CONFIRMED' : 'EVENT_REGISTRATION_PENDING',
       event,
       state.registrations[0]!,
+      now,
     );
   } else if (action.type === 'MAIL' || action.type === 'CANCELLATION_MAIL') {
     const isCancellationMail = action.type === 'CANCELLATION_MAIL';
     if (!isCancellationMail && event.status === 'CANCELLED') fail('취소된 행사에는 안내 메일을 보낼 수 없습니다.');
     if (isCancellationMail && event.status !== 'CANCELLED') fail('취소된 행사에만 취소 안내 메일을 보낼 수 있습니다.');
     if (!action.notice.trim()) fail('안내 내용을 입력해 주세요.');
-    const template =
-      state.eventTemplates.find((item) => item.id === action.templateId) ?? fail('등록된 행사 안내 템플릿이 없습니다.');
+    const trigger = isCancellationMail ? 'EVENT_CANCELLATION' : 'EVENT_ANNOUNCEMENT';
+    const template = state.eventTemplates.find((item) => item.id === action.templateId && item.trigger === trigger)
+      ?? fail(isCancellationMail ? '등록된 행사 취소 안내 템플릿이 없습니다.' : '등록된 행사 안내 템플릿이 없습니다.');
     const templateError = validateEventTemplate(template);
     if (templateError) fail(templateError);
     const recipients = isCancellationMail
@@ -557,10 +663,9 @@ export function transition(current: EventPreviewState, action: EventAction, now 
             (action.channel === 'ALL' || r.channel === action.channel),
         );
     if (!recipients.length) fail(isCancellationMail ? '취소 안내 메일을 받을 신청자가 없습니다.' : '선택한 대상에 참가 확정자가 없습니다.');
-    const mailTemplate = isCancellationMail ? cancellationEventTemplate(template) : template;
     state.mails.unshift(
       createEventNoticeMail(
-        mailTemplate,
+        template,
         event,
         recipients,
         action.notice,

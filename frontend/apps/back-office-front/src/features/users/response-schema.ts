@@ -19,6 +19,7 @@ export const apiAdminAccountPageSchema = z.object({
         z.null(),
         z.literal('CANNOT_CHANGE_OWN_ROLE'),
         z.literal('LAST_ADMIN_REQUIRED'),
+        z.literal('OWNS_STUDY'),
       ]),
       discordLinked: z.boolean(),
     }),

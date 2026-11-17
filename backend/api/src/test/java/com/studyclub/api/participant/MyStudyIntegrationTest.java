@@ -242,6 +242,7 @@ class MyStudyIntegrationTest {
                                 .discordChannelUrl(DISCORD_URL)
                                 .driveUrl(DRIVE_URL)
                                 .createdBy(createdBy)
+                                .ownerCaptainId(createdBy)
                                 .build());
         return study;
     }

@@ -108,6 +108,7 @@ class AdminStudyParticipantBulkIntegrationTest {
                                 .description("설명")
                                 .status(StudyStatus.ONGOING)
                                 .createdBy(ADMIN_ID)
+                                .ownerCaptainId(ADMIN_ID)
                                 .build());
         group = studyGroupRepo.save(StudyGroup.create(study.getId(), "벌크A반"));
         group2 = studyGroupRepo.save(StudyGroup.create(study.getId(), "벌크B반"));
@@ -493,6 +494,7 @@ class AdminStudyParticipantBulkIntegrationTest {
                                 .description("설명")
                                 .status(StudyStatus.ONGOING)
                                 .createdBy(ADMIN_ID)
+                                .ownerCaptainId(ADMIN_ID)
                                 .build());
         StudyGroup otherGroup = studyGroupRepo.save(StudyGroup.create(otherStudy.getId(), "다른반"));
         try {

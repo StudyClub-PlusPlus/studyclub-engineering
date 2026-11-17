@@ -116,6 +116,7 @@ class AdminStudyParticipantListIntegrationTest {
                                 .description("설명")
                                 .status(StudyStatus.ONGOING)
                                 .createdBy(ADMIN_ID)
+                                .ownerCaptainId(ADMIN_ID)
                                 .build());
         defaultGroup = studyGroupRepo.save(StudyGroup.create(study.getId(), "가반"));
         rosterGroup = studyGroupRepo.save(StudyGroup.create(study.getId(), "나반"));
@@ -237,7 +238,7 @@ class AdminStudyParticipantListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 담당 캡틴(STUDY.CREATED_BY) 행만 captain=true")
+    @DisplayName("성공 - 담당 캡틴(STUDY.OWNER_CAPTAIN_ID) 행만 captain=true")
     @SuppressWarnings("unchecked")
     void marksCaptain() {
         var participants =

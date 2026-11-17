@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   addDaysYmd,
   DOW_LABEL,
-  REPEAT_SPAN_DAYS,
+  REPEAT_SPAN_LABEL,
   TITLE_MAX,
   dateWithDow,
   dayLabel,
@@ -1083,7 +1083,7 @@ function AddForm({
             <Input
               type='date'
               label='종료일'
-              labelHint={`이 날까지 · 시작부터 최대 ${REPEAT_SPAN_DAYS}일`}
+              labelHint={`이 날까지 · 시작부터 최대 ${REPEAT_SPAN_LABEL}`}
               required
               min={draft.date}
               max={maxUntil(draft.date)}
@@ -1179,7 +1179,7 @@ function AddForm({
             <p className='font-semibold text-error-700'>{errors.form}</p>
           ) : (
             <p className='text-fg-muted'>
-              일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_DAYS}일까지.
+              일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_LABEL}까지.
             </p>
           )}
         </div>

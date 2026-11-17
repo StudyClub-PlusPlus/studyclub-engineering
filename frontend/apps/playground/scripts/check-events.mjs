@@ -22,7 +22,7 @@ try {
     outExtension: { '.js': '.mjs' },
     logLevel: 'silent',
   });
-  const { transition, seatInfo, wallTimeToIso, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates } = await import(
+  const { transition: applyTransition, answersForUnchangedQuestions, eventQuestionVersion, seatInfo, wallTime, resolveEventInput, eventAdminPage, EVENT_LIMITS, isEventPublic, latestRegistrationsByEvent, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates, settleEndedRegistrations } = await import(
     pathToFileURL(path.join(temp, 'model.mjs'))
   );
   const { toPreviewDocument } = await import(pathToFileURL(path.join(temp, 'render.mjs')));
@@ -35,6 +35,13 @@ try {
     fixture.registrations = fixture.registrations.filter((row) => ['sample-1', 'sample-2', 'sample-3'].includes(row.id));
     return fixture;
   };
+  const transition = (state, action, now) => applyTransition(
+    state,
+    action.type === 'APPLY'
+      ? { questionVersion: eventQuestionVersion(state.events.find((event) => event.id === action.eventId)?.questions ?? []), ...action }
+      : action,
+    now,
+  );
   const now = Date.parse('2026-11-13T12:00:00Z');
   const fullSeed = createState(new Date(now), noticeBody);
   assert.equal(fullSeed.notificationTemplates.filter((template) => template.trigger.startsWith('EVENT_REGISTRATION_')).length, 4);
@@ -43,17 +50,32 @@ try {
   assert.ok(noticeBody.indexOf('{{notice}}') < noticeBody.indexOf('참여 안내'));
   assert.ok(noticeBody.indexOf('참여 안내') < noticeBody.indexOf('일정: {{eventSchedule}}'));
   const populated = populateEventExamples(fullSeed, fullSeed, now);
-  assert.equal(populated.events.length, 9);
-  assert.equal(populated.registrations.length, 98);
+  assert.equal(populated.events.length, 8);
+  assert.ok(!fullSeed.events.some((event) => event.id === 'preview-event-draft'));
+  assert.equal(populated.registrations.length, 99);
+  const previewMemberRows = populated.registrations.filter(({ memberId }) => memberId === SELF.memberId);
+  assert.ok(previewMemberRows.length > 0);
+  assert.ok(previewMemberRows.every(({ name, email }) => name === SELF.name && email === SELF.email));
+  const reappliedEventId = 'preview-event-finished';
+  const attempts = previewMemberRows.filter((row) => row.eventId === reappliedEventId);
+  const currentAttempt = attempts.find((row) => row.status === 'CONFIRMED');
+  const previousAttempt = attempts.find((row) => row.status === 'CANCELLED');
+  assert.equal(attempts.length, 2);
+  assert.ok(Date.parse(currentAttempt.createdAt) > Date.parse(previousAttempt.createdAt));
+  assert.deepEqual(latestRegistrationsByEvent([previousAttempt, currentAttempt], SELF.memberId).get(reappliedEventId), currentAttempt);
+  const beforeReapplyExample = {
+    ...populated, exampleRevision: 11,
+    registrations: populated.registrations.filter((row) => row.id !== previousAttempt.id),
+  };
+  const upgradedExample = populateEventExamples(beforeReapplyExample, fullSeed, now);
+  assert.deepEqual(upgradedExample.registrations, populated.registrations);
+  assert.deepEqual(populateEventExamples(upgradedExample, fullSeed, now), upgradedExample);
+  console.log('✓ 마이페이지는 행사별 최신 신청만 표시, 운영진은 재신청 이력 전체 조회');
   for (const sampleEvent of populated.events) {
     const rows = populated.registrations.filter((row) => row.eventId === sampleEvent.id);
-    if (sampleEvent.status === 'DRAFT') {
-      assert.equal(rows.length, 0);
-      assert.ok(!populated.mails.some((mail) => mail.eventId === sampleEvent.id));
-      continue;
-    }
+    assert.ok(isEventPublic(sampleEvent));
     assert.ok(rows.length >= 8);
-    assert.ok(rows.every((row) => (/^[a-z]+\d+@(gmail\.com|naver\.com|kakao\.com|daum\.net|outlook\.com)$/.test(row.email) || row.email === SELF.email)));
+    assert.ok(rows.every((row) => /^[a-z]+\d+@(gmail\.com|naver\.com|kakao\.com|daum\.net|outlook\.com)$/.test(row.email)));
     assert.ok(rows.every((row) => row.questions.length && Object.keys(row.answers).length));
     const mailRows = populated.mails.filter((mail) => mail.eventId === sampleEvent.id);
     assert.ok(mailRows.length >= 3);
@@ -64,9 +86,78 @@ try {
   }
   for (const [id, status] of Object.entries({
     'preview-event-closed': '모집 마감', 'preview-event-finished': '종료',
-    'preview-event-cancelled': '행사 취소', 'preview-event-draft': '작성 중',
-    'preview-event-full': '정원 마감', 'preview-event-live': '진행 중',
+    'preview-event-cancelled': '행사 취소',
+    'preview-event-full': '정원 마감', 'preview-event-live': '모집 마감',
   })) assert.equal(eventStatus(populated, populated.events.find((event) => event.id === id), now), status);
+  const newEvent = {
+    ...fullSeed.events[0], id: 'preview-new-event', publishedAt: undefined, format: 'ONLINE', confirmation: 'AUTO', questions: [],
+  };
+  const unsorted = Array.from({ length: 21 }, (_, i) => ({
+    ...newEvent, id: String(i), startsAt: new Date(now + i * 3600000).toISOString(),
+  }));
+  const firstPage = eventAdminPage(unsorted, 1);
+  assert.equal(firstPage.pageCount, 2);
+  assert.deepEqual(firstPage.rows.map(({ id }) => Number(id)), Array.from({ length: 20 }, (_, i) => 20 - i));
+  assert.deepEqual(eventAdminPage(unsorted, 2).rows, [unsorted[0]]);
+  assert.equal(unsorted[0].id, '0');
+  console.log('✓ 행사 시작 시각 내림차순, 20건 단위 페이지');
+
+  const maxLengthEvent = {
+    ...newEvent,
+    format: 'OFFLINE',
+    title: '가'.repeat(EVENT_LIMITS.title),
+    summary: '가'.repeat(EVENT_LIMITS.summary),
+    description: '가'.repeat(EVENT_LIMITS.description),
+    location: '가'.repeat(EVENT_LIMITS.location),
+    questions: Array.from({ length: EVENT_LIMITS.questions }, (_, i) => ({
+      id: String(i), label: '가'.repeat(EVENT_LIMITS.questionLabel), type: i ? 'TEXT' : 'RADIO',
+      required: false,
+      options: i ? [] : Array.from({ length: EVENT_LIMITS.maxOptions }, (_, option) => String(option) + '가'.repeat(EVENT_LIMITS.optionLabel - 1)),
+    })),
+  };
+  assert.equal(transition(populated, { type: 'CREATE', event: maxLengthEvent }, now).events[0].questions.length, 20);
+  for (const key of ['title', 'summary', 'description', 'location']) {
+    assert.throws(
+      () => transition(populated, { type: 'CREATE', event: { ...maxLengthEvent, [key]: maxLengthEvent[key] + '가' } }, now),
+      new RegExp(`${EVENT_LIMITS[key]}자 이내`),
+    );
+  }
+  const [choiceQuestion, ...remainingQuestions] = maxLengthEvent.questions;
+  const saveWithQuestion = (question) => transition(
+    populated, { type: 'CREATE', event: { ...maxLengthEvent, questions: [question, ...remainingQuestions] } }, now,
+  );
+  assert.throws(() => saveWithQuestion({ ...choiceQuestion, label: choiceQuestion.label + '가' }), /200자 이내/);
+  assert.throws(() => saveWithQuestion({ ...choiceQuestion, options: [...choiceQuestion.options, '하나 더'] }), /2~10개/);
+  assert.throws(() => saveWithQuestion({ ...choiceQuestion, options: ['짧은 선택지', '가'.repeat(101)] }), /100자 이내/);
+  assert.throws(() => transition(populated, {
+    type: 'CREATE', event: { ...maxLengthEvent, questions: [...maxLengthEvent.questions, { ...choiceQuestion, id: '20' }] },
+  }, now), /최대 20개/);
+  console.log('✓ 행사 기본 정보와 신청 질문의 입력 범위');
+
+  const created = transition(populated, { type: 'CREATE', event: newEvent }, now);
+  assert.equal(created.events[0].status, 'PUBLISHED');
+  assert.equal(created.events[0].publishedAt, new Date(now).toISOString());
+  assert.equal(eventStatus(created, created.events[0], now), '모집 중');
+  assert.equal(
+    transition(created, { type: 'APPLY', eventId: newEvent.id, channel: 'ONLINE', answers: {} }, now).registrations[0].status,
+    'CONFIRMED',
+  );
+  assert.throws(
+    () => transition(populated, { type: 'CREATE', event: { ...newEvent, deadlineAt: new Date(now).toISOString() } }, now),
+    /현재보다 늦게/,
+  );
+  console.log('✓ 신규 등록 즉시 공개 및 신청, 지난 마감 차단');
+  assert.throws(() => transition(created, { type: 'STATUS', eventId: newEvent.id, status: 'DRAFT' }, now), /지원하지 않는 행사 상태/);
+  const closedAfterPublish = transition(created, { type: 'STATUS', eventId: newEvent.id, status: 'CLOSED' }, now);
+  assert.equal(eventStatus(closedAfterPublish, closedAfterPublish.events[0], now), '모집 마감');
+  const reopenedAfterClose = transition(closedAfterPublish, { type: 'STATUS', eventId: newEvent.id, status: 'PUBLISHED' }, now);
+  assert.equal(eventStatus(reopenedAfterClose, reopenedAfterClose.events[0], now), '모집 중');
+  const cancelledWithoutApplicants = transition(reopenedAfterClose, { type: 'STATUS', eventId: newEvent.id, status: 'CANCELLED' }, now);
+  assert.equal(cancelledWithoutApplicants.events[0].status, 'CANCELLED');
+  assert.equal(cancelledWithoutApplicants.events[0].publishedAt, created.events[0].publishedAt);
+  assert.deepEqual(cancelledWithoutApplicants.events[0].cancellationRecipientIds, []);
+  assert.deepEqual(cancelledWithoutApplicants.mails, created.mails);
+  console.log('✓ 미지원 상태 차단, 모집 마감·재모집 및 신청 이력 없는 행사 취소');
   const fullEvent = populated.events.find((event) => event.id === 'preview-event-full');
   const fullApplicant = populated.registrations.find((row) => row.eventId === fullEvent.id);
   const reopenedSeat = transition(populated, { type: 'ADMIN_CANCEL', registrationId: fullApplicant.id }, now);
@@ -132,6 +223,7 @@ try {
   assert.equal(cancelledExampleMail.kind, 'OPERATOR');
   assert.equal(cancelledExampleMail.audience, 'CANCELLED_ACTIVE');
   assert.ok(cancelledExampleMail.body.includes('행사 취소 안내'));
+  assert.doesNotMatch(cancelledExampleMail.body, /참여 안내|Washington Park/);
   console.log(`✓ 행사 ${populated.events.length}개·신청 ${populated.registrations.length}건·메일 ${populated.mails.length}건, 전체/방식별 일괄 발송·개별 치환·기존 상태 보존`);
 
 
@@ -223,6 +315,18 @@ try {
     now,
   );
   assert.deepEqual(questionsChanged.registrations[0].questions, existingQuestionSnapshot);
+  assert.throws(() => transition(
+    questionsChanged, { ...apply, channel: 'ONLINE', questionVersion: eventQuestionVersion(questionEvent.questions) }, now,
+  ), /신청 질문이 변경/);
+  const renamedQuestion = { ...questionEvent.questions[0], label: '의미가 바뀐 질문' };
+  const unchanged = questionEvent.questions[1];
+  const unchangedAnswer = unchanged.options[0] ?? '유지할 답변';
+  assert.deepEqual(
+    answersForUnchangedQuestions(questionEvent.questions, [renamedQuestion, unchanged], {
+      [renamedQuestion.id]: '프로젝트 경험', [unchanged.id]: unchangedAnswer,
+    }),
+    { [unchanged.id]: unchangedAnswer },
+  );
   const appliedAfterQuestionChange = transition(
     questionsChanged,
     { ...apply, channel: 'ONLINE' },
@@ -276,7 +380,7 @@ try {
   assert.equal(transition(cleared, { type: 'SAVE', event: { ...cleared.events[0], format: 'ONLINE' } }, now).events[0].format, 'ONLINE');
   const noEnd = transition(state, { type: 'SAVE', event: { ...state.events[0], endsAt: '' } }, now);
   assert.equal(noEnd.events[0].endsAt, '');
-  assert.equal(eventStatus(noEnd, noEnd.events[0], Date.parse(event.startsAt)), '행사 시작');
+  assert.equal(eventStatus(noEnd, noEnd.events[0], Date.parse(event.startsAt)), '모집 마감');
   console.log('✓ 방식별 정원, 확정 방식의 확인 대기 반영, 질문 변경 전후 신청서 스냅샷, 모집 정책 변경 제한');
 
   const auto = state.events[1];
@@ -325,7 +429,12 @@ try {
   assert.equal(composedPreview.format, 'HTML');
   const originalMail = structuredClone(state.mails[0]);
   const custom = { ...state.eventTemplates[0], subject: '[StudyClub] {{eventTitle}} 공지', body: '<p>{{nickname}}</p><p>{{notice}}</p>' };
-  state = transition(state, { type: 'TEMPLATES', templates: [custom] }, now);
+  const cancellationTemplate = state.eventTemplates.find((template) => template.trigger === 'EVENT_CANCELLATION');
+  state = transition(state, { type: 'TEMPLATES', templates: [custom, cancellationTemplate] }, now);
+  assert.throws(() => transition(state, {
+    type: 'TEMPLATES', templates: [custom, { ...cancellationTemplate, body: '{{notice}} {{participation}}' }],
+  }, now), /지원하지 않는 변수/);
+  assert.ok(mergeNotificationTemplates([custom], fullSeed.notificationTemplates).some((template) => template.trigger === 'EVENT_CANCELLATION'));
   const rendered = renderEventNotice(custom, state.events[0], state.registrations.find((r) => r.id === 'sample-3'), '<img src=x>\n{{nickname}}');
   assert.ok(rendered.body.includes('&lt;img src=x&gt;<br>{{nickname}}'));
   assert.deepEqual(state.mails[0], originalMail);
@@ -361,12 +470,16 @@ try {
   assert.equal(eventStatus(state, state.events[0], now), '행사 취소');
   assert.ok(state.registrations.filter((r) => r.eventId === event.id).every((r) => r.status === 'CANCELLED'));
   assert.equal(state.mails.length, mailCountBeforeCancellation);
+  state.events[0].onlineUrl = 'https://example.com/other-participation';
+  assert.throws(() => transition(state, {
+    type: 'CANCELLATION_MAIL', eventId: event.id, templateId: custom.id, notice: '취소 안내 테스트',
+  }, now), /행사 취소 안내 템플릿이 없습니다/);
   state = transition(
     state,
     {
       type: 'CANCELLATION_MAIL',
       eventId: event.id,
-      templateId: custom.id,
+      templateId: cancellationTemplate.id,
       notice: '운영 사정으로 행사가 취소되었습니다.',
     },
     now,
@@ -375,9 +488,11 @@ try {
   assert.equal(state.mails[0].audience, 'CANCELLED_ACTIVE');
   assert.equal(state.mails[0].recipients.length, cancellationRecipientIds.length);
   assert.match(state.mails[0].subject, /행사 취소 안내/);
+  assert.doesNotMatch(state.mails[0].body, /참여 안내|other-participation/);
+  assert.ok(state.mails[0].deliveries.every((item) => !item.body.includes('other-participation') && !item.body.includes('참여 안내')));
   assert.deepEqual(state.events[0].cancellationRecipientIds, cancellationRecipientIds);
   const reopenedCancellation = transition(JSON.parse(JSON.stringify(state)), {
-    type: 'CANCELLATION_MAIL', eventId: event.id, templateId: custom.id, notice: '추가 취소 안내',
+    type: 'CANCELLATION_MAIL', eventId: event.id, templateId: cancellationTemplate.id, notice: '추가 취소 안내',
   }, now);
   assert.deepEqual(reopenedCancellation.mails[0].recipients, state.mails[0].recipients);
   const priorWithdrawals = createState(new Date(now), noticeBody);
@@ -386,8 +501,8 @@ try {
   const cancelledWithHistory = transition(priorWithdrawals, { type: 'STATUS', eventId: cancellationEvent.id, status: 'CANCELLED' }, now);
   assert.deepEqual(cancelledWithHistory.events[0].cancellationRecipientIds, eligibleIds);
   assert.ok(priorWithdrawals.registrations.some((r) => r.eventId === cancellationEvent.id && ['DECLINED', 'CANCELLED'].includes(r.status) && !eligibleIds.includes(r.id)));
-  assert.throws(() => transition(state, { type: 'STATUS', eventId: event.id, status: 'PUBLISHED' }, now), /다시 공개/);
-  console.log('✓ 자동 확정, 안내 메일 대상 제한, 행사 취소 후 운영진 안내와 재공개 제한');
+  assert.throws(() => transition(state, { type: 'STATUS', eventId: event.id, status: 'PUBLISHED' }, now), /취소된 행사는 모집 상태를 변경할 수 없습니다/);
+  console.log('✓ 자동 확정, 안내 메일 대상 제한, 행사 취소 후 운영진 안내와 모집 상태 변경 제한');
 
   state = createEventPreviewState(new Date(now));
   const afterDeadline = Date.parse(state.events[0].deadlineAt) + 1;
@@ -412,38 +527,123 @@ try {
   state = transition(state, { type: 'ADMIN_CANCEL', registrationId: 'sample-3' }, afterDeadline);
   assert.equal(state.registrations.find((r) => r.id === 'sample-3').status, 'CANCELLED');
   assert.equal(seatInfo(state, state.events[0], 'OFFLINE').remaining, seatsBeforeCancel + 1);
-  assert.throws(
-    () => transition(state, { type: 'ADMIN_CANCEL', registrationId: 'sample-1' }, Date.parse(event.startsAt)),
-    /행사 시작 후/,
+  assert.equal(isEventPublic({ ...newEvent, status: 'CANCELLED' }), false);
+  assert.equal(isEventPublic(cancelledWithoutApplicants.events[0]), true);
+  console.log('✓ 마감 후 정보 수정·운영진 취소, 공개된 행사만 크루에게 표시');
+
+  const startedAt = Date.parse(event.startsAt);
+  const endedAt = Date.parse(event.endsAt);
+  const pendingFixture = createEventPreviewState(new Date(now));
+  const declineAction = { type: 'DECIDE', registrationId: 'sample-1', status: 'DECLINED' };
+  const confirmAction = { type: 'DECIDE', registrationId: 'sample-1', status: 'CONFIRMED' };
+  const cancelAction = { type: 'ADMIN_CANCEL', registrationId: 'sample-1' };
+  const declined = transition(pendingFixture, declineAction, startedAt);
+  assert.equal(declined.registrations[0].status, 'DECLINED');
+  const confirmed = transition(pendingFixture, confirmAction, startedAt);
+  assert.equal(confirmed.registrations[0].status, 'CONFIRMED');
+  assert.equal(transition(confirmed, cancelAction, startedAt).registrations[0].status, 'CANCELLED');
+  assert.equal(transition(pendingFixture, cancelAction, startedAt).registrations[0].status, 'CANCELLED');
+
+  const cancelledDuringEvent = transition(pendingFixture, { type: 'STATUS', eventId: event.id, status: 'CANCELLED' }, startedAt);
+  for (const action of [declineAction, confirmAction, cancelAction]) {
+    assert.throws(() => transition(pendingFixture, action, endedAt), /종료되거나 취소된 행사/);
+    assert.throws(() => transition(cancelledDuringEvent, action, startedAt), /종료되거나 취소된 행사/);
+  }
+  assert.strictEqual(settleEndedRegistrations(cancelledDuringEvent, endedAt), cancelledDuringEvent);
+  assert.strictEqual(settleEndedRegistrations(pendingFixture, endedAt - 1), pendingFixture);
+  const settled = settleEndedRegistrations(pendingFixture, endedAt);
+  assert.deepEqual(settled.registrations.map(({ status }) => status), ['DECLINED', 'DECLINED', 'CONFIRMED']);
+  assert.equal(pendingFixture.registrations[0].status, 'PENDING');
+  const automatedMails = settled.mails.slice(0, 2);
+  assert.equal(settled.mails.length, pendingFixture.mails.length + 2);
+  assert.ok(automatedMails.every((mail) => mail.kind === 'AUTOMATIC'));
+  const manualMail = declined.mails[0];
+  const automatedMail = automatedMails.find((mail) => mail.recipients.includes(manualMail.recipients[0]));
+  assert.deepEqual(
+    [automatedMail.subject, automatedMail.body, automatedMail.format],
+    [manualMail.subject, manualMail.body, manualMail.format],
   );
-  const draft = { ...state.events[1], id: 'preview-event-private', status: 'DRAFT', publishedAt: undefined };
-  state = transition(state, { type: 'SAVE', event: draft }, now);
-  state = transition(state, { type: 'STATUS', eventId: draft.id, status: 'CANCELLED' }, now);
-  assert.equal(state.events.find((e) => e.id === draft.id).publishedAt, undefined);
-  assert.ok(!state.events.filter((e) => e.status !== 'DRAFT' && e.publishedAt).some((e) => e.id === draft.id));
-  console.log('✓ 마감 후 정보 수정·운영진 취소, 행사 시작 후 처리 제한, 미공개 행사 비노출');
+  const reloaded = JSON.parse(JSON.stringify(settled));
+  assert.strictEqual(settleEndedRegistrations(reloaded, endedAt + 1000), reloaded);
+  console.log('✓ 행사 시작 후 참가 처리, 종료 시 확인 대기만 참가 불가 전환 및 동일 메일, 중복 방지');
+
+  const afterTimedDeadline = Date.parse('2026-11-14T12:00:00Z');
+  const timedEvent = {
+    ...created.events[0],
+    startsAt: '2026-11-15T18:00:19.100Z',
+    endsAt: '2026-11-15T19:00:25.200Z',
+    deadlineAt: '2026-11-14T11:00:37.300Z',
+  };
+  const timedState = { ...created, events: [timedEvent] };
+  const editedTimes = Object.fromEntries(
+    ['startsAt', 'endsAt', 'deadlineAt'].map((field) => [
+      field, resolveEventInput(wallTime(timedEvent[field], timedEvent.timeZone), timedEvent.timeZone, { iso: timedEvent[field], timeZone: timedEvent.timeZone }).iso,
+    ]),
+  );
+  assert.deepEqual(editedTimes, {
+    startsAt: timedEvent.startsAt, endsAt: timedEvent.endsAt, deadlineAt: timedEvent.deadlineAt,
+  });
+  const savedEvent = transition(timedState, {
+    type: 'SAVE', event: { ...timedEvent, ...editedTimes, title: '수정한 행사명', onlineUrl: 'https://example.com/join' },
+  }, afterTimedDeadline).events[0];
+  assert.equal(savedEvent.title, '수정한 행사명');
+  assert.equal(savedEvent.deadlineAt, timedEvent.deadlineAt);
+  const whileStarted = Date.parse(timedEvent.startsAt) + 1000;
+  assert.throws(() => transition(timedState, {
+    type: 'SAVE',
+    event: { ...timedEvent, startsAt: '2026-11-15T18:30:00Z', deadlineAt: '2026-11-15T18:20:00Z' },
+  }, whileStarted), /이미 시작한 행사/);
+  assert.equal(transition(timedState, {
+    type: 'SAVE', event: { ...timedEvent, onlineUrl: 'https://example.com/live-correction' },
+  }, whileStarted).events[0].onlineUrl, 'https://example.com/live-correction');
+  const futureEvent = {
+    ...timedEvent, startsAt: '2026-11-20T18:00:00Z', endsAt: '2026-11-20T19:00:00Z', deadlineAt: '2026-11-19T18:00:00Z',
+  };
+  assert.throws(() => transition(timedState, { type: 'SAVE', event: futureEvent }, Date.parse(timedEvent.endsAt)), /종료된 행사는 수정할 수 없습니다/);
+  const noEndState = { ...timedState, events: [{ ...timedEvent, endsAt: '' }] };
+  assert.throws(() => transition(noEndState, { type: 'SAVE', event: futureEvent }, Date.parse('2026-11-17T00:00:00Z')), /종료된 행사는 수정할 수 없습니다/);
+  console.log('✓ 마감 후 일정의 초 단위 보존, 종료된 행사와 종료 시각 미설정 지난 행사의 수정 차단');
 
   const withoutEnd = { ...fullSeed.events[0], startsAt: '2026-11-14T23:00:00.000Z', endsAt: '', timeZone: 'America/Toronto' };
-  assert.equal(eventStatus(fullSeed, withoutEnd, Date.parse('2026-11-15T04:59:59Z')), '행사 시작');
+  assert.equal(eventStatus(fullSeed, withoutEnd, Date.parse('2026-11-15T04:59:59Z')), '모집 마감');
   assert.equal(eventStatus(fullSeed, withoutEnd, Date.parse('2026-11-15T05:00:00Z')), '종료');
+  const untimedPending = { ...pendingFixture, events: [withoutEnd] };
+  assert.strictEqual(settleEndedRegistrations(untimedPending, Date.parse('2026-11-15T04:59:59Z')), untimedPending);
+  assert.equal(settleEndedRegistrations(untimedPending, Date.parse('2026-11-15T05:00:00Z')).registrations[0].status, 'DECLINED');
   const seoulWithoutEnd = { ...withoutEnd, startsAt: '2026-11-14T09:00:00.000Z', timeZone: 'Asia/Seoul' };
-  assert.equal(eventStatus(fullSeed, seoulWithoutEnd, Date.parse('2026-11-14T14:59:59Z')), '행사 시작');
+  assert.equal(eventStatus(fullSeed, seoulWithoutEnd, Date.parse('2026-11-14T14:59:59Z')), '모집 마감');
   assert.equal(eventStatus(fullSeed, seoulWithoutEnd, Date.parse('2026-11-14T15:00:00Z')), '종료');
   const dstWithoutEnd = { ...withoutEnd, startsAt: '2026-11-01T04:00:00.000Z' };
-  assert.equal(eventStatus(fullSeed, dstWithoutEnd, Date.parse('2026-11-02T04:59:59Z')), '행사 시작');
+  assert.equal(eventStatus(fullSeed, dstWithoutEnd, Date.parse('2026-11-02T04:59:59Z')), '모집 마감');
   assert.equal(eventStatus(fullSeed, dstWithoutEnd, Date.parse('2026-11-02T05:00:00Z')), '종료');
-  assert.equal(eventStatus(fullSeed, { ...withoutEnd, endsAt: '2026-11-15T07:00:00Z' }, Date.parse('2026-11-15T05:00:00Z')), '진행 중');
+  assert.equal(eventStatus(fullSeed, { ...withoutEnd, endsAt: '2026-11-15T07:00:00Z' }, Date.parse('2026-11-15T05:00:00Z')), '모집 마감');
+
+  assert.throws(
+    () => transition(fullSeed, { type: 'APPLY', eventId: 'preview-event-live', channel: 'ONLINE', answers: {} }, now),
+    /현재 신청할 수 없는 행사/,
+  );
   for (const status of ['CANCELLED', 'PUBLISHED', 'CLOSED']) {
     assert.throws(() => transition(fullSeed, { type: 'STATUS', eventId: 'preview-event-finished', status }, now), /종료된 행사/);
   }
   assert.throws(() => transition(fullSeed, { type: 'APPLY', eventId: fullSeed.events[0].id, channel: 'ONLINE', answers: {}, applicant: { ...SELF, email: '' } }, now), /이메일/);
   console.log('✓ 종료 미입력 행사의 현지 자정·서머타임, 종료 후 상태 변경 제한, 계정 이메일 검증');
 
-  assert.equal(wallTimeToIso('2026-11-14T09:00', 'Asia/Seoul'), '2026-11-14T00:00:00.000Z');
-  assert.equal(wallTimeToIso('2026-11-13T19:00', 'America/Toronto'), '2026-11-14T00:00:00.000Z');
-  assert.equal(wallTimeToIso('2026-07-01T19:00', 'America/New_York'), '2026-07-01T23:00:00.000Z');
-  assert.equal(wallTimeToIso('2026-03-08T02:30', 'America/New_York'), null);
-  assert.equal(wallTimeToIso('2026-11-01T01:30', 'America/New_York'), null);
+  assert.equal(resolveEventInput('2026-11-14T09:00', 'Asia/Seoul').iso, '2026-11-14T00:00:00.000Z');
+  assert.equal(resolveEventInput('2026-11-13T19:00', 'America/Toronto').iso, '2026-11-14T00:00:00.000Z');
+  assert.equal(resolveEventInput('2026-07-01T19:00', 'America/New_York').iso, '2026-07-01T23:00:00.000Z');
+  const missingTime = resolveEventInput('2026-03-08T02:30', 'America/New_York');
+  assert.equal(missingTime.iso, undefined);
+  assert.match(missingTime.errors.time, /사라지는 시각/);
+  const repeatedTime = '2026-11-01T01:30';
+  const repeatedZone = 'America/New_York';
+  const repeated = resolveEventInput(repeatedTime, repeatedZone);
+  assert.equal(repeated.iso, undefined);
+  assert.deepEqual(repeated.choices.map(({ scheduledAt }) => scheduledAt), ['2026-11-01T05:30:00.000Z', '2026-11-01T06:30:00.000Z']);
+  for (const { scheduledAt } of repeated.choices)
+    assert.equal(resolveEventInput(repeatedTime, repeatedZone, undefined, scheduledAt).iso, scheduledAt);
+  const storedOccurrence = { iso: '2026-11-01T06:30:24.100Z', timeZone: repeatedZone };
+  assert.equal(resolveEventInput(repeatedTime, repeatedZone, storedOccurrence).iso, storedOccurrence.iso);
+  assert.equal(resolveEventInput(repeatedTime, 'America/Toronto', storedOccurrence).iso, undefined);
   assert.match(formatDate('2026-11-14T00:00:00.000Z', 'Asia/Seoul'), /KST$/);
   assert.match(formatDate('2026-11-14T00:00:00.000Z', 'America/Toronto'), /EST$/);
   assert.match(formatDate('2026-07-01T23:00:00.000Z', 'America/New_York'), /EDT$/);

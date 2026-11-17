@@ -303,6 +303,7 @@ class AttendanceGetIntegrationTest {
                                 .status(StudyStatus.OPEN)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .createdBy(ACCOUNT_A_ID)
+                                .ownerCaptainId(ACCOUNT_A_ID)
                                 .build());
         var captainGroup =
                 studyGroupRepo.save(

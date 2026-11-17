@@ -24,6 +24,8 @@ import { ApiError } from '@/lib/http';
 export const studyKeys = {
   all: ['studies'] as const,
   detail: (studyId: number) => [...studyKeys.all, 'detail', studyId] as const,
+  /** 상세 위 카드의 출석률(모든 반) — 출석 저장 · 회차 수정이 바꾼다. */
+  attendanceSummary: (studyId: number) => [...studyKeys.detail(studyId), 'attendance-summary'] as const,
 };
 
 /** 프로그램 목록은 스터디 목록과 따로 무효화된다 — 등록으로 늘어나는 건 같지만 필터·페이지가 없다. */

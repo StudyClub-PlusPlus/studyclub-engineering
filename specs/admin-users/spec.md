@@ -1,5 +1,6 @@
 # 백오피스 회원 API Spec — 회원 목록 · 개인정보 보기 · 계정 권한 변경
 
+> 갱신: 2026-11-16 — 진행 중인 스터디의 담당 캡틴은 캡틴 권한을 내릴 수 없다(`OWNS_STUDY`). 끝난 스터디만 맡았으면 내릴 때 담당 캡틴 칸을 비운다. 담당 캡틴 판정은 `STUDY.OWNER_CAPTAIN_ID` ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
 > 갱신: 2026-10-31 — 디스코드 아이디도 이메일과 같은 개별 열람·감사 기록 방식으로 제공한다. 목록에는 연동 여부만 보낸다.
 > 갱신: 2026-10-31 — 이메일·디스코드 모두 플레이그라운드의 눈 아이콘 보기·가리기를 반영한다. 가리면 원본을 지우고, 다시 열 때 새 요청과 감사 기록을 남긴다.
 > 갱신: 2026-11-01 — [180일간 명부 참여·로그인이 모두 없는 회원만 휴면으로 표시](../../docs/share/2026-10-31-user-dormancy-180-days.md)하는 기준을 실제 회원 목록 API와 백오피스에도 적용한다.
@@ -50,7 +51,7 @@
 - **네비게이터는 계정 값이 아니다.** 한 사람이 여러 스터디를 맡을 수 있고 맡은 스터디마다 명부 행이 따로 선다. 그래서 `PATCH …/system-role` 은 `ADMIN`·`MEMBER` 둘만 받는다.
 - 「담당 스터디가 있다」 = 명부 행 중 `PARTICIPANT_ROLE = LEADER` 이고 `STATUS ∈ {ACTIVE, PAUSED}` 인 것이 하나라도 있다. 부반장(`CO_LEADER`)은 2026-10-09 에 없앴다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) — [`StudyCaptainGuard`](../../backend/api/src/main/java/com/studyclub/api/study/StudyCaptainGuard.java) 와 같은 기준.
 - 「참여 중인 스터디」 = 명부 행 중 `STATUS ∈ {ACTIVE, PAUSED}` 인 것의 `STUDY_ID` 개수(중복 제거). 하차(`WITHDRAWN`)·완주(`COMPLETED`)는 지난 일이라 세지 않는다.
-  - `PARTICIPANT_ROLE` 은 가리지 않는다. 담당 캡틴(`STUDY.CREATED_BY`)은 **신청했을 때만** `MEMBER` 로 명부에 있고 그 행도 센다 (POL-0001, 2026-10-14). 담당 캡틴 행은 `LEADER` 가 아니므로 「담당 스터디(네비게이터)」에는 잡히지 않는다.
+  - `PARTICIPANT_ROLE` 은 가리지 않는다. 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`)은 **신청했을 때만** `MEMBER` 로 명부에 있고 그 행도 센다 (POL-0001, 2026-10-14). 담당 캡틴 행은 `LEADER` 가 아니므로 「담당 스터디(네비게이터)」에는 잡히지 않는다.
   - 신청하지 않은 담당 캡틴은 명부 행이 없어 세지 않는다 — 운영만 하는 스터디는 참여가 아니다.
 
 ### 인가 — authz-guards 를 따른다
@@ -191,7 +192,7 @@
 | items[].navigatorOf[].title | String | N | | STUDY.TITLE |
 | items[].dormant | Boolean | N | 「휴면」 표기. 최근 180일간 명부 참여와 로그인이 모두 없을 때만 true | 계산: `Account.isDormant` — 아래 휴면 판정 기준 |
 | items[].joinedAt | String | N | 가입일. UTC ISO 8601 | ACCOUNT.CREATED_AT |
-| items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: `Account.roleChangeBlockedReason(요청자 ID, ADMIN 수)` — 권한 변경 API 의 거절도 같은 메서드 |
+| items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: `Account.roleChangeBlockedReason(요청자 ID, ADMIN 수, 진행 중 담당 스터디 수)` — 권한 변경 API 의 거절도 같은 메서드 |
 | items[].discordLinked | Boolean | N | 디스코드 계정 연동 여부 — 목록 「디스코드」 칸 (2026-10-27) | 계산: `ACCOUNT.DISCORD_ID` 있음 |
 | total | Long | N | 걸러진 뒤 전체 수 — 화면의 「총 N명」 | 계산: COUNT |
 | offset | Integer | N | 요청 값 그대로 | |
@@ -221,7 +222,8 @@
 |---|---|---|
 | `CANNOT_CHANGE_OWN_ROLE` | 이 행이 요청자 본인 | 자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요. |
 | `LAST_ADMIN_REQUIRED` | 이 행이 `ADMIN` 이고 `ADMIN` 이 1명뿐 | 마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요. |
-| `null` | 위 둘 다 아님 | — |
+| `OWNS_STUDY` | 이 행이 `ADMIN` 이고 진행 중인 스터디(`STATUS` 가 `ENDED` · `CLOSED` 가 아님 — `DRAFT` 포함)의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`) (2026-11-16) | 담당 중인 스터디가 있습니다. 스터디 신청자 탭에서 담당 캡틴을 먼저 바꿔 주세요. |
+| `null` | 위 모두 아님 | — |
 
 > 2026-10-27 `DISCORD_LINK_REQUIRED`(디스코드 미연동 크루는 캡틴으로 못 올림, STD-05)를 뺐다. 캡틴에게 디스코드 연동은 필수가 아니다 — [share 10-27](../../docs/share/2026-10-27-captain-discord-optional.md)
 
@@ -411,6 +413,9 @@ Query Parameters / Request Body 없음.
 4. 대상의 현재 값과 요청 값이 같으면 **아무것도 바꾸지 않고 200**. 감사 기록도 남기지 않는다 (중복 클릭·재시도에 안전).
 5. `ADMIN → MEMBER` 이고 1 에서 센 `ADMIN` 수가 1 이하이면 `409 LAST_ADMIN_REQUIRED`.
    - 디스코드 연동 여부는 보지 않는다 — 올림도 내림도 (2026-10-27, 그전에는 미연동 크루를 올리면 `409 DISCORD_LINK_REQUIRED`).
+5-1. `ADMIN → MEMBER` 이고 대상이 **진행 중인 스터디**(`ENDED` · `CLOSED` 밖, `DRAFT` 포함)의 담당 캡틴이면 `409 OWNS_STUDY` (2026-11-16). `errorMessage` 에 그 스터디 제목을 적는다 — 「담당 중인 스터디가 있습니다: ○○, △△. 스터디 신청자 탭에서 담당 캡틴을 먼저 바꿔 주세요.」
+   - 1 의 잠금이 동시성을 막는다 — [담당 캡틴 바꾸기](../study-group/spec.md#담당-캡틴-바꾸기)는 대상 계정 행을 잠그고 `ADMIN` 인지 본다. 두 요청이 같은 계정 행을 기다리므로 「검사 통과 직후 담당 지정」이 끼어들지 못한다
+5-2. `ADMIN → MEMBER` 로 바꿀 때, 대상이 담당 캡틴인 **끝난 스터디**(`ENDED` · `CLOSED`)의 `OWNER_CAPTAIN_ID` 를 같은 트랜잭션에서 NULL 로 비운다 — 크루 계정이 담당 캡틴으로 남지 않게. 비운 스터디는 「캡틴 누구나」가 담당 일을 한다. 따로 감사 기록을 남기지 않는다 — 7 의 `ROLE_CHANGE` 가 원인 기록이다
 6. `Account` 의 상태 변경 메서드로 바꾼다 (setter 금지 — 규칙 3·5 는 서비스가 판정하고, 엔티티는 값 전이만 책임진다).
 7. `ADMIN_AUDIT_LOG` 에 `(ACTOR_ACCOUNT_ID = 요청자, ACTION = ROLE_CHANGE, TARGET_ACCOUNT_ID = 대상, BEFORE_VALUE, AFTER_VALUE)` 한 행을 쓴다. 6 과 같은 트랜잭션이라 기록 없이 권한만 바뀌는 일은 없다.
 
@@ -467,6 +472,7 @@ Query Parameters / Request Body 없음.
 | 404 | NOT_FOUND | `accountId` 에 해당하는 계정 없음 (탈퇴 등) |
 | 409 | CANNOT_CHANGE_OWN_ROLE | **신규.** 대상이 요청자 본인 — 「자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요.」 |
 | 409 | LAST_ADMIN_REQUIRED | **신규.** 마지막 `ADMIN` 을 `MEMBER` 로 내리려 함 — 「마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요.」 |
+| 409 | OWNS_STUDY | 진행 중인 스터디의 담당 캡틴을 `MEMBER` 로 내리려 함 (2026-11-16) — 「담당 중인 스터디가 있습니다: {제목들}. 스터디 신청자 탭에서 담당 캡틴을 먼저 바꿔 주세요.」 |
 
 - 두 신규 코드는 `ErrorCode` 에 `CONFLICT` 뒤로 추가한다 (`fromStatus(409)` 는 첫 409 인 `CONFLICT` 를 써야 한다).
 - 이름이 목록의 `roleChangeBlockedReason` 값과 같은 사유를 가리킨다 — 화면이 잠그는 이유와 서버가 거절하는 이유가 하나의 어휘다.

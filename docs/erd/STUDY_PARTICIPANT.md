@@ -51,7 +51,7 @@ stateDiagram-v2
 
 스터디 안에서의 역할. 시스템 권한(ACCOUNT.SYSTEM_ROLE)과 별개.
 
-> 캡틴 값은 두지 않는다. 스터디를 만든 **담당 캡틴**이 참여하려면 신청하고, 그러면 이 테이블에 크루와 같은 `MEMBER` 행이 생긴다. 「담당 캡틴인가」는 이 테이블이 아니라 `STUDY.CREATED_BY` 로 판정한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-10-14).
+> 캡틴 값은 두지 않는다. 스터디를 만든 **담당 캡틴**이 참여하려면 신청하고, 그러면 이 테이블에 크루와 같은 `MEMBER` 행이 생긴다. 「담당 캡틴인가」는 이 테이블이 아니라 `STUDY.OWNER_CAPTAIN_ID` 로 판정한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-11-16 — 그전엔 `CREATED_BY`).
 
 | 값 | 뜻 |
 |---|---|

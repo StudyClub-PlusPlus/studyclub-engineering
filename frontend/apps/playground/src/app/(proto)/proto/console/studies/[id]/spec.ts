@@ -59,6 +59,27 @@ export const ATTENDEE_SPEC: ScreenSpec = {
       data: ['STUDY.STATUS · STUDY_RECRUITMENT.START_AT (쓰기) · 신청 폼 질문 수 (읽기)'],
     },
     {
+      n: '1-4',
+      title: '요약 카드 — 진행 일정 · 참석자 · 출석률',
+      display: [
+        '헤더 아래, 탭 위에 카드 셋. 어느 탭을 보고 있어도 늘 보인다',
+        '진행 일정: 스터디 일정 글. 없으면 「미정 · 신청자 조율」',
+        '참석자: 참여 인원 숫자, 아래에 「정원 N명」 또는 「정원 제한 없음」',
+        '출석률: 모든 반을 합친 정수 %, 아래에 「모든 반 · 지각 포함」. 체크된 회차가 없으면 「-」',
+      ],
+      behavior: ['출석 탭에서 저장하거나 일정 탭에서 회차를 고치면 출석률이 다시 계산돼 바뀐다'],
+      policy: [
+        '**운영자가 매일 확인하는 숫자다** — 탭을 옮겨 다니지 않아도 보이게 위에 둔다 (2026-11-16 기획 결정, 백오피스와 통일)',
+        '출석률은 반별 평균을 다시 평균하지 않는다 — 모든 반 크루의 분자 · 분모를 합친다. 크루 수가 다른 반이 같은 무게로 섞이면 안 된다',
+        '산식은 출석 탭과 같다: 지각 0.5, 휴가 · 킥오프 · 체크 안 한 회차는 빼고, 참여를 중단한 크루는 중단 뒤 회차를 뺀다. 중단 전 기록은 센다',
+        '**화면이 계산하지 않는다** — 서버가 출석 탭과 같은 계산기로 내려준 값을 그린다. 반별 숫자는 출석 탭에서 본다',
+      ],
+      data: [
+        '진행 일정: STUDY.SCHEDULE · 참석자: 참여 명단 participantCount · 정원: STUDY_RECRUITMENT.CAPACITY',
+        '출석률: GET /api/admin/studies/{studyId}/attendances/summary → attendanceRate (0 ~ 1, null 이면 「-」)',
+      ],
+    },
+    {
       n: '2',
       title: '탭',
       display: [
@@ -169,6 +190,44 @@ export const ATTENDEE_SPEC: ScreenSpec = {
       display: ['그 크루의 스터디클럽 디스코드 서버 별명. 없으면 「—」'],
       policy: ['운영자가 디스코드에서 그 사람을 찾을 때 쓴다. 신청할 때 받은 값으로 계정에 저장된다'],
       data: ['ACCOUNT.DISCORD_NICKNAME'],
+    },
+    {
+      n: '4',
+      title: '담당 캡틴',
+      when: '신청자 탭을 보고 있을 때',
+      display: ['신청자 탭 맨 위 카드 — 「담당 캡틴」과 지금 담당 캡틴 이름'],
+      policy: [
+        '**스터디당 한 명이다.** 스터디를 만들면 만든 캡틴이 담당 캡틴이 된다',
+        '**명부와 따로 선다** — 참여하지 않는 캡틴도 담당 캡틴이다. 참여하려면 크루처럼 신청하고, 그러면 참여 크루 명단에 같은 줄로 나온다',
+        '담당 캡틴만 하는 일: 신청 폼 수정 · 출석부에서 참여 중단 · 사용자 사이트 일정 관리 ([POL-0001](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0001-roles.md))',
+        '담당 캡틴이 비어 있는 스터디(탈퇴 · 끝난 스터디에서 권한 해제)는 담당 캡틴의 일을 캡틴 누구나 한다',
+      ],
+      data: ['STUDY.OWNER_CAPTAIN_ID → ACCOUNT.NICKNAME'],
+    },
+    {
+      n: '4-1',
+      title: '담당 캡틴 고르기',
+      when: '신청자 탭을 보고 있을 때',
+      display: ['드롭다운 — 캡틴 계정 전체. 저장하는 동안 드롭다운이 잠기고 옆에서 하나가 돈다'],
+      behavior: [
+        '고르면 바로 저장한다 — 명단의 반 · 역할처럼 모았다가 「저장」하지 않는다',
+        '저장된 뒤에 칸이 바뀌고 「담당 캡틴을 바꿨습니다.」를 알린다. 지금과 같은 사람을 고르면 아무 일도 일어나지 않는다',
+      ],
+      policy: [
+        '바꾸는 사람은 캡틴이면 누구나다 — 지금 담당 캡틴이 아니어도 된다',
+        '고를 수 있는 사람은 캡틴 계정뿐이다. 크루는 목록에 나오지 않는다',
+        '저장되기 전에는 지금 값 그대로 둔다 — 실패해도 바뀐 것처럼 남지 않게',
+      ],
+      data: [
+        'PATCH /api/admin/studies/{studyId}/owner-captain { accountId }',
+        '후보: GET /api/admin/users?role=CAPTAIN&limit=100',
+      ],
+    },
+    {
+      n: '4-2',
+      title: '담당 캡틴 안내',
+      when: '신청자 탭을 보고 있을 때',
+      display: ['「신청 폼 수정 · 참여 중단 · 사이트 일정 관리를 맡습니다. 참여하지 않아도 됩니다.」'],
     },
   ],
 };
@@ -489,10 +548,10 @@ export const SCHEDULE_SPEC: ScreenSpec = {
     {
       n: '7-4',
       title: '종료일',
-      display: ['필수. 「이 날까지 · 시작부터 최대 31일」'],
+      display: ['필수. 「이 날까지 · 시작부터 최대 1년」'],
       policy: [
-        '시작 일자 포함 31일 안에서만 고른다',
-        '중복일을 제외한 생성 회차도 반 날짜 기준 처음·마지막 차이가 30일 이하여야 한다. 초과하면 허용 종료일을 안내하며, 회차를 임의로 빼지 않는다',
+        '시작 일자부터 1년 뒤 같은 날까지 고른다(2/29 시작이면 다음 해 2/28)',
+        '중복일을 제외한 생성 회차도 반 날짜 기준 마지막 날이 첫 날 + 1년 이하여야 한다. 초과하면 허용 종료일을 안내하며, 회차를 임의로 빼지 않는다',
       ],
       when: '반복이 매일 또는 매주일 때',
     },
@@ -951,7 +1010,7 @@ export const FORM_SPEC: ScreenSpec = {
       title: '저장',
       behavior: ['저장 → 완료 문구 표시', '처리 중 스피너로 중복 제출 차단'],
       policy: ['모집 시작 전에는 저장할 수 있다. 모집 시작 이후 수정은 막아야 한다 — 프로토타입은 아직 막지 않는다'],
-      data: ['PUT /api/admin/studies/{studyId}/application-form — 담당 캡틴(STUDY.CREATED_BY)만. 담당 판정 미구현'],
+      data: ['PUT /api/admin/studies/{studyId}/application-form — 담당 캡틴(STUDY.OWNER_CAPTAIN_ID)만. 담당 판정 미구현'],
     },
   ],
 };

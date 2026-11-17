@@ -40,10 +40,14 @@ export function toPeople(res: ApiGroupMeetings): Person[] {
   return [...byId].map(([id, name]) => ({ id, name }));
 }
 
-/** 회차를 고친 뒤 — 표와 출석부 열이 같이 바뀐다. */
+/** 회차를 고친 뒤 — 표와 출석부 열, 위 카드의 출석률이 같이 바뀐다. */
 function useRefetchMeetings(studyId: number, groupId: number) {
   const client = useQueryClient();
-  return () => client.invalidateQueries({ queryKey: scheduleKeys.group(studyId, groupId) });
+  return () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: scheduleKeys.group(studyId, groupId) }),
+      client.invalidateQueries({ queryKey: studyKeys.attendanceSummary(studyId), exact: true }),
+    ]);
 }
 
 export const scheduleKeys = {

@@ -2,7 +2,7 @@ import { analyticsHandlers } from "./analytics";
 import { registerHandlers, type MockHandlerGroup } from "../utils";
 import { accountsHandlers } from "./accounts";
 import { adminStatsHandlers } from "./admin-stats";
-import { attendanceHandlers } from "./attendance";
+import { attendanceHandlers, adminAttendanceSummaryHandlers } from "./attendance";
 import { meDiscordHandlers, discordLinkHandlers } from "./discord";
 import { meStudiesHandlers } from "./me";
 import { studyMeetingsHandlers } from "./meetings";
@@ -36,7 +36,7 @@ export {
 } from "./role-permissions";
 export { meStudiesHandlers } from "./me";
 export { studyMeetingsHandlers } from "./meetings";
-export { attendanceHandlers } from "./attendance";
+export { attendanceHandlers, adminAttendanceSummaryHandlers } from "./attendance";
 export { adminParticipantsHandlers } from "./participants";
 export {
   notificationTemplatesHandlers,
@@ -58,6 +58,7 @@ export const mockHandlerGroups: MockHandlerGroup[] = [
   studyMeetingsHandlers,
   studyNoticesHandlers,
   attendanceHandlers,
+  adminAttendanceSummaryHandlers,
   adminParticipantsHandlers,
   notificationTemplatesHandlers,
   notificationsHandlers,

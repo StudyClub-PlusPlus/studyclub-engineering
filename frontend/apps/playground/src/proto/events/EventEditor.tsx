@@ -6,7 +6,9 @@ import type { PreviewEvent } from '@studyclub/types';
 import { Button, Input, Select, Textarea } from '@studyclub/ui';
 
 import { EventQuestionEditor } from './EventQuestionEditor';
-import { ZONES, wallTime, wallTimeToIso } from './model';
+import { EVENT_LIMITS, ZONES, resolveEventInput, wallTime } from './model';
+
+type DateField = 'startsAt' | 'endsAt' | 'deadlineAt';
 
 export function EventEditor({
   event,
@@ -27,15 +29,61 @@ export function EventEditor({
     endsAt: wallTime(event.endsAt, event.timeZone),
     deadlineAt: wallTime(event.deadlineAt, event.timeZone),
   });
+  const [occurrences, setOccurrences] = useState<Partial<Record<DateField, string>>>({});
   const [error, setError] = useState('');
   const set = <K extends keyof PreviewEvent>(key: K, value: PreviewEvent[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
+  const resolveDate = (field: DateField) =>
+    resolveEventInput(dates[field], draft.timeZone, { iso: event[field], timeZone: event.timeZone }, occurrences[field]);
+  const resolvedDates = {
+    startsAt: resolveDate('startsAt'),
+    endsAt: resolveDate('endsAt'),
+    deadlineAt: resolveDate('deadlineAt'),
+  };
+
+  function renderDate(field: DateField, label: string, required: boolean, helper?: string) {
+    const { choices, errors, iso } = resolvedDates[field];
+    const ambiguous = choices.length > 1;
+    // 기존 일정에는 초 단위가 있을 수 있지만 선택지는 분 단위로 보여준다.
+    const chosen = choices.find(({ scheduledAt }) => Math.abs(Date.parse(scheduledAt) - Date.parse(iso ?? '')) < 60_000);
+    return (
+      <div className='space-y-2'>
+        <Input
+          label={label}
+          type='datetime-local'
+          required={required}
+          value={dates[field]}
+          error={!readOnly && dates[field] && !ambiguous ? errors.time : undefined}
+          helper={readOnly ? undefined : helper}
+          onChange={(e) => {
+            setDates({ ...dates, [field]: e.target.value });
+            setOccurrences({ ...occurrences, [field]: undefined });
+          }}
+        />
+        {!readOnly && ambiguous && (
+          <Select
+            label={`${label} 시각 구분`}
+            required
+            value={chosen?.scheduledAt ?? ''}
+            helper='이날은 같은 시각이 두 번 있어요. 시계 전환 전후 중 하나를 선택해 주세요.'
+            onChange={(e) => setOccurrences({ ...occurrences, [field]: e.target.value })}
+          >
+            <option value='' disabled>시각을 선택해 주세요</option>
+            {choices.map((choice) => (
+              <option key={choice.scheduledAt} value={choice.scheduledAt}>{choice.label}</option>
+            ))}
+          </Select>
+        )}
+      </div>
+    );
+  }
+
   function save() {
-    const startsAt = wallTimeToIso(dates.startsAt, draft.timeZone),
-      endsAt = dates.endsAt ? wallTimeToIso(dates.endsAt, draft.timeZone) : '',
-      deadlineAt = wallTimeToIso(dates.deadlineAt, draft.timeZone);
-    if (!startsAt || endsAt === null || !deadlineAt) {
-      setError('일정을 확인해 주세요. 서머타임 전환으로 없거나 중복되는 시각은 다른 시각을 선택해 주세요.');
+    const startsAt = resolvedDates.startsAt.iso;
+    const endsAt = dates.endsAt ? resolvedDates.endsAt.iso : '';
+    const deadlineAt = resolvedDates.deadlineAt.iso;
+    if (!startsAt || endsAt === undefined || !deadlineAt) {
+      setError('행사 시작·종료·신청 마감 시각을 확인해 주세요.');
       return;
     }
     setError(
@@ -53,7 +101,9 @@ export function EventEditor({
     >
       {readOnly && (
         <p className='rounded-control bg-surface-2 p-3 type-body-sm text-fg-secondary'>
-          취소된 행사입니다. 등록했던 정보와 신청폼을 조회할 수 있습니다.
+          {event.status === 'CANCELLED'
+            ? '취소된 행사입니다. 등록했던 정보와 신청폼을 조회할 수 있습니다.'
+            : '종료된 행사입니다. 등록했던 정보와 신청폼을 조회할 수 있습니다.'}
         </p>
       )}
       <fieldset disabled={readOnly} className='min-w-0 space-y-7 border-0 p-0'>
@@ -62,7 +112,7 @@ export function EventEditor({
           <Input
             label='행사명'
             required
-            maxLength={60}
+            maxLength={EVENT_LIMITS.title}
             value={draft.title}
             onChange={(e) => set('title', e.target.value)}
             placeholder='함께 만드는 개발자 커뮤니티'
@@ -70,7 +120,7 @@ export function EventEditor({
           <Input
             label='한 줄 소개'
             required
-            maxLength={160}
+            maxLength={EVENT_LIMITS.summary}
             value={draft.summary}
             onChange={(e) => set('summary', e.target.value)}
             placeholder='누구와 어떤 경험을 나누는 행사인가요?'
@@ -79,11 +129,18 @@ export function EventEditor({
             label='모집 상세'
             required
             rows={7}
-            maxLength={10000}
+            maxLength={EVENT_LIMITS.description}
             value={draft.description}
             onChange={(e) => set('description', e.target.value)}
           />
-          <Select label='기준 시간대' value={draft.timeZone} onChange={(e) => set('timeZone', e.target.value)}>
+          <Select
+            label='기준 시간대'
+            value={draft.timeZone}
+            onChange={(e) => {
+              set('timeZone', e.target.value);
+              setOccurrences({});
+            }}
+          >
             {ZONES.map((z) => (
               <option key={z.value} value={z.value}>
                 {z.label}
@@ -91,28 +148,10 @@ export function EventEditor({
             ))}
           </Select>
           <div className='grid gap-4 sm:grid-cols-2'>
-            <Input
-              label='행사 시작'
-              type='datetime-local'
-              required
-              value={dates.startsAt}
-              onChange={(e) => setDates({ ...dates, startsAt: e.target.value })}
-            />
-            <Input
-              label='행사 종료 (선택)'
-              type='datetime-local'
-              value={dates.endsAt}
-              onChange={(e) => setDates({ ...dates, endsAt: e.target.value })}
-            />
+            {renderDate('startsAt', '행사 시작', true)}
+            {renderDate('endsAt', '행사 종료 (선택)', false)}
           </div>
-          <Input
-            label='신청 마감'
-            type='datetime-local'
-            required
-            value={dates.deadlineAt}
-            onChange={(e) => setDates({ ...dates, deadlineAt: e.target.value })}
-            helper='행사 시작 시각까지로 설정해 주세요.'
-          />
+          {renderDate('deadlineAt', '신청 마감', true, '행사 시작 시각까지로 설정해 주세요.')}
         </section>
         <section data-anno='event-manage:3' className='space-y-4 border-t border-border pt-6'>
           <h2 className='type-title-md'>모집 설정</h2>
@@ -160,6 +199,7 @@ export function EventEditor({
             <Input
               label='오프라인 장소'
               required
+              maxLength={EVENT_LIMITS.location}
               value={draft.location}
               onChange={(e) => set('location', e.target.value)}
               placeholder='장소명과 주소'
@@ -172,7 +212,7 @@ export function EventEditor({
               value={draft.onlineUrl}
               onChange={(e) => set('onlineUrl', e.target.value)}
               placeholder='https://'
-              helper='참가 확정자에게만 보여요. 아직 정해지지 않았다면 나중에 입력할 수 있습니다.'
+              helper={readOnly ? undefined : '참가 확정자에게만 보여요. 아직 정해지지 않았다면 나중에 입력할 수 있습니다.'}
             />
           )}
           <fieldset className='space-y-2'>
@@ -191,7 +231,7 @@ export function EventEditor({
             ).map(([value, label, detail]) => (
               <label
                 key={value}
-                className={`flex cursor-pointer items-start gap-3 rounded-control border p-4 ${draft.confirmation === value ? 'border-brand bg-brand-subtle' : 'border-border'}`}
+                className={`flex items-start gap-3 rounded-control border p-4 ${readOnly || confirmationLocked ? '' : 'cursor-pointer'} ${draft.confirmation === value ? 'border-brand bg-brand-subtle' : 'border-border'}`}
               >
                 <input
                   className='mt-1 accent-(--color-brand)'
@@ -211,7 +251,11 @@ export function EventEditor({
           </fieldset>
         </section>
         <div className='border-t border-border pt-6'>
-          <EventQuestionEditor questions={draft.questions} onChange={(questions) => set('questions', questions)} />
+          <EventQuestionEditor
+            questions={draft.questions}
+            readOnly={readOnly}
+            onChange={(questions) => set('questions', questions)}
+          />
         </div>
         {!readOnly && (
           <div className='border-t border-border pt-5'>

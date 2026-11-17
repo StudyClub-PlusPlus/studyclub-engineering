@@ -175,11 +175,20 @@ export const PERMISSION_LABEL: Record<PermissionKey, string> = Object.fromEntrie
  * 「캡틴인가」는 묻지 않는다. 이 화면에 들어온 것 자체가 캡틴이라는 뜻이고,
  * 아닌 사람은 라우트에서 막힌다.
  */
-export function assignBlockReason(args: { isSelf: boolean; targetRole: AccountRole; captainCount: number }): string | null {
-  const { isSelf, targetRole, captainCount } = args;
+export function assignBlockReason(args: {
+  isSelf: boolean;
+  targetRole: AccountRole;
+  captainCount: number;
+  /** 이 사람이 담당 캡틴인 진행 중 스터디 제목. 끝난 스터디는 넣지 않는다. */
+  ownedStudies?: string[];
+}): string | null {
+  const { isSelf, targetRole, captainCount, ownedStudies = [] } = args;
   // 자기 역할을 스스로 내리면 되돌릴 사람이 자기 자신뿐인 상황이 생긴다.
   if (isSelf) return '자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요.';
   if (targetRole === 'captain' && captainCount <= 1) return '마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요.';
+  // 크루가 담당 캡틴으로 남지 않게 — 담당을 먼저 넘긴다 (POL-0001)
+  if (targetRole === 'captain' && ownedStudies.length > 0)
+    return `담당 중인 스터디가 있습니다: ${ownedStudies.join(', ')}. 스터디 신청자 탭에서 담당 캡틴을 먼저 바꿔 주세요.`;
   return null;
 }
 

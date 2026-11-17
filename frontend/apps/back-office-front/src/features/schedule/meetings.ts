@@ -1,4 +1,4 @@
-import { addDaysYmd, dayLabel, DOW_LABEL, dowOf, type StudyTz, tzAbbr, zonedInstant } from '@/features/schedule/time';
+import { addDaysYmd, dateWithDow, dayLabel, DOW_LABEL, dowOf, type StudyTz, tzAbbr, zonedInstant } from '@/features/schedule/time';
 
 /**
  * 반(STUDY_GROUP)과 회차(STUDY_MEETING).
@@ -47,8 +47,6 @@ export type Meeting = {
 export type Person = { id: string; name: string };
 
 export const TITLE_MAX = 50;
-/** 반복으로 한 번에 만들 수 있는 기간(시작 일자 포함 일수). */
-export const REPEAT_SPAN_DAYS = 31;
 export const RULES_MAX = 500;
 export const DEFAULT_TIME = '20:00';
 
@@ -72,8 +70,14 @@ export function meetingLabel(m: Pick<Meeting, 'kind' | 'no'>): string {
   return isKickoff(m) ? '킥오프' : `${m.no}회차`;
 }
 
+/** 반복으로 한 번에 만들 수 있는 기간 — 시작 일자부터 1년 뒤 같은 날까지(2/29 시작이면 다음 해 2/28). 서버도 같은 상한을 본다. */
+export const REPEAT_SPAN_LABEL = '1년';
+
 export function maxUntil(date: string): string {
-  return date ? addDaysYmd(date, REPEAT_SPAN_DAYS - 1) : '';
+  if (!date) return '';
+  const [y, m, d] = date.split('-').map(Number);
+  const lastDay = new Date(Date.UTC(y + 1, m, 0)).getUTCDate();
+  return `${y + 1}-${String(m).padStart(2, '0')}-${String(Math.min(d, lastDay)).padStart(2, '0')}`;
 }
 
 /* ── 초안 → 계획 ─────────────────────────────────────────────────────────── */
@@ -132,7 +136,7 @@ export function planDraft(
     if (!draft.until) errors.until = '반복 종료일을 정해 주세요.';
     else if (draft.date && draft.until < draft.date) errors.until = '종료일은 시작 일자보다 뒤여야 합니다.';
     else if (draft.date && draft.until > maxUntil(draft.date))
-      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_DAYS}일 안에서만 만들 수 있습니다 (${dayLabel(maxUntil(draft.date))}까지).`;
+      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_LABEL} 안에서만 만들 수 있습니다 (${dateWithDow(maxUntil(draft.date))}까지).`;
   }
   if (errors.date || errors.time || errors.until || errors.weekdays) return { errors };
 
@@ -240,7 +244,7 @@ export function defaultDate(existing: Dated[], today: string): string {
   return next;
 }
 
-/** 반복을 켰을 때의 기본 종료일 — 매주는 4주 뒤(5회), 매일은 2주. 둘 다 31일 안이다. */
+/** 반복을 켰을 때의 기본 종료일 — 매주는 4주 뒤(5회), 매일은 2주. */
 export function defaultUntil(date: string, repeat: Repeat): string {
   if (!date || repeat === 'none') return '';
   return addDaysYmd(date, repeat === 'weekly' ? 28 : 13);

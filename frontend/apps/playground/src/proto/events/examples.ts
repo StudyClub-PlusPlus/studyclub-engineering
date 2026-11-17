@@ -1,7 +1,6 @@
 import type { EventMailPreview, EventPreviewState, EventRegistration } from '@studyclub/types';
 
 import {
-  cancellationEventTemplate,
   channels,
   createEventNoticeMail,
   fillLegacyEventMailPreview,
@@ -10,7 +9,9 @@ import {
   seatInfo,
 } from './model';
 
-const REVISION = 11;
+const REVISION = 13;
+const REAPPLIED_SAMPLE_ID = 'sample-preview-event-finished-1';
+const CANCELLED_SAMPLE_ID = `${REAPPLIED_SAMPLE_ID}-before-reapply`;
 const LEGACY_EVENT_COPY: Record<string, { title?: string; summary?: string; description?: string }> = {
   'preview-event-full': {
     summary: '소규모 산책 모임의 모든 자리가 채워졌습니다.',
@@ -138,6 +139,18 @@ export function populateEventExamples(
         status: event.status === 'CANCELLED' ? 'CANCELLED' : registration.status,
       });
     }
+    // 수현이 이전 신청을 취소한 뒤 같은 행사에 다시 신청한 예시.
+    const reapplied = state.registrations.find((row) =>
+      row.eventId === event.id && row.id === REAPPLIED_SAMPLE_ID && row.status === 'CONFIRMED',
+    );
+    if (reapplied && !state.registrations.some((row) => row.id === CANCELLED_SAMPLE_ID)) {
+      state.registrations.push({
+        ...structuredClone(reapplied),
+        id: CANCELLED_SAMPLE_ID,
+        status: 'CANCELLED',
+        createdAt: new Date(Date.parse(reapplied.createdAt) - 86400000).toISOString(),
+      });
+    }
     if (event.status === 'CANCELLED' && event.cancellationRecipientIds === undefined) {
       const sent = state.mails.find((mail) => mail.eventId === event.id && mail.audience === 'CANCELLED_ACTIVE');
       if (sent) {
@@ -204,7 +217,8 @@ export function populateEventExamples(
           );
       }
     }
-    const template = state.eventTemplates[0] ?? (state.deletedTemplateTriggers?.includes('EVENT_ANNOUNCEMENT') ? undefined : samples.eventTemplates[0]);
+    const template = state.eventTemplates.find((item) => item.trigger === 'EVENT_ANNOUNCEMENT');
+    const cancellationTemplate = state.eventTemplates.find((item) => item.trigger === 'EVENT_CANCELLATION');
     const defaultConfirmedIds = new Set(
       samples.registrations
         .filter((row) => row.eventId === event.id && row.status === 'CONFIRMED')
@@ -247,10 +261,10 @@ export function populateEventExamples(
         addAnnouncement('오프라인 장소·준비물 안내', '현장에서 함께하는 분들께 안내드립니다.\n행사 시작 15분 전까지 안내된 장소로 와 주세요. 입구에서 신청 닉네임을 확인합니다.\n개인 물병과 메모할 도구를 준비해 주세요. 늦게 도착하면 디스코드로 운영진에게 알려 주세요.', 'OFFLINE', 'offline', 6);
       }
     }
-    if (event.status === 'CANCELLED' && rows.length && template) {
+    if (event.status === 'CANCELLED' && rows.length && cancellationTemplate) {
       examples.push(
         createEventNoticeMail(
-          cancellationEventTemplate(template),
+          cancellationTemplate,
           event,
           rows.filter((row) => event.cancellationRecipientIds?.includes(row.id)),
           '우천 예보로 행사를 취소하게 되었습니다. 기다려 주신 여러분께 양해 부탁드리며, 새로운 일정이 정해지면 다시 안내드리겠습니다.',

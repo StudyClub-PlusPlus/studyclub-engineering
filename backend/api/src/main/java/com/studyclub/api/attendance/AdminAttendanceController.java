@@ -49,6 +49,17 @@ public class AdminAttendanceController {
     }
 
     @Operation(
+            summary = "스터디 출석률 요약",
+            description =
+                    "모든 반을 합친 출석률(가중평균). 백오피스 스터디 상세 요약 카드. 체크된 회차가 없으면 null."
+                            + " 캡틴(SYSTEM_ROLE=ADMIN)만.")
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/summary")
+    public ResponseEntity<AttendanceSummaryResponse> getSummary(@PathVariable Long studyId) {
+        return ResponseEntity.ok(attendanceService.getStudyAttendanceSummary(studyId));
+    }
+
+    @Operation(
             summary = "출석 생성/수정 (upsert) · 참여 중단",
             description =
                     "캡틴. body의 studyGroupId로 분반을 지정하고, updates의 모든 회차는 그 분반이어야 한다."
