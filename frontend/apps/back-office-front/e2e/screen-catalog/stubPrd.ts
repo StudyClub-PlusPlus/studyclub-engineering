@@ -22,6 +22,8 @@ export async function stubPrd(page: Page, overrides: NonNullable<Recipe['api']>)
   const defaults: NonNullable<Recipe['api']> = [
     { path: '/api/admin/studies/20', json: study },
     { path: '/api/admin/studies/20/application-form', json: form },
+    // 상세 머리 요약 카드의 출석률(3b172ec9) — 회차가 없는 스터디라 아직 「-」
+    { path: '/api/admin/studies/20/attendances/summary', json: { attendanceRate: null } },
     {
       path: '/api/admin/study-programs',
       json: { items: [{ programId: 20, title: study.programTitle, latestStudyId: 20 }] },

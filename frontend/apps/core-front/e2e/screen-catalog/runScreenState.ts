@@ -1,6 +1,7 @@
 import type { Page, TestInfo } from '@playwright/test';
 import { expect } from '@playwright/test';
 
+import { stubApiFixtures } from './adapters/apiFixtures';
 import { seedBrowserStorage } from './adapters/browserStorage';
 import { executeSteps } from './adapters/screenStep';
 import { waitForPageStable } from './waitForPageStable';
@@ -24,6 +25,11 @@ export async function runScreenState(
   // 2. 로컬스토리지 시드 (navigate 전에 origin을 확립해야 하므로 선 이동 후 주입)
   if (recipe.storage && recipe.storage.length > 0) {
     await seedBrowserStorage(page, recipe.storage);
+  }
+
+  // 2-1. API 고정 응답 (MSW 목에 없는 API 를 로컬 백엔드 상태와 상관없이 고정한다)
+  if (recipe.api && recipe.api.length > 0) {
+    await stubApiFixtures(page, recipe.api);
   }
 
   // 3. 타겟 페이지 이동
@@ -52,6 +58,8 @@ export async function runScreenState(
   }
 
   // 7. 스크린샷 (visual regression)
+  // Next 개발 도구 말풍선(「N」 · 「1 Insight」)은 Next 판마다 글자가 바뀐다 — 화면 비교에서 뺀다
+  await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
   const snapshotName = `${state.id}--${viewport}.png`;
   await expect(page).toHaveScreenshot(snapshotName, {
     fullPage: screenshot?.fullPage ?? false,

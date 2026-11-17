@@ -18,9 +18,19 @@ export interface RenderSpec {
   url: string;
 }
 
+/** 화면이 부르는 API 의 고정 응답. MSW 목에 없는 API(로컬 백엔드로 새어 나가는 것)를 카탈로그에서 고정할 때 쓴다. */
+export interface ApiFixture {
+  /** 경로만 비교한다(쿼리 무시). 예: '/api/me/feedbacks' */
+  path: string;
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  status?: number;
+  json?: unknown;
+}
+
 export interface Recipe {
   storage?: StorageSeed[];
   steps?: ScreenStep[];
+  api?: ApiFixture[];
   render: RenderSpec;
 }
 

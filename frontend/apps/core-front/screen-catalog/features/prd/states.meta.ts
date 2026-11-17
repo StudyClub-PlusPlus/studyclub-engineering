@@ -44,7 +44,8 @@ export const prdScreenStates: ScreenStateDef[] = [
     recipe: { ...attendance.recipe, steps: [{ action: 'click', selector: 'button[aria-label="발표 표시 설명"]' }] },
     assertions: {
       visible: ['[role="dialog"][aria-label="발표 표시 설명"]'],
-      text: { '#presenter-help': '그 회차 발표자' },
+      // HelpPopover 가 말풍선 id 를 만든다 — 고정 id 대신 역할 · 이름으로 찾는다
+      text: { '[role="dialog"][aria-label="발표 표시 설명"]': '그 회차 발표자' },
     },
   },
   {

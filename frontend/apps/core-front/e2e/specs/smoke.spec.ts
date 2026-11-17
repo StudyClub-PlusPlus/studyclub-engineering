@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { FEATURES } from '../../src/lib/features';
 import { stubApiMe } from '../stubApiMe';
 
 // ─── 페이지 로드 ───────────────────────────────────────────────────────────────
@@ -29,9 +30,14 @@ test.describe('스터디 목록', () => {
 });
 
 test.describe('이벤트 목록', () => {
+  // 행사는 기능 플래그로 숨겨 둔다(#463) — 꺼져 있으면 404, 켜면 목록이 뜬다
   test('페이지 이동', async ({ page }) => {
     await page.goto('/ko/events');
-    await expect(page.locator('main')).toBeVisible();
+    if (FEATURES.EVENTS) {
+      await expect(page.locator('main')).toBeVisible();
+    } else {
+      await expect(page.getByRole('heading', { name: '404' })).toBeVisible();
+    }
   });
 });
 
