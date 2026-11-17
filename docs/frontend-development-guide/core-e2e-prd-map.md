@@ -12,10 +12,13 @@
 - `@code-baseline`은 현재 코드의 화면을 기준으로 캡처한 경우다. PRD와 차이는 각 Story 아래에 남긴다. PRD를 코드에 맞춰 임의 수정하지 않는다.
 - 완료 기준의 하위 조건도 보존한다. 오류·지연·동시성·실제 저장·외부 OAuth/발송은 별도 행동/응답 조건 검증이 필요하다.
 - 소개·가이드·행사·홈·찜한 스터디는 대응하는 등록 PRD가 없어 기존 카탈로그로 유지한다.
+- 행사 목록·상세(`event-list--default` · `event-detail--default`)는 기능 플래그 `FEATURES.EVENTS=false`(#463) 동안 404 라 카탈로그에서 뺀다(`excluded`). 플래그를 켜면 다시 찍는다.
 
 ## 실행 근거
 
 2026-10-31 검증: 실행 상태 **35개**, 기준 이미지 **60장**. 이미지 갱신 후 일반 비교 `pnpm run test:e2e:catalog` **60 passed (54.7s)**. `typecheck`·`lint` 통과.
+
+2026-11-18 갱신: 내 문의(ST-035) **7개 상태 · 11장**을 더했다. 행사 2개 상태는 기능 플래그로 뺐다(`excluded`). 기준 이미지를 다시 찍었다 — 10-31 이후 다른 변경(헤더 순서 · 시간대 표기 · ui 부품 전환)이 함께 반영돼 있다. 스크린샷 전에 Next 개발 도구 말풍선을 숨긴다.
 
 스크린샷 파일명은 `{pageId}--{state}--{viewport}.png`다. 신청 화면의 옛 `study-apply--*` 이름도 `study-detail--*`로 통일했다.
 
@@ -48,6 +51,13 @@
 | `terms--default` | CORE-ST-014-V01, CORE-ST-014-S02, CORE-ST-014-S04, CORE-ST-014-S05, CORE-ST-014-S06 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/terms--default--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/terms--default--mobile.png) |
 | `privacy--default` | CORE-ST-014-V01, CORE-ST-014-S02, CORE-ST-014-S04, CORE-ST-014-S05, CORE-ST-014-S07 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/privacy--default--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/privacy--default--mobile.png) |
 | `terms--english` | CORE-ST-014-V02 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/terms--english--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/terms--english--mobile.png) |
+| `my-feedbacks--default` | CORE-ST-035-S02, CORE-ST-035-S03 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedbacks--default--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedbacks--default--mobile.png) |
+| `my-feedbacks--empty` | CORE-ST-035-V02 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedbacks--empty--desktop.png) |
+| `my-feedbacks--error` | CORE-ST-035-V03 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedbacks--error--desktop.png) |
+| `my-feedbacks--compose` | CORE-ST-035-S04 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedbacks--compose--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedbacks--compose--mobile.png) |
+| `my-feedback-detail--received` | CORE-ST-035-S07 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedback-detail--received--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedback-detail--received--mobile.png) |
+| `my-feedback-detail--answered` | CORE-ST-035-S07 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedback-detail--answered--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedback-detail--answered--mobile.png) |
+| `my-feedback-detail--not-found` | CORE-ST-035-V07, CORE-ST-035-S08 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedback-detail--not-found--desktop.png) |
 
 ## PRD별 완료 기준과 상태
 
@@ -142,6 +152,7 @@
 [PRD](../../01-planning/stories/crew-submit-application/PRD.md) · [시나리오](../../frontend/apps/core-front/screen-catalog/features/prd/crew-submit-application.feature)
 
 **현재 코드 기준:** PRD의 스터디 없음 카피와 현재 상세 문구가 다르다. 연동 팝업은 환경의 OAuth 준비 상태에도 영향받는다. 기본 폼·연동 게이트 캡처는 실제 OAuth 성공이나 신청 저장을 증명하지 않는다.
+V07 「연동 확인중」의 PRD 원문은 「스피너」지만 현재 `신청하기`는 ui `Button` 의 loading 으로 잠그고 aria-busy 로 알린다 — 버튼 안 스피너는 design-system §9-1 이 쓰지 않는다(2026-11-18, [공유](../share/2026-11-18-ui-first-components.md)). PRD 를 바꿀지는 기획이 정한다.
 
 | 완료 기준 | PRD 원문 (하위 조건 포함) | 시나리오 | 실행 화면 근거 |
 |---|---|---|---|
@@ -468,28 +479,28 @@
 
 [PRD](../../01-planning/stories/crew-submit-feedback/PRD.md) · [시나리오](../../frontend/apps/core-front/screen-catalog/features/prd/crew-submit-feedback.feature)
 
-**현재 코드 기준:** 현재 core-front에 내 문의 목록·작성·상세 페이지가 없다. 전체를 미연결 예정으로 둔다. 관리자 문의 화면과 혼동하지 않는다.
+**현재 코드 기준:** 내 문의 목록(`/my/feedbacks`)·상세·작성 팝업이 생겼다(2026-11-18 카탈로그 연결). 문의 API 는 MSW 목에 없어 카탈로그는 `recipe.api` 로 응답을 고정한다 — 실제 전송·회신 알림·첨부 업로드는 검증하지 않는다. 휴대폰 폭에서 목록 표의 상태 열은 가로로 밀어야 보인다. 관리자 문의 화면과 혼동하지 않는다.
 
 | 완료 기준 | PRD 원문 (하위 조건 포함) | 시나리오 | 실행 화면 근거 |
 |---|---|---|---|
 | 1 | 프로필 드롭다운 「찜한 스터디」 아래, 구분선 위에 「문의·오류 신고」 — 누르면 내 문의 목록 | `CORE-ST-035-S01` | 미연결 |
-| 2 | 내 문의 목록 — 유형 · 제목 · 접수일 · 상태. 접수일 내림차순 고정, 20건씩. 줄을 누르면 상세 | `CORE-ST-035-S02` | 미연결 |
-| 3 | 상태는 둘 — 접수 · 답변 완료 (콘솔의 미확인·확인 = 접수, 완료 = 답변 완료) | `CORE-ST-035-S03` | 미연결 |
-| 4 | [문의하기] → 팝업 — 유형(필수, 기본 선택 없음) · 제목(2~100자) · 내용(10~2000자, 평문) · 이미지 첨부(선택) | `CORE-ST-035-S04` | 미연결 |
+| 2 | 내 문의 목록 — 유형 · 제목 · 접수일 · 상태. 접수일 내림차순 고정, 20건씩. 줄을 누르면 상세 | `CORE-ST-035-S02` | `my-feedbacks--default` |
+| 3 | 상태는 둘 — 접수 · 답변 완료 (콘솔의 미확인·확인 = 접수, 완료 = 답변 완료) | `CORE-ST-035-S03` | `my-feedbacks--default` |
+| 4 | [문의하기] → 팝업 — 유형(필수, 기본 선택 없음) · 제목(2~100자) · 내용(10~2000자, 평문) · 이미지 첨부(선택) | `CORE-ST-035-S04` | `my-feedbacks--compose` |
 | 5 | 유형이 「문의」면 디스코드 채널 안내와 링크. 전송은 그대로 허용 | `CORE-ST-035-S05` | 미연결 |
 | 6 | 전송하면 팝업이 닫히고 목록 맨 위에 「접수」로 선다. 「의견을 보내주셔서 감사합니다.」 | `CORE-ST-035-S06` | 미연결 |
-| 7 | 상세 — 유형 · 제목 · 접수 시각 · 상태 · 내가 쓴 내용 · 첨부 이미지 · 답변(없으면 「답변을 준비하고 있어요」) | `CORE-ST-035-S07` | 미연결 |
-| 8 | 본인 것만 보인다. 남의 문의 · 없는 번호는 찾을 수 없음 | `CORE-ST-035-S08` | 미연결 |
+| 7 | 상세 — 유형 · 제목 · 접수 시각 · 상태 · 내가 쓴 내용 · 첨부 이미지 · 답변(없으면 「답변을 준비하고 있어요」) | `CORE-ST-035-S07` | `my-feedback-detail--received`, `my-feedback-detail--answered` |
+| 8 | 본인 것만 보인다. 남의 문의 · 없는 번호는 찾을 수 없음 | `CORE-ST-035-S08` | `my-feedback-detail--not-found` |
 
 | 상태 | PRD 화면·카피 | 시나리오 | 실행 화면 근거 |
 |---|---|---|---|
 | 불러오는 중 | 표 자리 스켈레톤 / — | `CORE-ST-035-V01` | 미연결 |
-| 문의 없음 | 빈 표와 문의하기 / `접수한 문의가 없습니다.` · `문의하기` | `CORE-ST-035-V02` | 미연결 |
-| 목록 오류 | 안내와 다시 시도 / `불러오지 못했습니다. 다시 시도해 주세요.` | `CORE-ST-035-V03` | 미연결 |
+| 문의 없음 | 빈 표와 문의하기 / `접수한 문의가 없습니다.` · `문의하기` | `CORE-ST-035-V02` | `my-feedbacks--empty` |
+| 목록 오류 | 안내와 다시 시도 / `불러오지 못했습니다. 다시 시도해 주세요.` | `CORE-ST-035-V03` | `my-feedbacks--error` |
 | 전송 성공 | 팝업 닫힘, 초록 알림 / `의견을 보내주셔서 감사합니다.` | `CORE-ST-035-V04` | 미연결 |
 | 전송 실패 | 팝업 유지, 빨간 알림 / `의견을 보내지 못했습니다. 다시 시도해 주세요.` · `다시 시도` | `CORE-ST-035-V05` | 미연결 |
 | 너무 자주 보냄 | 빨간 알림 / `잠시 후 다시 시도해 주세요.` | `CORE-ST-035-V06` | 미연결 |
-| 상세 없음 | 남의 것 · 없는 번호 / `찾을 수 없는 문의입니다.` | `CORE-ST-035-V07` | 미연결 |
+| 상세 없음 | 남의 것 · 없는 번호 / `찾을 수 없는 문의입니다.` | `CORE-ST-035-V07` | `my-feedback-detail--not-found` |
 
 ## 검증 범위와 남은 작업
 
