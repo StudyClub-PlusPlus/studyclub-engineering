@@ -1,6 +1,6 @@
 'use client';
 
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
 
 import { cx } from './cx';
 
@@ -10,6 +10,8 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 export type ButtonState = 'default' | 'error';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  /** 포커스를 되돌릴 때(메뉴 닫기 등) 쓴다. React 19 라 forwardRef 없이 그대로 button 에 닿는다. */
+  ref?: Ref<HTMLButtonElement>;
   variant?: ButtonVariant;
   size?: ButtonSize;
   /** 실패 문구는 버튼 근처에서 role=alert 및 aria-describedby로 연결한다. */
@@ -63,14 +65,19 @@ export function Button({
   );
 }
 
-export interface IconButtonProps extends Omit<ButtonProps, 'leadingIcon' | 'trailingIcon' | 'children'> {
+export type IconButtonSize = ButtonSize | 'xs';
+
+export interface IconButtonProps extends Omit<ButtonProps, 'leadingIcon' | 'trailingIcon' | 'children' | 'size'> {
   icon: ReactNode;
   'aria-label': string;
+  /** xs(24px)는 IconButton 전용 — 표 칸처럼 줄 높이를 지켜야 하는 자리. 터치 장치에서는 누르는 영역이 44px 로 넓어진다. */
+  size?: IconButtonSize;
 }
 
-export function IconButton({ icon, className, ...rest }: IconButtonProps) {
+export function IconButton({ icon, className, size = 'md', ...rest }: IconButtonProps) {
   return (
-    <Button {...rest} className={cx('sc-icon-button', className)}>
+    // xs 는 data-size 로만 쓰이고(buttons.css) 글자 크기 분기에는 닿지 않는다
+    <Button {...rest} size={size as ButtonSize} className={cx('sc-icon-button', className)}>
       <span className='sc-button-icon' aria-hidden='true'>
         {icon}
       </span>

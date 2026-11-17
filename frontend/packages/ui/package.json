@@ -11,6 +11,7 @@
   "scripts": {
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "new-component": "node scripts/new-component.mjs",
     "format": "prettier --cache --write .",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit"

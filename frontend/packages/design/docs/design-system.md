@@ -400,6 +400,8 @@
 - 화면에서 `className` 으로 색을 덧칠해 변형을 흉내 내지 않는다 — 필요한 모양이 없으면 여기에 변형을 더한다.
 
 **사이즈**: 기본 md. sm 32px/px12/gap4/radius8/아이콘14/`type-label-sm`, md 40px/px16/gap8/radius9/아이콘16/`type-label-lg`, lg 48px/px20/gap8/radius10/아이콘20/`type-label-lg`.
+다른 주소로 가는 것은 **ButtonLink** — 모양 · 변형 · 크기는 Button 과 같고 a(또는 next/link)로 그린다. 바깥 사이트는 새 탭(external). 링크에 sc-button 클래스를 손으로 붙이지 않는다.
+IconButton 만 xs 24px/radius8/아이콘14 가 있다 — 표 칸 · 글줄 안처럼 줄 높이를 지켜야 하는 자리(행의 보기 · 재발송, 문장 옆 도움말). 터치 장치에서는 아래 규칙대로 누르는 영역이 44px 로 넓어진다.
 
 - 정본: `buttons.css`와 `@studyclub/ui`의 `Button`/`IconButton`. 버튼 전용 `radius-button-sm/md/lg`를 사용하므로 Console의 `radius-control`에 영향을 받지 않는다.
 - Secondary 기본 상태: 배경 `#FFFFFF`, 테두리 `1px solid #CBCFE5`(`--color-button-secondary-border`), 글자 `#282A43`. 입력 필드의 일반 `border`/선택 `border-strong` 규칙은 유지한다.
@@ -420,6 +422,10 @@
 - 선택된 control: border `--color-border-strong`. 포커스: border-interactive + `--shadow-focus-ring`. 에러: border danger-fg + error 링 + helper danger-fg.
 - disabled: disabled-bg / disabled-fg.
 - 라벨 type-label-lg ink · helper type-label-sm text-muted · 입력값 type-body-md(Console은 type-body-sm) · 필수표시 danger-fg `*`.
+- 앞 아이콘(`leadingIcon`): 검색 돋보기 등 장식 아이콘을 왼쪽 12px 에 두고 입력값은 pl 36px 에서 시작. 색 text-placeholder, aria-hidden.
+- Console 툴바(검색·필터)는 `size="sm"`(h32, type-body-sm). 값을 고른 필터 Select 는 border-brand + font-semibold 로 「걸려 있음」을 보인다(전체일 때는 border-strong · text-secondary).
+- **Checkbox / Radio**: 16px, accent brand, 포커스 링은 입력과 같은 `--shadow-focus-ring`. 라벨 type-label-lg ink, 라벨 클릭으로도 토글. Radio 는 같은 `name` 묶음에서 하나만 고르고, 묶음 제목은 `fieldset`+`legend` 로 단다. 설명(`description`)은 라벨 아래 type-label-sm text-muted. 표의 행 선택처럼 라벨이 안 보이는 자리는 `hideLabel`(라벨은 스크린리더용으로 남긴다).
+- **Switch**: 누르는 즉시 반영되는 설정(사이트 공개 등). 트랙 36×20 radius-full, 꺼짐 surface-3, 켜짐 brand(기본) 또는 success-600(「공개됨」처럼 켜진 상태가 좋은 소식일 때). 손잡이 16px surface-raised + shadow-sm, 이동은 duration-base ease-out. 이름은 트랙 왼쪽 type-label-lg text-secondary. 막힌 상태는 `aria-disabled` + opacity 60% 로 포커스는 남겨 막힌 이유(`aria-describedby`)를 읽게 한다. 제출하는 폼 안의 예/아니오는 Checkbox.
 
 ### 9-3. Card
 
@@ -489,12 +495,13 @@
 | 컴포넌트 | 핵심 스펙 |
 |---|---|
 | Tabs | 언더라인형. active text primary-dark + 2px underline primary, inactive text-muted |
-| Filter Chip | pill. 미선택 border/text-secondary/surface-raised · 선택 border-strong + primary-light/primary-dark(다중) 또는 primary solid(단일) |
+| Filter Chip | pill. 미선택 border/text-secondary/surface-raised · 선택 border-strong + primary-light/primary-dark(다중) 또는 primary solid(단일). 요일 고르기처럼 한 글자면 w-9 정사각에 가깝게. 폼 값으로 하나만 고르는 묶음(카테고리 · 진행 방식 · 시간대)은 `role="radio"` + 묶음 `role="radiogroup"` — 상태는 aria-checked 로 알린다. 화면 전환 탭 줄은 Segmented · Tabs 를 쓴다 |
 | Modal/Dialog | radius `--radius-modal`, `shadow-xl`, 오버레이 rgba(23,25,35,.48), 등장 base/ease-out, 모바일은 바텀시트(상단 radius 24). 머리는 `title`(하는 일) + `description`(대상 · 기준, 작은 글씨) — 대상을 제목에 붙이지 않는다 |
 | Toast | 좌측 상태 색 스트립 4px + 아이콘, bg 흰색, shadow-lg, 자동 4s |
 | Avatar | radius-full, 사이즈 24/32/40, 이니셜 fallback primary-light/primary-dark, 역할 링(캡틴=primary) |
 | Nav | 사이트=상단 가로 네비(surface-raised + border 하단), 콘솔=좌측 사이드바(page-bg, active primary-light/primary-dark) |
 | Empty State | 일러스트/아이콘 + 안내 카피(~해요체) + 주요 CTA. 예: "아직 신청한 스터디가 없어요" |
+| Help Popover | 제목 · 값 옆 IconButton xs(「?」, 기준 안내는 ⓘ)를 누르면 아래 1.5 간격에 뜬다. surface-raised · border · radius-card · shadow-md · p-3, 폭 18rem(화면 폭 -2rem 상한), 글자 type-label-sm text-secondary. 바깥 클릭 · 포커스 이동 · Esc 로 닫고 Esc 는 단추로 포커스를 돌린다. 화면 오른쪽 끝 근처는 단추 오른쪽에 맞춘다(align end). 늘 펼쳐 두는 안내문 대신 쓴다 |
 | Pagination / Segmented | segmented control은 track cloud, active surface-raised + shadow-xs |
 
 ---

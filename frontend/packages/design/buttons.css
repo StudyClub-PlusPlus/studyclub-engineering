@@ -42,6 +42,12 @@
     --button-gap: 4px;
     --button-icon-size: 14px;
   }
+  /* IconButton 전용 — 표 칸처럼 줄 높이를 지켜야 하는 자리. 텍스트 버튼에는 쓰지 않는다. */
+  .sc-button[data-size='xs'] {
+    --button-height: 24px;
+    --button-radius: var(--radius-button-sm);
+    --button-icon-size: 14px;
+  }
   .sc-button[data-size='lg'] {
     --button-min-width: 96px;
     --button-height: 48px;

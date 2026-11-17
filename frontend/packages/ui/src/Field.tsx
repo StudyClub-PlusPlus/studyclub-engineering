@@ -23,6 +23,7 @@ function controlClass(invalid: boolean, extra?: string) {
   return cx(CONTROL_BASE, invalid ? CONTROL_ERROR : CONTROL_OK, extra);
 }
 
+
 export interface FieldShellProps {
   label?: string;
   helper?: string;
@@ -96,6 +97,8 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   size?: InputSize;
   /** 칸 오른쪽 끝에 붙는 단위 글자(「명」 · 「원」 등). 입력값이 그 앞에서 멈추도록 오른쪽 여백을 비운다. */
   suffix?: ReactNode;
+  /** 칸 왼쪽에 붙는 장식 아이콘(검색 돋보기 등). 장식이라 스크린리더는 읽지 않는다. */
+  leadingIcon?: ReactNode;
 }
 
 export function Input({
@@ -108,6 +111,7 @@ export function Input({
   id,
   size = 'md',
   suffix,
+  leadingIcon,
   ...rest
 }: InputProps) {
   const autoId = useId();
@@ -125,13 +129,24 @@ export function Input({
       messageId={messageId}
     >
       <div className='relative'>
+        {leadingIcon != null && (
+          <span
+            aria-hidden='true'
+            className='pointer-events-none absolute top-1/2 left-3 flex -translate-y-1/2 text-fg-placeholder'
+          >
+            {leadingIcon}
+          </span>
+        )}
         <input
           {...rest}
           id={fieldId}
           required={required}
           aria-invalid={invalid || undefined}
           aria-describedby={ariaDescribedBy}
-          className={controlClass(invalid, cx(INPUT_SIZES[size], suffix != null && 'pr-9', className))}
+          className={controlClass(
+            invalid,
+            cx(INPUT_SIZES[size], leadingIcon != null && 'pl-9', suffix != null && 'pr-9', className),
+          )}
         />
         {suffix != null && (
           <span className='pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 type-body-sm text-fg-muted'>
