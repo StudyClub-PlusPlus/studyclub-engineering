@@ -2,6 +2,7 @@ import {
   emptyResponseSchema,
   groupAssignmentsResponseSchema,
   groupSchema,
+  ownerCaptainResponseSchema,
   participantsResponseSchema,
 } from '@/features/participants/response-schema';
 import type { GroupChange } from '@/features/participants/types';
@@ -16,6 +17,15 @@ export function saveGroupAssignments(studyId: number, changes: GroupChange[]) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ changes }),
+  });
+}
+
+/** 담당 캡틴 바꾸기 — 고르는 즉시 저장한다 (specs/study-group/spec.md 「담당 캡틴 바꾸기」). */
+export function changeOwnerCaptain(studyId: number, accountId: number) {
+  return http(`/api/admin/studies/${studyId}/owner-captain`, ownerCaptainResponseSchema, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accountId }),
   });
 }
 

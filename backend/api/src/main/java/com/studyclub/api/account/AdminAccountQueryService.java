@@ -13,9 +13,13 @@ import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.participant.ParticipationPeriod;
+import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,11 +38,15 @@ public class AdminAccountQueryService {
 
     private final AdminAccountDao adminAccountDao;
     private final AccountRepository accountRepository;
+    private final StudyRepository studyRepository;
 
     public AdminAccountQueryService(
-            AdminAccountDao adminAccountDao, AccountRepository accountRepository) {
+            AdminAccountDao adminAccountDao,
+            AccountRepository accountRepository,
+            StudyRepository studyRepository) {
         this.adminAccountDao = adminAccountDao;
         this.accountRepository = accountRepository;
+        this.studyRepository = studyRepository;
     }
 
     public AdminAccountListResponse getAccounts(
@@ -79,6 +87,11 @@ public class AdminAccountQueryService {
                                                                 row.studyId(), row.title()),
                                                 Collectors.toList())));
         long adminCount = accountRepository.countBySystemRole(SystemRole.ADMIN);
+        // 진행 중 담당 스터디가 있는 계정 — 한 페이지분을 한 번에 본다 (OWNS_STUDY)
+        Set<Long> owners =
+                new HashSet<>(
+                        studyRepository.findOwnerCaptainIdsWithStatusNotIn(
+                                accountIds, StudyStatus.ENDED_STATUSES));
 
         List<AccountSummary> items =
                 rows.stream()
@@ -90,6 +103,7 @@ public class AdminAccountQueryService {
                                                         row.account().getId(), List.of()),
                                                 requesterId,
                                                 adminCount,
+                                                owners.contains(row.account().getId()),
                                                 participationPeriods.getOrDefault(
                                                         row.account().getId(), List.of()),
                                                 asOf))
@@ -112,6 +126,7 @@ public class AdminAccountQueryService {
             List<NavigatorStudy> navigatorOf,
             Long requesterId,
             long adminCount,
+            boolean ownsOngoingStudy,
             List<ParticipationPeriod> participationPeriods,
             Instant asOf) {
         Account account = row.account();
@@ -125,7 +140,7 @@ public class AdminAccountQueryService {
                 account.isDormant(row.lastLoginAt(), participationPeriods, asOf),
                 account.getCreatedAt(),
                 // 판정은 엔티티 한 곳 — 권한 변경 API 가 거절할 때도 같은 메서드를 부른다
-                account.roleChangeBlockedReason(requesterId, adminCount),
+                account.roleChangeBlockedReason(requesterId, adminCount, ownsOngoingStudy),
                 account.isDiscordLinked());
     }
 }

@@ -113,7 +113,7 @@ flowchart LR
 - **표시**: 참여 상태 탭 줄 오른쪽 드롭다운 `모든 역할` · `운영 (캡틴·네비게이터)` · `참여 (크루)`. 처음 값 `모든 역할`
 - **동작**: 고르면 그 역할의 스터디만 남기고 1페이지로 간다. 참여 상태 탭과 함께 걸린다 (예: 참여중 + 운영)
 - **정책**
-  - 운영 = 그 스터디를 만든 캡틴 또는 네비게이터. 참여 = 크루
+  - 운영 = 그 스터디의 담당 캡틴 또는 네비게이터. 참여 = 크루
   - 운영하는 스터디가 하나도 없으면 드롭다운을 두지 않는다 — 대부분의 크루에게는 어느 값이든 같은 목록이다
   - 정렬 앞세우기가 아니라 거르기다 — 「어떤 스터디」와 「어떤 순서」를 섞지 않는다. 정렬(2-3)과 같은 모양으로 나란히 둔다
   - 결과가 없으면 `운영하는 스터디가 없습니다` / `크루로 참여한 스터디가 없습니다`
@@ -178,8 +178,8 @@ flowchart LR
 
 - **표시**: 제목 옆 배지 `캡틴` · `네비게이터` · `크루`. 모든 카드에 하나
 - **정책**
-  - 캡틴 = 그 스터디를 만든 캡틴(`STUDY.CREATED_BY`). 네비게이터 = 그 분반 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER`. 그 밖은 크루
-  - 스터디를 만들지 않은 캡틴(ADMIN)이 신청해 참여하면 `크루` — 그 스터디의 스터디 일정도 크루로 보고, 고치지 못한다
+  - 캡틴 = 그 스터디의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`). 네비게이터 = 그 분반 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER`. 그 밖은 크루
+  - 담당 캡틴이 아닌 캡틴(ADMIN)이 신청해 참여하면 `크루` — 그 스터디의 스터디 일정도 크루로 보고, 고치지 못한다
   - 참여 종료된 스터디에도 붙음 — 역할 이력
 - **데이터**: `STUDY_PARTICIPANT.PARTICIPANT_ROLE` · 담당 캡틴
 
@@ -358,7 +358,7 @@ erDiagram
 - **내용**: 드롭다운 「모든 역할 · 운영 (캡틴·네비게이터) · 참여 (크루)」. 처음 값 모든 역할
 - **동작**: 고르면 그 역할의 스터디만 남긴다. 참여 상태 탭과 함께 걸린다
 - **정책**
-  - 운영 = 그 스터디를 만든 캡틴 또는 네비게이터. 참여 = 크루
+  - 운영 = 그 스터디의 담당 캡틴 또는 네비게이터. 참여 = 크루
   - 운영하는 스터디가 하나도 없으면 두지 않는다. 어느 값이든 같은 목록이다
   - 정렬 앞세우기가 아니라 거르기: 정렬(2-3)과 같은 모양으로 나란히
 
@@ -474,7 +474,7 @@ erDiagram
 | 회차 | SCHEDULED_AT, STARTS_AT, ENDS_AT | `STUDY_MEETING`. UTC datetime | 영어는 meeting. 회차 번호는 ERD 미확정. 프로토는 일정 문구에서 시각을 읽음 |
 | 내 출석 | STATUS | `PRESENT` / `LATE` / `EXCUSED` / `ABSENT` | 휴가 = `EXCUSED`. 회차 생성 시 전원 `ABSENT`. 시작 전 화면은 결석을 그리지 않음 |
 | 회원 | REGION_GROUP, TIME_ZONE | 권역 `KR` / `NA` / `ETC`. 타임존 IANA | 프로필 시간대가 조회 기준. 값이 없으면 브라우저 시간대 |
-| 역할 | PARTICIPANT_ROLE | `LEADER` = 네비게이터 | 캡틴 = 그 스터디를 만든 캡틴(`STUDY.CREATED_BY`). 신청했을 때만 명부에 있다(역할 값은 `MEMBER`) (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)). 그 밖은 크루 |
+| 역할 | PARTICIPANT_ROLE | `LEADER` = 네비게이터 | 캡틴 = 그 스터디의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`). 신청했을 때만 명부에 있다(역할 값은 `MEMBER`) (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)). 그 밖은 크루 |
 
 ### 처리
 
@@ -498,7 +498,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/me/studies` | 로그인. 명부 참여 스터디만(담당 캡틴도 신청했을 때만). 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그. [내 스터디 스펙](../../../specs/my-studies/spec.md#담당-캡틴) |
+| GET | `/api/me/studies` | 로그인. 명부 참여 스터디만(담당 캡틴도 신청했을 때만). 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.OWNER_CAPTAIN_ID = 나` 로 판정한 `captain` 플래그. [내 스터디 스펙](../../../specs/my-studies/spec.md#담당-캡틴) |
 | GET | `/api/me/studies/{id}/meetings` | 해당 명부 |
 | GET | `/auth/me` | 거주 지역 등 |
 

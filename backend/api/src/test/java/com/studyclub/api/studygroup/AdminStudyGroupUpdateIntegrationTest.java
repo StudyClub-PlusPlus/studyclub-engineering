@@ -81,6 +81,7 @@ class AdminStudyGroupUpdateIntegrationTest {
                                 .description("설명")
                                 .status(StudyStatus.DRAFT)
                                 .createdBy(ADMIN_ID)
+                                .ownerCaptainId(ADMIN_ID)
                                 .build());
         group = studyGroupRepo.save(StudyGroup.create(study.getId(), "원래반"));
     }

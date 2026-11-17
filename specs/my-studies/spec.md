@@ -1,6 +1,7 @@
 # 내 스터디 API Spec
 
 > ERD: [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY](../../docs/erd/STUDY.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
+> 갱신: 2026-11-16 — 담당 캡틴 판정을 `STUDY.CREATED_BY` 에서 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md)). 처음 값은 만든 캡틴, 백오피스 신청자 탭에서 바꾼다
 > 생성일: 2026-09-30
 > 상태: 구현완료 (프론트 core-front `/my/joined` 구현 완료)
 >
@@ -101,7 +102,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].relation | String | N | 나와의 관계 — 탭·배지. 아래 표 | 계산: `participantStatus` + `startAt` |
 | items[].participantStatus | String | Y | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED` | STUDY_PARTICIPANT.STATUS |
 | items[].participantRole | String | Y | `MEMBER` / `LEADER`. 네비게이터 배지·스터디 관리 버튼 | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
-| items[].captain | Boolean | N | 내가 이 스터디의 **담당 캡틴**(스터디를 생성한 캡틴)이면 true — 「캡틴」 배지. 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다. 다른 캡틴(ADMIN)이 신청해 참여한 스터디는 false(크루) | 계산: `STUDY.CREATED_BY = 나` |
+| items[].captain | Boolean | N | 내가 이 스터디의 **담당 캡틴**(처음엔 스터디를 생성한 캡틴, 백오피스에서 바뀔 수 있다)이면 true — 「캡틴」 배지. 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다. 다른 캡틴(ADMIN)이 신청해 참여한 스터디는 false(크루) | 계산: `STUDY.OWNER_CAPTAIN_ID = 나` |
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |
 | items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김 | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |
@@ -163,7 +164,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | 시작 전 회차에 EXCUSED 행 있음 | 그 회차 `attendanceStatus` EXCUSED, `countedInRate` false |
 | 편입(`JOINED_AT`) 전 지난 회차 | 격자에 나오고 `countedInRate` false |
 | 다른 회원의 명부·출석 | 응답에 안 나옴 |
-| 내가 만든(`CREATED_BY = 나`) 스터디, 신청하지 않음(명부 행 없음) | 응답에 안 나옴 |
+| 내가 담당하는(`OWNER_CAPTAIN_ID = 나`) 스터디, 신청하지 않음(명부 행 없음) | 응답에 안 나옴 |
 | 다른 캡틴이 만든 스터디에 내가 신청해 명부 MEMBER | `captain` false |
 | 담당 캡틴이 신청해 명부 MEMBER 행 있음 | 명부 값(출석률·회차 포함) + `captain` true |
 | 토큰 없음 | 401 |

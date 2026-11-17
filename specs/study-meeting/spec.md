@@ -2,6 +2,7 @@
 
 > ERD: [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
 > Story PRD: [회차 등록](../../01-planning/stories/navigator-register-sessions/PRD.md) · [크루 발표자 신청](../../01-planning/stories/crew-apply-presenter/PRD.md)
+> 갱신: 2026-11-16 — 담당 캡틴 판정을 `STUDY.CREATED_BY` 에서 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md)). 처음 값은 만든 캡틴, 백오피스 신청자 탭에서 바꾼다
 > 생성일: 2026-10-02
 > 상태: 구현중 (2026-10-07 — 백엔드) · 2026-10-23 — 삭제 2개 말고 구현완료. 삭제는 코드 경로가 스펙과 다르다 (아래 표) · 2026-10-24 — 백오피스 회차 쓰기 · 규칙 추가 (아래 「백오피스 회차 쓰기 · 규칙」)
 >
@@ -40,7 +41,7 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 · 9~12 는 기획(세은님
 |---|---|---|---|
 | 1 | 제목 · 회차 번호 | `STUDY_MEETING.TITLE` VARCHAR(50) NULL 추가. 회차 번호는 저장하지 않고 분반 회차를 `SCHEDULED_AT` 오름차순으로 센 순번으로 계산 | 번호를 저장하면 추가·삭제·수정 때마다 뒤 회차를 전부 다시 써야 한다. PRD 계산 규칙과 같다 |
 | 2 | 반복 | **반복 묶음 ID 를 저장한다** — `STUDY_MEETING.SERIES_ID` VARCHAR(36) NULL. 한 요청으로 회차를 2개 이상 만들면 서버가 UUID 하나를 만들어 그 회차 모두에 넣는다. 한 번만 만든 회차는 null. 요청 바디는 그대로다. **쓰는 기능은 아직 없다** — 삭제·수정은 한 회차씩이고(PRD 3-5 「이후 반복 모두」 없음), 목록의 반복 표시도 두지 않는다 | 기획 답변 (2026-10-05). 반복 단위 수정·삭제를 나중에 붙이려면 만들 때 묶음을 남겨야 한다 — 저장하지 않고 지나간 회차는 나중에 묶을 방법이 없다 |
-| 3 | 권한 | 그 분반의 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` 또는 **그 스터디를 만든 캡틴**(`STUDY.CREATED_BY = 나`). 다른 캡틴(ADMIN)은 이 사용자 사이트 API 에서 특별 대우하지 않는다 — 참여했으면 크루, 아니면 403. 서버에서 검증 | PRD 권한 절 + POL-0001 「회차 관리 — 담당 반에 한해 캡틴, 네비게이터」. 「담당 캡틴」을 스터디를 만든 캡틴으로 정했다 (기획 답변 2026-10-06). 운영자 전체 관리는 백오피스(`/api/admin`) 몫 |
+| 3 | 권한 | 그 분반의 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` 또는 **그 스터디의 담당 캡틴**(`STUDY.OWNER_CAPTAIN_ID = 나`, 2026-11-16 — 그전엔 `CREATED_BY`). 다른 캡틴(ADMIN)은 이 사용자 사이트 API 에서 특별 대우하지 않는다 — 참여했으면 크루, 아니면 403. 서버에서 검증 | PRD 권한 절 + POL-0001 「회차 관리 — 담당 반에 한해 캡틴, 네비게이터」. 「담당 캡틴」을 스터디를 만든 캡틴으로 정했다 (기획 답변 2026-10-06). 운영자 전체 관리는 백오피스(`/api/admin`) 몫 |
 | 4 | 회차 변경 알림 | 범위 밖 | 알림 스펙([notification](../notification/spec.md))에 이벤트가 생기면 따로 붙인다 |
 | 5 | 첫 회차 등록 시 `STUDY.STATUS` | **`OPEN → ONGOING` 으로 바꾸지 않는다** | `Study.recruitStatus()` 가 `status == OPEN` 일 때만 값을 주고 그 밖엔 null 이라, 모집 중에 회차를 미리 깔면 모집이 닫힌다 (`phase()` 도 시작 전 ONGOING 을 「종료」 로 판정한다). 공개 여부는 #174 이후 `isPubliclyVisible()` 이 `status != DRAFT` 라 영향이 없다. 「진행 중」 은 지금처럼 `Study.phase()` 가 `STUDY.START_AT` 경과로 판정한다. [STUDY ERD 전이표](../../docs/erd/STUDY.md)와 어긋나 ERD 에 메모를 남겼다 |
 | 6 | 클럽(모임형이 아닌 출석) | 범위 밖. 이 API 는 분반에 회차를 까는 스터디만 다룬다 | 클럽의 출석 단위가 회차인지부터 정해지지 않았다 |
@@ -77,7 +78,7 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 · 9~12 는 기획(세은님
 
 **고치기**(추가 · 수정 · 삭제 · 규칙 저장):
 
-1. 그 스터디를 만든 캡틴(`STUDY.CREATED_BY = 나`) → 통과. **다른 ADMIN 은 통과하지 않는다** — 참여했으면 아래 크루 판정을 따른다
+1. 그 스터디의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID = 나`) → 통과. **다른 ADMIN 은 통과하지 않는다** — 참여했으면 아래 크루 판정을 따른다
 2. `STUDY_PARTICIPANT` 에 `(STUDY_GROUP_ID = 대상 분반, ACCOUNT_ID = 나, PARTICIPANT_ROLE = LEADER)` 행이 있으면 통과
 3. 그 밖 → 403
 
@@ -85,7 +86,7 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 · 9~12 는 기획(세은님
 
 **발표 신청·취소**: 그 분반에 내 활성 명부 행이 있어야 한다. **캡틴 우회 없음** — 발표자 칸에 넣을 명부 행이 없으면 신청할 수 없다. 명부에 없는 (만든) 캡틴은 회차 수정(PUT)으로 지정한다.
 
-> 기존 `@RequireCaptainOrNavigator` · `StudyCaptainGuard` 는 `SYSTEM_ROLE = ADMIN` 이면 누구나 통과시킨다. 이 스펙의 사용자 사이트 API 에서는 「그 스터디를 만든 캡틴」으로 좁혀야 한다 (구현 메모).
+> 기존 `@RequireCaptainOrNavigator` · `StudyCaptainGuard` 는 `SYSTEM_ROLE = ADMIN` 이면 누구나 통과시킨다. 이 스펙의 사용자 사이트 API 에서는 「그 스터디의 담당 캡틴」(`STUDY.OWNER_CAPTAIN_ID`)으로 좁혀야 한다 (구현 메모).
 
 > 기존 `StudyCaptainGuard.assertCaptainOrNavigator` 는 **스터디** 범위로 본다. 회차는 **분반** 범위라 같은 스터디의 다른 분반 네비게이터는 통과하면 안 된다 — 분반 범위 판정이 따로 필요하다.
 >
@@ -342,7 +343,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 ### 서버 동작
 
 1. 분반 잠금 → 권한 판정 → 분반 회차 잠금 순서로 읽는다 (위 「잠금」).
-2. 대상이 킥오프면 403 — 킥오프는 백오피스에서 캡틴이 정한다 (결정 11). 스터디를 만든 캡틴도 이 API 로는 못 고친다.
+2. 대상이 킥오프면 403 — 킥오프는 백오피스에서 캡틴이 정한다 (결정 11). 담당 캡틴도 이 API 로는 못 고친다.
 3. 대상 회차가 시작했으면 409.
 4. 검증 후 `SCHEDULED_AT`·`TITLE`·`PRESENTER1·2_PARTICIPANT_ID` 갱신. `SERIES_ID`·`MEETING_TYPE` 은 건드리지 않는다 — 시각을 옮겨도 같은 묶음이다.
 
@@ -522,7 +523,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - **Method**: GET
 - **Path**: `/api/admin/studies/{studyId}/groups/{groupId}/meetings`
 - **인증**: 필요 (ADMIN — 캡틴)
-- **설명**: 백오피스 일정 탭이 고른 반의 회차를 읽는다. 캡틴은 **어느 스터디의 어느 반이든** 본다 — 사이트 목록(`GET /api/studies/{studyId}/meetings`)은 스터디를 만든 캡틴 · 그 분반 참여자만 봐서 다른 캡틴이 만든 스터디는 403 이다.
+- **설명**: 백오피스 일정 탭이 고른 반의 회차를 읽는다. 캡틴은 **어느 스터디의 어느 반이든** 본다 — 사이트 목록(`GET /api/studies/{studyId}/meetings`)은 담당 캡틴 · 그 분반 참여자만 봐서 다른 캡틴이 담당인 스터디는 403 이다.
 
 ### Response — 200
 
@@ -612,7 +613,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | DELETE | `/api/admin/studies/{studyId}/groups/{groupId}/meetings` | [회차 삭제 (일괄)](#회차-삭제-일괄) |
 | PUT | `/api/admin/studies/{studyId}/groups/{groupId}/rules` | [스터디 규칙 저장](#스터디-규칙-저장) |
 
-- **인증**: 필요 (ADMIN — 캡틴). **어느 스터디의 어느 반이든** 고친다 — 사이트 API 는 그 스터디를 만든 캡틴 · 그 반 네비게이터만 통과해, 다른 캡틴은 백오피스에서 회차를 고칠 수 없었다 (2026-10-24).
+- **인증**: 필요 (ADMIN — 캡틴). **어느 스터디의 어느 반이든** 고친다 — 사이트 API 는 그 스터디의 담당 캡틴 · 그 반 네비게이터만 통과해, 다른 캡틴은 백오피스에서 회차를 고칠 수 없었다 (2026-10-24).
 - **설명**: 백오피스 일정 탭이 부른다. 동작 · 검증 · 잠금 · 출석 행(추가 시 ABSENT 생성, 삭제 시 출석 · 휴가 삭제)은 사이트 API 와 **같은 서비스 코드**다. 다른 것은 권한과, 반을 경로로 받는다는 것뿐이다.
 
 ### Path Parameters
@@ -659,7 +660,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - 결정 9~12 의 컬럼(`STUDY_MEETING.MEETING_TYPE` · `PRESENTER1_PARTICIPANT_ID` · `PRESENTER2_PARTICIPANT_ID`, `STUDY_GROUP.RULES`)은 한 마이그레이션 `V{n}__study_schedule_board.sql` 로 더한다. 기존 회차는 `MEETING_TYPE = REGULAR` 로 채운다.
 - 킥오프는 캡틴이 `PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff` 로 정한다 (결정 11, 2026-10-22). 반 만들기 · 회차 추가는 킥오프를 만들지 않는다.
 - 참여자가 분반을 떠나면(하차·탈퇴) 그가 맡은 **예정** 회차의 발표자 칸을 비운다. 지난 회차는 기록이라 둔다.
-- 캡틴 판정을 `SYSTEM_ROLE = ADMIN` 에서 「그 스터디를 만든 캡틴(`STUDY.CREATED_BY`, V29)」으로 좁힌다 — 회차 API 와 출석 API(GET·POST) 모두. 다른 ADMIN 의 운영은 백오피스 API 로.
+- 캡틴 판정을 `SYSTEM_ROLE = ADMIN` 에서 「그 스터디를 만든 캡틴(`STUDY.CREATED_BY`, V29)」으로 좁힌다 (2026-11-16 부터 `STUDY.OWNER_CAPTAIN_ID`) — 회차 API 와 출석 API(GET·POST) 모두. 다른 ADMIN 의 운영은 백오피스 API 로.
 - 출석부 GET(`/api/studies/{studyId}/attendances`)도 위 「권한 판정」 보기를 따른다 — 크루는 내 분반 전원의 출석(휴가 표시 포함)을 본다. 다른 분반은 403.
 - 출석률 계산에서 킥오프를 뺀다 — [명부·출석 스펙](../attendance/spec.md) 「출석률 산식」 의 `countable_meetings` 에 `MEETING_TYPE = REGULAR` 조건을 더한다.
 - `ErrorCode` 에 `KICKOFF_NOT_DELETABLE(409)` · `PRESENTER_SLOT_TAKEN(409)` · `PRESENTER_ALREADY_ASSIGNED(409)` · `PRESENTER_NOT_ME(409)` 를 더한다.

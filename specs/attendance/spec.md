@@ -2,6 +2,7 @@
 
 > ERD: [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md)
 > Story PRD: [출석명부](../../01-planning/stories/captain-view-attendance-roster/PRD.md) · [네비게이터 출석 수정](../../01-planning/stories/navigator-edit-attendance/PRD.md) · [크루 출석 기록](../../01-planning/stories/crew-view-attendance-record/PRD.md) · [대시보드 출석률](../../01-planning/stories/console-dashboard/PRD.md)
+> 갱신: 2026-11-16 — 담당 캡틴 판정을 `STUDY.CREATED_BY` 에서 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md)). 처음 값은 만든 캡틴, 백오피스 신청자 탭에서 바꾼다
 > 생성일: 2026-09-15
 > 상태: 스펙확정
 > 갱신: 2026-10-23 — 백오피스 경로 조회에 통합 테스트를 붙여 구현완료. 백오피스 저장도 `withdrawals[]` 를 받는다 — 담당 캡틴이 크루 · 네비게이터를 중단 (2026-10-23 기획 결정)
@@ -165,7 +166,7 @@ STUDY_ATTENDANCE {
 | participants[].displayName | String | N | 사이트 닉네임 | ACCOUNT.NICKNAME |
 | participants[].discordNickname | String | Y | 디스코드 서버 별명. 연동 안 했거나 회원 탈퇴면 null (share D6) | ACCOUNT.DISCORD_NICKNAME |
 | participants[].participantRole | String | N | `LEADER` · `MEMBER`. 스터디 일정 출석부의 이름 옆 역할 칩(네비게이터) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
-| participants[].captain | Boolean | N | 그 스터디를 만든 캡틴이면 true — 이름 옆 「캡틴」 칩. 다른 캡틴(ADMIN)이 참여했으면 false(크루) | 계산: `STUDY.CREATED_BY = ACCOUNT_ID` |
+| participants[].captain | Boolean | N | 그 스터디의 담당 캡틴이면 true — 이름 옆 「캡틴」 칩. 다른 캡틴(ADMIN)이 참여했으면 false(크루) | 계산: `Study.isOwnedBy(ACCOUNT_ID)` — `STUDY.OWNER_CAPTAIN_ID = ACCOUNT_ID` |
 | participants[].participantStatus | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` · `COMPLETED` · `DELETED`. `WITHDRAWN`·`DELETED` 행은 `includeWithdrawn=true`일 때만 응답에 포함된다. 화면은 흐린 이름 + 칩, 맨 아래 줄 | STUDY_PARTICIPANT.STATUS |
 | participants[].leftAt | String | Y | 떠난 시각(UTC). 이 뒤 회차 칸은 「—」. 화면은 하차·제명을 가르지 않고 「참여 중단」 칩 | STUDY_PARTICIPANT.LEFT_AT |
 | participants[].attendances[].meetingId | Long | N | | STUDY_MEETING.ID |

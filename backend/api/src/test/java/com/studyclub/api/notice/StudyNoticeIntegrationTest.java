@@ -1160,6 +1160,7 @@ class StudyNoticeIntegrationTest {
                         .status(status)
                         .startAt(Instant.now().minus(7, ChronoUnit.DAYS))
                         .createdBy(CREATOR_ID)
+                        .ownerCaptainId(CREATOR_ID)
                         .build());
     }
 

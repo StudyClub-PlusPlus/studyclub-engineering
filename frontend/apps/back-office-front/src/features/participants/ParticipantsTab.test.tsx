@@ -47,6 +47,7 @@ const data: ParticipantsResponse = {
   studyId: 20,
   participantCount: 2,
   recruitmentCapacity: 10,
+  ownerCaptain: null,
   groups: [
     { groupId: 1, name: '기본반', isDefault: true, canDelete: false },
     { groupId: 2, name: '목요일반', isDefault: false, canDelete: false },
@@ -488,5 +489,94 @@ describe('참여자 반 편성', () => {
       link.remove();
     }
     await waitFor(() => expect(screen.getByRole('button', { name: '변경 취소 후 이동' })).toBeEnabled());
+  });
+});
+
+describe('담당 캡틴', () => {
+  const captain = (id: number, name: string) => ({
+    id,
+    name,
+    maskedEmail: 'c***@example.com',
+    systemRole: 'ADMIN',
+    navigatorOf: [],
+    dormant: false,
+    joinedAt: '2026-01-01T00:00:00Z',
+    roleChangeBlockedReason: null,
+    discordLinked: true,
+  });
+  const captains = { items: [captain(5, '소라'), captain(6, '민준')], total: 2, offset: 0, limit: 100 };
+
+  const nicknames: Record<number, string> = { 5: '소라', 6: '민준' };
+  /** 서버처럼 PATCH 가 성공하면 다음 GET 의 ownerCaptain 이 바뀐다. */
+  function mountWithCaptains(write: (url: string, init: RequestInit) => Promise<Response>) {
+    let owner = 5;
+    const fetch = vi.fn(async (url: string, init: RequestInit) => {
+      if (init.method) {
+        const response = await write(url, init);
+        if (response.ok) owner = (JSON.parse(String(init.body)) as { accountId: number }).accountId;
+        return response;
+      }
+      if (url.includes('/api/admin/users')) return reply(captains);
+      return reply({ ...data, ownerCaptain: { accountId: owner, nickname: nicknames[owner] } });
+    });
+    vi.stubGlobal('fetch', fetch);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <ParticipantsTab studyId={20} />
+      </QueryClientProvider>,
+    );
+    return fetch;
+  }
+  async function ownerSelect() {
+    const select = await screen.findByRole('combobox', { name: '담당 캡틴' });
+    await waitFor(() => expect(select).toBeEnabled());
+    return select;
+  }
+
+  it('캡틴 계정 중에서 고르면 바로 PATCH …/owner-captain 을 보내고, 저장 중에는 잠갔다가 새 값으로 바뀐다', async () => {
+    let finish!: () => void;
+    const fetch = mountWithCaptains(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(reply({ studyId: 20, ownerCaptain: { accountId: 6, nickname: '민준' } }));
+        }),
+    );
+    const select = await ownerSelect();
+    expect(select).toHaveValue('5');
+
+    await userEvent.selectOptions(select, '6');
+    await waitFor(() => expect(select).toBeDisabled());
+    expect(screen.getByRole('status')).toHaveTextContent('저장 중');
+    const patch = fetch.mock.calls.find(([url, init]) => init.method === 'PATCH' && url.includes('/owner-captain'));
+    expect(patch?.[1].body).toBe(JSON.stringify({ accountId: 6 }));
+
+    await act(async () => finish());
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('담당 캡틴을 바꿨습니다.'));
+    await waitFor(() => expect(select).toHaveValue('6'));
+    expect(select).toBeEnabled();
+  });
+
+  it('캡틴이 아니게 된 사람을 고르면(409) 오류를 알리고 지금 값을 그대로 둔다', async () => {
+    mountWithCaptains(async () =>
+      reply({ errorCode: 'OWNER_CAPTAIN_NOT_ADMIN', errorMessage: '캡틴만 담당 캡틴이 될 수 있습니다.' }, 409),
+    );
+    const select = await ownerSelect();
+    await userEvent.selectOptions(select, '6');
+    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith('캡틴만 담당 캡틴이 될 수 있습니다.'));
+    await waitFor(() => expect(select).toBeEnabled());
+    expect(select).toHaveValue('5');
+    expect(toastSuccessMock).not.toHaveBeenCalled();
+  });
+
+  it('같은 사람을 고르면 요청하지 않는다', async () => {
+    const fetch = mountWithCaptains(async () => reply({}));
+    const select = await ownerSelect();
+    await userEvent.selectOptions(select, '5');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(fetch.mock.calls.filter(([, init]) => init.method)).toHaveLength(0);
+    expect(select).toBeEnabled();
   });
 });

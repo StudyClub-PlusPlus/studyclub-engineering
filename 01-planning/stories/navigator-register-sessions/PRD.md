@@ -437,8 +437,8 @@ erDiagram
 
 ### 권한
 
-- 고치기: 그 분반의 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` 인 사람, 그 스터디를 만든 캡틴(`STUDY.CREATED_BY`)
-- 스터디를 만든 캡틴(`STUDY.CREATED_BY`)만 그 스터디의 캡틴이다. 다른 캡틴(ADMIN)이 신청해 참여하면 사용자 사이트에서는 **크루**로 보이고 고칠 수 없다 — 운영은 백오피스(`/api/admin`)에서 한다
+- 고치기: 그 분반의 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` 인 사람, 그 스터디의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`)
+- 스터디의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`)만 그 스터디의 캡틴이다. 다른 캡틴(ADMIN)이 신청해 참여하면 사용자 사이트에서는 **크루**로 보이고 고칠 수 없다 — 운영은 백오피스(`/api/admin`)에서 한다
 - 보기·발표 신청: 그 분반의 활성 참여자 전원
 - 서버에서 검증한다. 화면에서 입력칸을 숨기는 것은 편의일 뿐이다
 
