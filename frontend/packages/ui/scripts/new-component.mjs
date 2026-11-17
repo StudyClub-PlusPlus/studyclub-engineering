@@ -14,6 +14,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import ts from 'typescript';
 
 const SRC = path.resolve(import.meta.dirname, '../src');
 const CATALOG = path.resolve(import.meta.dirname, '../../../apps/playground/src/app/(site)/components/page.tsx');
@@ -27,9 +28,26 @@ if (!name || !/^[A-Z][A-Za-z0-9]*$/.test(name)) {
 
 const component = path.join(SRC, `${name}.tsx`);
 const stories = path.join(SRC, `${name}.stories.tsx`);
+const index = path.join(SRC, 'index.ts');
+const before = readFileSync(index, 'utf8');
+const program = ts.createProgram([index], {
+  jsx: ts.JsxEmit.ReactJSX,
+  module: ts.ModuleKind.ESNext,
+  moduleResolution: ts.ModuleResolutionKind.Bundler,
+  noEmit: true,
+});
+const checker = program.getTypeChecker();
+const moduleSymbol = checker.getSymbolAtLocation(program.getSourceFile(index));
+const exportedNames = new Set(checker.getExportsOfModule(moduleSymbol).map((symbol) => symbol.name));
+if (exportedNames.has(name) || exportedNames.has(`${name}Props`)) {
+  console.error(`이미 export 중인 이름이다: ${name} 또는 ${name}Props`);
+  process.exit(1);
+}
 const catalog = readFileSync(CATALOG, 'utf8');
 if (!catalog.includes(CATALOG_MARKER) || !catalog.includes("} from '@studyclub/ui';")) {
-  console.error(`카탈로그에 넣을 자리를 못 찾았다: ${CATALOG} 에 '${CATALOG_MARKER} …' 줄과 @studyclub/ui import 가 있어야 한다`);
+  console.error(
+    `카탈로그에 넣을 자리를 못 찾았다: ${CATALOG} 에 '${CATALOG_MARKER} …' 줄과 @studyclub/ui import 가 있어야 한다`,
+  );
   process.exit(1);
 }
 for (const f of [component, stories]) {
@@ -75,8 +93,6 @@ export const Default: Story = {};
 `,
 );
 
-const index = path.join(SRC, 'index.ts');
-const before = readFileSync(index, 'utf8');
 writeFileSync(
   index,
   `${before.trimEnd()}\n\nexport { ${name} } from './${name}';\nexport type { ${name}Props } from './${name}';\n`,

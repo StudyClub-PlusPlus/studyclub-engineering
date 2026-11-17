@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { CircleHelp } from 'lucide-react';
@@ -19,7 +19,7 @@ export interface HelpPopoverProps {
   children: ReactNode;
   /** 단추 아이콘. 기본은 CircleHelp(?) — 기준 · 출처 안내처럼 「정보」면 Info 를 넘긴다. */
   icon?: ReactNode;
-  /** 말풍선을 단추의 왼쪽 끝(start) 또는 오른쪽 끝(end)에 맞춘다. 화면 오른쪽 가장자리 근처면 end. */
+  /** 선호하는 정렬. 화면 밖으로 나가면 양쪽에 16px 여백을 남기도록 보정한다. */
   align?: 'start' | 'end';
   className?: string;
 }
@@ -28,7 +28,35 @@ export function HelpPopover({ label, children, icon = <CircleHelp />, align = 's
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLSpanElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLSpanElement>(null);
   const panelId = useId();
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      const root = rootRef.current;
+      const panel = panelRef.current;
+      if (!root || !panel) return;
+      const anchor = root.getBoundingClientRect();
+      const width = panel.getBoundingClientRect().width;
+      const viewportWidth = document.documentElement.clientWidth;
+      const preferred = align === 'end' ? anchor.right - width : anchor.left;
+      const left = Math.max(16, Math.min(preferred, viewportWidth - width - 16));
+      panel.style.left = `${left - anchor.left}px`;
+      panel.style.right = 'auto';
+    };
+    reposition();
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(reposition);
+    if (rootRef.current) observer?.observe(rootRef.current);
+    if (panelRef.current) observer?.observe(panelRef.current);
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [open, align]);
 
   useEffect(() => {
     if (!open) return;
@@ -64,6 +92,7 @@ export function HelpPopover({ label, children, icon = <CircleHelp />, align = 's
       />
       {open && (
         <span
+          ref={panelRef}
           id={panelId}
           role='dialog'
           aria-label={label}

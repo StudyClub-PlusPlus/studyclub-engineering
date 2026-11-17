@@ -23,6 +23,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({
+  type = 'button',
   variant = 'primary',
   size = 'md',
   state = 'default',
@@ -39,6 +40,7 @@ export function Button({
   return (
     <button
       {...rest}
+      type={type}
       disabled={isDisabled}
       aria-disabled={ariaDisabled}
       aria-busy={loading || undefined}

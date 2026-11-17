@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "test": "node --test scripts/new-component.test.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "new-component": "node scripts/new-component.mjs",

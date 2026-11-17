@@ -40,6 +40,8 @@ export interface ScreenshotSpec {
 }
 
 export interface Assertions {
+  /** 가로 방향으로 화면 밖에 잘리지 않아야 하는 요소. */
+  withinViewport?: string[];
   visible?: string[];
   hidden?: string[];
   text?: Record<string, string>;

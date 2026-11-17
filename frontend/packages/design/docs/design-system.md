@@ -404,6 +404,7 @@
 IconButton 만 xs 24px/radius8/아이콘14 가 있다 — 표 칸 · 글줄 안처럼 줄 높이를 지켜야 하는 자리(행의 보기 · 재발송, 문장 옆 도움말). 터치 장치에서는 아래 규칙대로 누르는 영역이 44px 로 넓어진다.
 
 - 정본: `buttons.css`와 `@studyclub/ui`의 `Button`/`IconButton`. 버튼 전용 `radius-button-sm/md/lg`를 사용하므로 Console의 `radius-control`에 영향을 받지 않는다.
+- `Button`/`IconButton`의 기본 타입은 `button`이다. 폼을 제출할 때만 `type="submit"`을 명시한다.
 - Secondary 기본 상태: 배경 `#FFFFFF`, 테두리 `1px solid #CBCFE5`(`--color-button-secondary-border`), 글자 `#282A43`. 입력 필드의 일반 `border`/선택 `border-strong` 규칙은 유지한다.
 - 텍스트 버튼 최소 너비: sm 64px / md 80px / lg 96px. 긴 레이블은 콘텐츠에 맞춰 확장한다. IconButton은 제외하며 정사각형 크기를 유지한다. 고밀도 콘솔·테이블의 sm은 `min-w-0`으로 해제할 수 있다. 버튼 그룹은 동일 너비를 강제하지 않는다(카탈로그 비교 예시 제외).
 - Hover: Y -1px, Pressed: scale .98 + 그림자 없음. 전환은 공통 `duration-fast` 150ms. Reduced Motion에서는 transform을 제거한다.
@@ -501,7 +502,7 @@ IconButton 만 xs 24px/radius8/아이콘14 가 있다 — 표 칸 · 글줄 안�
 | Avatar | radius-full, 사이즈 24/32/40, 이니셜 fallback primary-light/primary-dark, 역할 링(캡틴=primary) |
 | Nav | 사이트=상단 가로 네비(surface-raised + border 하단), 콘솔=좌측 사이드바(page-bg, active primary-light/primary-dark) |
 | Empty State | 일러스트/아이콘 + 안내 카피(~해요체) + 주요 CTA. 예: "아직 신청한 스터디가 없어요" |
-| Help Popover | 제목 · 값 옆 IconButton xs(「?」, 기준 안내는 ⓘ)를 누르면 아래 1.5 간격에 뜬다. surface-raised · border · radius-card · shadow-md · p-3, 폭 18rem(화면 폭 -2rem 상한), 글자 type-label-sm text-secondary. 바깥 클릭 · 포커스 이동 · Esc 로 닫고 Esc 는 단추로 포커스를 돌린다. 화면 오른쪽 끝 근처는 단추 오른쪽에 맞춘다(align end). 늘 펼쳐 두는 안내문 대신 쓴다 |
+| Help Popover | 제목 · 값 옆 IconButton xs(「?」, 기준 안내는 ⓘ)를 누르면 아래 1.5 간격에 뜬다. surface-raised · border · radius-card · shadow-md · p-3, 폭 18rem(화면 폭 -2rem 상한), 글자 type-label-sm text-secondary. 바깥 클릭 · 포커스 이동 · Esc 로 닫고 Esc 는 단추로 포커스를 돌린다. align으로 선호 정렬을 정하고, 화면 양쪽에 최소 16px 여백이 남도록 위치를 자동 보정한다. 화면 크기 변경·스크롤에도 위치를 다시 맞춘다. 늘 펼쳐 두는 안내문 대신 쓴다 |
 | Pagination / Segmented | segmented control은 track cloud, active surface-raised + shadow-xs |
 
 ---

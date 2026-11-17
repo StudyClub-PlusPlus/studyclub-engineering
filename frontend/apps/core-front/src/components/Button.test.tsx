@@ -5,6 +5,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { Button, IconButton } from '../../../../packages/ui/src/Button';
 
 describe('shared Button contract', () => {
+  it.each(['button', 'icon'] as const)('does not submit a form by default (%s)', async (kind) => {
+    const onSubmit = vi.fn((event) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        {kind === 'button' ? <Button>편집</Button> : <IconButton aria-label='편집' icon={<svg />} />}
+      </form>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: '편집' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('supports native Enter and Space activation', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();

@@ -46,6 +46,14 @@ export async function runScreenState(
 
   // 6. assertions
   if (assertions) {
+    for (const sel of assertions.withinViewport ?? []) {
+      const element = page.locator(sel).first();
+      await expect(element).toBeVisible();
+      const box = await element.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(16);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(VIEWPORTS[viewport].width - 16);
+    }
     for (const sel of assertions.visible ?? []) {
       await expect(page.locator(sel).first()).toBeVisible();
     }

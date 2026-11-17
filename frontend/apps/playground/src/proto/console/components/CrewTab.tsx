@@ -91,7 +91,6 @@ export function CrewTab({
   /** 카드 안 입력 — 입력칸은 줄의 절반, 취소 · 저장은 오른쪽(읽기 상태의 수정 · 삭제 자리). */
   function editor(cls: StudyClass | undefined) {
     if (!renaming) return null;
-    const errId = `class-title-${renaming.id}`;
     const empty = renaming.touched && !renaming.title.trim();
     return (
       <form
@@ -111,8 +110,7 @@ export function CrewTab({
               value={renaming.title}
               maxLength={CLASS_TITLE_MAX}
               placeholder={cls ? undefined : '예: A반 · 미국 금요일반'}
-              aria-invalid={empty || undefined}
-              aria-describedby={errId}
+              error={empty ? '반 제목을 입력해 주세요.' : undefined}
               onChange={(ev) => setRenaming({ ...renaming, title: ev.target.value })}
             />
           </div>
@@ -125,9 +123,6 @@ export function CrewTab({
             </Button>
           </div>
         </div>
-        <p id={errId} role='status' className='type-label-sm text-error-600'>
-          {empty ? '반 제목을 입력해 주세요.' : ''}
-        </p>
       </form>
     );
   }
