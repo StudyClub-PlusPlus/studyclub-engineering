@@ -89,6 +89,8 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 | 행사 수정 (`PUT`) | 이 스펙 |
 | 크루 신청 제출 | 신청 스펙 (같은 순서를 따라야 이 보장이 성립한다) |
 | 모집 마감 · 재모집 · 행사 취소 | 상태 전환 스펙 |
+| 운영진의 참가자 처리 (참가 확정 · 참가 불가 · 개별 취소) | 참가자 스펙 |
+| 행사 종료 시 자동 처리 (확인 대기 → 참가 불가 전환) | 참가자 스펙 |
 
 결과는 어느 요청이 먼저 잠금을 얻었는지로 갈린다.
 
@@ -99,7 +101,9 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 | 신청 ↔ 참여 방식 제거 | 신청이 그 방식의 유효 인원을 만든다. 수정은 409 `CHANNEL_IN_USE` | 방식이 사라진다. 그 방식으로 온 신청은 거절된다 |
 
 - 어느 순서든 정상 접수된 신청이 `AUTO` 행사에서 확인 대기로 남지 않는다
-- 신청의 상태만 바꾸는 운영 처리(참가 확정 · 참가 불가 · 개별 취소)는 정원을 늘리지 않으므로 이 잠금이 필수는 아니다. 대신 `WHERE STATUS = 'PENDING'` 같은 조건부 갱신으로 이미 바뀐 신청을 다시 바꾸지 않는다. 일괄 확정과 겹치면 늦은 쪽이 「현재 상태에서는 처리할 수 없다」로 실패한다
+- 행사 수정 · 취소 · 모집 마감 · 재모집, 크루 신청 제출, 운영진의 참가자 처리, 행사 종료 시 자동 처리는 **모두 첫 조회로 `CLUB_EVENT` 행의 쓰기 잠금**을 잡는다. 참가자 처리와 종료 자동 처리도 예외가 아니다
+- 각 작업은 잠금을 얻은 뒤 **최신 행사 상태 · 종료 시각(`effectiveEndsAt`) · 신청 상태를 다시 확인**하고 판단한다. 잠금 전에 읽은 값으로 판단하지 않는다. 이미 바뀐 신청을 다시 바꾸지 않도록 `WHERE STATUS = 'PENDING'` 같은 조건부 갱신도 함께 쓴다. 일괄 확정과 겹치면 늦은 쪽이 「현재 상태에서는 처리할 수 없다」로 실패한다
+- 예: 종료 처리 대상으로 골라 둔 행사라도, 처리 전에 캡틴이 종료 시각을 늘려 저장했다면 종료 처리는 잠금 뒤 바뀐 종료 시각을 확인하고 `now < effectiveEndsAt` 이면 확인 대기 신청을 그대로 둔다
 - 잠금은 행사 한 행만 잡고 짧게 끝낸다. 같은 트랜잭션에서는 `NOTIFICATION` 아웃박스 행 저장(`BEFORE_COMMIT`)까지만 하고, 실제 외부 발송(SES)은 커밋 뒤 폴러가 맡는다
 
 ### 시각과 시간대
@@ -110,6 +114,7 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 - 응답의 UTC 를 현지 시각으로 바꿔 폼을 채우는 것도 화면이 한다. **수정하지 않은 일정은 응답에서 받은 UTC 값을 그대로 다시 보낸다** (§2 「수정하지 않은 일정은 이미 저장한 시각을 유지」). 그래야 전환 전·후 선택이 저장마다 바뀌지 않는다
 - 시각은 초 단위 이하를 0 으로 맞춰 저장한다 (제안). 편집 폼이 분 단위라 비교가 흔들리지 않게 한다
 - `timeZone` 은 저장하고, 서버는 `effectiveEndsAt` 계산에 쓴다
+- **수정으로 저장 즉시 종료되는 시각은 받지 않는다** (N2 결정). 진행 중 행사의 종료 시각을 바꿀 때 새 `effectiveEndsAt ≤ now` 가 되면 저장을 막는다. `endsAt` 을 과거·현재로 바꾸는 경우와, 기본 종료 시각(시작일 다음 날 00:00)이 이미 지난 상태에서 `endsAt` 을 null 로 비우는 경우도 포함한다. 400 `INVALID_INPUT` (`endsAt`) 으로 다른 종료 시각을 고르게 한다
 - **`timeZone` 허용 값** (Q5 결정): `Asia/Seoul` · `America/Toronto` · `America/New_York` · `America/Los_Angeles` (프로토 `ZONES` 와 같다). [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) 의 회원 시간대(밴쿠버 포함)와는 지금 다르다. R1 에서 공통 시간대 선택지를 넓힐 때 행사에도 같이 적용한다
 
 ### 수정할 수 있는 범위 (Q9 결정)
@@ -154,8 +159,8 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 - 서버는 행사 행 잠금 뒤 저장된 `CLUB_EVENT.VERSION` 과 비교한다. 다르면 다른 캡틴이 먼저 저장한 것이므로 409 `EVENT_VERSION_CONFLICT` 로 막고 아무것도 바꾸지 않는다
 - 저장에 성공하면 내용이 바뀌었는지와 관계없이 `version` 을 1 올리고, 응답에 새 값을 싣는다
 - 신청 제출·참가 처리는 신청 쪽 행만 바꾸므로 `version` 을 올리지 않는다. 크루가 신청했다고 캡틴의 저장이 막히지 않는다
-- 상태 전환(모집 마감·재모집·행사 취소)은 행사 행을 바꾸므로 `version` 을 올린다 (제안, 남은 확인 사항 N3)
-- 화면은 409 `EVENT_VERSION_CONFLICT` 를 받으면 작성하던 내용을 유지한 채 「다른 캡틴이 먼저 저장했다」를 알리고, 최신 정보를 다시 불러올 수 있게 한다 (상세 재조회)
+- 상태 전환(모집 마감·재모집·행사 취소)은 행사 행을 바꾸므로 **`STATUS` 가 실제로 바뀔 때 `version` 을 1 올린다** (N3 결정). 이미 그 상태라서 바뀌는 것이 없으면 올리지 않는다. 그래서 다른 캡틴이 모집을 마감하거나 취소한 뒤, 이전 버전으로 편집하던 캡틴의 저장은 409 `EVENT_VERSION_CONFLICT` 로 막힌다
+- 화면은 409 `EVENT_VERSION_CONFLICT` 를 받으면 작성하던 내용을 유지한 채 「다른 캡틴이 먼저 저장했거나 행사 상태가 바뀌었다」를 알리고, 최신 행사 상태(모집 마감·취소 여부 포함)와 정보를 다시 불러올 수 있게 한다 (상세 재조회). 재조회 결과가 취소·종료면 조회 전용으로 다시 그린다
 
 ### 정보 변경 안내 (Q10 결정)
 
@@ -285,6 +290,17 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 
 없음
 
+### Request Headers
+
+| 헤더 | 필수 | 설명 |
+|---|---|---|
+| Idempotency-Key | Y | 화면이 **제출 시도마다 새로 만드는 UUID v4**. 같은 제출을 다시 보낼 때(네트워크 오류·타임아웃 재시도)는 같은 키를 보낸다. 없거나 UUID 형식이 아니면 400 `INVALID_INPUT` (`Idempotency-Key`) |
+
+- 화면은 저장 요청 중에는 저장 버튼을 막는다. 그래도 응답을 못 받은 재시도와 더블 클릭이 겹칠 수 있어 서버도 막는다 (N1 결정)
+- 서버는 **같은 계정(`CREATED_BY`) · 같은 `Idempotency-Key`** 로 이미 만든 행사가 있으면 새 행사를 만들지 않고 그 행사의 응답(상세 본문과 `Location`)을 그대로 돌려준다. 이때도 201
+- 본문 검증(400)에 실패한 요청에는 키를 저장하지 않는다. 같은 키로 고쳐서 다시 보내도 새로 만들어진다
+- 키는 행사 행에 함께 저장하고(`CREATE_IDEMPOTENCY_KEY`, 아래 데이터 모델) `UNIQUE(CREATED_BY, CREATE_IDEMPOTENCY_KEY)` 로 동시에 온 같은 키 요청 중 하나만 만들어지게 한다. 유일성 위반이 나면 먼저 만들어진 행사를 읽어 돌려준다
+
 ### Request Body
 
 ```json
@@ -316,7 +332,7 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 | description | String | Y | 1~5,000자. 서식 없는 글로 저장 (HTML 로 해석하지 않음) | §2 「모집 상세 5,000자」 |
 | timeZone | String | Y | `Asia/Seoul` · `America/Toronto` · `America/New_York` · `America/Los_Angeles` 중 하나 | §2 「기준 시간대」, Q5 |
 | startsAt | String | Y | UTC ISO 8601 | §2 |
-| endsAt | String | N | UTC ISO 8601. 있으면 `> startsAt`. 없거나 null 이면 null 저장 | §2 「종료는 선택 입력이며 입력 시 시작 이후」 |
+| endsAt | String | N | UTC ISO 8601. 있으면 `> startsAt`. 없거나 null 이면 null 저장. 수정에서는 새 `effectiveEndsAt > now` 도 필요 (아래 「행사 수정」) | §2 「종료는 선택 입력이며 입력 시 시작 이후」 |
 | deadlineAt | String | Y | UTC ISO 8601. `≤ startsAt` 이고 `> now` | §2 「신청 마감은 시작 이전 또는 같은 시각」 · 「신규 등록 시 미래 마감시간 필요」 |
 | format | String | Y | `ONLINE` · `OFFLINE` · `HYBRID` | §3 |
 | offline | Object | format 이 OFFLINE·HYBRID 면 Y | 그 밖의 format 에서 보내면 400 | §3 |
@@ -340,13 +356,13 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 
 ### Response — 201
 
-본문은 운영 상세(`GET /api/admin/events/{eventId}`)와 같다. 헤더 `Location: /api/admin/events/{eventId}`.
+본문은 운영 상세(`GET /api/admin/events/{eventId}`)와 같다. 헤더 `Location: /api/admin/events/{eventId}`. 같은 `Idempotency-Key` 의 재시도에도 처음 만든 행사의 같은 응답을 준다.
 
 ### Error Responses
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 위 검증 실패. 실패한 필드 이름(`title`, `deadlineAt`, `questions[2].options` …)을 `errorMessage` 에 담는다 |
+| 400 | INVALID_INPUT | 위 검증 실패 · `Idempotency-Key` 누락·형식 오류. 실패한 필드 이름(`title`, `deadlineAt`, `questions[2].options` …)을 `errorMessage` 에 담는다. 이 실패에는 키를 저장하지 않는다 |
 | 401 | UNAUTHORIZED | 토큰 없음 |
 | 403 | FORBIDDEN | ADMIN 아님 |
 
@@ -530,6 +546,7 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 | questions | 생략하면 빈 배열 | **필수**. 생략·null 이면 400. 질문을 모두 지우려면 `[]` 를 보낸다 |
 | questions[].questionId | null | 기존 질문이면 그 키, 새 질문이면 null. 요청에 없는 기존 질문은 삭제된다. 그 행사에 없는 키를 보내면 400 |
 | deadlineAt | `> now` | `STATUS = PUBLISHED` 이고 마감 시각을 **바꿨을 때만** `> now`. 바꾸지 않았으면 지난 마감도 그대로 둔다 |
+| endsAt | 검증 없음 (등록 행사는 언제나 시작 전) | 새 `effectiveEndsAt > now`. `endsAt` 을 비워 기본 종료 시각을 쓰게 될 때도 그 기본 종료 시각이 지났으면 400 (처리 순서 11) |
 
 - `confirmation` · `questions` 를 필수로 받는 이유 (PR #470 리뷰): 등록 기본값이 수정에도 적용되면, 제목만 고치려던 요청에서 `REVIEW → AUTO` 로 읽혀 확인 대기자가 자동 확정되거나 질문이 모두 지워진다
 - 그 밖의 필드도 전체 교체다. `endsAt` · `online.url` 은 null 이 「비움」이라 생략과 null 을 같게 보고 비운다. 화면은 운영 상세 값으로 폼을 채워 **모든 필드를 보낸다**
@@ -550,13 +567,15 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 | 8 | 확인 대기·참가 확정 신청이 남은 참여 방식을 없앤다 (예: HYBRID → ONLINE 인데 오프라인 유효 신청 있음) | 409 `CHANNEL_IN_USE` | §3 「신청자가 있는 방식을 제거하는 변경만 제한」 |
 | 9 | 방식별 새 정원 < 그 방식의 확인 대기 + 참가 확정 | 409 `CAPACITY_BELOW_OCCUPIED` | §3 「확인 대기와 참가 확정 합보다 작게 변경 제한」, Q8 |
 | 10 | 저장 상태가 `PUBLISHED` 이고 마감 시각을 바꿨는데 새 마감 `≤ now` | 400 `INVALID_INPUT` (`deadlineAt`) | §2 「재모집 시 미래 마감」, 프로토 `validateEvent` |
-| 11 | 값을 저장한다. 질문은 전체 교체 | — | — |
-| 12 | `REVIEW → AUTO` 면 그 행사의 `PENDING` 신청을 `CONFIRMED` 로 바꾸고 바꾼 신청 ID 를 모은다. 바꾼 신청이 있으면 `ClubEventRegistrationsConfirmedEvent` 를 트랜잭션 안에서 발행한다 | — | 「확정 방식 전환」 |
-| 13 | `VERSION` 을 1 올린다 | — | Q14 |
-| 14 | 커밋 직전 `BEFORE_COMMIT` 구독자가 12 의 이벤트로 신청별 `NOTIFICATION` 행을 같은 트랜잭션에 저장한다 (행 생성 실패 시 예외를 삼키지 않고 전체 롤백). 그 다음 커밋하고, 커밋 뒤 폴러가 실제 발송(SES)을 처리한다 | — | [domain-events](../domain-events/spec.md) |
+| 11 | 요청 값으로 계산한 새 `effectiveEndsAt ≤ now` (`endsAt` 을 과거·현재로 바꿈, 또는 `endsAt` 을 null 로 비웠는데 기본 종료 시각이 이미 지남). 3 의 종료(저장된 값 기준)와 달리 **수정이 만드는 즉시 종료**다 | 400 `INVALID_INPUT` (`endsAt`) | N2 |
+| 12 | 값을 저장한다. 질문은 전체 교체 | — | — |
+| 13 | `REVIEW → AUTO` 면 그 행사의 `PENDING` 신청을 `CONFIRMED` 로 바꾸고 바꾼 신청 ID 를 모은다. 바꾼 신청이 있으면 `ClubEventRegistrationsConfirmedEvent` 를 트랜잭션 안에서 발행한다 | — | 「확정 방식 전환」 |
+| 14 | `VERSION` 을 1 올린다 | — | Q14 |
+| 15 | 커밋 직전 `BEFORE_COMMIT` 구독자가 13 의 이벤트로 신청별 `NOTIFICATION` 행을 같은 트랜잭션에 저장한다 (행 생성 실패 시 예외를 삼키지 않고 전체 롤백). 그 다음 커밋하고, 커밋 뒤 폴러가 실제 발송(SES)을 처리한다 | — | [domain-events](../domain-events/spec.md) |
 
 - 8·9 의 신청 수는 1 의 잠금을 얻은 뒤 센다. 신청 스펙도 같은 잠금을 먼저 잡으므로 신청과 정원 축소·확정 방식 전환·방식 제거가 한 줄로 선다 (Q8)
 - 시작 후·종료 전 행사도 6·7 을 빼면 같은 규칙으로 고칠 수 있다 (Q9)
+- 11 은 종료 시각을 앞당기는 실수로 확인 대기 신청이 한꺼번에 참가 불가가 되는 일을 막는다. 종료 시각을 현재 이후로 옮기는 것은 막지 않는다. 이미 종료된 행사는 3 에서 409 `EVENT_ENDED` 로 먼저 걸러진다
 - 질문을 고쳐도 기존 신청의 질문·답변 사본은 그대로다 (위 「신청 질문의 보존」)
 - 일정·장소·링크가 바뀌어도 자동 알림은 없다 (Q10, 위 「정보 변경 안내」)
 - 정원을 늘려 잔여석이 생기면 표시 상태가 `FULL` 에서 `RECRUITING` 으로 돌아간다 (Q11, 위 「상태」)
@@ -569,13 +588,13 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 
 | 상태 | errorCode | 조건 | 화면 안내 (Q12) |
 |------|-----------|------|------|
-| 400 | INVALID_INPUT | 등록과 같은 필드 검증 · `version`·`confirmation`·`questions` 누락 · 없는 `questionId` · 위 10번. 실패한 필드 이름을 `errorMessage` 에 담는다 | 해당 입력란 표시 |
+| 400 | INVALID_INPUT | 등록과 같은 필드 검증 · `version`·`confirmation`·`questions` 누락 · 없는 `questionId` · 위 10번 · 위 11번(저장 즉시 종료되는 `endsAt`). 실패한 필드 이름을 `errorMessage` 에 담는다 | 해당 입력란 표시. 11번은 종료 시각 입력란에서 현재 이후의 다른 종료 시각을 고르도록 안내 |
 | 401 | UNAUTHORIZED | 토큰 없음 | |
 | 403 | FORBIDDEN | ADMIN 아님 | |
 | 404 | NOT_FOUND | eventId 없음 | |
 | 409 | EVENT_CANCELLED | 취소된 행사 | 조회 전용으로 다시 그린다 |
-| 409 | EVENT_ENDED | 종료된 행사 | 조회 전용으로 다시 그린다 |
-| 409 | EVENT_VERSION_CONFLICT | 다른 캡틴이 먼저 저장했다 | 입력값 유지, 최신 정보 다시 불러오기 |
+| 409 | EVENT_ENDED | 이미 종료된 행사 (저장된 값 기준. 수정으로 즉시 종료되는 요청은 위 400) | 조회 전용으로 다시 그린다 |
+| 409 | EVENT_VERSION_CONFLICT | 다른 캡틴이 먼저 저장했거나 모집 마감·재모집·행사 취소로 상태가 바뀌었다 | 입력값 유지, 최신 행사 상태를 다시 확인하고 정보 다시 불러오기 |
 | 409 | EVENT_START_LOCKED | 시작한 행사의 시작 시각을 현재 이후로 옮김 | 시작 시각 입력란 |
 | 409 | EVENT_ALREADY_STARTED | 시작 후 확정 방식 변경 | 확정 방식 입력란 |
 | 409 | CHANNEL_IN_USE | 유효 신청이 남은 참여 방식 제거 | 참여 방식 입력란, 기존 신청을 먼저 정리하라는 안내 |
@@ -599,12 +618,12 @@ ERD 문서가 없어 소스 칸은 아래 제안 이름을 쓴다. 확정은 ERD
 
 | 테이블 | 주요 컬럼 | 비고 |
 |---|---|---|
-| CLUB_EVENT | ID · TITLE(VARCHAR 60) · SUMMARY(VARCHAR 120) · DESCRIPTION(TEXT, 5,000자 검증) · TIME_ZONE(VARCHAR 64) · STARTS_AT · ENDS_AT(NULL) · DEADLINE_AT · CONFIRMATION · STATUS(`PUBLISHED`/`CLOSED`/`CANCELLED`) · PUBLISHED_AT · VERSION(BIGINT) · CREATED_BY · CREATED_AT · UPDATED_AT | 시각은 UTC. `INDEX(STARTS_AT, ID)` 는 목록 정렬용 |
+| CLUB_EVENT | ID · TITLE(VARCHAR 60) · SUMMARY(VARCHAR 120) · DESCRIPTION(TEXT, 5,000자 검증) · TIME_ZONE(VARCHAR 64) · STARTS_AT · ENDS_AT(NULL) · DEADLINE_AT · CONFIRMATION · STATUS(`PUBLISHED`/`CLOSED`/`CANCELLED`) · PUBLISHED_AT · VERSION(BIGINT) · CREATED_BY · CREATE_IDEMPOTENCY_KEY(VARCHAR 36) · CREATED_AT · UPDATED_AT | 시각은 UTC. `INDEX(STARTS_AT, ID)` 는 목록 정렬용. `UNIQUE(CREATED_BY, CREATE_IDEMPOTENCY_KEY)` 는 등록 중복 제출 방지용 (N1) |
 | CLUB_EVENT_CHANNEL | ID · CLUB_EVENT_ID(FK) · CHANNEL(`ONLINE`/`OFFLINE`) · CAPACITY · LOCATION(VARCHAR 300, NULL) · ONLINE_URL(VARCHAR 2048, NULL) | `UNIQUE(CLUB_EVENT_ID, CHANNEL)`. format 은 행 조합으로 정한다 |
 | CLUB_EVENT_QUESTION | ID · CLUB_EVENT_ID(FK) · QUESTION_KEY · LABEL(VARCHAR 200) · TYPE · REQUIRED · OPTIONS(JSON) · SORT_ORDER | `UNIQUE(CLUB_EVENT_ID, QUESTION_KEY)`. 신청이 FK 로 물지 않는다 |
 | (신청 테이블) | 신청 스펙에서 정한다 | 이 스펙은 방식·상태별 COUNT 만 읽고, 확정 방식 전환 때 `PENDING → CONFIRMED` 만 쓴다. `INDEX(CLUB_EVENT_ID, CHANNEL, STATUS)` 필요 |
 
-- `VERSION` 은 화면이 보낸 값과 잠금 뒤 비교하고 저장마다 1 올린다. JPA `@Version` 을 쓰더라도 비교는 요청 값과 해야 한다 (엔티티를 새로 읽으면 요청 값이 아니라 방금 읽은 값과 비교된다)
+- `VERSION` 은 화면이 보낸 값과 잠금 뒤 비교하고 저장마다 1 올린다. 모집 마감 · 재모집 · 행사 취소로 `STATUS` 가 실제로 바뀔 때도 1 올린다 (N3). JPA `@Version` 을 쓰더라도 비교는 요청 값과 해야 한다 (엔티티를 새로 읽으면 요청 값이 아니라 방금 읽은 값과 비교된다)
 - `DRAFT` 상태 값은 두지 않는다 (Q1·Q2)
 
 ## 퍼널·계측
@@ -618,7 +637,8 @@ ERD 문서가 없어 소스 칸은 아래 제안 이름을 쓴다. 확정은 ERD
 | 서머타임 | §2 「사라진 시각은 다른 시각 선택 안내, 중복 시각은 전·후 선택」. 프로토 `resolveEventInput` | 화면이 정한 UTC 를 받는다. 서버는 순서·현재 시각만 검증 (Q4) |
 | 시간대 선택지 | 프로토 `ZONES`: 서울·토론토·뉴욕·LA | 같다 (Q5). POL-0006 회원 시간대(밴쿠버 포함)와는 R1 에서 맞춘다 |
 | 질문 타입 `SELECT` | 프로토 타입에 남아 있음. PRD 는 「제공 안 함, 단일 선택으로 전환」 | API 는 받지 않음 |
-| 등록 중복 제출 | 프로토 CREATE 는 같은 행사 ID 로 두 번 저장하면 막는다 | 서버 멱등 키 없음. 아래 「남은 확인 사항」 N1 |
+| 등록 중복 제출 | 프로토 CREATE 는 같은 행사 ID 로 두 번 저장하면 막는다 | 서버도 막는다. 같은 계정 · 같은 `Idempotency-Key` 면 처음 만든 행사를 다시 돌려준다 (N1). 화면은 저장 중 버튼도 막는다 |
+| 진행 중 행사의 종료 시각 앞당김 | 프로토는 막지 않는다 | 저장 즉시 종료되는 `endsAt` 은 400 (N2). 확인 대기 신청이 실수로 한꺼번에 참가 불가가 되지 않게 한다 |
 | 종료 시 확인 대기 처리 | §6 「행사 종료 시 남은 확인 대기 신청은 참가 불가로 전환」. 프로토 `settleEndedRegistrations` | 참가자 스펙의 일. 이 스펙의 `seats[].pending` 은 그 전환 뒤 값을 센다 |
 | back-office-front 폼 | `features/events/form-schema.ts` 는 시안 이전 필드 | 연결할 때 이 스펙으로 바꾼다 |
 | back-office-front TODO | `POST/GET/PATCH/DELETE /api/events` | 경로는 `/api/admin/events`, 수정은 PUT, DELETE 없음 |
@@ -639,20 +659,16 @@ ERD 문서가 없어 소스 칸은 아래 제안 이름을 쓴다. 확정은 ERD
 | Q11 | 자리가 생기면 시작 전 · 마감 전 · 수동 마감 아님일 때 자동으로 모집 중 | 「상태」 |
 | Q12 | 원인별 오류 코드. 종료 행사와 동시 수정 충돌도 구분. 화면은 입력값 유지 | 수정 Error Responses |
 | Q13 | `ClubEvent` / `CLUB_EVENT` | 데이터 모델, 판정 메서드 이름 |
-| Q14 | 상세의 버전을 저장 요청에 보내고 서버가 비교. 다르면 막고 화면은 입력 유지 + 최신 정보 다시 불러오기 | 「동시 수정 방지: 버전」, 수정 처리 순서 4·13 |
+| Q14 | 상세의 버전을 저장 요청에 보내고 서버가 비교. 다르면 막고 화면은 입력 유지 + 최신 정보 다시 불러오기 | 「동시 수정 방지: 버전」, 수정 처리 순서 4·14 |
 
-개별 리뷰 세 건:
+개별 리뷰 다섯 건:
 
 | 리뷰 | 반영한 곳 |
 |---|---|
 | 수정에서 `confirmation` · `questions` 생략 시 처리 | 수정 Request Body 표: 필수, 누락 시 400 |
 | 확정 방식 전환과 새 신청이 겹칠 때 순서 | 「같은 행사에 쓰는 요청의 처리 순서」 두 번째 줄, 「확정 방식 전환」 |
 | 상세 예시 `removableChannels` | 운영 상세 예시를 `[]` 로 고치고 이유를 예시 아래에 적음 |
-
-## 남은 확인 사항
-
-리뷰 결정에 없고, PR #471 과 대조하다 새로 나온 것이다. 정하기 전까지 이 스펙은 적힌 기본 동작을 따른다.
-
-- [NEEDS CLARIFICATION] N1 등록 중복 제출: 등록하면 바로 공개되므로 저장 버튼을 두 번 누르면 같은 행사가 둘 공개된다. 화면이 저장 중 버튼을 막는 것으로 충분한지, 서버에 멱등 키(`Idempotency-Key` 헤더 등)를 둘지. 지금은 서버에서 막지 않는다
-- [NEEDS CLARIFICATION] N2 진행 중 행사에서 종료 시각을 현재보다 이른 시각으로 저장하는 경우: 저장 즉시 종료가 되고, 참가자 스펙의 종료 처리로 남은 확인 대기 신청이 참가 불가가 된다. 프로토는 막지 않는다. 이 스펙도 지금은 막지 않는다
-- [NEEDS CLARIFICATION] N3 상태 전환(모집 마감·재모집·행사 취소)이 `version` 을 올리는지. 제안은 올린다. 그러면 다른 캡틴이 모집을 마감한 뒤의 저장도 409 `EVENT_VERSION_CONFLICT` 로 막힌다. 상태 전환 스펙에서 확정
+| 잠금 공통 규칙 확장: 참가자 처리·종료 자동 처리도 행사 잠금 | 「같은 행사에 쓰는 요청의 처리 순서」 잠금 표와 규칙 목록. 잠금 뒤 최신 상태·`effectiveEndsAt` 재확인, 종료 시각 연장 예시 |
+| N1 등록 중복 제출 | 화면은 저장 중 버튼을 막고 제출 시도마다 `Idempotency-Key` 를 만든다. 서버는 같은 계정·같은 키면 처음 만든 행사를 돌려준다 (400 실패에는 키 저장 안 함). 「행사 등록」 Request Headers · Response, 데이터 모델 `CREATE_IDEMPOTENCY_KEY`, 「근거와 PRD·코드의 차이」 |
+| N2 진행 중 행사 종료 시각 변경 | 수정으로 새 `effectiveEndsAt ≤ now` 가 되면 400 `INVALID_INPUT` (`endsAt`). 이미 종료된 행사의 409 `EVENT_ENDED` 와 구분. 「시각과 시간대」, 수정 Request Body 표, 처리 순서 11, Error Responses |
+| N3 상태 전환의 버전 증가 | 모집 마감·재모집·행사 취소로 `STATUS` 가 바뀔 때 `VERSION` +1. 이전 버전 편집자는 409 `EVENT_VERSION_CONFLICT`, 입력 유지 + 최신 상태 확인. 「동시 수정 방지: 버전」, Error Responses, 데이터 모델 |
