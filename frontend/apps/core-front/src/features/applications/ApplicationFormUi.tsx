@@ -242,6 +242,7 @@ export function QuestionFillView({
           {options.map((o, i) => (
             <label key={`${o}-${i}`} className='inline-flex cursor-pointer items-center gap-2'>
               <input
+                // ui-native: 신청 폼 객관식 — 구글 폼 모양을 그대로 따른 설문 라디오
                 type='radio'
                 name={q.id}
                 aria-invalid={invalid ? 'true' : undefined}
@@ -259,6 +260,7 @@ export function QuestionFillView({
             <div className='inline-flex items-center gap-2'>
               <label className='inline-flex cursor-pointer items-center gap-2'>
                 <input
+                  // ui-native: 신청 폼 「기타」 라디오 — 구글 폼 모양을 그대로 따른 설문 라디오
                   type='radio'
                   name={q.id}
                   aria-invalid={invalid ? 'true' : undefined}
@@ -271,6 +273,7 @@ export function QuestionFillView({
                 <span className='type-body-sm text-neutral-800'>기타:</span>
               </label>
               <input
+                // ui-native: 신청 폼 「기타」 답 — 선택지 줄 안의 밑줄 칸
                 maxLength={OTHER_ANSWER_MAX}
                 value={otherValue ?? ''}
                 aria-invalid={invalid && otherChecked ? 'true' : undefined}
@@ -309,6 +312,7 @@ export function QuestionFillView({
                 onChange={(e) => onOtherToggle?.(e.target.checked)}
               />
               <input
+                // ui-native: 신청 폼 「기타」 답 — 선택지 줄 안의 밑줄 칸
                 maxLength={OTHER_ANSWER_MAX}
                 value={otherValue ?? ''}
                 aria-invalid={invalid && otherChecked ? 'true' : undefined}

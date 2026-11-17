@@ -9,9 +9,11 @@ import { cx } from './cx';
 export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label: string;
   indeterminate?: boolean;
+  /** 표의 행 선택처럼 라벨이 화면에 보이지 않는 자리. 라벨은 스크린리더용으로만 남긴다. */
+  hideLabel?: boolean;
 }
 
-export function Checkbox({ label, className, id, indeterminate = false, ...rest }: CheckboxProps) {
+export function Checkbox({ label, className, id, indeterminate = false, hideLabel = false, ...rest }: CheckboxProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   return (
@@ -25,7 +27,7 @@ export function Checkbox({ label, className, id, indeterminate = false, ...rest 
         }}
         className='h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)'
       />
-      <span className='type-label-lg text-ink'>{label}</span>
+      <span className={hideLabel ? 'sr-only' : 'type-label-lg text-ink'}>{label}</span>
     </label>
   );
 }

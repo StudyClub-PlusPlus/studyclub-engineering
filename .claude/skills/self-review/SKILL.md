@@ -99,6 +99,10 @@ PR 번호: {PR번호}
   - FE — `packages/mock` 공유 판정 함수에 축(시작일·정원·인원)을 더한다 → 다른 앱까지 바뀐다
 - 파일 이름 ([규약](../../../docs/frontend-development-guide/project-structure.md#파일-배치-규칙--기능-옆에-둔다)):
   - FE — 컴포넌트가 아닌 파일(훅·유틸)을 camelCase(`useXxx.ts`)로 만든다 → kebab-case(`use-xxx.ts`)
+- 부품 ([규약](../../../docs/frontend-development-guide/component-guide.md#공용-ui--studyclubui-먼저)):
+  - FE — `@studyclub/ui` 에 있는 부품(Button · Input · Select · Checkbox · Radio · Switch · FilterChip · Segmented · Tabs · ButtonLink · HelpPopover …)을 화면에서 HTML 요소나 손 클래스로 다시 짠다 → ui 부품을 쓴다. 모양이 안 맞으면 ui 부품에 props 를 더한다
+  - FE — 새 부품을 앱 · `proto/` 에 만든다 → `pnpm --filter @studyclub/ui new-component` 로 `packages/ui` 에 만들고 design-system.md §9 에 스펙을 더한다
+  - FE — `ui-native:` 예외 표시의 이유가 인정 목록(영역 전체가 누르는 곳 · 고유 팝오버 · 표 머리 정렬 · 브랜드 규정 …)에 없다
 - 목록 상태 위치 ([규약](../../../docs/frontend-development-guide/api-integration.md#필터검색페이지는-url-에)):
   - FE — 목록의 탭·필터·검색어·페이지를 `useState` 로 든다 → URL 쿼리(`useSearchParams` + `router.replace`)로. 새로고침·뒤로 가기에 조건이 사라진다
   - FE — 개인정보(이메일 원본 등)를 URL 에 싣는다

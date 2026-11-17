@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { m, t } from '@core/lib/i18n';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { Locale, StudyclubEvent } from '@studyclub/types';
-import { Badge } from '@studyclub/ui';
+import { Badge, Segmented } from '@studyclub/ui';
 import { ArrowUpRight } from 'lucide-react';
 
 import { useEventWorkspace } from './EventWorkspace';
@@ -50,36 +50,29 @@ export function EventGuestList({
       {SPECS.map((spec) => (
         <ScreenSpecRegistrar key={spec.scope} spec={spec} />
       ))}
-      <div data-anno='event-apply:1' role='tablist' aria-label='행사 시점' className='mb-6 inline-flex rounded-pill bg-surface-2 p-1'>
-        {(['upcoming', 'past'] as const).map((item) => {
-          const active = view === item;
-          const label =
-            locale === 'ko'
-              ? item === 'upcoming'
-                ? '예정된 행사'
-                : '지난 행사'
-              : item === 'upcoming'
-                ? 'Upcoming events'
-                : 'Past events';
-          return (
-            <button
-              key={item}
-              type='button'
-              role='tab'
-              aria-selected={active}
-              onClick={() => setView(item)}
-              className={`flex items-center gap-1.5 rounded-pill px-4 py-1.5 type-label-lg transition-colors ${
-                active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
-              }`}
-            >
-              {label}
-              <span className={`tnum type-label-sm ${active ? 'text-fg-secondary' : 'text-fg-muted'}`}>
-                {counts[item]}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <span data-anno='event-apply:1' className='mb-6 inline-flex'>
+        <Segmented
+          shape='pill'
+          aria-label='행사 시점'
+          value={view}
+          onChange={setView}
+          options={(['upcoming', 'past'] as const).map((item) => ({
+            value: item,
+            label: (
+              <>
+                {locale === 'ko'
+                  ? item === 'upcoming'
+                    ? '예정된 행사'
+                    : '지난 행사'
+                  : item === 'upcoming'
+                    ? 'Upcoming events'
+                    : 'Past events'}{' '}
+                <span className='tnum type-label-sm text-fg-muted'>{counts[item]}</span>
+              </>
+            ),
+          }))}
+        />
+      </span>
       {!state ? (
         <p role='status'>행사를 불러오는 중입니다.</p>
       ) : (

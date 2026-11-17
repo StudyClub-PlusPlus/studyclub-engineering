@@ -21,7 +21,7 @@ import { getUser } from '@core/lib/auth';
 import { DISCORD_NICKNAME_EXAMPLE, getDiscordNickname, getDisplayName } from '@core/lib/me';
 import { PREVIEW_USER } from '@core/lib/preview';
 import type { ApplicationQuestion, ApplicationQuestionType, Study } from '@studyclub/types';
-import { Button, Checkbox, Input, Select, Textarea } from '@studyclub/ui';
+import { Button, Checkbox, Input, Select, Textarea, IconButton } from '@studyclub/ui';
 import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 
 /**
@@ -294,16 +294,18 @@ export function ApplicationFormTab({ study }: { study: Study }) {
                     checked={q.required}
                     onChange={(ev) => update(q.id, { required: ev.target.checked })}
                   />
-                  <button
+                  <Button
                     type='button'
+                    variant='danger'
+                    size='sm'
+                    leadingIcon={<Trash2 />}
                     onClick={(ev) => {
                       ev.stopPropagation();
                       remove(q.id);
                     }}
-                    className='inline-flex items-center gap-1 type-label-lg text-error-600 hover:underline'
                   >
-                    <Trash2 size={13} /> 삭제
-                  </button>
+                    삭제
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -314,17 +316,16 @@ export function ApplicationFormTab({ study }: { study: Study }) {
                 <div className='pointer-events-none min-w-0 flex-1'>
                   <QuestionFillView q={q} disabled />
                 </div>
-                <button
-                  type='button'
+                <IconButton
+                  variant='tertiary'
+                  size='xs'
                   aria-label='질문 수정'
                   onClick={(ev) => {
                     ev.stopPropagation();
                     setSelectedId(q.id);
                   }}
-                  className='shrink-0 text-fg-muted transition-colors hover:text-fg'
-                >
-                  <Pencil size={15} />
-                </button>
+                  icon={<Pencil />}
+                />
               </div>
             )}
           </section>

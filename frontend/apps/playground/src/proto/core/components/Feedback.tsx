@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { getUser } from '@core/lib/auth';
-import { Button, Input, Modal, Textarea, toast } from '@studyclub/ui';
+import { Button, Input, Modal, Radio, Textarea, toast } from '@studyclub/ui';
 import { ImagePlus, X } from 'lucide-react';
 
 import {
@@ -171,16 +171,17 @@ export function FeedbackDialog({
         (t) => (
           <span className='flex items-center gap-3'>
             의견을 보내지 못했습니다. 다시 시도해 주세요.
-            <button
+            <Button
               type='button'
-              className='shrink-0 font-semibold text-primary-600 underline-offset-2 hover:underline'
+              variant='tertiary'
+              size='sm'
               onClick={() => {
                 toast.dismiss(t.id);
                 void send();
               }}
             >
               다시 시도
-            </button>
+            </Button>
           </span>
         ),
         { duration: 8000 },
@@ -222,17 +223,14 @@ export function FeedbackDialog({
             {/* 기본 선택이 없다 — 무엇을 보내는지는 보내는 사람이 고른다 */}
             <div role='radiogroup' aria-label='유형' className='flex flex-wrap gap-x-5 gap-y-2'>
               {FEEDBACK_TYPES.map((t) => (
-                <label key={t.value} className='inline-flex cursor-pointer items-center gap-2 type-body-sm text-fg'>
-                  <input
-                    type='radio'
-                    name='feedback-type'
-                    value={t.value}
-                    checked={draft.type === t.value}
-                    onChange={() => setDraft({ ...draft, type: t.value })}
-                    className='h-4 w-4 accent-(--color-brand)'
-                  />
-                  {t.label}
-                </label>
+                <Radio
+                  key={t.value}
+                  name='feedback-type'
+                  value={t.value}
+                  label={t.label}
+                  checked={draft.type === t.value}
+                  onChange={() => setDraft({ ...draft, type: t.value })}
+                />
               ))}
             </div>
             {touched && errors.type && <p className='type-label-sm text-error-700'>{errors.type}</p>}
@@ -280,6 +278,7 @@ export function FeedbackDialog({
                   {/* eslint-disable-next-line @next/next/no-img-element -- 붙인 그 자리의 미리보기라 최적화가 필요 없다 */}
                   <img src={src} alt={`첨부 이미지 ${i + 1}`} className='h-full w-full object-cover' />
                   <button
+                    // ui-native: 첨부 썸네일 위에 겹친 빼기 표시 — 썸네일의 일부
                     type='button'
                     onClick={() => setDraft((d) => ({ ...d, images: d.images.filter((_, j) => j !== i) }))}
                     aria-label={`첨부 이미지 ${i + 1} 빼기`}
@@ -291,6 +290,7 @@ export function FeedbackDialog({
               ))}
               {draft.images.length < IMAGE_MAX_COUNT && (
                 <button
+                  // ui-native: 이미지를 끌어 놓는 업로드 영역 — 영역 전체가 누르는 곳
                   type='button'
                   onClick={() => fileRef.current?.click()}
                   onDragOver={(e) => {

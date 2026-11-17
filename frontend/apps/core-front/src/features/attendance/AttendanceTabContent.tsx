@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { Study } from '@studyclub/types';
-import { Badge, Button, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
+import { Badge, Button, Checkbox, Modal, Select, SelectionCount, TableActionBar, HelpPopover } from '@studyclub/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { CircleHelp, Mic, Undo2 } from 'lucide-react';
+import { Mic, Undo2 } from 'lucide-react';
 
 import { BulkSelect } from '@/components/BulkSelect';
 import { STATUS_LABEL, STATUS_STYLE, type MyStatus } from '@/features/attendance/model';
@@ -88,9 +88,6 @@ function countChangedCells(
   return n;
 }
 
-const CHECKBOX =
-  'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
-
 /**
  * 열 너비 — 머리 줄과 본문 줄이 같은 값을 써야 열이 맞는다.
  * 닉네임 · 디스코드 닉네임 · 발표 횟수(왼쪽)와 출석률(오른쪽)은 고정, 회차 열만 가로로 스크롤한다 (10-18 D5).
@@ -118,57 +115,21 @@ const BULK_OPTIONS: { value: MyStatus | 'clear'; label: string }[] = [
  * 늘 펼쳐 두는 안내문은 두지 않는다 — 궁금한 사람만 연다. 휴대폰 폭에서 화면 밖으로 나가지 않게 폭 상한을 둔다.
  */
 function PresenterHelp() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
   return (
-    <span ref={ref} className='relative inline-flex align-middle'>
-      <button
-        type='button'
-        aria-label='발표 표시 설명'
-        aria-expanded={open}
-        aria-controls='presenter-help'
-        onClick={() => setOpen((v) => !v)}
-        className='grid h-6 w-6 place-items-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg'
-      >
-        <CircleHelp size={15} aria-hidden />
-      </button>
-      {open && (
-        <div
-          id='presenter-help'
-          role='dialog'
-          aria-label='발표 표시 설명'
-          className='absolute -left-24 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-2rem)] rounded-card border border-border bg-surface-raised p-3 text-left type-label-sm text-fg-secondary shadow-md sm:left-0'
-        >
-          <p className='flex items-center gap-1.5 font-semibold text-fg'>
-            <span className='relative grid h-8 w-14 shrink-0 place-items-center rounded-sm bg-success-100 type-label-sm text-success-700'>
-              <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
-              출석
-            </span>
-            칸 왼쪽 위 마이크 = 그 회차 발표자
-          </p>
-          <ul className='mt-2 list-disc space-y-1 pl-4'>
-            <li>일정 탭의 발표자1 · 발표자2에서 가져옵니다. 여기서 따로 입력하지 않습니다.</li>
-            <li>발표자를 바꾸면 마이크도 따라 바뀝니다.</li>
-            <li>「발표 횟수」는 발표자로 맡은 회차 수입니다. 아직 오지 않은 회차의 배정도 셉니다.</li>
-          </ul>
-        </div>
-      )}
-    </span>
+    <HelpPopover label='발표 표시 설명'>
+      <p className='flex items-center gap-1.5 font-semibold text-fg'>
+        <span className='relative grid h-8 w-14 shrink-0 place-items-center rounded-sm bg-success-100 type-label-sm text-success-700'>
+          <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
+          출석
+        </span>
+        칸 왼쪽 위 마이크 = 그 회차 발표자
+      </p>
+      <ul className='mt-2 list-disc space-y-1 pl-4'>
+        <li>일정 탭의 발표자1 · 발표자2에서 가져옵니다. 여기서 따로 입력하지 않습니다.</li>
+        <li>발표자를 바꾸면 마이크도 따라 바뀝니다.</li>
+        <li>「발표 횟수」는 발표자로 맡은 회차 수입니다. 아직 오지 않은 회차의 배정도 셉니다.</li>
+      </ul>
+    </HelpPopover>
   );
 }
 
@@ -570,18 +531,16 @@ export function AttendanceTabContent({
               >
                 <span className='flex items-center gap-1.5 sm:gap-3'>
                   {canEdit && (
-                    <input
-                      type='checkbox'
-                      aria-label='크루 전체 선택'
-                      className={CHECKBOX}
+                    <Checkbox
+                      label='크루 전체 선택'
+                      hideLabel
                       checked={allPicked}
-                      ref={(el) => {
-                        if (el) el.indeterminate = selected.length > 0 && !allPicked;
-                      }}
+                      indeterminate={selected.length > 0 && !allPicked}
                       onChange={() => setPicked(allPicked ? new Set() : new Set(selectable))}
                     />
                   )}
-                  닉네임
+                  {/* 열 이름은 따로 감싼다 — 전체 선택 체크박스의 스크린리더 라벨과 한 글자 덩어리가 되지 않게 */}
+                  <span>닉네임</span>
                 </span>
               </div>
               <div
@@ -660,10 +619,9 @@ export function AttendanceTabContent({
                     {canEdit && (
                       <span className='mr-1 flex w-4 shrink-0 sm:mr-1.5'>
                         {p.manageable && !p.leftAt && (
-                          <input
-                            type='checkbox'
-                            aria-label={`${p.name} 선택`}
-                            className={CHECKBOX}
+                          <Checkbox
+                            label={`${p.name} 선택`}
+                            hideLabel
                             checked={picked.has(p.id)}
                             disabled={saving}
                             onChange={() => pick(p.id)}
@@ -697,6 +655,7 @@ export function AttendanceTabContent({
                       // 저장 전이라 아직 중단이 아니다 — 칩 없이 되돌리기 아이콘만. 줄 색이 예정임을 말한다.
                       // 가리키면(키보드 포커스도) 오른쪽에 「중단 예정 취소」 말풍선 — 브라우저 title 은 늦게 떠서 쓰지 않는다
                       <button
+                        // ui-native: 출석부 줄의 되돌리기 아이콘 — 옆으로 뜨는 고유 말풍선이 붙어 IconButton 으로 담지 못한다
                         type='button'
                         aria-label={`${p.name} 중단 예정 취소`}
                         onClick={() => unmarkWithdraw(p.id)}
@@ -782,6 +741,7 @@ export function AttendanceTabContent({
                           }
                           return (
                             <button
+                              // ui-native: 출석부 칸 — 칸 전체가 누르는 곳이고 누를 때마다 상태가 돈다
                               type='button'
                               disabled={saving}
                               onClick={() => {

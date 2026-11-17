@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { discordHandle } from '@console/lib/discord';
+import { IconButton } from '@studyclub/ui';
 import { Eye, EyeOff } from 'lucide-react';
 
 /**
@@ -31,15 +32,14 @@ export function DiscordCell({ email }: { email: string }) {
     <td className='whitespace-nowrap'>
       <span className='inline-flex items-center gap-1.5'>
         <span className='type-label-sm text-fg-secondary'>{shown ? handle : '연동'}</span>
-        <button
-          type='button'
+        <IconButton
+          variant='tertiary'
+          size='xs'
           onClick={() => setShown((v) => !v)}
           aria-label={shown ? '디스코드 아이디 가리기' : '디스코드 아이디 보기'}
           title={shown ? '가리기' : '디스코드 아이디 보기'}
-          className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-        >
-          {shown ? <EyeOff size={14} /> : <Eye size={14} />}
-        </button>
+          icon={shown ? <EyeOff /> : <Eye />}
+        />
       </span>
     </td>
   );

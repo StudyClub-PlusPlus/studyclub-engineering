@@ -177,7 +177,8 @@ features/<기능>/
 
 ### 2. `@studyclub/ui` — 공용 UI 컴포넌트 & Storybook
 - `design-system.md` §9 스펙을 구현한 공용 리액트 컴포넌트 라이브러리
-- 제공 컴포넌트: `Button`, `Badge`, `Card`, `Field`(`Input`/`Select`/`Textarea`), `FilterChip`, `Avatar`, `StatCard`, `CapacityBar`, `Checkbox`, `Modal`, `EmptyState`, `Toast`(`Toaster`), `StudyCard`, `AttendanceTable`, `Tabs`, `Nav`, `Segmented`, `Pagination`
+- 제공 컴포넌트의 정본은 `packages/ui/src/index.ts` 의 export 목록이다 — 실물은 playground `/components` 카탈로그(http://localhost:4702/components)와 Storybook 에서 본다
+- 화면(앱 · playground 프로토)은 이 부품만 쓴다. 새 부품은 `pnpm --filter @studyclub/ui new-component {Name}` 으로 만든다(부품 · 스토리 · export · 카탈로그 칸). 규칙: [Component Guide §공용 UI](component-guide.md#공용-ui--studyclubui-먼저)
 - **Storybook 9 (react-vite)** 환경 탑재 (`pnpm --prefix frontend storybook` 실행)
 - 상세: [Component Guide](component-guide.md) · [Storybook Guide](storybook-guide.md)
 

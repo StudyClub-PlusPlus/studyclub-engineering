@@ -5,6 +5,7 @@ import { autolink } from '@core/lib/autolink';
 import { getNotices, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { PAGE, READ } from '@core/lib/layout';
+import { ButtonLink } from '@studyclub/ui';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 /**
@@ -72,12 +73,9 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
       </nav>
 
       <div className='mt-8 flex justify-end'>
-        <Link
-          href={base}
-          className='inline-flex items-center rounded-full border border-(--color-border) bg-(--color-bg) px-6 py-2.5 type-label-lg hover:bg-(--color-surface-subtle)'
-        >
+        <ButtonLink linkAs={Link} href={base} variant='secondary'>
           {t({ ko: '목록으로', en: 'Back to list' }, locale)}
-        </Link>
+        </ButtonLink>
       </div>
     </div>
   );

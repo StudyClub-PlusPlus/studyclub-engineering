@@ -145,6 +145,7 @@ function LoginForm() {
       <p className='mt-2 type-body-sm text-fg-muted'>로그인하면 내 스터디룸에서 참여한 스터디를 볼 수 있어요.</p>
 
       <button
+        // ui-native: 구글 로그인 — 구글 브랜드 표시 규정(흰 바탕 · 로고)을 따른다
         type='button'
         onClick={startLogin}
         disabled={loading}
@@ -169,6 +170,7 @@ function LoginForm() {
       </button>
 
       <button
+        // ui-native: 애플 로그인 — 애플 브랜드 표시 규정(검은 바탕 · 로고)을 따른다
         type='button'
         onClick={startAppleLogin}
         disabled={loading}
