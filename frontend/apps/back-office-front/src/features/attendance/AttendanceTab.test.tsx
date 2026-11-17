@@ -35,6 +35,7 @@ const participants: ParticipantsResponse = {
   studyId: 107,
   participantCount: 2,
   recruitmentCapacity: null,
+  ownerCaptain: null,
   groups: [{ groupId: 1, name: '기본반', isDefault: true, canDelete: false }],
   participants: [
     participant(1, '김크루', 'ACTIVE', 'kim_dev'),

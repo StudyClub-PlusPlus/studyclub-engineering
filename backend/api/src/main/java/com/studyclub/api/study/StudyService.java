@@ -128,6 +128,8 @@ public class StudyService {
                                 .schedule(request.schedule())
                                 .timezone(request.timezone())
                                 .createdBy(accountId)
+                                // 처음 담당 캡틴은 만든 캡틴 — 신청자 탭에서 바꾼다 (POL-0001)
+                                .ownerCaptainId(accountId)
                                 .build());
 
         if (request.startAt() != null) study.changeStartAt(request.startAt());

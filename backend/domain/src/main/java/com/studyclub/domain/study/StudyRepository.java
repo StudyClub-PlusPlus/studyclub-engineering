@@ -27,13 +27,43 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
     @Query("select s from Study s where s.id = :id")
     Optional<Study> findByIdForUpdate(@Param("id") Long id);
 
-    /**
-     * 계정 탈퇴 시 담당 캡틴 필드를 비운다 — {@code CREATED_BY = null} 이면 ADMIN 누구나 담당 캡틴으로 인정된다
-     * (StudyCaptainGuard.isOwnerCaptain).
-     */
+    /** 계정 탈퇴 시 등록자 기록을 비운다 — 탈퇴한 계정을 가리키는 값을 남기지 않는다. */
     @Modifying
     @Query("UPDATE Study s SET s.createdBy = null WHERE s.createdBy = :accountId")
     void clearCreatedBy(@Param("accountId") Long accountId);
+
+    /**
+     * 계정 탈퇴 시 담당 캡틴을 비운다 — {@code OWNER_CAPTAIN_ID = null} 이면 ADMIN 누구나 담당 캡틴의 일을 한다
+     * (StudyCaptainGuard.isOwnerCaptain).
+     */
+    @Modifying
+    @Query("UPDATE Study s SET s.ownerCaptainId = null WHERE s.ownerCaptainId = :accountId")
+    void clearOwnerCaptain(@Param("accountId") Long accountId);
+
+    /** 캡틴 권한 해제 시 — 끝난 스터디의 담당 캡틴만 비운다. 진행 중인 스터디가 있으면 해제를 먼저 막는다 (specs/admin-users). */
+    @Modifying
+    @Query(
+            "UPDATE Study s SET s.ownerCaptainId = null WHERE s.ownerCaptainId = :accountId"
+                    + " AND s.status IN :statuses")
+    void clearOwnerCaptainIn(
+            @Param("accountId") Long accountId,
+            @Param("statuses") Collection<StudyStatus> statuses);
+
+    /**
+     * 이 계정이 담당 캡틴인 스터디 중 상태가 {@code statuses} 밖인 것 — 진행 중 담당 스터디(OWNS_STUDY). 캡틴 권한 해제가 판정에 쓰므로 잠그고
+     * 읽는다: 스냅숏 시점에 기대지 않고, 판정이 끝날 때까지 이 스터디들의 담당 캡틴이 바뀌지 않게 한다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<Study> findByOwnerCaptainIdAndStatusNotIn(
+            Long ownerCaptainId, Collection<StudyStatus> statuses);
+
+    /** 진행 중 담당 스터디가 있는 계정 — 회원 목록 한 페이지분을 한 번에 본다. */
+    @Query(
+            "SELECT DISTINCT s.ownerCaptainId FROM Study s WHERE s.ownerCaptainId IN :accountIds"
+                    + " AND s.status NOT IN :statuses")
+    List<Long> findOwnerCaptainIdsWithStatusNotIn(
+            @Param("accountIds") Collection<Long> accountIds,
+            @Param("statuses") Collection<StudyStatus> statuses);
 
     /** 프로그램별 가장 최근(id 가 큰) 스터디를 가져온다. */
     @Query(

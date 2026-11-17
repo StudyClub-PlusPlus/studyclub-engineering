@@ -320,7 +320,7 @@ public class StudyNoticeService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이 스터디의 반이 아닙니다.");
         }
         studyCaptainGuard.assertCanEditGroup(
-                accountId, study.getCreatedBy(), group.getId(), FORBIDDEN_MESSAGE);
+                accountId, study.getOwnerCaptainId(), group.getId(), FORBIDDEN_MESSAGE);
     }
 
     private Study findStudy(Long studyId) {

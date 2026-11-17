@@ -8,7 +8,7 @@
 > Story PRD:
 > - [네비게이터는 스터디별 공지를 등록할 수 있다. (ST-016)](../../01-planning/stories/navigator-study-notice/PRD.md)
 
-네비게이터(또는 그 스터디를 만든 캡틴)가 **자기 반 팀원 중 고른 사람에게** 공지를 메일·디스코드로 보낸다.
+네비게이터(또는 그 스터디의 담당 캡틴)가 **자기 반 팀원 중 고른 사람에게** 공지를 메일·디스코드로 보낸다.
 사이트용 엔드포인트다 — 백오피스 경로(`/api/admin`)는 두지 않는다 ([endpoint-convention](../../docs/backend-development-guide/api/endpoint-convention.md)).
 권한은 [authz-guards](../authz-guards/spec.md) 의 `@RequireCaptainOrNavigator(scope = GROUP)` 이고, 서비스가 `StudyCaptainGuard.assertCanEditGroup` 으로 한 번 더 확인한다 (다른 캡틴은 크루로 본다).
 
@@ -52,7 +52,7 @@ sequenceDiagram
 
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}/groups/{groupId}/notices/compose`
-- **인증**: 필요 — 그 반의 네비게이터(`PARTICIPANT_ROLE=LEADER`) 또는 그 스터디를 만든 캡틴. 그 밖은 403
+- **인증**: 필요 — 그 반의 네비게이터(`PARTICIPANT_ROLE=LEADER`) 또는 그 스터디의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`, NULL 이면 캡틴 누구나). 그 밖은 403
 - **설명**: 받는 사람 후보와, 보낼 수 있는지·디스코드가 되는지·한도가 얼마나 남았는지. **화면이 날짜·횟수로 다시 계산하지 않고 이 값을 그린다** ([판정은 서버가 내려준다](../../docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다))
 
 ### Path Parameters

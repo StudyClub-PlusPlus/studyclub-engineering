@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { DiscordCell } from '@console/components/DiscordCell';
 import { PageHeader, TableCard } from '@console/components/ui';
+import { tx } from '@console/lib/l10n';
 import { maskEmail } from '@console/lib/mask';
 import {
   ACCOUNT_ROLES,
@@ -19,7 +20,7 @@ import {
   type Scope,
 } from '@console/lib/roles';
 import { DORMANCY_DESCRIPTION } from '@console/lib/user-dormancy';
-import { consoleUsers, studyTitleById, type ConsoleUser } from '@console/lib/users';
+import { consoleUsers, ownedOngoingStudies, studyTitleById, type ConsoleUser } from '@console/lib/users';
 import { Badge, Modal, Pagination, toast, type BadgeTone } from '@studyclub/ui';
 import { Check, ChevronDown, Eye, EyeOff, Info, Loader2, Minus } from 'lucide-react';
 
@@ -437,6 +438,8 @@ export function UsersTable() {
                       isSelf: m.id === actorId,
                       targetRole: m.account,
                       captainCount,
+                      // TODO(api): 서버가 roleChangeBlockedReason = OWNS_STUDY 로 내려준다
+                      ownedStudies: m.account === 'captain' ? ownedOngoingStudies(m.id).map((s) => tx(s.title)) : [],
                     })}
                     saving={saving.has(m.id)}
                     onChange={(next) => void changeAccount(m.id, next)}

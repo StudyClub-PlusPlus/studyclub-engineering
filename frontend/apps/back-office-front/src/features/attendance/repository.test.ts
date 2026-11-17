@@ -27,6 +27,19 @@ describe('출석 API 전송', () => {
       expect.objectContaining({ signal, credentials: 'include' }),
     );
   });
+  it('스터디 출석률 요약을 읽는다 — 체크된 회차가 없으면 null', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ attendanceRate: 0.82 }))
+      .mockResolvedValueOnce(Response.json({ attendanceRate: null }));
+    vi.stubGlobal('fetch', fetch);
+    await expect(repository.fetchSummary(10)).resolves.toEqual({ attendanceRate: 0.82 });
+    await expect(repository.fetchSummary(10)).resolves.toEqual({ attendanceRate: null });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/admin\/studies\/10\/attendances\/summary$/),
+      expect.objectContaining({ credentials: 'include' }),
+    );
+  });
   it('출석과 참여 중단을 하나의 JSON 요청으로 저장한다', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetch);

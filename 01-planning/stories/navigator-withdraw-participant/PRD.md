@@ -146,7 +146,7 @@ erDiagram
   STUDY_GROUP ||--o{ STUDY_PARTICIPANT : "소속"
   STUDY_PARTICIPANT ||--o{ STUDY_ATTENDANCE : "중단 전 기록은 남음"
   STUDY {
-    bigint CREATED_BY "담당 캡틴"
+    bigint OWNER_CAPTAIN_ID "담당 캡틴"
   }
   STUDY_PARTICIPANT {
     varchar PARTICIPANT_ROLE "LEADER = 네비게이터"
@@ -212,7 +212,7 @@ erDiagram
 
 ### 권한
 
-- 중단: 대상과 **같은 분반**의 네비게이터(명부에 살아 있음) · 담당 캡틴(`STUDY.CREATED_BY`). 아니면 403 — 출석 쓰기와 같은 분반 단위([authz-guards](../../../specs/authz-guards/spec.md) B)
+- 중단: 대상과 **같은 분반**의 네비게이터(명부에 살아 있음) · 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`). 아니면 403 — 출석 쓰기와 같은 분반 단위([authz-guards](../../../specs/authz-guards/spec.md) B)
 - 크루로 참여한 다른 캡틴은 크루다 — 403
 - 서버에서 검증한다. 화면에서 체크박스를 숨기는 것은 편의일 뿐이다
 

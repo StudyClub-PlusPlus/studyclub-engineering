@@ -223,7 +223,7 @@ erDiagram
   - 저장 → 완료 문구 표시
   - 처리 중 스피너로 중복 제출 차단
 - **정책**: 모집 시작 전에는 저장할 수 있다. 모집 시작 이후 수정은 막아야 한다 — 프로토타입은 아직 막지 않는다
-- **데이터**: PUT /api/admin/studies/{studyId}/application-form — 담당 캡틴(STUDY.CREATED_BY)만. 담당 판정 미구현
+- **데이터**: PUT /api/admin/studies/{studyId}/application-form — 담당 캡틴(STUDY.OWNER_CAPTAIN_ID)만. 담당 판정 미구현
 
 <!-- spec:end form -->
 
@@ -304,7 +304,7 @@ erDiagram
 
 - 조회(OPEN · `IS_HIDDEN=false`): 누구나. 검증 위치 서버. 이 스토리 화면은 콘솔이라 미로그인이면 로그인부터 한다
 - 조회(DRAFT 또는 숨김): 캡틴(`ACCOUNT.SYSTEM_ROLE=ADMIN`) 누구나. 담당이 아니어도 된다. 검증 위치 서버
-- 저장: 이 기수 **담당 캡틴**(이 기수를 생성한 캡틴, `STUDY.CREATED_BY = 나`)만. 검증 위치 서버. `CREATED_BY` 가 비어 있는 옛 기수는 캡틴 누구나 ([POL-0001](../../_registry/policies/POL-0001-roles.md))
+- 저장: 이 기수 **담당 캡틴**(처음엔 이 기수를 생성한 캡틴, 신청자 탭에서 바꾼다 — `STUDY.OWNER_CAPTAIN_ID = 나`)만. 검증 위치 서버. 담당 캡틴이 비어 있으면 캡틴 누구나 ([POL-0001](../../_registry/policies/POL-0001-roles.md))
 - 네비게이터(`STUDY_PARTICIPANT.PARTICIPANT_ROLE=LEADER`)는 조회·저장 모두 할 수 없다. 백오피스에 들어오지 못한다 (2026-10-04 확정)
 - 미로그인 `401`: 콘솔 로그인. 탭 안에 고치기 컨트롤을 두지 않는다
 - 담당이 아닌 캡틴: 폼을 읽기 전용으로 보여 주고 고치기 컨트롤을 두지 않는다. 저장을 시도하면 `403`. 크루·네비게이터는 백오피스 진입 단계에서 막힌다. 질문 `삭제`·순서 변경은 저장과 같은 권한이다

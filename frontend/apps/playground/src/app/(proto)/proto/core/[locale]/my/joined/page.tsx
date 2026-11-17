@@ -82,7 +82,7 @@ const SORTS: { key: SortKey; label: string }[] = [
 
 const defaultSortOf = (filter: Filter): SortKey => (filter === 'ended' ? 'end' : 'next');
 
-/** 역할로 거르기 — 운영 = 캡틴(만든 캡틴)·네비게이터, 참여 = 크루. */
+/** 역할로 거르기 — 운영 = 캡틴(담당 캡틴)·네비게이터, 참여 = 크루. */
 type RoleFilter = 'all' | 'manage' | 'join';
 
 const ROLE_FILTERS: { key: RoleFilter; label: string }[] = [
@@ -91,7 +91,7 @@ const ROLE_FILTERS: { key: RoleFilter; label: string }[] = [
   { key: 'join', label: '참여 (크루)' },
 ];
 
-/** 내가 캡틴(그 스터디를 만든 캡틴)이나 네비게이터로 맡은 스터디. */
+/** 내가 캡틴(그 스터디의 담당 캡틴)이나 네비게이터로 맡은 스터디. */
 const isMine = (study: Study) => manageAccessOf(study.id) !== undefined;
 
 /** 첫·마지막 정규 회차 일자 — 킥오프는 기간에 넣지 않는다. */

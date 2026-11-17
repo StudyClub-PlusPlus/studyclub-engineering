@@ -24,7 +24,7 @@ import org.springframework.stereotype.Repository;
  * 백오피스 회원 목록 — 필터·검색·서버 정렬·페이지 (specs/admin-users/spec.md).
  *
  * <p>「참여 중」·「담당」 조건은 아래 상수 한 곳에서만 정한다. 기획이 「반 편성 전 담당 캡틴」을 참여로 세기로 하면 {@link #PARTICIPATING} 에
- * {@code STUDY.CREATED_BY} 조건을 더하는 것으로 끝난다 (plan.md 「바꾸기 쉬운 자리」).
+ * {@code STUDY.OWNER_CAPTAIN_ID} 조건을 더하는 것으로 끝난다 (plan.md 「바꾸기 쉬운 자리」).
  */
 @Repository
 class AdminAccountJpqlDao implements AdminAccountDao {

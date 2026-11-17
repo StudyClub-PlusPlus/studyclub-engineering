@@ -8,6 +8,7 @@ import { useIsMutating } from '@tanstack/react-query';
 import { TableCard } from '@/components/ui';
 import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupChangesDialog';
 import { GroupsSection } from '@/features/participants/GroupsSection';
+import { OwnerCaptainSection } from '@/features/participants/OwnerCaptainSection';
 import { participantKeys, useParticipants } from '@/features/participants/queries';
 import type { Participant, ParticipantsResponse } from '@/features/participants/types';
 import { useGroupAssignment } from '@/features/participants/use-group-assignment';
@@ -98,6 +99,7 @@ function ParticipantAssignment({
         onClose={cancelNavigation}
         onConfirm={confirmNavigation}
       />
+      <OwnerCaptainSection studyId={studyId} owner={data.ownerCaptain} />
       <GroupsSection studyId={studyId} data={data} disabled={busy || dirty} />
       <section aria-label='참여 크루' className='space-y-3'>
         <div className='space-y-2'>

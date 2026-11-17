@@ -9,6 +9,7 @@ import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.StudyGroup;
 import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
@@ -147,7 +148,7 @@ public class AttendanceService {
                 totalDenominator += (long) numeratorDenominatorPair[1];
             }
 
-            boolean captain = study.isCreatedBy(p.getAccountId());
+            boolean captain = study.isOwnedBy(p.getAccountId());
 
             participantAttendances.add(
                     new AttendanceResponse.ParticipantAttendance(
@@ -181,5 +182,57 @@ public class AttendanceService {
                         avgRate),
                 meetingSummaries,
                 participantAttendances);
+    }
+
+    /**
+     * 스터디 모든 반을 합친 출석률 — 백오피스 스터디 상세 요약 카드. 참가자마다 지금 소속 반의 회차로 분자·분모를 구해 합산한다(가중평균). 반별 평균을 다시 평균하지
+     * 않는다. 하차·탈퇴한 사람도 떠나기 전 기록은 센다 — 산식이 떠난 뒤 회차를 빼 준다(specs/attendance §스터디 출석률 요약).
+     */
+    @Transactional(readOnly = true)
+    public AttendanceSummaryResponse getStudyAttendanceSummary(Long studyId) {
+        if (!studyRepository.existsById(studyId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+
+        List<Long> groupIds =
+                studyGroupRepository.findByStudyId(studyId).stream()
+                        .map(StudyGroup::getId)
+                        .toList();
+        List<StudyMeeting> meetings =
+                groupIds.isEmpty()
+                        ? List.of()
+                        : studyMeetingRepository.findByStudyGroupIdInOrderByScheduledAt(groupIds);
+        if (meetings.isEmpty()) {
+            return new AttendanceSummaryResponse(null);
+        }
+        Map<Long, List<StudyMeeting>> meetingsByGroupId =
+                meetings.stream().collect(Collectors.groupingBy(StudyMeeting::getStudyGroupId));
+
+        List<Long> meetingIds = meetings.stream().map(StudyMeeting::getId).toList();
+        Map<Long, Map<Long, StudyAttendance>> accountIdToAttendanceMap =
+                studyAttendanceRepository.findByStudyMeetingIdIn(meetingIds).stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        StudyAttendance::getAccountId,
+                                        Collectors.toMap(
+                                                StudyAttendance::getStudyMeetingId, a -> a)));
+
+        Instant now = Instant.now();
+        double totalNumerator = 0;
+        long totalDenominator = 0;
+        for (StudyParticipant p : studyParticipantRepository.findByStudyId(studyId)) {
+            List<StudyMeeting> groupMeetings = meetingsByGroupId.get(p.getStudyGroupId());
+            if (groupMeetings == null) continue; // 미배정이거나 회차 없는 반
+            double[] components =
+                    AttendanceRateCalculator.components(
+                            p,
+                            groupMeetings,
+                            accountIdToAttendanceMap.getOrDefault(p.getAccountId(), Map.of()),
+                            now);
+            totalNumerator += components[0];
+            totalDenominator += (long) components[1];
+        }
+        return new AttendanceSummaryResponse(
+                AttendanceRateCalculator.rate(new double[] {totalNumerator, totalDenominator}));
     }
 }
