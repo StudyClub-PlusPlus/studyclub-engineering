@@ -163,12 +163,15 @@ const springDaily = planDraft(
 assert.deepEqual(springDaily.plan?.dates, ['2027-03-13']);
 assert.equal(springDaily.plan?.skipped[0]?.date, '2027-03-14');
 
-// 입력 지역의 31일이 반 달력의 32일에 걸치면 저장 전에 종료일을 줄이도록 안내한다.
+// 반복은 1년까지 — 31일을 넘어도 만들고, 입력 지역의 1년이 반 달력의 1년 하루에 걸치면 종료일을 줄이도록 안내한다.
 const longDaily = { ...lateDraft, date: '2026-10-31', time: '10:30', repeat: 'daily' as const, until: '2026-11-30' };
-const longResult = planDraft(longDaily, [], east, fixtureNow, seoul);
-assert.equal(longResult.plan, undefined);
-assert.match(longResult.errors.until!, /2026-11-29/);
-assert.equal(planDraft({ ...longDaily, until: '2026-11-29' }, [], east, fixtureNow, seoul).plan?.dates.length, 30);
+assert.equal(planDraft(longDaily, [], east, fixtureNow, seoul).plan?.dates.length, 31);
+const yearDaily = { ...longDaily, date: '2027-11-05', until: '2028-11-05' };
+const yearResult = planDraft(yearDaily, [], east, fixtureNow, seoul);
+assert.equal(yearResult.plan, undefined);
+assert.match(yearResult.errors.until!, /2028-11-04/);
+// 봄 서머타임 시작 때 뉴욕 두 날이 서울 같은 날이 되어 하루를 건너뛴다 — 366일 중 365개
+assert.equal(planDraft({ ...yearDaily, until: '2028-11-04' }, [], east, fixtureNow, seoul).plan?.dates.length, 365);
 assert.equal(
   planDraft(longDaily, [{ id: 'occupied', no: 1, date: '2026-12-01' }], east, fixtureNow, seoul).plan?.dates.length,
   30,

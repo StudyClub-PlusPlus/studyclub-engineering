@@ -190,19 +190,21 @@ describe('DST review regressions', () => {
     );
   });
 
-  it('shows the group-calendar limit before adding and accepts the corrected end date', () => {
+  it('shows the one-year group-calendar limit before adding and accepts the corrected end date', () => {
     setup(true, { ...data, meetings: [] });
     fireEvent.click(screen.getByRole('button', { name: '회차 추가' }));
     const modal = within(screen.getByRole('dialog'));
-    fireEvent.change(modal.getByLabelText('일자', { exact: false }), { target: { value: '2026-10-31' } });
+    fireEvent.change(modal.getByLabelText('일자', { exact: false }), { target: { value: '2027-11-05' } });
     fireEvent.change(modal.getByLabelText(/시작 시각/), { target: { value: '10:30' } });
     fireEvent.click(modal.getByRole('button', { name: '매일' }));
-    fireEvent.change(modal.getByLabelText(/종료일/), { target: { value: '2026-11-30' } });
-    expect(modal.getByText(/서울\(KST\) 기준으로 31일 범위를 넘어요/)).toBeInTheDocument();
+    // 뉴욕 10:30 은 EDT 면 서울 같은 날, EST 면 서울 다음 날 — 입력 1년이 반 달력에서는 1년 하루가 된다
+    fireEvent.change(modal.getByLabelText(/종료일/), { target: { value: '2028-11-05' } });
+    expect(modal.getByText(/서울\(KST\) 기준으로 1년 범위를 넘어요/)).toBeInTheDocument();
     expect(modal.getByRole('button', { name: '추가' })).toBeDisabled();
     expect(createStudyMeetings).not.toHaveBeenCalled();
-    fireEvent.change(modal.getByLabelText(/종료일/), { target: { value: '2026-11-29' } });
-    expect(modal.getByRole('button', { name: '회차 30개 추가' })).toBeEnabled();
+    fireEvent.change(modal.getByLabelText(/종료일/), { target: { value: '2028-11-04' } });
+    // 봄 서머타임 시작 때 뉴욕 두 날이 서울 같은 날이 되어 하루를 건너뛴다 — 366일 중 365개
+    expect(modal.getByRole('button', { name: '회차 365개 추가' })).toBeEnabled();
   });
 
   it('carries an explicitly selected recurring occurrence through preview, pending rows, and the API', async () => {

@@ -107,16 +107,24 @@ describe('DST input boundaries', () => {
     weekdays: [],
   };
 
-  it('checks the actual group calendar span before allowing a 31-day profile recurrence', () => {
-    const blocked = planDraft(daily, [], east, now, seoul);
+  it('allows recurrences longer than 31 days, up to one year', () => {
+    const plan = planDraft(daily, [], east, now, seoul).plan!;
+    expect(plan.scheduledAts).toHaveLength(31);
+    expect(wallParts(new Date(plan.scheduledAts.at(-1)!), seoul).date).toBe('2026-12-01');
+    // 봄 서머타임 시작 때 뉴욕 두 날이 서울 같은 날이 되어 하루를 건너뛴다 — 366일 중 365개
+    expect(planDraft({ ...daily, until: '2027-10-31' }, [], east, now, seoul).plan?.dates).toHaveLength(365);
+    expect(planDraft({ ...daily, until: '2027-11-01' }, [], east, now, seoul).errors.until).toContain('1년 안에서만');
+  });
+
+  it('checks the actual group calendar span against one year', () => {
+    // 뉴욕 10:30 — 2027-11-05 는 EDT(서울 같은 날), 2028-11-05 는 EST(서울 다음 날)
+    const yearly = { ...daily, date: '2027-11-05', until: '2028-11-05' };
+    const blocked = planDraft(yearly, [], east, now, seoul);
     expect(blocked.plan).toBeUndefined();
     expect(blocked.errors.until).toContain('서울(KST)');
-    expect(blocked.errors.until).toContain('2026-11-29');
-    const corrected = planDraft({ ...daily, until: '2026-11-29' }, [], east, now, seoul).plan!;
-    expect(corrected.scheduledAts).toHaveLength(30);
-    expect(wallParts(new Date(corrected.scheduledAts[0]), seoul).date).toBe('2026-10-31');
-    expect(wallParts(new Date(corrected.scheduledAts.at(-1)!), seoul).date).toBe('2026-11-30');
-    expect(planDraft({ ...daily, time: '09:30' }, [], east, now, seoul).plan?.dates).toHaveLength(31);
+    expect(blocked.errors.until).toContain('2028-11-04');
+    // 봄 서머타임 시작 때 뉴욕 두 날이 서울 같은 날이 되어 하루를 건너뛴다 — 366일 중 365개
+    expect(planDraft({ ...yearly, until: '2028-11-04' }, [], east, now, seoul).plan?.dates).toHaveLength(365);
   });
 
   it('measures retained meetings, allowing a full input range when a conflicting endpoint is skipped', () => {
