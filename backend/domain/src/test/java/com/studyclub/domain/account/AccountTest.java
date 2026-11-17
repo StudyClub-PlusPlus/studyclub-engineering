@@ -22,4 +22,16 @@ class AccountTest {
         assertThatThrownBy(() -> account.changeDiscordNickname("   "))
                 .isInstanceOf(BusinessException.class);
     }
+
+    @Test
+    @DisplayName("디스코드 ID 가 있어야 연동된 계정이다 — 없거나 공백이면 미연동")
+    void isDiscordLinkedOnlyWithDiscordId() {
+        Account account = new Account("account@example.com", "닉네임", null, SystemRole.MEMBER);
+
+        assertThat(account.isDiscordLinked()).isFalse();
+        account.linkDiscord("  ", "handle");
+        assertThat(account.isDiscordLinked()).isFalse();
+        account.linkDiscord("123456789012345678", "handle");
+        assertThat(account.isDiscordLinked()).isTrue();
+    }
 }

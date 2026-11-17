@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 
 import { LIFECYCLE_HINT, LIFECYCLE_LABEL, LIFECYCLE_TONE } from '@console/components/lifecycle';
-import type { LifecycleState } from '@studyclub/mock';
+import type { LifecycleState } from '@studyclub/types';
 import { Badge } from '@studyclub/ui';
 
 /**
@@ -44,7 +44,7 @@ export function LifecycleBadge({ state }: { state: LifecycleState }) {
         <span
           role='tooltip'
           style={{ position: 'fixed', left: pos.x, top: pos.y, width: WIDTH, transform: 'translateX(-50%)' }}
-          className='pointer-events-none z-50 whitespace-normal rounded-control bg-neutral-900 px-3 py-2 text-left text-xs font-normal leading-relaxed text-white shadow-lg'
+          className='pointer-events-none z-50 whitespace-normal rounded-control bg-neutral-900 px-3 py-2 text-left type-label-sm text-white shadow-lg'
         >
           <span className='block font-semibold'>{LIFECYCLE_LABEL[state]}</span>
           <span className='block'>{hint.meaning}</span>

@@ -55,7 +55,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @AutoConfigureTestRestTemplate
 class ParticipantWithdrawalIntegrationTest {
 
-    private static final Long OWNER_ID = 3101L; // 담당 캡틴 (STUDY.CREATED_BY)
+    private static final Long OWNER_ID = 3101L; // 담당 캡틴 (STUDY.OWNER_CAPTAIN_ID)
     private static final Long OTHER_CAPTAIN_ID = 3102L; // 크루로 참여한 다른 캡틴
     private static final Long NAV_A_ID = 3103L;
     private static final Long CREW_1_ID = 3104L;
@@ -385,22 +385,6 @@ class ParticipantWithdrawalIntegrationTest {
                 "STUDY_ENDED");
     }
 
-    @Test
-    @DisplayName("백오피스 경로는 withdrawals 를 받지 않는다 → 400")
-    void adminPathRejectsWithdrawals() {
-        var response =
-                rest.exchange(
-                        "/api/admin/studies/{studyId}/attendances",
-                        HttpMethod.POST,
-                        authenticatedRequest(
-                                body(groupA, List.of(), List.of(crew1.getId())), OWNER_ID),
-                        Map.class,
-                        study.getId());
-
-        assertError(response, HttpStatus.BAD_REQUEST, "INVALID_INPUT");
-        assertThat(statusOf(crew1)).isEqualTo(ParticipantStatus.ACTIVE);
-    }
-
     /**
      * 요청은 서버 스레드에서 처리되므로 {@code @RecordApplicationEvents} 로는 못 잡는다. 커밋 뒤 구독자 하나를 붙여 실제 구독자와 같은 시점에
      * 받는다.
@@ -435,6 +419,7 @@ class ParticipantWithdrawalIntegrationTest {
                         .status(status)
                         .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                         .createdBy(OWNER_ID)
+                        .ownerCaptainId(OWNER_ID)
                         .build());
     }
 

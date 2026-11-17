@@ -1,7 +1,8 @@
 'use client';
 
 import { seedMyAttendance } from '@core/lib/attendance';
-import type { MemberRegion } from '@studyclub/mock';
+import { resolveDisplayZone } from '@core/lib/schedule-timezone';
+import type { MemberRegion } from '@studyclub/types';
 
 /**
  * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청·거주 지역.
@@ -113,13 +114,14 @@ export function getRegion(): MemberRegion {
  */
 export function getTimeZone(): string {
   const saved = readJSON<string>(ZONE_KEY, '');
-  if (saved) return saved;
-  return getRegion() === 'KR' ? 'Asia/Seoul' : 'America/Vancouver';
+  const browser = typeof window === 'undefined' ? undefined : Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return resolveDisplayZone(saved, browser);
 }
 
 export function setTimeZone(zone: string) {
   writeJSON(ZONE_KEY, zone);
   setRegion(zone === 'Asia/Seoul' ? 'KR' : 'NA');
+  window.dispatchEvent(new Event('sc:timezone-change'));
 }
 
 export function setRegion(region: MemberRegion) {
@@ -206,6 +208,19 @@ export function setDiscordNickname(nickname: string) {
 const SEED_KEY = 'sc_demo_seed';
 /** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
 const SEED_VERSION = 12;
+
+/** A newly registered preview member must not inherit the demo member's studies or Discord. */
+export function resetMemberData() {
+  writeJSON(SEED_KEY, SEED_VERSION);
+  writeJSON(APPLICATION_KEY, []);
+  writeJSON(BOOKMARK_KEY, []);
+  writeJSON(DISCORD_KEY, '');
+  writeJSON(DISCORD_NICK_KEY, '');
+  writeJSON(NAME_KEY, '');
+  writeJSON(ZONE_KEY, '');
+  writeJSON(REGION_KEY, 'KR');
+  writeJSON(MARKETING_KEY, false);
+}
 
 function accepted(studyId: string, appliedAt: string): Application {
   return { studyId, appliedAt, status: 'accepted', region: 'KR' };

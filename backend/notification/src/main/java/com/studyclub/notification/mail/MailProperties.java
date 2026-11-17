@@ -27,7 +27,9 @@ public record MailProperties(
             String fromAddress,
             String accessKeyId,
             String secretAccessKey,
-            String configurationSetName) {}
+            String configurationSetName,
+            // 받는 사람이 답장할 곳. 발신은 no_reply 라 비워 두면 답장이 갈 곳이 없다 — 스팸 점수에도 불리하다
+            String replyToAddress) {}
 
     public MailAccount get(MailCategory category) {
         return switch (category) {

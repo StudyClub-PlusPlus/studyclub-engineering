@@ -57,7 +57,20 @@ class StudyServiceTest {
 
         StudyCreateRequest request =
                 new StudyCreateRequest(
-                        999L, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+                        999L,
+                        null,
+                        "스터디",
+                        "소개",
+                        null,
+                        StudyCategory.ALGORITHM,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null);
 
         assertThatThrownBy(() -> studyService.create(1L, request))
                 .isInstanceOf(BusinessException.class)
@@ -80,6 +93,11 @@ class StudyServiceTest {
                         StudyCategory.ALGORITHM,
                         null,
                         Instant.now().minusSeconds(3600),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null);
 
         assertThat(request.studyKind()).isEqualTo(StudyKind.STUDY);
@@ -104,6 +122,11 @@ class StudyServiceTest {
                         StudyCategory.ALGORITHM,
                         null,
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null);
 
         assertThatThrownBy(() -> studyService.create(1L, request))
@@ -123,7 +146,20 @@ class StudyServiceTest {
 
         StudyCreateRequest request =
                 new StudyCreateRequest(
-                        999L, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+                        999L,
+                        null,
+                        "스터디",
+                        "소개",
+                        null,
+                        StudyCategory.ALGORITHM,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null);
 
         assertThatThrownBy(() -> studyService.create(1L, request))
                 .isInstanceOf(BusinessException.class)
@@ -306,7 +342,20 @@ class StudyServiceTest {
 
     private StudyCreateRequest validCreateRequest() {
         return new StudyCreateRequest(
-                null, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+                null,
+                null,
+                "스터디",
+                "소개",
+                null,
+                StudyCategory.ALGORITHM,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
     private StudyUpdateRequest validUpdateRequest() {

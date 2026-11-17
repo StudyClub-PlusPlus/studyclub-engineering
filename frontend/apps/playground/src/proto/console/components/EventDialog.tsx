@@ -10,7 +10,7 @@ import {
   type EventFormErrors,
   type EventFormValues,
 } from '@console/components/EventForm';
-import type { StudyclubEvent } from '@studyclub/mock';
+import type { StudyclubEvent } from '@studyclub/types';
 import { Button, Modal } from '@studyclub/ui';
 
 /**
@@ -94,14 +94,15 @@ export function EventDialog({
           <>
             {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}
             {editing && (
-              <button
+              <Button
                 type='button'
+                variant='danger'
                 onClick={() => setConfirmDelete(true)}
                 disabled={saving}
-                className='mr-auto h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
+                className='mr-auto'
               >
                 행사 삭제
-              </button>
+              </Button>
             )}
             <Button onClick={handleSubmit} loading={saving}>
               {editing ? '저장' : '등록'}
@@ -111,15 +112,15 @@ export function EventDialog({
       }
     >
       {done === 'deleted' ? (
-        <p className='py-6 text-center text-sm text-fg-muted'>삭제되었습니다.</p>
+        <p className='py-6 text-center type-body-sm text-fg-muted'>삭제되었습니다.</p>
       ) : done === 'saved' ? (
-        <p className='py-6 text-center text-sm text-fg-muted'>
+        <p className='py-6 text-center type-body-sm text-fg-muted'>
           {editing ? '저장되었습니다.' : '등록되었습니다. 사이트에 바로 공개됩니다.'}
         </p>
       ) : confirmDelete ? (
         <div className='py-6 text-center'>
-          <p className='text-sm font-semibold text-fg'>‘{form.title}’ 행사를 삭제합니다.</p>
-          <p className='mt-1.5 text-sm text-fg-muted'>사이트에서 즉시 사라지며 되돌릴 수 없습니다.</p>
+          <p className='type-label-lg text-fg'>‘{form.title}’ 행사를 삭제합니다.</p>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>사이트에서 즉시 사라지며 되돌릴 수 없습니다.</p>
         </div>
       ) : (
         <EventForm value={form} errors={errors} onChange={setForm} />

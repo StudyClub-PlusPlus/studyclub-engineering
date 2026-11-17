@@ -19,6 +19,8 @@ export interface RenderSpec {
 }
 
 export interface Recipe {
+  /** PRD catalog: explicit local API responses, overriding browser MSW. */
+  api?: { path: string; query?: Record<string, string>; method?: string; status?: number; json?: unknown; pending?: boolean }[];
   storage?: StorageSeed[];
   steps?: ScreenStep[];
   render: RenderSpec;
@@ -30,12 +32,15 @@ export interface ScreenshotSpec {
 }
 
 export interface Assertions {
+  disabled?: string[];
   visible?: string[];
   hidden?: string[];
   text?: Record<string, string>;
 }
 
 export interface ScreenStateDef {
+  /** Traceability only; a screenshot does not prove the whole behavior scenario. */
+  prdScenarios?: string[];
   id: SdfId;
   label: string;
   pageId: SdfId;

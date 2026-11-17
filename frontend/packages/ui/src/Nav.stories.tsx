@@ -26,7 +26,7 @@ const meta = {
   tags: ['autodocs'],
   args: {
     variant: 'site',
-    brand: <span className='text-lg font-bold tracking-tight'>StudyClub</span>,
+    brand: <span className='type-title-md'>StudyClub</span>,
     items: siteItems,
     actions: (
       <Button size='sm' variant='primary'>
@@ -51,12 +51,12 @@ export const ConsoleSidebar: Story = {
     <div className='h-[480px]'>
       <Nav
         variant='sidebar'
-        brand={<span className='text-[15px] font-bold'>운영자 콘솔</span>}
+        brand={<span className='type-label-lg'>운영자 콘솔</span>}
         items={consoleItems}
         actions={
           <button
             type='button'
-            className='flex w-full items-center gap-2 rounded-control px-3 py-2 text-sm text-fg-muted hover:bg-surface-2 hover:text-fg'
+            className='flex w-full items-center gap-2 rounded-control px-3 py-2 type-label-lg text-fg-muted hover:bg-surface-2 hover:text-fg'
           >
             <LogOut size={16} /> 로그아웃
           </button>

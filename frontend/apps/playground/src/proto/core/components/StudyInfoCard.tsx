@@ -14,7 +14,7 @@ function LinkButton({ label, href, icon }: { label: string; href: string; icon: 
       target='_blank'
       rel='noopener noreferrer'
       title={href}
-      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 text-sm font-semibold text-fg-secondary hover:bg-surface-2 hover:text-fg'
+      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 type-label-lg text-fg-secondary hover:bg-surface-2 hover:text-fg'
     >
       {icon}
       {label}
@@ -44,8 +44,8 @@ export function StudyInfoCard({
   anno,
   className,
 }: {
-  /** 「매주 수요일 20:30 KST」 */
-  time: string;
+  /** 정규 시간. 사용자 사이트는 프로필 시간과 설명 버튼을 함께 넘긴다. */
+  time: ReactNode;
   /** 있으면 스터디 시간 옆에 「수정」을 둔다 — 백오피스 일정 탭만. */
   onEditTime?: () => void;
   /** 네비게이터 이름. 없으면 부르는 쪽이 「미지정」 등으로 넘긴다. */
@@ -69,10 +69,10 @@ export function StudyInfoCard({
   return (
     <section data-anno={anno} className={cx('card px-5 py-4', className)}>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <dl className='flex flex-wrap gap-x-6 gap-y-1 text-sm'>
-          <div className='flex gap-2'>
-            <dt className='text-fg-muted'>스터디 시간</dt>
-            <dd className='tnum font-semibold text-fg'>{time}</dd>
+        <dl className='flex flex-wrap gap-x-6 gap-y-1 type-body-sm'>
+          <div className='flex min-w-0 gap-2'>
+            <dt className='shrink-0 text-fg-muted'>스터디 시간</dt>
+            <dd className='min-w-0 tnum font-semibold text-fg'>{time}</dd>
             {onEditTime && (
               <dd>
                 <button
@@ -80,7 +80,7 @@ export function StudyInfoCard({
                   data-anno={`${anno}-3`}
                   aria-label='스터디 시간 수정'
                   onClick={onEditTime}
-                  className='text-sm font-semibold text-brand underline-offset-2 hover:underline'
+                  className='type-label-lg text-brand underline-offset-2 hover:underline'
                 >
                   수정
                 </button>

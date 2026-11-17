@@ -1,14 +1,23 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
-import type { GroupAssignmentsResponse, GroupChange, ParticipantsResponse } from './types';
+import {
+  changeOwnerCaptain,
+  deleteGroup,
+  editGroup,
+  participants,
+  saveGroupAssignments,
+} from '@/features/participants/repository';
+import type { GroupChange, ParticipantsResponse } from '@/features/participants/types';
 import { studyKeys } from '@/features/studies/queries';
-import { ApiError, http } from '@/lib/http';
+import { userKeys } from '@/features/users/queries';
+import { ApiError } from '@/lib/http';
 
 export const participantKeys = {
   list: (studyId: number) => [...studyKeys.detail(studyId), 'participants'] as const,
   // 반 배정 저장만 따로 센다 — 반 이름 저장 중에는 이동을 막지 않는다.
   assignments: (studyId: number) => [...participantKeys.list(studyId), 'assignments'] as const,
   groups: (studyId: number) => [...participantKeys.list(studyId), 'groups'] as const,
+  ownerCaptain: (studyId: number) => [...participantKeys.list(studyId), 'owner-captain'] as const,
 };
 
 async function handleParticipantError(client: QueryClient, studyId: number, error: Error) {
@@ -25,8 +34,7 @@ async function handleParticipantError(client: QueryClient, studyId: number, erro
 export function useParticipants(studyId: number, enabled = true) {
   return useQuery({
     queryKey: participantKeys.list(studyId),
-    queryFn: ({ signal }) =>
-      http<ParticipantsResponse | null>(`/api/admin/studies/${studyId}/participants`, { signal }),
+    queryFn: ({ signal }) => participants(studyId, signal),
     enabled,
   });
 }
@@ -36,12 +44,7 @@ export function useSaveGroupAssignments(studyId: number) {
   return useMutation({
     mutationKey: participantKeys.assignments(studyId),
     onError: (error) => handleParticipantError(client, studyId, error),
-    mutationFn: (changes: GroupChange[]) =>
-      http<GroupAssignmentsResponse>(`/api/admin/studies/${studyId}/participants`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ changes }),
-      }),
+    mutationFn: (changes: GroupChange[]) => saveGroupAssignments(studyId, changes),
     onSuccess: (result) => {
       client.setQueryData<ParticipantsResponse>(
         participantKeys.list(studyId),
@@ -59,20 +62,34 @@ export function useSaveGroupAssignments(studyId: number) {
   });
 }
 
+/** 담당 캡틴 바꾸기. 저장된 뒤에 명단을 다시 받아 칸과 「캡틴」 표시를 맞춘다. */
+export function useChangeOwnerCaptain(studyId: number) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationKey: participantKeys.ownerCaptain(studyId),
+    onError: async (error) => {
+      // 후보가 그새 캡틴이 아니게 됐을 수 있다(409 OWNER_CAPTAIN_NOT_ADMIN · 404) — 후보 목록도 다시 받는다
+      if (error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 401) {
+        await client.invalidateQueries({ queryKey: userKeys.all });
+      }
+      return handleParticipantError(client, studyId, error);
+    },
+    mutationFn: (accountId: number) => changeOwnerCaptain(studyId, accountId),
+    // 옛 · 새 담당 캡틴의 권한 잠금(OWNS_STUDY)이 바뀌므로 유저 목록도 다시 받는다
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: participantKeys.list(studyId) }),
+        client.invalidateQueries({ queryKey: userKeys.all }),
+      ]),
+  });
+}
+
 export function useEditGroup(studyId: number) {
   const client = useQueryClient();
   return useMutation({
     mutationKey: participantKeys.groups(studyId),
     onError: (error) => handleParticipantError(client, studyId, error),
-    mutationFn: ({ groupId, name }: { groupId?: number; name: string }) =>
-      http<{ groupId: number; name: string }>(
-        `/api/admin/studies/${studyId}/groups${groupId == null ? '' : `/${groupId}`}`,
-        {
-          method: groupId == null ? 'POST' : 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name }),
-        },
-      ),
+    mutationFn: ({ groupId, name }: { groupId?: number; name: string }) => editGroup(studyId, groupId, name),
     onSuccess: () => client.invalidateQueries({ queryKey: studyKeys.detail(studyId) }),
   });
 }
@@ -82,8 +99,7 @@ export function useDeleteGroup(studyId: number) {
   return useMutation({
     mutationKey: participantKeys.groups(studyId),
     onError: (error) => handleParticipantError(client, studyId, error),
-    mutationFn: (groupId: number) =>
-      http<null>(`/api/admin/studies/${studyId}/groups/${groupId}`, { method: 'DELETE' }),
+    mutationFn: (groupId: number) => deleteGroup(studyId, groupId),
     onSuccess: () => client.invalidateQueries({ queryKey: studyKeys.detail(studyId) }),
   });
 }

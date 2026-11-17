@@ -18,6 +18,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -30,6 +31,8 @@ import org.hibernate.type.SqlTypes;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+// 바뀐 칸만 UPDATE 한다 — 잠그지 않고 읽은 스터디 수정이 그사이 바뀐 담당 캡틴(OWNER_CAPTAIN_ID)을 옛 값으로 되돌리지 않게
+@DynamicUpdate
 public class Study extends BaseEntity {
 
     @Id
@@ -81,11 +84,21 @@ public class Study extends BaseEntity {
     @Column(length = 255)
     private String schedule;
 
+    /** 운영자가 고른 기준 시간대. {@code null} = 미정 — 판정은 {@link #timezone()}. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "TIMEZONE", length = 10)
+    private StudyTimezone timezone;
+
     @Column(name = "PUBLISH_AT")
     private Instant publishAt;
 
+    /** 등록한 사람 — 기록만. 권한 판정에 쓰지 않는다 (담당 캡틴은 {@link #ownerCaptainId}). */
     @Column(name = "CREATED_BY")
     private Long createdBy;
+
+    /** 담당 캡틴 — 스터디당 한 명. NULL 이면 담당 캡틴의 일을 캡틴 누구나 한다 (POL-0001). */
+    @Column(name = "OWNER_CAPTAIN_ID")
+    private Long ownerCaptainId;
 
     private static final long CLOSING_SOON_DAYS = 3;
     private static final Pattern PST_PATTERN = Pattern.compile("PST|PDT", Pattern.CASE_INSENSITIVE);
@@ -102,6 +115,11 @@ public class Study extends BaseEntity {
         if (description != null) this.description = description;
         if (category != null) this.category = category;
         if (schedule != null) this.schedule = schedule;
+    }
+
+    /** 기준 시간대. {@code null} 이면 미정으로 되돌린다. */
+    public void changeTimezone(StudyTimezone timezone) {
+        this.timezone = timezone;
     }
 
     /** 진행 시작일. {@code null} 이면 미정. */
@@ -150,30 +168,26 @@ public class Study extends BaseEntity {
      * <p>{@code recruitDeadlineAt == null} 은 상시 모집이라 시각으로는 마감되지 않고, {@code recruitmentCapacity ==
      * null} 은 무제한이라 정원으로도 마감되지 않는다.
      *
-     * <p>신청 수는 STUDY_APPLICATION 애그리거트 소관이라 밖에서 받는다. 정원과 같은 회차끼리 비교해야 하므로 최신 모집 회차의 신청 수 ({@code
-     * StudyApplicationRepository.countByRecruitmentIdIn}) 를 넘긴다.
+     * <p>정원을 차지하는 인원은 STUDY_PARTICIPANT 애그리거트 소관이라 밖에서 받는다. 현재 ACTIVE 명부({@code
+     * StudyParticipantRepository.countCapacityHoldersByStudyIds}) 를 넘긴다 (결정 D4-A).
      *
      * <p>{@code recruitDeadlineAt} · {@code recruitmentCapacity} 는 STUDY_RECRUITMENT 에서 가져온 값이다.
      */
     public RecruitStatus recruitStatus(
-            long applicantCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
-        return recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity, Instant.now());
+            long crewCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
+        return recruitStatus(crewCount, recruitDeadlineAt, recruitmentCapacity, Instant.now());
     }
 
     /**
      * {@link #recruitStatus(long, Instant, Integer)} 와 같되 마감 판정에 {@code asOf} 를 쓴다 — 대시보드 집계 기준 시각.
      */
     public RecruitStatus recruitStatus(
-            long applicantCount,
-            Instant recruitDeadlineAt,
-            Integer recruitmentCapacity,
-            Instant asOf) {
+            long crewCount, Instant recruitDeadlineAt, Integer recruitmentCapacity, Instant asOf) {
         if (status != StudyStatus.OPEN) {
             return null;
         }
         boolean deadlinePassed = recruitDeadlineAt != null && !asOf.isBefore(recruitDeadlineAt);
-        boolean capacityReached =
-                recruitmentCapacity != null && applicantCount >= recruitmentCapacity;
+        boolean capacityReached = recruitmentCapacity != null && crewCount >= recruitmentCapacity;
         return (deadlinePassed || capacityReached)
                 ? RecruitStatus.RECRUIT_CLOSED
                 : RecruitStatus.RECRUITING;
@@ -186,7 +200,7 @@ public class Study extends BaseEntity {
      * RECRUITING}) → 나머지는 종료. 시작 전인데 모집이 마감된 스터디는 신청할 수 없으니 종료로 본다.
      */
     public StudyPhase phase(
-            long applicantCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
+            long crewCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
         if (status == StudyStatus.DRAFT) {
             return null;
         }
@@ -197,18 +211,22 @@ public class Study extends BaseEntity {
         if (startAt != null && !now.isBefore(startAt)) {
             return StudyPhase.ONGOING;
         }
-        return recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity)
+        return recruitStatus(crewCount, recruitDeadlineAt, recruitmentCapacity)
                         == RecruitStatus.RECRUITING
                 ? StudyPhase.RECRUITING
                 : StudyPhase.CLOSED;
     }
 
     /**
-     * 진행 시간대를 일정 문구({@code SCHEDULE})의 표기로 판정한다. PST·PDT 가 있으면 PST, KST 가 있으면 KST, 둘 다 없으면 두 지역 동시
-     * 모집이다.
+     * 목록·필터가 쓰는 진행 시간대. 운영자가 고른 값({@code TIMEZONE})이 있으면 그대로 쓴다. 없으면(컬럼 전 데이터) 일정 문구({@code
+     * SCHEDULE})의 표기로 판정한다 — PST·PDT 가 있으면 PST, KST 가 있으면 KST, 둘 다 없으면 두 지역 동시 모집이다.
+     *
+     * <p>목록 필터({@code StudyListJpqlDao.TIMEZONE})가 같은 순서로 판정한다 — 한쪽만 고치면 필터와 표시가 어긋난다.
      */
-    // ponytail: 자유 텍스트 판정 — 표기가 흔들리면 틀린다. 운영에서 문제가 되면 TIMEZONE 컬럼으로 올린다
     public StudyTimezone timezone() {
+        if (timezone != null) {
+            return timezone;
+        }
         if (schedule == null) {
             return StudyTimezone.BOTH;
         }
@@ -219,6 +237,16 @@ public class Study extends BaseEntity {
             return StudyTimezone.KST;
         }
         return StudyTimezone.BOTH;
+    }
+
+    /** 담당 캡틴인가 — {@code STUDY.OWNER_CAPTAIN_ID} 하나로 판정한다 (POL-0001). 비어 있으면 아무도 아니다. */
+    public boolean isOwnedBy(Long accountId) {
+        return ownerCaptainId != null && ownerCaptainId.equals(accountId);
+    }
+
+    /** 담당 캡틴을 바꾼다. 대상이 캡틴(ADMIN)인지는 호출하는 서비스가 계정을 잠그고 확인한다. */
+    public void changeOwnerCaptain(Long accountId) {
+        this.ownerCaptainId = accountId;
     }
 
     public boolean isPubliclyVisible() {

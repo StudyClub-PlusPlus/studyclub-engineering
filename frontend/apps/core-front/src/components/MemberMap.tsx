@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 
-import type { Locale } from '@/lib/content';
-import { REGIONS, project, tzLabel } from '@/lib/regions';
+import type { Locale } from '@studyclub/types';
+
+import { REGIONS, project, tzLabel } from '@/features/community/regions';
 
 /**
  * 크루가 있는 곳 — 점 지도(public/about-art/world-dots.svg, Natural Earth 110m 육지) 위에 지역 핀.
@@ -35,11 +36,11 @@ export function MemberMap({ locale }: { locale: Locale }) {
         {REGIONS.map((r) => {
           const tz = mounted ? tzLabel(r.tz) : null;
           return (
-            <li key={r.id} className='flex items-center gap-2.5 text-sm'>
+            <li key={r.id} className='flex items-center gap-2.5 type-body-sm'>
               <span className='h-2.5 w-2.5 shrink-0 rounded-full' style={{ background: r.color }} />
               <span className='font-semibold'>{locale === 'ko' ? r.name.ko : r.name.en}</span>
               <span className='text-(--color-fg-muted)'>{locale === 'ko' ? r.city.ko : r.city.en}</span>
-              <span className='ml-auto text-xs font-medium tabular-nums text-(--color-fg-faint)' suppressHydrationWarning>
+              <span className='ml-auto type-label-sm tabular-nums text-(--color-fg-faint)' suppressHydrationWarning>
                 {tz ? [tz.abbr, tz.offset].filter(Boolean).join(' · ') : ''}
               </span>
             </li>

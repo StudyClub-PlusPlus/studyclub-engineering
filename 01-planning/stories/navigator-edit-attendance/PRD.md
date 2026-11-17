@@ -14,7 +14,7 @@
 flowchart LR
   A["내 스터디 카드·주간 칸"] --> B["스터디 일정"]
   B --> C["출석 탭"]
-  C --> D{"고칠 수 있는가<br>(네비게이터·만든 캡틴)"}
+  C --> D{"고칠 수 있는가<br>(네비게이터·담당 캡틴)"}
   D -->|아니오| E["보기만 (크루)"]
   D -->|예| F{"회차가 있는가"}
   F -->|없음| G["일정으로 가기"]
@@ -53,7 +53,7 @@ flowchart LR
 - **내용**: 「백오피스 출석부」 버튼. 스터디 정보 카드 오른쪽 바로가기 줄의 맨 앞(「디스코드」 왼쪽)
 - **동작**: 백오피스에서 그 스터디의 출석 탭으로 간다. 다른 반은 거기서 반 칩으로 골라 본다
 - **정책**: 캡틴에게만 보인다. 네비게이터는 백오피스에 들어갈 수 없다. 정보 카드는 탭 위에 있어 일정 탭에서도 보인다
-- **조건**: 그 스터디를 만든 캡틴일 때
+- **조건**: 그 스터디의 담당 캡틴일 때
 
 ### 1-1. 표 제목 줄
 
@@ -152,7 +152,7 @@ erDiagram
   STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "회차 출석"
   ACCOUNT ||--o{ STUDY_ATTENDANCE : ""
   STUDY {
-    bigint CREATED_BY "만든 캡틴"
+    bigint OWNER_CAPTAIN_ID "담당 캡틴"
   }
   STUDY_MEETING {
     varchar MEETING_TYPE "KICKOFF · REGULAR"
@@ -181,10 +181,11 @@ erDiagram
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+> 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front 스터디 일정 › 출석 편집 | 없음 — 스터디 일정 화면이 자리만 있다 | 백오피스 출석부와 같은 격자 컴포넌트로 만든다 |
+| FE | core-front 스터디 일정 › 출석 편집 | 있음 (#278) — 출석 탭(`AttendanceTabContent`)이 아래 `GET` · `POST` 에 연결 | 10-18 변경 표 |
 | BE | `GET` · `POST /api/me/studies/{studyId}/attendances` | 구현완료 | 없음 |
 | 기획 | 참여 중단자 줄 | 이 PRD 2-1 은 맨 아래 줄에 남긴다 · share 는 기본 뷰를 `ACTIVE` 만으로 정했다 | 어느 쪽인지 정한다 ([share 10-05](../../../docs/share/2026-10-05-attendance-withdrawn-logic.md)) |
 
@@ -227,14 +228,14 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/me/studies/{studyId}/attendances` | 그 분반 활성 참여자(조회) · 네비게이터 · 만든 캡틴 |
-| POST | `/api/me/studies/{studyId}/attendances` | 그 분반 LEADER · 그 스터디를 만든 캡틴 |
+| GET | `/api/me/studies/{studyId}/attendances` | 그 분반 활성 참여자(조회) · 네비게이터 · 담당 캡틴 |
+| POST | `/api/me/studies/{studyId}/attendances` | 그 분반 LEADER · 그 스터디의 담당 캡틴 |
 
 계약은 [attendance/spec.md](../../../specs/attendance/spec.md).
 
 ### 권한
 
-- 고치기: 그 분반의 `PARTICIPANT_ROLE = LEADER`, 그 스터디를 만든 캡틴(`STUDY.CREATED_BY`). 아니면 403
+- 고치기: 그 분반의 `PARTICIPANT_ROLE = LEADER`, 그 스터디의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`). 아니면 403
 - 다른 캡틴(ADMIN)이 신청해 참여했으면 사용자 사이트에서는 크루다 — 고치기는 백오피스에서 한다
 - 서버에서 검증한다. 화면에서 칸을 막는 것은 편의일 뿐이다
 
@@ -244,7 +245,7 @@ erDiagram
 
 ### 현재 백엔드와 차이 (2026-10-06 `beta`)
 
-- 캡틴 판정이 `SYSTEM_ROLE = ADMIN` 이면 누구나 통과 — 만든 캡틴으로 좁혀야 한다 (노션 #58)
+- 캡틴 판정이 `SYSTEM_ROLE = ADMIN` 이면 누구나 통과 — 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`)으로 좁혀야 한다 (노션 #58)
 - 출석률이 킥오프를 빼지 않고, 응답에 역할 · 참여 상태 · 중단 일자가 없다 (노션 #63)
 
 ## 4. 미확정

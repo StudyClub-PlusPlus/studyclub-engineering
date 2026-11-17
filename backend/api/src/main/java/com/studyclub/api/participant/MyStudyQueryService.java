@@ -150,6 +150,7 @@ public class MyStudyQueryService {
                 relation,
                 participant.getStatus(),
                 participant.getParticipantRole(),
+                study.isOwnedBy(participant.getAccountId()),
                 withdrawn ? null : study.getDiscordChannelUrl(),
                 withdrawn ? null : study.getDriveUrl(),
                 AttendanceRateCalculator.rate(

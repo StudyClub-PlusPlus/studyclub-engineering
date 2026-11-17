@@ -1,27 +1,29 @@
-// 알림 템플릿 — 키·fetcher·훅을 한곳에.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import {
+  createNotificationTemplate,
+  deleteNotificationTemplate,
+  fetchNotificationTemplates,
+  updateNotificationTemplate,
+} from '@/features/notification-templates/repository';
 import type { NotificationTemplate, TemplateDraft } from '@/features/notification-templates/types';
-import { http } from '@/lib/http';
+
+// 알림 템플릿 — 키·fetcher·훅을 한곳에.
 
 export const notificationTemplateKeys = {
   all: ['notification-templates'] as const,
   list: () => [...notificationTemplateKeys.all, 'list'] as const,
+  /**
+   * 편집 팝업이 열릴 때 읽는 값. `all` 밖에 둔다 — 저장 실패(409·404) 뒤 목록을 다시 읽을 때 열린 팝업의 값까지
+   * 취소·재조회되면 팝업이 불러오는 중으로 바뀐다.
+   */
+  editor: (id?: number) => ['notification-template-editor', id] as const,
 };
-
-const BASE = '/api/admin/notification-templates';
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 /**
  * 저장·삭제 요청의 제한 시간. 팝업은 요청 중에 닫히지 않으므로, 응답이 끝내 오지 않으면 닫을 길이 없어진다.
  * 시간이 지나면 요청을 끊고 실패로 알려 팝업을 닫을 수 있게 한다.
  */
-export const TEMPLATE_REQUEST_TIMEOUT_MS = 15_000;
-const timeout = () => AbortSignal.timeout(TEMPLATE_REQUEST_TIMEOUT_MS);
-
-function fetchNotificationTemplates({ signal }: { signal: AbortSignal }): Promise<NotificationTemplate[]> {
-  return http<NotificationTemplate[]>(BASE, { signal });
-}
 
 export function useNotificationTemplates() {
   return useQuery({
@@ -32,13 +34,18 @@ export function useNotificationTemplates() {
   });
 }
 
-/** 편집 시작 때마다 서버에서 읽는다. 단건 API가 없어 목록에서 해당 ID를 찾는다. */
+/** 편집할 템플릿과, 그 조건(알림 조건)에 있는 템플릿 수(자기 자신 포함). 삭제 확인의 영향 안내를 가르는 재료다. */
+export type TemplateForEdit = { template: NotificationTemplate; sameConditionCount: number };
+
+/** 편집 시작 때마다 서버에서 읽는다. 단건 API가 없어 목록에서 해당 ID를 찾고, 같은 조건의 템플릿 수도 그 목록에서 센다. */
 export function useNotificationTemplateForEdit(id?: number) {
   return useQuery({
-    queryKey: ['notification-template-editor', id],
-    queryFn: async ({ signal }) => {
+    queryKey: notificationTemplateKeys.editor(id),
+    queryFn: async ({ signal }): Promise<TemplateForEdit | null> => {
       const list = await fetchNotificationTemplates({ signal });
-      return list.find((template) => template.id === id) ?? null;
+      const template = list.find((item) => item.id === id);
+      if (!template) return null;
+      return { template, sameConditionCount: list.filter((item) => item.eventType === template.eventType).length };
     },
     enabled: id !== undefined,
     staleTime: 0,
@@ -59,17 +66,10 @@ export function useInvalidateTemplates() {
   };
 }
 
-// TODO(api): POST·PUT·DELETE /api/admin/notification-templates — 백엔드 구현 전이라 계약은 기획 PRD 의 API 표 기준이다.
 export function useCreateNotificationTemplate() {
   const invalidate = useInvalidateTemplates();
   return useMutation({
-    mutationFn: (draft: TemplateDraft) =>
-      http<NotificationTemplate>(BASE, {
-        method: 'POST',
-        headers: JSON_HEADERS,
-        body: JSON.stringify(draft),
-        signal: timeout(),
-      }),
+    mutationFn: (draft: TemplateDraft) => createNotificationTemplate(draft),
     onSuccess: () => invalidate(),
   });
 }
@@ -77,13 +77,7 @@ export function useCreateNotificationTemplate() {
 export function useUpdateNotificationTemplate() {
   const invalidate = useInvalidateTemplates();
   return useMutation({
-    mutationFn: ({ id, draft }: { id: number; draft: TemplateDraft }) =>
-      http<NotificationTemplate>(`${BASE}/${id}`, {
-        method: 'PUT',
-        headers: JSON_HEADERS,
-        body: JSON.stringify(draft),
-        signal: timeout(),
-      }),
+    mutationFn: ({ id, draft }: { id: number; draft: TemplateDraft }) => updateNotificationTemplate(id, draft),
     onSuccess: () => invalidate(),
   });
 }
@@ -91,7 +85,9 @@ export function useUpdateNotificationTemplate() {
 export function useDeleteNotificationTemplate() {
   const invalidate = useInvalidateTemplates();
   return useMutation({
-    mutationFn: (id: number) => http<null>(`${BASE}/${id}`, { method: 'DELETE', signal: timeout() }),
+    mutationFn: (id: number) => deleteNotificationTemplate(id),
     onSuccess: () => invalidate(),
   });
 }
+
+export { TEMPLATE_REQUEST_TIMEOUT_MS } from './repository';

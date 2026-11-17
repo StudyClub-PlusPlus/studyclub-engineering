@@ -8,10 +8,17 @@ public final class AuthDtos {
     private AuthDtos() {}
 
     /** platform: "CORE"(기본) | "BACK_OFFICE". BACK_OFFICE 는 BO Next 라우트에서 서버측 강제 주입. */
+    /**
+     * @param provider {@code google}(생략 포함) 또는 {@code apple}
+     * @param redirectUri 구글: 생략하면 서버 설정의 웹 콜백, iOS 앱은 빈 문자열. 애플: 사이트는 authorize 때 쓴 콜백, iOS 앱은 생략
+     * @param name 애플만. 첫 인가에서만 오는 이름 — 저장하지 않고 suggestedNickname 으로만 돌려준다
+     */
     public record SocialLoginRequest(
-            String code, String provider, String platform, String redirectUri) {}
+            String code, String provider, String platform, String redirectUri, String name) {}
 
     public record RefreshRequest(String refreshToken) {}
+
+    public record LogoutRequest(String refreshToken) {}
 
     /**
      * 로그인·me·백오피스 목록·온보딩 완료 공용 회원 View. {@code onboardingCompletedAt == null} 이면 프론트가 온보딩 화면으로 보낸다.
@@ -59,7 +66,11 @@ public final class AuthDtos {
             String createdAt,
             String timeZone,
             String onboardingCompletedAt,
-            String discordNickname) {
+            String discordNickname,
+            /** ACCOUNT.DISCORD_ID 가 있는가. ID 자체는 내리지 않는다. */
+            boolean discordLinked,
+            /** 연동한 디스코드 username. 마이페이지의 「연결된 계정」 표시용. 미연동이면 null. */
+            String discordHandle) {
 
         public static AccountSelfView from(Account account) {
             AccountView view = AccountView.from(account);
@@ -72,9 +83,11 @@ public final class AuthDtos {
                     view.createdAt(),
                     view.timeZone(),
                     view.onboardingCompletedAt(),
-                    account.getDiscordNickname());
+                    account.getDiscordNickname(),
+                    account.isDiscordLinked(),
+                    account.getDiscordHandle());
         }
     }
 
-    public record AccessTokenResponse(String accessToken) {}
+    public record AccessTokenResponse(String accessToken, long accessTokenExpiresIn) {}
 }

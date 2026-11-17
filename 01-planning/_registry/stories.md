@@ -6,12 +6,12 @@
 <!-- NUMBER LEDGER — 모든 ID의 단일 발급처. 수동 편집 금지(에이전트가 갱신). -->
 | prefix | next |
 |---|---|
-| ST | 37 |
+| ST | 39 |
 | EP | 1 |
 | FN | 1 |
-| IA | 38 |
+| IA | 40 |
 | SRC | 1 |
-| POL | 10 |
+| POL | 11 |
 
 <!--
 발급 절차: next 값을 읽어 ID 를 만들고, 같은 커밋에서 next 를 +1 한다.
@@ -47,7 +47,7 @@
 | ST-013 | 크루는 회원에서 탈퇴할 수 있다. | 크루 | [PRD](../stories/crew-leave/PRD.md) | [회원 탈퇴](https://playground.studyclub.life/proto/core/ko/my/leave) | [user-leave](../../specs/user-leave/spec.md) | | |
 | ST-014 | 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | 크루 | [PRD](../stories/crew-view-terms-privacy/PRD.md) | [이용약관](https://playground.studyclub.life/proto/core/ko/terms) | | | |
 | ST-015 | 네비게이터는 스터디 회차를 등록할 수 있다. | 네비게이터 | [PRD](../stories/navigator-register-sessions/PRD.md) | [내 스터디 › 스터디 일정](https://playground.studyclub.life/proto/core/ko/my/joined) | [study-meeting](../../specs/study-meeting/spec.md) | | 일정 · 출석 · 규칙 · 킥오프 |
-| ST-016 | 네비게이터는 스터디별 공지를 등록할 수 있다. | 네비게이터 |  |  | | | 프로토타입 없음 — PRD 작성 전 |
+| ST-016 | 네비게이터는 스터디별 공지를 등록할 수 있다. | 네비게이터 | [PRD](../stories/navigator-study-notice/PRD.md) | [내 스터디 › 스터디 일정 › 공지](https://playground.studyclub.life/proto/core/ko/my/joined) | [study-notice](../../specs/study-notice/spec.md) | | 「등록」은 반 팀원에게 메일·디스코드로 **보내는 것**으로 정했다 ([POL-0010](policies/POL-0010-study-notice.md)). 멤버가 읽는 공지 목록은 없다 |
 | ST-017 | 네비게이터는 스터디별 출석 상태를 수정할 수 있다. | 네비게이터 | [PRD](../stories/navigator-edit-attendance/PRD.md) | [내 스터디 › 스터디 일정 › 출석](https://playground.studyclub.life/proto/core/ko/my/joined) | [attendance](../../specs/attendance/spec.md) · [discord-attendance](../../specs/discord-attendance/spec.md) | | |
 | ST-018 | 네비게이터는 참여자를 스터디에서 제명할 수 있다. | 네비게이터 | [PRD](../stories/navigator-withdraw-participant/PRD.md) | [내 스터디 › 스터디 일정 › 출석](https://playground.studyclub.life/proto/core/ko/my/joined) | [study-participant](../../specs/study-participant/spec.md) · [attendance](../../specs/attendance/spec.md) | | 화면은 「참여 중단」 — 하차·제명을 가르지 않는다. 되돌리지 않는다 |
 | ST-019 | 캡틴은 백오피스에 접근할 수 있다. | 캡틴 |  |  | | 폐기 | Story 가 아니다 — 화면에서 하는 일이 아니라 모든 콘솔 화면에 걸리는 조건이다. 접근 판정은 [POL-0001](policies/POL-0001-roles.md), 로그인 흐름·에러는 [back-office-login](../../specs/back-office-login/spec.md) 소관 |
@@ -64,7 +64,9 @@
 | ST-030 | 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다. | 캡틴 | [PRD](../stories/notification-template/PRD.md) | [콘솔 › 알림 › 알림 템플릿](https://playground.studyclub.life/proto/console/notifications/templates) | [notification](../../specs/notification/spec.md) | | 프로토는 보기·추가·수정·삭제. 수정·삭제 API 는 미구현 |
 | ST-031 | 캡틴은 알림 발송 이력을 볼 수 있다. | 캡틴 |  |  | | 폐기 | ST-030 에 합쳤다가 다시 갈랐다 — 지금은 ST-032 |
 | ST-032 | 캡틴은 알림 발송 이력을 조회할 수 있다. | 캡틴 | [PRD](../stories/notification-history/PRD.md) | [콘솔 › 알림 › 발송 이력](https://playground.studyclub.life/proto/console/notifications) | [notification](../../specs/notification/spec.md) | | 실패 건 재발송 포함 |
-| ST-033 | 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | 캡틴 | [PRD](../stories/captain-post-notice/PRD.md) | [콘솔 › 공지](https://playground.studyclub.life/proto/console/notices) | | | 스펙 없음 — API·테이블부터. 스터디별 공지(ST-016)와 다르다 |
-| ST-034 | 크루는 스터디클럽 공지를 확인할 수 있다. | 크루 | [PRD](../stories/crew-view-notices/PRD.md) | [사이트 › 공지](https://playground.studyclub.life/proto/core/ko/notices) | | | 비로그인 방문자도 본다. ST-033 과 같은 데이터 |
+| ST-033 | 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | 캡틴 | [PRD](../stories/captain-post-notice/PRD.md) | [콘솔 › 공지](https://playground.studyclub.life/proto/console/notices) | [site-notice](../../specs/site-notice/spec.md) | | 스터디별 공지(ST-016)와 다르다 |
+| ST-034 | 크루는 스터디클럽 공지를 확인할 수 있다. | 크루 | [PRD](../stories/crew-view-notices/PRD.md) | [사이트 › 공지](https://playground.studyclub.life/proto/core/ko/notices) | [site-notice](../../specs/site-notice/spec.md) | | 비로그인 방문자도 본다. ST-033 과 같은 데이터 |
 | ST-035 | 크루는 캡틴에게 문의/오류신고를 제출할 수 있다. | 크루 | [PRD](../stories/crew-submit-feedback/PRD.md) | [사이트 › 내 문의](https://playground.studyclub.life/proto/core/ko/my/feedbacks) | | | 로그인 필수. 스펙 없음 — API·테이블부터 |
 | ST-036 | 캡틴은 유저가 제출한 문의/오류신고를 조회할 수 있다. | 캡틴 | [PRD](../stories/captain-view-feedbacks/PRD.md) | [콘솔 › 문의·오류 신고](https://playground.studyclub.life/proto/console/feedbacks) | | | 상태 · 회신 · 캡틴 전용 메모. 회신 알림은 알림 조건 「문의 회신」 |
+| ST-037 | 캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다. | 캡틴 | [PRD](../stories/captain-manage-events/PRD.md) | 행사 목록·운영 시안 | | | 플레이그라운드 검토 단계 |
+| ST-038 | 크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다. | 크루 | [PRD](../stories/crew-apply-event/PRD.md) | 행사 목록·신청 시안 | | | 플레이그라운드 검토 단계 |

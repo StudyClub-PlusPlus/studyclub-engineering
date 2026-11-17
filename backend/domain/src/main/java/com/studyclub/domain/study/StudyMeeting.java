@@ -271,8 +271,8 @@ public class StudyMeeting extends BaseEntity {
     /**
      * 회차가 진행 중인지 — 시작했고 종료 기준({@link #endsAt()})이 아직 안 지났다. 상태를 저장하지 않으므로 시각으로 판정한다.
      *
-     * <p>{@code END_AT} 을 쓰는 운영 경로가 없어, 비어 있다는 것만으로 진행 중이라 보면 한 번 연 회차가 영원히 진행 중이 된다
-     * (docs/share/2026-11-17-meeting-end.md).
+     * <p>{@code END_AT} 은 다음 출석 체크가 {@link #closeIfOver} 로 늦게 기록한다. 그래서 비어 있다는 것만으로 진행 중이라 보면 끝난
+     * 회차가 다음 체크 전까지 진행 중으로 남는다 (docs/share/2026-11-17-meeting-end.md).
      */
     public boolean isInProgress(Instant now) {
         return startAt != null && now.isBefore(endsAt());
@@ -311,6 +311,36 @@ public class StudyMeeting extends BaseEntity {
             throw new IllegalStateException("이미 시작한 회차입니다: " + id);
         }
         this.startAt = at;
+    }
+
+    /**
+     * 회차를 닫는다. 디스코드 출석 체크가 오래된 진행 중 회차를 자동으로 닫을 때 쓴다 (specs/discord-attendance/spec.md).
+     *
+     * @throws IllegalStateException 아직 시작하지 않았거나 이미 닫혔을 때
+     */
+    public void end(Instant at) {
+        if (startAt == null) {
+            throw new IllegalStateException("시작하지 않은 회차는 닫을 수 없습니다: " + id);
+        }
+        if (endAt != null) {
+            throw new IllegalStateException("이미 닫힌 회차입니다: " + id);
+        }
+        this.endAt = at;
+    }
+
+    /**
+     * 종료 기준이 지났는데 {@code END_AT} 이 비어 있으면 종료 기준 시각으로 기록한다. 판정은 {@link #isInProgress} 가 이미 시각으로 하므로
+     * 이건 기록용이다 — 화면이 받는 {@code endAt} 이 채워진다. 닫는 시각이 아니라 종료 기준을 적어, 일주일 뒤에 닫혀도 실제 종료가 일주일 뒤로 찍히지
+     * 않는다.
+     *
+     * @return 이번에 기록했으면 true
+     */
+    public boolean closeIfOver(Instant now) {
+        if (startAt == null || endAt != null || isInProgress(now)) {
+            return false;
+        }
+        end(endsAt());
+        return true;
     }
 
     public Long getId() {

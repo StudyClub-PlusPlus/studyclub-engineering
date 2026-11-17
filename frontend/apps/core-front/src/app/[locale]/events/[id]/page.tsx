@@ -1,17 +1,20 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import type { Locale } from '@studyclub/types';
 import { ArrowLeft, CalendarDays, MapPin, Tag, ArrowUpRight } from 'lucide-react';
 import type { Metadata } from 'next';
 
-import { getEvent, getEvents, type Locale } from '@/lib/content';
-import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@/lib/event-details';
+import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@/features/events/content';
+import { getEvent, getEvents } from '@/features/events/server';
+import { FEATURES } from '@/lib/features';
 import { m, t } from '@/lib/i18n';
 import { JsonLd, breadcrumbJsonLd, eventJsonLd } from '@/lib/jsonld';
 import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@/lib/layout';
 import { SITE_URL, pageMetadata } from '@/lib/seo';
 
 export async function generateStaticParams() {
+  if (!FEATURES.EVENTS) return [];
   const events = await getEvents();
   return events.map((e) => ({ id: e.id }));
 }
@@ -49,6 +52,7 @@ export async function generateMetadata({
 }
 
 export default async function EventDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
+  if (!FEATURES.EVENTS) notFound();
   const { locale, id } = await params;
   const event = await getEvent(id);
   if (!event) notFound();
@@ -85,7 +89,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
       />
       <Link
         href={`/${locale}/events`}
-        className='inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
+        className='inline-flex items-center gap-1.5 type-label-lg text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
       >
         <ArrowLeft size={15} /> {m('common.back_events', locale)}
       </Link>
@@ -98,17 +102,17 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           className='flex flex-col gap-3 px-6 pb-7 pt-6 sm:px-8'
           style={{ background: 'linear-gradient(135deg, var(--color-brand-subtle), color-mix(in oklab, var(--color-brand) 16%, white))' }}
         >
-          <span className='inline-flex w-fit items-center rounded-full bg-white/85 px-2.5 py-1 text-xs font-semibold shadow-sm' style={{ color: 'var(--color-brand)' }}>
+          <span className='inline-flex w-fit items-center rounded-full bg-white/85 px-2.5 py-1 type-label-sm shadow-sm' style={{ color: 'var(--color-brand)' }}>
             {m(`event_type.${event.type}`, locale)}
           </span>
-          <h1 className='text-2xl font-bold leading-[1.25] tracking-tight sm:text-3xl'>{t(event.title, locale)}</h1>
-          <p className='text-base leading-relaxed text-[var(--color-fg-muted)]'>{t(event.summary, locale)}</p>
+          <h1 className='type-headline-lg'>{t(event.title, locale)}</h1>
+          <p className='type-body-md text-[var(--color-fg-muted)]'>{t(event.summary, locale)}</p>
         </header>
       </article>
       {detail && (
         <section className='mt-10'>
-          <h2 className='text-lg font-bold tracking-tight'>{t({ ko: '어떤 행사였나요', en: 'About this event' }, locale)}</h2>
-          <div className='mt-3 flex max-w-2xl flex-col gap-3 text-base leading-relaxed text-[var(--color-fg)]'>
+          <h2 className='type-title-md'>{t({ ko: '어떤 행사였나요', en: 'About this event' }, locale)}</h2>
+          <div className='mt-3 flex max-w-2xl flex-col gap-3 type-body-md text-[var(--color-fg)]'>
             {detail.about.map((p, i) => (
               <p key={i}>{t(p, locale)}</p>
             ))}
@@ -116,9 +120,9 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           {detail.voices && (
             <div className='mt-6 grid gap-3 sm:grid-cols-2'>
               {detail.voices.map((v, i) => (
-                <blockquote key={i} className='card p-5 text-base leading-relaxed text-[var(--color-fg)]'>
+                <blockquote key={i} className='card p-5 type-body-md text-[var(--color-fg)]'>
                   “{t(v, locale)}”
-                  <footer className='mt-2 text-xs text-[var(--color-fg-muted)]'>{t({ ko: '참가자 후기', en: 'Attendee' }, locale)}</footer>
+                  <footer className='mt-2 type-label-sm text-[var(--color-fg-muted)]'>{t({ ko: '참가자 후기', en: 'Attendee' }, locale)}</footer>
                 </blockquote>
               ))}
             </div>
@@ -133,7 +137,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
             <div key={f.label} className='flex items-center gap-3 px-6 py-4'>
               <f.icon size={18} className='shrink-0' style={{ color: 'var(--color-brand)' }} />
               <div className='min-w-0'>
-                <dt className='text-xs text-[var(--color-fg-muted)]'>{f.label}</dt>
+                <dt className='type-label-sm text-[var(--color-fg-muted)]'>{f.label}</dt>
                 <dd className='font-semibold'>{f.value}</dd>
               </div>
             </div>
@@ -144,7 +148,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           href={event.link}
           target='_blank'
           rel='noreferrer'
-          className='m-6 mt-2 inline-flex justify-center items-center gap-2 rounded-full px-6 py-3 text-base font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]'
+          className='m-6 mt-2 inline-flex justify-center items-center gap-2 rounded-full px-6 py-3 type-label-lg text-white shadow-sm transition-transform hover:scale-[1.02]'
           style={{ background: 'var(--color-brand)' }}
         >
           {m('common.rsvp', locale)} <ArrowUpRight size={17} />
@@ -155,10 +159,10 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
 
       {/* 공통 — 스터디클럽 행사는 이런 것들 */}
       <section className='mt-12 rounded-2xl p-6 sm:p-8' style={{ background: 'var(--color-brand-subtle)' }}>
-        <h2 className='text-lg font-bold tracking-tight'>{t({ ko: '스터디클럽 행사는 이렇게 열려요', en: 'How StudyClub events work' }, locale)}</h2>
+        <h2 className='type-title-md'>{t({ ko: '스터디클럽 행사는 이렇게 열려요', en: 'How StudyClub events work' }, locale)}</h2>
         <ul className='mt-4 grid gap-3 sm:grid-cols-2'>
           {EVENT_KINDS.map((k) => (
-            <li key={k.title.ko} className='rounded-xl bg-[var(--color-bg)] p-4 text-base leading-relaxed'>
+            <li key={k.title.ko} className='rounded-xl bg-[var(--color-bg)] p-4 type-body-md'>
               <span className='font-semibold'>{t(k.title, locale)}</span>
               <span className='text-[var(--color-fg-muted)]'> {t(k.body, locale)}</span>
             </li>
@@ -166,9 +170,9 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
         </ul>
         <div className='mt-6 grid gap-3 md:grid-cols-3'>
           {EVENT_VOICES.map((v, i) => (
-            <blockquote key={i} className='rounded-xl bg-[var(--color-bg)] p-4 text-sm leading-relaxed text-[var(--color-fg)]'>
+            <blockquote key={i} className='rounded-xl bg-[var(--color-bg)] p-4 type-body-sm text-[var(--color-fg)]'>
               “{t(v.quote, locale)}”
-              <footer className='mt-2 text-xs text-[var(--color-fg-muted)]'>{t(v.from, locale)}</footer>
+              <footer className='mt-2 type-label-sm text-[var(--color-fg-muted)]'>{t(v.from, locale)}</footer>
             </blockquote>
           ))}
         </div>

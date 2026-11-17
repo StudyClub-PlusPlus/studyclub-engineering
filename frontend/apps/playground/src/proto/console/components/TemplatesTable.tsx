@@ -8,12 +8,15 @@ import {
   TEMPLATE_CHANNEL_LABEL,
   TRIGGERS,
   TRIGGER_LABEL,
-  templates as seeded,
   type NotificationTemplate,
   type NotificationTrigger,
 } from '@console/lib/templates';
-import { Button, Input, Modal, Select, Textarea } from '@studyclub/ui';
+import { Button, Input, Modal, Select, Tabs, Textarea } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
+
+import { useEventWorkspace } from '@/proto/events/EventWorkspace';
+import { mergeNotificationTemplates } from '@/proto/events/model';
+import { toPreviewDocument } from '@/proto/mail/render';
 
 type Draft = { trigger: NotificationTrigger; subject: string; body: string };
 
@@ -25,17 +28,30 @@ const EMPTY: Draft = { trigger: 'USER_REGISTERED', subject: '', body: '' };
  * 문구를 보고, 더하고, 고치고, 지운다. 나가는 알림이 늘 때마다 코드를 고치지 않게 문구는 운영자가 다룬다.
  *
  * **추가 팝업이 곧 편집 팝업이다** — 행사 팝업과 같은 규칙. 목록에서 조건을 누르면 값이 채워진 채 열린다.
- * 전문을 보는 화면을 따로 두지 않는다 — 팝업의 제목·본문 칸이 곧 전문이다. 같은 문구를 보기용·수정용
- * 두 모양으로 보여주지 않는다.
+ * 같은 팝업에서 본문 원문을 편집하고, 미리보기 탭으로 아직 저장하지 않은 메일 모양을 확인한다.
+ * 미리보기에서도 치환 변수는 원문 그대로 보여준다. 저장할 draft 의 HTML·줄바꿈도 그대로 둔다.
  * 삭제도 팝업 안에서 한다 — 목록 행에 삭제 버튼을 두면 스치듯 눌러 지우는 사고가 난다.
  *
  * TODO(api): POST /api/admin/notification-templates · PUT·DELETE /api/admin/notification-templates/{id}
  */
-export function TemplatesTable() {
-  const [rows, setRows] = useState<NotificationTemplate[]>(seeded);
+export function TemplatesTable({ initialTemplates }: { initialTemplates: NotificationTemplate[] }) {
+  const { state, dispatch } = useEventWorkspace();
+  const storedRows = state?.notificationTemplates;
+  const rows = mergeNotificationTemplates(storedRows ?? [], initialTemplates, state?.deletedTemplateTriggers);
+  const [saveError, setSaveError] = useState('');
+  function changeRows(next: NotificationTemplate[]) {
+    const error = dispatch({
+      type: 'TEMPLATES', templates: next,
+      deletedTriggers: rows.filter((row) => !next.some((item) => item.trigger === row.trigger)).map((row) => row.trigger),
+    });
+    setSaveError(error ?? '');
+    if (error) return false;
+    return true;
+  }
   /** null = 닫힘, 'new' = 추가, 숫자 = 그 id 편집 */
   const [target, setTarget] = useState<'new' | number | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [bodyTab, setBodyTab] = useState('edit');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const editing = typeof target === 'number';
@@ -43,13 +59,17 @@ export function TemplatesTable() {
   const blocked = !draft.subject.trim() || !draft.body.trim();
 
   function openAdd() {
+    setSaveError('');
     setDraft(EMPTY);
+    setBodyTab('edit');
     setConfirmDelete(false);
     setTarget('new');
   }
 
   function openEdit(t: NotificationTemplate) {
+    setSaveError('');
     setDraft({ trigger: t.trigger, subject: t.subject, body: t.body });
+    setBodyTab('edit');
     setConfirmDelete(false);
     setTarget(t.id);
   }
@@ -63,22 +83,14 @@ export function TemplatesTable() {
     if (blocked) return;
     // 등록·수정한 때가 곧 마지막 수정이다 — 비어 있는 경우를 만들지 않는다
     const now = new Date().toISOString();
-    if (editing) {
-      setRows((prev) => prev.map((r) => (r.id === target ? { ...r, ...draft, updatedAt: now } : r)));
-    } else {
-      setRows((prev) => [
-        // 채널은 메일 하나뿐이라 고르게 하지 않는다 — 고를 것이 하나면 묻지 않는다
-        { id: Math.max(0, ...prev.map((r) => r.id)) + 1, ...draft, channel: 'EMAIL', updatedAt: now },
-        ...prev,
-      ]);
-    }
-    close();
+    const next: NotificationTemplate[] = editing
+      ? rows.map((r) => (r.id === target ? { ...r, ...draft, updatedAt: now } : r))
+      : [{ id: Math.max(0, ...rows.map((r) => r.id)) + 1, ...draft, channel: 'EMAIL', updatedAt: now }, ...rows];
+    if (changeRows(next)) close();
   }
 
   function remove() {
-    // 되돌리기는 없다 — 확인 단계가 막는다. 지난 발송 이력은 지우지 않는다
-    setRows((prev) => prev.filter((r) => r.id !== target));
-    close();
+    if (changeRows(rows.filter((r) => r.id !== target))) close();
   }
 
   return (
@@ -105,7 +117,7 @@ export function TemplatesTable() {
           {rows.map((t) => (
             <tr key={t.id}>
               <td className='whitespace-nowrap'>
-                <Button variant='ghost' size='sm' className='-ml-2 font-semibold' onClick={() => openEdit(t)}>
+                <Button variant='tertiary' size='sm' className='-ml-2' onClick={() => openEdit(t)}>
                   {TRIGGER_LABEL[t.trigger] ?? t.trigger}
                 </Button>
               </td>
@@ -116,7 +128,7 @@ export function TemplatesTable() {
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={4} className='py-10 text-center text-sm text-fg-muted'>
+              <td colSpan={4} className='py-10 text-center type-body-sm text-fg-muted'>
                 등록된 템플릿이 없습니다.
               </td>
             </tr>
@@ -128,6 +140,7 @@ export function TemplatesTable() {
         open={target !== null}
         onClose={close}
         title={editing ? '템플릿 수정' : '템플릿 추가'}
+        size='lg'
         /* 닫는 수단은 X 하나다 — 취소 버튼을 따로 두지 않는다 (POL-0008) */
         footer={
           confirmDelete ? (
@@ -148,7 +161,7 @@ export function TemplatesTable() {
                   type='button'
                   data-anno='template:2-2'
                   onClick={() => setConfirmDelete(true)}
-                  className='mr-auto h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline'
+                  className='mr-auto h-10 type-label-lg text-error-600 underline-offset-4 hover:underline'
                 >
                   템플릿 삭제
                 </button>
@@ -160,13 +173,18 @@ export function TemplatesTable() {
           )
         }
       >
+        {saveError && (
+          <p role='alert' className='mb-4 type-body-sm text-danger-fg'>
+            {saveError}
+          </p>
+        )}
         {confirmDelete && current ? (
           <div className='py-6 text-center'>
-            <p className='text-sm font-semibold text-fg'>
+            <p className='type-label-lg text-fg'>
               ‘{TRIGGER_LABEL[current.trigger] ?? current.trigger}’ 알림 템플릿을 삭제합니다.
             </p>
-            <p className='mt-1 text-sm text-fg-secondary'>{current.subject}</p>
-            <p className='mt-3 text-sm text-fg-muted'>
+            <p className='mt-1 type-body-sm text-fg-secondary'>{current.subject}</p>
+            <p className='mt-3 type-body-sm text-fg-muted'>
               이 문구로는 더 이상 메일이 나가지 않으며 되돌릴 수 없습니다. 지난 발송 이력은 남습니다.
             </p>
           </div>
@@ -192,16 +210,70 @@ export function TemplatesTable() {
               onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
               placeholder='[StudyClub] 새 스터디 모집이 시작됐습니다'
             />
-            {/* 치환 변수({{nickname}})는 원문 그대로 둔다 — 미리 채워 보여주면 원문을 알 수 없다 */}
-            <Textarea
-              label='본문'
-              required
-              rows={10}
-              value={draft.body}
-              onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-              placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
-              labelHint='{{nickname}} 으로 닉네임 삽입'
-            />
+            <div data-anno='template:2-3'>
+              <Tabs
+                activeKey={bodyTab}
+                onChange={setBodyTab}
+                items={[
+                  {
+                    key: 'edit',
+                    label: '본문 편집',
+                    content: (
+                      <div role='tabpanel' aria-label='본문 편집'>
+                        <Textarea
+                          label='본문'
+                          required
+                          rows={12}
+                          value={draft.body}
+                          onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+                          placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
+                          helper={
+                            draft.trigger === 'EVENT_ANNOUNCEMENT'
+                              ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{participation}} 참여 안내, {{nickname}} 닉네임. 운영진이 작성한 내용은 {{notice}}에 들어갑니다. 본문에 {{notice}}를 포함해 주세요.'
+                              : draft.trigger === 'EVENT_CANCELLATION'
+                                ? '{{eventTitle}} 행사명, {{nickname}} 닉네임을 사용할 수 있습니다. 본문에 취소 안내 내용이 들어갈 {{notice}}를 포함해 주세요.'
+                                : draft.trigger === 'EVENT_REGISTRATION_CONFIRMED'
+                                  ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{channel}} 참여 방식, {{nickname}} 닉네임, {{participation}} 장소·링크를 사용할 수 있습니다.'
+                                  : draft.trigger.startsWith('EVENT_REGISTRATION_')
+                                    ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{channel}} 참여 방식, {{nickname}} 닉네임을 사용할 수 있습니다.'
+                                    : draft.trigger === 'FEEDBACK_REPLIED'
+                                      ? '{{nickname}} 으로 닉네임, {{feedbackUrl}} 로 답변 확인 링크 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                                      : '{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                          }
+                        />
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'preview',
+                    label: '미리보기',
+                    content: (
+                      <div role='tabpanel' aria-label='미리보기' className='flex flex-col gap-3'>
+                        <div className='rounded-card border border-border bg-surface-1 px-4 py-3'>
+                          <span className='type-label-sm text-fg-muted'>메일 제목</span>
+                          <p className='break-words type-label-lg text-ink'>
+                            {draft.subject.trim() ? draft.subject : '제목을 입력해 주세요.'}
+                          </p>
+                        </div>
+                        {draft.body.trim() ? (
+                          /* 기존 메일 시안과 같은 렌더러를 쓰고, 스크립트·폼·팝업은 허용하지 않는다. */
+                          <iframe
+                            title='메일 본문 미리보기'
+                            sandbox=''
+                            srcDoc={toPreviewDocument(draft.body)}
+                            className='h-[28rem] w-full rounded-card border border-border bg-white'
+                          />
+                        ) : (
+                          <div className='flex min-h-64 items-center justify-center rounded-card border border-border bg-surface-1 p-6 text-center type-body-sm text-fg-muted'>
+                            본문을 입력하면 여기에 미리보기가 표시됩니다.
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </div>
           </div>
         )}
       </Modal>

@@ -18,6 +18,9 @@ public class AttendanceRateCalculator {
     /**
      * 개인 출석률의 분자·분모를 반환한다. 분모가 0이면 출석률은 null (화면에서 "–" 표시).
      *
+     * <p>분모는 <b>체크된</b> 회차(출석 · 지각 · 결석)뿐이다. 휴가는 분모에서 빼고, 출석 행이 없는 회차도 세지 않는다 — 출석명부 PRD 3-4
+     * (2026-10-24, 화면 미리보기와 같은 식).
+     *
      * @return double[]{numerator, denominator}
      */
     public static double[] components(
@@ -30,21 +33,20 @@ public class AttendanceRateCalculator {
         for (StudyMeeting meeting : meetings) {
             if (!countsToward(participant, meeting, now)) continue;
             StudyAttendance att = attByMeetingId.get(meeting.getId());
+            if (att == null || att.getStatus() == AttendanceStatus.EXCUSED) continue;
             denominator++;
-            if (att != null) {
-                if (att.getStatus() == AttendanceStatus.PRESENT
-                        || att.getStatus() == AttendanceStatus.EXCUSED) {
-                    numerator += 1.0;
-                } else if (att.getStatus() == AttendanceStatus.LATE) {
-                    numerator += LATE_WEIGHT;
-                }
+            if (att.getStatus() == AttendanceStatus.PRESENT) {
+                numerator += 1.0;
+            } else if (att.getStatus() == AttendanceStatus.LATE) {
+                numerator += LATE_WEIGHT;
             }
         }
         return new double[] {numerator, denominator};
     }
 
     /**
-     * 이 회차가 그 참여자의 출석률 분모에 들어가는지 — 편입 뒤의 회차이고, 예정 시각이 상한을 넘지 않을 때.
+     * 이 회차가 그 참여자의 출석률을 셀 수 있는 회차인지 — 편입 뒤의 회차이고, 예정 시각이 상한을 넘지 않을 때. 실제 분모에는 이 중 체크된 회차만
+     * 들어간다({@link #components}).
      *
      * <p>상한은 ACTIVE/PAUSED/COMPLETED 면 지금(now), WITHDRAWN·DELETED(하차·회원 탈퇴)면 떠난 시각({@code
      * leftAt})이다 — 하차 이후 회차까지 결석(0점)으로 깔면 "하차"와 "결석"이라는 서로 다른 사실이 같은 숫자로 섞인다. {@code leftAt} 이 없는

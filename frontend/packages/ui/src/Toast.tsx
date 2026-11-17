@@ -16,12 +16,12 @@ export function Toaster({ toastOptions, ...rest }: ToasterProps) {
     <HotToaster
       toastOptions={{
         duration: 4000,
+        className: 'type-body-sm',
         style: {
           background: 'var(--color-surface-raised)',
           color: 'var(--color-ink)',
           boxShadow: 'var(--shadow-lg)',
           borderRadius: 'var(--radius-md)',
-          fontSize: '0.875rem',
           padding: '12px 16px',
           maxWidth: '400px',
         },

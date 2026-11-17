@@ -39,7 +39,7 @@
 | 용어 | 뜻 |
 |------|-----|
 | **카테고리(category)** | Discord 사이드바에서 채널들을 묶는 접이식 그룹. 스터디 하나 = 카테고리 하나다 ([create-study](api/create-study.md)) |
-| **앵커(anchor) 카테고리** | 이름이 `===== New Study =====` 인 **구분선 역할의 빈 카테고리**. `create_study` 는 새 스터디 카테고리를 **이 바로 아래**에 끼워 넣는다 ([`studies.py`](../../discord/app/api/routes/studies.py) 의 `DEFAULT_NEW_STUDY_ANCHOR_NAME`) |
+| **앵커(anchor) 카테고리** | ID 가 `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` 인 **구분선 역할의 빈 카테고리**. `create_study` 는 새 스터디 카테고리를 **이 바로 아래**에 끼워 넣는다 ([`studies.py`](../../discord/app/api/routes/studies.py)) |
 | **음성 채널(voice channel)** | 공부방. 스터디마다 `공부방-{스터디명}` 으로 하나 생긴다 |
 | **채널 멘션** | 메시지에 `<#채널ID>` 라고 쓰면 Discord 가 **채널 이름이 적힌 클릭 가능한 칩**으로 렌더한다. 음성 채널도 된다 — 누르면 그 공부방으로 이동한다 |
 | **게시판(bulletin) 채널** | 이 기능이 쓰는 텍스트 채널. **메시지가 항상 딱 하나**고, 봇과 운영진만 쓸 수 있어서 학교 게시판처럼 동작한다 |
@@ -60,6 +60,7 @@
 게시판 채널에 남는 **단 하나의 메시지**. 원문(봇이 보내는 글자):
 
 ```
+마지막 갱신: 2026-10-26 20:00 PDT
 알고리즘 스터디 : <#1327394882193883138> - <#1327394882193883139>
 CS 전공 스터디 : <#1327394882193883142>
 영어 회화 : <#1327394882193883150>
@@ -89,7 +90,7 @@ CS 전공 스터디 : 🔊 공부방-CS 전공 스터디
 | 3 | 앵커 카테고리를 **못 찾으면?** | 게시판을 **건드리지 않고** 로그 + alert 채널 통지 | 어제 목록이 남는 건 불편할 뿐이지만, 전체가 날아가거나 앵커 위 운영 카테고리까지 노출되는 건 사고다 |
 | 4 | 봇 재시작 직후에도 **한 번 갱신**할까? | 갱신한다 | 같은 메시지를 고치는 멱등 동작이라 부작용이 없고, 배포 검증을 저녁 8시까지 기다리지 않아도 된다 |
 | 5 | 게시판에 봇 메시지가 **여러 개** 발견되면? | **가장 오래된 것**을 고치고 나머지는 **손대지 않고** 경고 로그 | 지우는 건 되돌릴 수 없다. 여러 개가 있다는 건 이미 예상 밖 상태라서, 사람이 보고 판단하는 편이 안전하다 |
-| 6 | 앵커 이름을 **API 와 봇이 어떻게 공유**하나? | 봇이 `DEFAULT_NEW_STUDY_ANCHOR_NAME` **상수를 직접 읽는다** | 런타임에 바꾸는 명령이 아직 없어 `app.state.new_study_anchor_name` 값과 늘 같다. 공유 홀더는 그 명령을 만들 때 함께 도입한다 — [미정 사항](#미정-사항) 2 에 조건과 함께 남겼다 |
+| 6 | 앵커를 **API 와 봇이 어떻게 공유**하나? | 둘 다 `Settings.anchor_channel_id`(`DISCORD_CONFIG_ANCHOR_CHANNEL_ID`)를 읽는다 | 처음엔 이름 상수 + `app.state.new_study_anchor_name` 이었다. 2026-10-26 에 **이름 대신 ID** 를 환경변수로 받기로 바꾸면서 출처가 하나가 됐다 — 이름은 바뀌어도 ID 는 그대로다 |
 | 7 | 손으로 즉시 갱신하는 수단 | **`!updateBulletin` 명령을 만든다 (captain 전용)** | 2026-09-30 에 추가로 요청됐다. 하루 한 번이면 아침에 만든 스터디가 저녁까지 게시판에 없어서, 봇을 재시작하는 것 말고 갱신할 방법이 필요하다. captain 전용인 이유는 [손으로 갱신하기](#손으로-갱신하기-updatebulletin) |
 
 **"메시지는 정확히 하나" 는 길드 권한 설정으로 지킨다** — 봇은 그걸 강제하지 않고, 자기 메시지를 찾아
@@ -104,10 +105,11 @@ CS 전공 스터디 : 🔊 공부방-CS 전공 스터디
 
 | 환경변수 | 뜻 | 비우면 |
 |----------|-----|--------|
-| `DISCORD_BULLETIN_CHANNEL_ID` | 게시판으로 쓸 **이미 존재하는** 텍스트 채널 ID | 이 기능이 **아예 안 돈다** (경고 로그 한 줄, 다른 기능은 그대로) |
+| `DISCORD_CONFIG_BULLETIN_CHANNEL_ID` | 게시판으로 쓸 **이미 존재하는** 텍스트 채널 ID | 이 기능이 **아예 안 돈다** (경고 로그 한 줄, 다른 기능은 그대로) |
+| `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` | 앵커로 쓸 **이미 존재하는** 카테고리 ID | 앵커를 못 찾은 것과 같다 — 갱신마다 게시판을 **건드리지 않고** alert 채널에 통지 (결정 3) |
 
 - [`config.py`](../../discord/app/config.py) 의 `Settings` 에 `bulletin_channel_id: int | None = None` 을 넣고
-  `_parse_id(env, "DISCORD_BULLETIN_CHANNEL_ID")` 로 읽는다 — `DISCORD_ALERT_CHANNEL_ID` 와 같다.
+  `_parse_id(env, "DISCORD_CONFIG_BULLETIN_CHANNEL_ID")` 로 읽는다 — `DISCORD_CONFIG_ALERT_CHANNEL_ID` 와 같다.
   숫자가 아니면 **경고 후 버린다**. 설정이 깨져도 서비스는 뜬다는 기존 원칙 그대로다.
 - `.env.example` · `discord/README.md` 에 한 줄씩 추가한다. `docker-compose.yml` 은 `env_file: ./.env` 라서 **고칠 게 없다.**
 - 시간대와 갱신 시각(매일 태평양 20:00)은 **환경변수로 빼지 않는다** — 요청에 없었고,
@@ -117,9 +119,9 @@ CS 전공 스터디 : 🔊 공부방-CS 전공 스터디
 
 `guild.categories` 는 **position 순으로 정렬돼 있다.** 그래서:
 
-1. 이름이 앵커와 같은 카테고리를 찾는다. 같은 이름이 여러 개면 **맨 위**가 앵커다
-   (`create_study` 가 `discord.utils.get` 으로 고르는 방식과 동일 — 두 기능이 같은 카테고리를 기준으로 삼아야 한다).
-2. 앵커를 **못 찾으면 중단**한다 (결정 3).
+1. ID 가 `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` 인 카테고리를 찾는다
+   (`create_study` 와 같은 방식 — 두 기능이 같은 카테고리를 기준으로 삼아야 한다). 카테고리가 아닌 채널의 ID 는 못 찾은 것으로 본다.
+2. 앵커가 **설정되지 않았거나 못 찾으면 중단**한다 (결정 3).
 3. 앵커 **다음 인덱스부터 끝까지**의 카테고리를 순서대로 훑는다 (결정 1).
 4. 각 카테고리의 `voice_channels` 중 **봇이 볼 수 있는 것만** 싣는다
    (`c.permissions_for(guild.me).view_channel`) — `get_study_channels` 와 같은 필터다.
@@ -202,7 +204,7 @@ async def prime_the_board() -> None:
 - `tasks.loop(time=...)` 은 **시작 즉시 돌지 않고 다음 20:00 까지 잔다.** 그래서 결정 4대로
   `before_loop` 에서 준비를 기다린 뒤 **한 번 즉시 갱신**하고 루프를 잇는다.
 - 루프는 `client.py` 의 `create_bot` 에서 등록하고, **`bot.setup_hook` 에서 시작한다.**
-  `DISCORD_BULLETIN_CHANNEL_ID` 가 없으면 **시작하지 않고 경고 로그**만 남긴다.
+  `DISCORD_CONFIG_BULLETIN_CHANNEL_ID` 가 없으면 **시작하지 않고 경고 로그**만 남긴다.
   **`create_bot` 안에서 바로 `start()` 하면 안 된다** — 구현 중 실제로 밟은 함정이다.
   `create_bot` 은 `bot.start()` **전에** 불리는데, 루프가 가장 먼저 하는 `wait_until_ready()` 는
   아직 로그인하지 않은 클라이언트에서 **`RuntimeError` 를 던진다.** 그러면 `before_loop` 에서 루프가
@@ -227,9 +229,9 @@ async def prime_the_board() -> None:
   ([`create-study`](api/create-study.md) · [`send-alert-message`](api/send-alert-message.md)),
   갱신 한 번이 **히스토리 읽기 + 메시지 수정**으로 Discord rate limit 을 쓴다. 게시판은 전원이 보는 물건이라
   아무나 다시 쓰게 두지 않는다. navigator 까지 허용하려면 `may_update` 를 넓히면 된다.
-- `DISCORD_CAPTAIN_ROLE_ID` 가 **비어 있으면 거부**한다 — API 쪽 `caller_guild` 와 같은 태도로, 설정이
+- `DISCORD_CONFIG_CAPTAIN_ROLE_ID` 가 **비어 있으면 거부**한다 — 설정이
   없다는 게 문 열림을 뜻하지 않는다. DM 에서는 멤버도 역할도 없으니 역시 거부다.
-- `DISCORD_BULLETIN_CHANNEL_ID` 가 없으면 **기능이 꺼져 있다고 답장**한다. 그 경우 `refresh` 는 로그만
+- `DISCORD_CONFIG_BULLETIN_CHANNEL_ID` 가 없으면 **기능이 꺼져 있다고 답장**한다. 그 경우 `refresh` 는 로그만
   남기고 끝나서, 답장이 없으면 부른 사람은 갱신된 줄 안다.
 - **성공/실패를 답장한다.** 그래서 `refresh` 가 `bool` 을 돌려준다 — 실패 이유는 이미 로그와 alert 채널에
   가 있으므로, 답장은 어느 쪽인지와 어디를 볼지만 알린다. 잘려서 올라간 경우는 **성공**이다 (올라갔으니까).
@@ -242,7 +244,7 @@ async def prime_the_board() -> None:
 
 | 상황 | 하는 일 |
 |------|---------|
-| `DISCORD_BULLETIN_CHANNEL_ID` 없음 | 시작 시 경고 로그 1회, 루프 미시작 |
+| `DISCORD_CONFIG_BULLETIN_CHANNEL_ID` 없음 | 시작 시 경고 로그 1회, 루프 미시작 |
 | 채널을 못 찾음 / 봇이 못 봄 / 텍스트 채널이 아님 | 에러 로그 + alert 채널 통지, 게시판 **변경 없음** |
 | 앵커 카테고리 없음 | 에러 로그 + alert 채널 통지, 게시판 **변경 없음** (결정 3) |
 | `Send Messages` 권한 없음 (`discord.Forbidden`) · `Read Message History` 권한 없음 (찾기 전에 확인) | 에러 로그 + alert 채널 통지, 게시판 **변경 없음** — 어떤 권한이 없는지 메시지에 적는다 |
@@ -262,8 +264,8 @@ alert 채널 통지는 [`channels.py`](../../discord/app/api/routes/channels.py)
 3. 운영진(captain) 역할: **Send Messages ✅** (요청대로 moderator 는 쓸 수 있다).
 4. **봇**: **View Channel ✅ / Send Messages ✅ / Read Message History ✅**
    → 마지막 것이 없으면 봇이 자기 메시지를 못 찾으므로 **갱신하지 않고 alert 채널에 알린다.**
-5. 그 채널 ID 를 `DISCORD_BULLETIN_CHANNEL_ID` 에 넣고 **컨테이너를 재생성**한다
-   (설정은 기동 시점에 읽는다 — `DISCORD_BOT_CHANNEL_ID` 과 같다).
+5. 그 채널 ID 를 `DISCORD_CONFIG_BULLETIN_CHANNEL_ID` 에 넣고 **컨테이너를 재생성**한다
+   (설정은 기동 시점에 읽는다 — `DISCORD_CONFIG_BOT_CHANNEL_ID` 과 같다).
 
 ## 구현 단계
 
@@ -296,7 +298,7 @@ alert 채널 통지는 [`channels.py`](../../discord/app/api/routes/channels.py)
              권한 없을 때 refresh 를 아예 부르지 않음. client.py 에 register 한 줄
 
 8. .env.example · discord/README.md 갱신, 이 문서의 "구현 안 됐다" 배너를 "구현됨" 으로
-   → verify: 문서에서 DISCORD_BULLETIN_CHANNEL_ID 를 grep 하면 3곳에 나온다.
+   → verify: 문서에서 DISCORD_CONFIG_BULLETIN_CHANNEL_ID 를 grep 하면 3곳에 나온다.
              api/summary.md 는 **고치지 않는다** — 엔드포인트가 아니라 봇 루프다
 
 9. 실제 길드에서 손으로 확인 (위 "길드 쪽 준비" 를 끝낸 뒤)
@@ -319,7 +321,7 @@ alert 채널 통지는 [`channels.py`](../../discord/app/api/routes/channels.py)
 | `refresh` | 기존 봇 메시지 edit · 없으면 send · 봇 메시지 여러 개면 가장 오래된 것 · 남의 메시지는 안 건드림 |
 | `refresh` 실패 경로 | 채널 미설정/미존재/텍스트 아님/`Forbidden` 에서 **예외를 던지지 않고** alert 통지 |
 | `register` | 채널 ID 없으면 루프 미시작 · `setup_hook` 이 불릴 때 시작(그 전엔 아님) · 기존 `setup_hook` 도 여전히 불림 · 루프 시각이 20:00 `America/Los_Angeles` |
-| `may_update` | captain 통과 · 역할 없는 멤버 거부 · `DISCORD_CAPTAIN_ROLE_ID` 미설정 시 거부 · DM 거부 |
+| `may_update` | captain 통과 · 역할 없는 멤버 거부 · `DISCORD_CONFIG_CAPTAIN_ROLE_ID` 미설정 시 거부 · DM 거부 |
 | `update_bulletin` | 성공/실패에 맞는 답장 · 권한 없으면 `refresh` 를 아예 부르지 않음 · 채널 미설정이면 꺼져 있다고 답장 |
 
 **하지 않는 테스트**: 실제로 저녁 8시까지 기다리는 테스트. 시각은 `loop.time` 값을 단정하는 것으로
@@ -342,6 +344,6 @@ alert 채널 통지는 [`channels.py`](../../discord/app/api/routes/channels.py)
 | # | 미정 | 지금은 |
 |---|------|--------|
 | 1 | 앵커 아래에 **구분선 카테고리**(아카이브 등)를 쓸 계획이 생기면 | 앵커 아래 전부를 스터디로 본다 (결정 1). 구분선을 쓰기로 하면 `collect_categories` 의 종료 조건 한 줄이 바뀐다 |
-| 2 | 앵커 이름을 **런타임에 바꾸는 명령**([`studies.py`](../../discord/app/api/routes/studies.py) 주석의 계획)이 생기면 | 봇은 상수를 읽으므로 **그때 갈라진다.** 그 명령을 만들 때 `app.state.new_study_anchor_name` 과 봇이 **한 출처를 공유하도록** 반드시 함께 고쳐야 한다 (결정 6) |
-| 3 | 게시판 채널 이름·위치, 운영진 역할이 `DISCORD_CAPTAIN_ROLE_ID` 와 같은지 | 길드 담당자가 정한다. 봇은 **ID 만** 본다 |
+| 2 | ~~앵커 이름을 런타임에 바꾸는 명령이 생기면~~ | **해소됨 (2026-10-26).** 앵커를 ID 로 찾게 되면서 API 와 봇이 `Settings.anchor_channel_id` 하나를 읽는다 (결정 6). 실행 중에 바꾸는 명령을 만든다면 `Settings` 가 frozen 이라 그때 공유 홀더가 필요하다 |
+| 3 | 게시판 채널 이름·위치, 운영진 역할이 `DISCORD_CONFIG_CAPTAIN_ROLE_ID` 와 같은지 | 길드 담당자가 정한다. 봇은 **ID 만** 본다 |
 | 4 | 스터디가 50개를 넘어 2000자에 닿을 시점 | 평문 + 절단으로 버티고, 닿으면 임베드로 옮긴다 |

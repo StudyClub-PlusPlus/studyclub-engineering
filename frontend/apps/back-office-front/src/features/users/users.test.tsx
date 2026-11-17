@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { PermissionTables } from '@/features/users/components/PermissionTables';
 import { RoleBadgeSelect } from '@/features/users/components/RoleBadgeSelect';
 import { UsersTable } from '@/features/users/components/UsersTable';
-import { BLOCKED_REASON_MESSAGE, TAB_OPTIONS, displayName } from '@/features/users/labels';
+import { BLOCKED_REASON_MESSAGE, DORMANCY_DESCRIPTION, TAB_OPTIONS, displayName } from '@/features/users/labels';
 import { usersPath } from '@/features/users/queries';
 import type { ApiAdminAccount, ApiRolePermissions, UserRole } from '@/features/users/types';
 
@@ -21,6 +21,7 @@ function account(patch: Partial<ApiAdminAccount>): ApiAdminAccount {
     dormant: false,
     joinedAt: '2026-09-01T11:00:00Z',
     roleChangeBlockedReason: null,
+    discordLinked: false,
     ...patch,
   };
 }
@@ -77,28 +78,38 @@ describe('UsersTable', () => {
           rows={[account({ id: 27, name: null, maskedEmail: 'n***@example.com', dormant: true })]}
           revealed={new Map()}
           onReveal={() => {}}
+          onHide={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
         />,
       ),
     );
     const row = screen.getAllByRole('row')[1]!;
     expect(within(row).getByText('n***')).toBeInTheDocument();
-    expect(within(row).getByText('휴면')).toBeInTheDocument();
+    expect(within(row).getByText('휴면')).toHaveAccessibleDescription(`휴면: ${DORMANCY_DESCRIPTION}`);
+    expect(within(row).getByText('휴면')).toHaveAttribute('title', DORMANCY_DESCRIPTION);
     // 가린 이메일과 「보기」
     expect(within(row).getByText('n***@example.com')).toBeInTheDocument();
     expect(within(row).getByRole('button', { name: 'n*** 이메일 보기' })).toBeInTheDocument();
   });
 
-  it('받아 둔 원본이 있는 줄만 원본을 보이고 「보기」가 사라진다', () => {
+  it('받아 둔 원본이 있는 줄만 원본과 가리기 아이콘을 보인다', () => {
     render(
       withQuery(
         <UsersTable
           rows={[account({ id: 18 }), account({ id: 19, name: '나래', maskedEmail: 'n***@example.com' })]}
           revealed={new Map([[18, 'haneul@example.com']])}
           onReveal={() => {}}
+          onHide={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
         />,
       ),
     );
     expect(screen.getByText('haneul@example.com')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '하늘 이메일 가리기' })).toBeInTheDocument();
     expect(screen.getByText('n***@example.com')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /이메일 보기/ })).toHaveLength(1);
   });
@@ -117,6 +128,10 @@ describe('UsersTable', () => {
           ]}
           revealed={new Map()}
           onReveal={() => {}}
+          onHide={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
         />,
       ),
     );
@@ -125,7 +140,19 @@ describe('UsersTable', () => {
   });
 
   it('결과가 없으면 안내 문구를 보인다', () => {
-    render(withQuery(<UsersTable rows={[]} revealed={new Map()} onReveal={() => {}} />));
+    render(
+      withQuery(
+        <UsersTable
+          rows={[]}
+          revealed={new Map()}
+          onReveal={() => {}}
+          onHide={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
+        />,
+      ),
+    );
     expect(screen.getByText('조건에 맞는 유저가 없습니다.')).toBeInTheDocument();
   });
 
@@ -136,6 +163,10 @@ describe('UsersTable', () => {
           rows={[account({ id: 3, systemRole: 'ADMIN', roleChangeBlockedReason: 'CANNOT_CHANGE_OWN_ROLE' })]}
           revealed={new Map()}
           onReveal={() => {}}
+          onHide={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
         />,
       ),
     );
@@ -217,5 +248,28 @@ describe('PermissionTables', () => {
     const row = screen.getByText('무언가').closest('tr')!;
     expect(within(row).getAllByLabelText('허용')).toHaveLength(1);
     expect(within(row).getAllByLabelText('없음')).toHaveLength(1);
+  });
+});
+
+describe('UsersTable 디스코드 칸', () => {
+  it('연동했으면 보기 버튼, 미연동이면 버튼 없이 상태만 표시한다', () => {
+    render(
+      withQuery(
+        <UsersTable
+          rows={[account({ id: 1, discordLinked: true }), account({ id: 2, name: '바다', discordLinked: false })]}
+          revealed={new Map()}
+          onReveal={() => {}}
+          onHide={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
+        />,
+      ),
+    );
+    expect(screen.getByText('연동')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '하늘 디스코드 아이디 보기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '바다 디스코드 아이디 보기' })).not.toBeInTheDocument();
+    expect(screen.queryByText('@haneul_dc')).not.toBeInTheDocument();
+    expect(screen.getByText('미연동')).toBeInTheDocument();
   });
 });

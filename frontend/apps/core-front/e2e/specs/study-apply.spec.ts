@@ -15,7 +15,14 @@ async function seedSession(
 ) {
   const { authenticated = true, discordLinked = true, appliedStudyIds = [] } = options;
 
-  if (authenticated) await stubApiMe(page);
+  if (authenticated) {
+    await stubApiMe(page);
+    await page
+      .context()
+      .addCookies([
+        { name: 'sc_access_token', value: 'e2e', url: `http://localhost:${process.env.APP_PORT ?? '4700'}` },
+      ]);
+  }
 
   await page.addInitScript(
     ({ auth, discord, applied }) => {
@@ -28,6 +35,8 @@ async function seedSession(
             nickname: '테스트크루',
             picture: null,
             role: 'MEMBER',
+            timeZone: 'Asia/Seoul',
+            onboardingCompletedAt: '2026-01-01T00:00:00Z',
           }),
         );
       } else {
@@ -111,9 +120,21 @@ test.describe('크루 스터디 신청 E2E 플로우 (PRD: crew-submit-applicati
     const discordModal = page.getByRole('dialog');
     await expect(discordModal).toBeVisible();
 
-    // 디스코드 연동하기 → POST /api/me/discord/link (MSW 목이 204)
+    // 외부 인가 화면만 제어한다. 실제 콜백은 state/code를 opener로 전달하고 서버 연동은 MSW가 응답한다.
+    await page.context().route('https://discord.com/oauth2/authorize?*', async (route) => {
+      const authorization = new URL(route.request().url());
+      const callback = new URL(authorization.searchParams.get('redirect_uri')!);
+      callback.searchParams.set('state', authorization.searchParams.get('state')!);
+      callback.searchParams.set('code', 'e2e-discord-code');
+      await route.fulfill({ status: 302, headers: { location: callback.toString() } });
+    });
+    const linked = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/me/discord/link' && response.request().method() === 'POST',
+    );
     const linkBtn = discordModal.getByRole('button', { name: /디스코드 연동하기/i });
     await linkBtn.click();
+    expect((await linked).status()).toBe(204);
 
     // 연동 후 신청 폼 다이얼로그로 자동 전환
     const formModal = page.getByRole('dialog');
@@ -256,7 +277,7 @@ test.describe('크루 스터디 신청 E2E 플로우 (PRD: crew-submit-applicati
     const completeDialog = page.getByRole('dialog');
     await expect(completeDialog).toBeVisible();
     await expect(completeDialog.getByRole('heading', { name: /스터디 신청/i })).toBeVisible();
-    await expect(completeDialog.getByText(/신청이 접수되었습니다/i)).toBeVisible();
+    await expect(completeDialog.getByText(/스터디 신청이 완료되었습니다/i)).toBeVisible();
 
     // "내 스터디룸 보러 가기" 버튼 확인
     const myStudiesBtn = completeDialog.getByRole('button', { name: /내 스터디룸 보러 가기/i });

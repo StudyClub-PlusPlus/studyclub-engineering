@@ -8,11 +8,15 @@ on:
       - 'frontend/apps/playground/**'
       - 'frontend/packages/**'
       - '01-planning/stories/**'
+      # pnpm-lock.yaml·package.json·turbo.json·tsconfig.base.json 같은 루트 설정
+      - 'frontend/*'
+      - '.github/workflows/playground-beta.yaml'
   pull_request:
     paths:
       - 'frontend/apps/playground/**'
       - 'frontend/packages/**'
       - '01-planning/stories/**'
+      - 'frontend/*'
       - '.github/workflows/playground-beta.yaml'
   workflow_dispatch:
 
@@ -28,7 +32,7 @@ jobs:
           package_json_file: frontend/package.json
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile

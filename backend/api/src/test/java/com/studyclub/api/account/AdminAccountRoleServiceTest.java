@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.studyclub.api.audit.AdminAuditRecorder;
+import com.studyclub.api.audit.ClientIpResolver;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -17,6 +19,9 @@ import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.audit.AdminAuditAction;
 import com.studyclub.domain.audit.AdminAuditLog;
 import com.studyclub.domain.audit.AdminAuditLogRepository;
+import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,13 +41,19 @@ class AdminAccountRoleServiceTest {
 
     private AccountRepository accountRepository;
     private AdminAuditLogRepository auditRepository;
+    private StudyRepository studyRepository;
     private AdminAccountRoleService service;
 
     @BeforeEach
     void setUp() {
         accountRepository = mock(AccountRepository.class);
         auditRepository = mock(AdminAuditLogRepository.class);
-        service = new AdminAccountRoleService(accountRepository, auditRepository);
+        studyRepository = mock(StudyRepository.class);
+        service =
+                new AdminAccountRoleService(
+                        accountRepository,
+                        studyRepository,
+                        new AdminAuditRecorder(auditRepository, new ClientIpResolver(""), 1));
     }
 
     @Test
@@ -59,6 +70,46 @@ class AdminAccountRoleServiceTest {
                         e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.LAST_ADMIN_REQUIRED));
         assertThat(target.getSystemRole()).isEqualTo(SystemRole.ADMIN);
         verify(auditRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("진행 중인 스터디의 담당 캡틴을 내리면 OWNS_STUDY — 메시지에 제목, 값도 감사 기록도 그대로")
+    void rejectsDemotingOwnerOfOngoingStudy() {
+        Account target = account(TARGET_ID, SystemRole.ADMIN);
+        givenAdmins(account(ACTOR_ID, SystemRole.ADMIN), target);
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
+        Study owned =
+                Study.builder()
+                        .title("알고리즘 3기")
+                        .status(StudyStatus.ONGOING)
+                        .ownerCaptainId(TARGET_ID)
+                        .build();
+        when(studyRepository.findByOwnerCaptainIdAndStatusNotIn(
+                        TARGET_ID, StudyStatus.ENDED_STATUSES))
+                .thenReturn(List.of(owned));
+
+        assertThatThrownBy(() -> service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.MEMBER))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        e -> {
+                            assertThat(e.errorCode()).isEqualTo(ErrorCode.OWNS_STUDY);
+                            assertThat(e.getMessage()).contains("알고리즘 3기");
+                        });
+        assertThat(target.getSystemRole()).isEqualTo(SystemRole.ADMIN);
+        verify(auditRepository, never()).save(any());
+        verify(studyRepository, never()).clearOwnerCaptainIn(any(), any());
+    }
+
+    @Test
+    @DisplayName("끝난 스터디만 맡은 캡틴을 내리면 그 스터디들의 담당 칸을 비운다")
+    void clearsEndedOwnershipOnDemotion() {
+        Account target = account(TARGET_ID, SystemRole.ADMIN);
+        givenAdmins(account(ACTOR_ID, SystemRole.ADMIN), target);
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
+
+        service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.MEMBER);
+
+        verify(studyRepository).clearOwnerCaptainIn(TARGET_ID, StudyStatus.ENDED_STATUSES);
     }
 
     @Test
@@ -83,10 +134,36 @@ class AdminAccountRoleServiceTest {
     }
 
     @Test
+    @DisplayName("디스코드 미연동 크루도 캡틴으로 올린다 — 연동은 필수가 아니다 (2026-10-27)")
+    void promotesUnlinkedMember() {
+        Account target = account(TARGET_ID, SystemRole.MEMBER);
+        givenAdmins(account(ACTOR_ID, SystemRole.ADMIN));
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
+
+        service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.ADMIN);
+
+        assertThat(target.getSystemRole()).isEqualTo(SystemRole.ADMIN);
+        verify(auditRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("디스코드 미연동 캡틴도 크루로 내린다 — 권한 변경은 디스코드 연동을 보지 않는다")
+    void demotesUnlinkedAdmin() {
+        Account target = account(TARGET_ID, SystemRole.ADMIN);
+        givenAdmins(account(ACTOR_ID, SystemRole.ADMIN), target);
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
+
+        service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.MEMBER);
+
+        assertThat(target.getSystemRole()).isEqualTo(SystemRole.MEMBER);
+    }
+
+    @Test
     @DisplayName("크루를 올리는 것은 캡틴 수와 상관없이 통과한다")
     void promotionIgnoresAdminCount() {
         Account actor = account(ACTOR_ID, SystemRole.ADMIN);
         Account target = account(TARGET_ID, SystemRole.MEMBER);
+        target.linkDiscord("1327394882193880002", "crew");
         givenAdmins(actor);
         when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
 

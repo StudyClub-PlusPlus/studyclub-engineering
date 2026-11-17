@@ -24,8 +24,8 @@ export function EmptyState({ icon, title, description, action, className }: Empt
     >
       {icon && <span className='text-fg-placeholder'>{icon}</span>}
       <div className='flex flex-col gap-1'>
-        <p className='text-base font-semibold text-ink'>{title}</p>
-        {description && <p className='text-sm text-fg-muted'>{description}</p>}
+        <p className='type-title-md text-ink'>{title}</p>
+        {description && <p className='type-body-sm text-fg-muted'>{description}</p>}
       </div>
       {action && <div className='mt-1'>{action}</div>}
     </div>

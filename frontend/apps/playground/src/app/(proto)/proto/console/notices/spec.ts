@@ -11,7 +11,6 @@ export const SPEC: ScreenSpec = {
     '사용자 사이트의 공지와 같은 데이터다. 콘솔은 쓰는 쪽, 사이트는 읽는 쪽. 비로그인 방문자도 본다',
     '**공개 단계가 없다** — 등록하면 곧 사이트에 올라간다. 분류·상단 고정·알림 메일도 두지 않는다',
     '네비게이터의 스터디별 공지(ST-016)와는 다른 기능이다',
-    '미구현 — 공지를 저장할 테이블·API 가 없다. 지금은 화면 상태로만 처리한다',
   ],
   entries: [
     {
@@ -26,7 +25,7 @@ export const SPEC: ScreenSpec = {
       display: ['헤더 오른쪽 버튼'],
       behavior: ['누르면 등록 팝업이 열린다. 등록하면 목록 맨 위에 서고 사이트 공지에도 바로 올라간다'],
       policy: ['입력·설정 팝업이라 취소 버튼을 두지 않는다. 닫는 길은 X 와 Esc (POL-0008)'],
-      data: ['`POST /api/admin/notices` — 미구현'],
+      data: ['`POST /api/admin/notices`'],
     },
     {
       n: '2-1',
@@ -47,7 +46,7 @@ export const SPEC: ScreenSpec = {
         '등록 — 「사이트 공지에 바로 올라갑니다」. 저장 — 「사이트 공지에 바로 반영됩니다」',
       ],
       policy: ['작성자는 받지 않는다 — 로그인한 캡틴으로 정해진다'],
-      data: ['`PATCH /api/admin/notices/{id}` — 미구현'],
+      data: ['`PATCH /api/admin/notices/{id}`'],
     },
     {
       n: '2-6',
@@ -58,7 +57,7 @@ export const SPEC: ScreenSpec = {
         '**목록 행에 삭제 버튼을 두지 않는다** — 스치듯 눌러 지운다. 저장 버튼과도 떨어뜨린다',
         '**소프트 삭제다** — 화면에서는 사라지고 되돌리는 길도 없지만, 행은 지우지 않고 삭제 시각만 남긴다',
       ],
-      data: ['`DELETE /api/admin/notices/{id}` — 미구현. `DELETED_AT` 기록'],
+      data: ['`DELETE /api/admin/notices/{id}`. `REMOVED_AT` 기록'],
     },
     {
       n: '3',

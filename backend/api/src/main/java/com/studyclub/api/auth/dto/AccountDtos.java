@@ -32,7 +32,12 @@ public final class AccountDtos {
             @AssertTrue(message = "개인정보 수집·이용에 동의해야 합니다") boolean privacyPolicyAgreed,
             @NotNull(message = "마케팅 수신 동의 여부는 필수입니다") Boolean marketingAgreed,
             @NotBlank(message = "닉네임은 필수입니다") @ValidNickname String nickname,
-            @NotBlank(message = "타임존은 필수입니다") @ValidTimeZone String timeZone) {}
+            @NotBlank(message = "타임존은 필수입니다") @ValidTimeZone String timeZone,
+            @Schema(
+                            description =
+                                    "브라우저 GA4 client_id (_ga 쿠키의 끝 두 마디). 선택 — 가입 이벤트의 유입 귀속에만 쓰고 저장하지 않습니다.",
+                            example = "1234567890.1700000000")
+                    String gaClientId) {}
 
     /**
      * 프로필 수정 요청 (PATCH /api/me). 닉네임·타임존 둘 다 필수 — 부분 갱신이 없다. 온보딩과 같은 검증기를 써야 두 화면이 같은 닉네임을 두고 다른 말을

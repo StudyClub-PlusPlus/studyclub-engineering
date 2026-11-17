@@ -24,7 +24,6 @@ from discord.ext import commands, tasks
 from fastapi import HTTPException
 
 from app.api.routes.channels import resolve_configured_channel
-from app.api.routes.studies import DEFAULT_NEW_STUDY_ANCHOR_NAME
 from app.config import Settings
 from app.voice_activity_log import Activity, VoiceActivityLog
 
@@ -53,6 +52,8 @@ ALERT_HEADER = (
     "{weeks}주({days}일) 이상 입·퇴장이 없는 공부방이 {count}개 있습니다. (기준일: {today})"
 )
 TRUNCATED_NOTICE = "…외 {count}개는 !checkVoiceChannels 로 확인해 주세요."
+# First line of the report, so a reply scrolled back to later says when it was true.
+UPDATED_AT = "마지막 갱신: {time}"
 
 
 def now_utc() -> datetime.datetime:
@@ -61,12 +62,12 @@ def now_utc() -> datetime.datetime:
 
 
 def collect_study_voice_channels(
-    guild: discord.Guild, anchor_name: str
+    guild: discord.Guild, anchor_id: int | None
 ) -> list[tuple[discord.CategoryChannel, list[discord.VoiceChannel]]] | None:
-    """List the studies below the anchor category, or ``None`` if it is gone.
+    """List the studies below the anchor category, or ``None`` if it is unset or gone.
 
     The rule is the bulletin's, letter for letter -- ``guild.categories`` is
-    sorted by position, a duplicated anchor name resolves to the topmost, the
+    sorted by position, an ID that is not a category counts as gone, the
     anchor itself is excluded, and a channel the bot cannot see is left out.
     Only the return type differs: the report prints names, so it needs the
     channel objects rather than their IDs.
@@ -82,7 +83,7 @@ def collect_study_voice_channels(
     nobody can undo by hand.
     """
     categories = guild.categories
-    anchor = discord.utils.get(categories, name=anchor_name)
+    anchor = discord.utils.get(categories, id=anchor_id)
     if anchor is None:
         return None
 
@@ -164,8 +165,12 @@ def format_line(entry: tuple[str, str, str]) -> str:
     return f"{category} - {channel} : {label}"
 
 
-def build_activity_report(entries: list[tuple[str, str, str]]) -> list[str]:
+def build_activity_report(
+    entries: list[tuple[str, str, str]], now: datetime.datetime
+) -> list[str]:
     """Render every channel as one or more messages within Discord's cap.
+
+    The first message opens with the time of the reading (``now``).
 
     Split rather than truncated: this is what the caller asked to see in full,
     so cutting it defeats the command. The alert is the other way round -- it is
@@ -174,18 +179,19 @@ def build_activity_report(entries: list[tuple[str, str, str]]) -> list[str]:
     A single line cannot exceed the cap on its own: Discord caps a category and
     a channel name at 100 characters each.
     """
+    header = UPDATED_AT.format(time=now.astimezone(DISPLAY_TZ).strftime("%Y-%m-%d %H:%M %Z"))
     if not entries:
-        return [EMPTY_REPORT]
+        return [f"{header}\n{EMPTY_REPORT}"]
 
     messages: list[str] = []
-    current: list[str] = []
-    length = 0
+    current: list[str] = [header]
+    length = len(header)
     for line in map(format_line, entries):
-        if current and length + len(line) + 1 > MAX_MSG:
+        if length + len(line) + 1 > MAX_MSG:
             messages.append("\n".join(current))
             current, length = [line], len(line)
         else:
-            length += len(line) + (1 if current else 0)
+            length += len(line) + 1
             current.append(line)
     messages.append("\n".join(current))
     return messages
@@ -343,11 +349,6 @@ async def check_inactivity(
     the snapshot is still taken: joins and leaves only give a row to a room
     somebody uses, so a room nobody enters would otherwise be first seen on the
     day the channel is fixed and wait three weeks from then.
-
-    The anchor name is read from the constant rather than from
-    ``app.state.new_study_anchor_name``, as the bulletin does and for the same
-    reason: the two are always equal today, and the command that will change the
-    anchor at runtime has to give both readers one source when it lands.
     """
     try:
         await _check_inactivity(bot, settings, log)
@@ -364,7 +365,7 @@ async def _check_inactivity(
 ) -> None:
     """:func:`check_inactivity` without the catch-all. Handles the failures it expects."""
     if settings.guild_id is None:
-        logger.error("voice monitor: no DISCORD_GUILD_ID configured, skipping the check")
+        logger.error("voice monitor: no DISCORD_CONFIG_GUILD_ID configured, skipping the check")
         return
     guild = bot.get_guild(settings.guild_id)
     if guild is None:
@@ -384,17 +385,18 @@ async def _check_inactivity(
             # here anyway, so it is reused rather than duplicated.
             logger.error("voice monitor: %s", exc.detail)
 
-    categories = collect_study_voice_channels(guild, DEFAULT_NEW_STUDY_ANCHOR_NAME)
+    categories = collect_study_voice_channels(guild, settings.anchor_channel_id)
     if categories is None:
         logger.error(
-            "voice monitor: reference category %r not found, judging nothing",
-            DEFAULT_NEW_STUDY_ANCHOR_NAME,
+            "voice monitor: reference category %s unset or not found, judging nothing",
+            settings.anchor_channel_id,
         )
         if alert_channel is not None:
             await send_to_alert(
                 alert_channel,
-                f"기준 카테고리 `{DEFAULT_NEW_STUDY_ANCHOR_NAME}` 를 찾지 못해 공부방 활동을 "
-                "점검하지 않았습니다. 카테고리가 지워졌거나 이름이 바뀌었는지 확인해 주세요.",
+                f"기준 카테고리(DISCORD_CONFIG_ANCHOR_CHANNEL_ID={settings.anchor_channel_id})가 "
+                "설정되지 않았거나 찾을 수 없어 공부방 활동을 점검하지 않았습니다. "
+                "카테고리 ID 가 맞는지, 카테고리가 지워지지 않았는지 확인해 주세요.",
             )
         return
 
@@ -452,7 +454,7 @@ def register(bot: commands.Bot, settings: Settings) -> tasks.Loop | None:
     """
     if settings.guild_id is None:
         logger.warning(
-            "DISCORD_GUILD_ID is not set - voice channel activity is not being recorded"
+            "DISCORD_CONFIG_GUILD_ID is not set - voice channel activity is not being recorded"
         )
         return None
 
@@ -473,7 +475,7 @@ def register(bot: commands.Bot, settings: Settings) -> tasks.Loop | None:
 
     if settings.alert_channel_id is None:
         logger.warning(
-            "DISCORD_ALERT_CHANNEL_ID is not set - voice channel activity is recorded "
+            "DISCORD_CONFIG_ALERT_CHANNEL_ID is not set - voice channel activity is recorded "
             "but never reported"
         )
 

@@ -81,6 +81,12 @@ public final class StudyMeetingRequests {
     public record BulkDelete(
             @NotNull Long studyGroupId, @NotEmpty List<@NotNull Long> meetingIds) {}
 
+    /** 백오피스 회차 추가 — 반은 경로로 받아 {@link Create} 에서 {@code studyGroupId} 를 뺐다. */
+    public record AdminCreate(@NotEmpty List<@NotNull Instant> scheduledAts, String title) {}
+
+    /** 백오피스 회차 일괄 삭제 — 반은 경로로 받는다. */
+    public record AdminBulkDelete(@NotEmpty List<@NotNull Long> meetingIds) {}
+
     /** 스터디 규칙. null·공백이면 지운다. */
     public record Rules(String rules) {}
 }

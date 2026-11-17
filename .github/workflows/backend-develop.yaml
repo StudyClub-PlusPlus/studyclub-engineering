@@ -8,6 +8,12 @@ on:
       - 'backend/**'
   workflow_dispatch:
 
+# 배포가 겹쳐 오래된 빌드가 최신 이미지를 덮어쓰지 않게 직렬화한다.
+# 도중 취소는 하지 않는다 — SSH 배포가 어디까지 됐는지 알 수 없게 된다.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   docker:
     runs-on: ubuntu-latest

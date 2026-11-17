@@ -18,9 +18,9 @@ export function PermissionTables({ groups }: { groups: ApiRolePermissions['group
         const heading = SCOPE_TITLE[group.scope] ?? { title: group.scope };
         return (
           <section key={group.scope} aria-label={heading.title}>
-            <h3 className='mb-2 flex items-baseline gap-2 text-sm font-bold'>
+            <h3 className='mb-2 flex items-baseline gap-2 type-title-md'>
               {heading.title}
-              {heading.note && <span className='text-xs font-medium text-fg-muted'>{heading.note}</span>}
+              {heading.note && <span className='type-label-sm text-fg-muted'>{heading.note}</span>}
             </h3>
             <TableCard>
               <thead>

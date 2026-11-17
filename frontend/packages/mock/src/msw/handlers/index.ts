@@ -1,26 +1,52 @@
-import { registerHandlers, type MockHandlerGroup } from '../utils';
-import { accountsHandlers } from './accounts';
-import { meDiscordHandlers, discordLinkHandlers } from './discord';
-import { notificationTemplatesHandlers } from './notification-templates';
-import { notificationsHandlers } from './notifications';
-import { rolePermissionsHandlers } from './role-permissions';
-import { meStudiesHandlers } from './me';
-import { studyMeetingsHandlers } from './meetings';
-import { attendanceHandlers } from './attendance';
-import { studiesHandlers, adminStudiesHandlers, adminStudyProgramsHandlers } from './studies';
+import { analyticsHandlers } from "./analytics";
+import { registerHandlers, type MockHandlerGroup } from "../utils";
+import { accountsHandlers } from "./accounts";
+import { adminStatsHandlers } from "./admin-stats";
+import { attendanceHandlers, adminAttendanceSummaryHandlers } from "./attendance";
+import { meDiscordHandlers, discordLinkHandlers } from "./discord";
+import { meStudiesHandlers } from "./me";
+import { studyMeetingsHandlers } from "./meetings";
+import { studyNoticesHandlers } from "./notices";
+import { notificationTemplatesHandlers } from "./notification-templates";
+import { notificationsHandlers } from "./notifications";
+import { adminParticipantsHandlers } from "./participants";
+import { rolePermissionsHandlers } from "./role-permissions";
+import {
+  studiesHandlers,
+  adminStudiesHandlers,
+  adminStudyProgramsHandlers,
+} from "./studies";
 
-export { registerHandlers, type MockHandlerGroup } from '../utils';
-export { studiesHandlers, adminStudiesHandlers, adminStudyProgramsHandlers } from './studies';
-export { accountsHandlers, mockAdminAccounts } from './accounts';
-export { meDiscordHandlers, discordLinkHandlers, MOCK_DISCORD_LINKED_KEY } from './discord';
-export { rolePermissionsHandlers, mockRolePermissions } from './role-permissions';
-export { meStudiesHandlers } from './me';
-export { studyMeetingsHandlers } from './meetings';
-export { attendanceHandlers } from './attendance';
-export { notificationTemplatesHandlers, mockNotificationTemplates } from './notification-templates';
-export { notificationsHandlers, resetMockNotifications } from './notifications';
+export { registerHandlers, type MockHandlerGroup } from "../utils";
+export {
+  studiesHandlers,
+  adminStudiesHandlers,
+  adminStudyProgramsHandlers,
+} from "./studies";
+export { accountsHandlers, mockAdminAccounts } from "./accounts";
+export { adminStatsHandlers } from "./admin-stats";
+export {
+  meDiscordHandlers,
+  discordLinkHandlers,
+  MOCK_DISCORD_LINKED_KEY,
+} from "./discord";
+export {
+  rolePermissionsHandlers,
+  mockRolePermissions,
+} from "./role-permissions";
+export { meStudiesHandlers } from "./me";
+export { studyMeetingsHandlers } from "./meetings";
+export { attendanceHandlers, adminAttendanceSummaryHandlers } from "./attendance";
+export { adminParticipantsHandlers } from "./participants";
+export {
+  notificationTemplatesHandlers,
+  mockNotificationTemplates,
+} from "./notification-templates";
+export { notificationsHandlers, resetMockNotifications } from "./notifications";
+export { studyNoticesHandlers, resetMockNotices } from "./notices";
 
 export const mockHandlerGroups: MockHandlerGroup[] = [
+  analyticsHandlers,
   studiesHandlers,
   adminStudiesHandlers,
   adminStudyProgramsHandlers,
@@ -30,11 +56,15 @@ export const mockHandlerGroups: MockHandlerGroup[] = [
   rolePermissionsHandlers,
   meStudiesHandlers,
   studyMeetingsHandlers,
+  studyNoticesHandlers,
   attendanceHandlers,
+  adminAttendanceSummaryHandlers,
+  adminParticipantsHandlers,
   notificationTemplatesHandlers,
   notificationsHandlers,
+  adminStatsHandlers,
 ];
 
 export const handlers = mockHandlerGroups.flatMap((group) =>
-  registerHandlers(group.handlers.map((h) => ({ ...h, preset: h.presets[0] })))
+  registerHandlers(group.handlers.map((h) => ({ ...h, preset: h.presets[0] }))),
 );

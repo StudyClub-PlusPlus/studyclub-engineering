@@ -5,6 +5,7 @@ import { useEffect, useState, type MouseEvent } from 'react';
 
 import { getUser } from '@core/lib/auth';
 import type { Locale, Study } from '@core/lib/content';
+import { withoutApplyIntent } from '@core/lib/discord-preview';
 import { t } from '@core/lib/i18n';
 import { getApplication, getDiscord } from '@core/lib/me';
 import { recruitLabel, recruitState } from '@core/lib/recruit';
@@ -39,7 +40,18 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     setReady(true);
   }, [study.id, completeOpen]);
 
-  const card = 'inline-flex items-center rounded-pill px-8 py-3 text-sm font-bold';
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('apply') !== '1') return;
+    const user = getUser();
+    if (!user || user.onboardingCompletedAt === null) return;
+    router.replace(withoutApplyIntent(`${url.pathname}${url.search}${url.hash}`), { scroll: false });
+    if (state === 'closed' || getApplication(study.id)) return;
+    if (getDiscord()) setFormOpen(true);
+    else setDiscordOpen(true);
+  }, [pathname, router, state, study.id]);
+
+  const card = 'inline-flex items-center rounded-pill px-8 py-3 type-label-lg';
   const live =
     'bg-brand text-on-brand shadow-sm transition-[background-color,transform] hover:bg-brand-hover hover:scale-[1.02] focus-visible:outline-none focus-visible:shadow-(--ring)';
   const idle = 'bg-surface-2 text-fg-placeholder';
@@ -48,8 +60,11 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     ev.preventDefault();
     ev.stopPropagation();
     if (alreadyApplied) return;
-    if (!getUser()) {
-      router.push(`/proto/core/${locale}/login?next=${encodeURIComponent(pathname)}`);
+    const user = getUser();
+    const next = `${pathname}?apply=1`;
+    if (!user || user.onboardingCompletedAt === null) {
+      const entry = user ? 'onboarding' : 'login';
+      router.push(`/proto/core/${locale}/${entry}?next=${encodeURIComponent(next)}`);
       return;
     }
     if (!getDiscord()) {

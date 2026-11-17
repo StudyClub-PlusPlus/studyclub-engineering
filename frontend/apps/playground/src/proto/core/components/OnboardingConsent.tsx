@@ -120,10 +120,10 @@ export function OnboardingConsent({
           className='[&_span]:hidden'
           aria-label={ko ? '전체 동의' : 'Agree to all'}
         />
-        <span className='text-[15px] font-bold text-fg'>
+        <span className='type-label-lg text-fg'>
           {ko ? '전체 동의' : 'Agree to all'}
           {/* 선택 항목까지 켜진다는 사실은 법적으로 밝혀야 한다. 괄호 한 마디로 붙인다. */}
-          <span className='ml-1.5 text-xs font-normal text-fg-muted'>
+          <span className='ml-1.5 type-label-sm text-fg-muted'>
             {ko ? '(선택 항목 포함)' : '(includes optional)'}
           </span>
         </span>
@@ -148,7 +148,7 @@ export function OnboardingConsent({
               aria-label={ko ? item.ko : item.en}
             />
             <div className='min-w-0 flex-1'>
-              <label htmlFor={`consent-${item.key}`} className='block cursor-pointer break-keep text-sm leading-snug'>
+              <label htmlFor={`consent-${item.key}`} className='block cursor-pointer break-keep type-label-lg'>
                 <span className={`mr-1.5 font-semibold ${item.required ? 'text-brand' : 'text-fg-muted'}`}>
                   {item.required ? (ko ? '[필수]' : '[Required]') : ko ? '[선택]' : '[Optional]'}
                 </span>
@@ -156,7 +156,7 @@ export function OnboardingConsent({
               </label>
               {/* 설명은 아랫줄에 통째로 둔다 — 제목 옆에 붙이면 좁은 화면에서 제목이 중간에 끊긴다 */}
               {(ko ? item.koNote : item.enNote) && (
-                <p className='mt-1 break-keep text-xs leading-snug text-fg-muted'>{ko ? item.koNote : item.enNote}</p>
+                <p className='mt-1 break-keep type-label-sm text-fg-muted'>{ko ? item.koNote : item.enNote}</p>
               )}
               {/* 수신 매체는 따로 받는다 — 이메일만 받겠다는 사람과 둘 다 받겠다는 사람이 다르다 */}
               {item.key === 'marketing' && CHANNELS.length > 1 && (
@@ -169,7 +169,7 @@ export function OnboardingConsent({
                       disabled={disabled}
                       label={ko ? channel.ko : channel.en}
                       onChange={(event) => setChannel(channel.key, event.target.checked)}
-                      className='[&_span]:text-xs [&_span]:text-fg-secondary'
+                      className='[&_span]:type-label-sm [&_span]:text-fg-secondary'
                     />
                   ))}
                 </div>
@@ -180,7 +180,7 @@ export function OnboardingConsent({
                 type='button'
                 data-anno='4-3'
                 onClick={() => setReading(item.doc)}
-                className='-mr-1 flex shrink-0 items-center gap-0.5 rounded-control px-2 py-1 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-1 hover:text-fg'
+                className='-mr-1 flex shrink-0 items-center gap-0.5 rounded-control px-2 py-1 type-label-lg text-fg-muted transition-colors hover:bg-surface-1 hover:text-fg'
               >
                 {ko ? '보기' : 'Read'}
                 <ChevronRight size={13} aria-hidden='true' />
@@ -191,7 +191,7 @@ export function OnboardingConsent({
       </div>
 
       {error && (
-        <p id='consent-error' role='alert' className='mt-2 text-xs text-error-700'>
+        <p id='consent-error' role='alert' className='mt-2 type-label-sm text-error-700'>
           {error}
         </p>
       )}
@@ -233,13 +233,13 @@ function docTitle(doc: Item['doc'] | null, ko: boolean): string {
 function LegalBody({ kind, locale }: { kind: 'terms' | 'privacy'; locale: Locale }) {
   const doc = legalDoc(kind);
   return (
-    <div lang='ko' className='max-h-[60vh] overflow-auto overscroll-contain pr-1 [&_li]:text-sm [&_p]:text-sm [&_p]:leading-relaxed'>
+    <div lang='ko' className='max-h-[60vh] overflow-auto overscroll-contain pr-1 [&_li]:type-body-sm [&_p]:type-body-sm'>
       <div className='space-y-2'>
         {doc.intro?.map((block, index) => <BlockView key={index} block={block} locale={locale} />)}
       </div>
       {doc.sections.map((section) => (
         <div key={section.id} className='mt-5 space-y-2'>
-          <h4 className='text-sm font-semibold text-fg'>{lx(section.heading, locale)}</h4>
+          <h4 className='type-title-md text-fg'>{lx(section.heading, locale)}</h4>
           {section.blocks?.map((block, index) => <BlockView key={index} block={block} locale={locale} />)}
         </div>
       ))}

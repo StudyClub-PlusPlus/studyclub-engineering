@@ -14,7 +14,6 @@ GUILD_ID = 100000000000000001
 CAPTAIN_ROLE_ID = 100000000000000002
 NAVIGATOR_ROLE_ID = 100000000000000003
 STUDY_ROLE_ID = 100000000000000004
-BOT_ID = 100000000000000005
 STUDY_ID = "1327394882193883136"
 USER_ID = "327394882193883136"
 TARGET_IDS = ["427394882193883136", "527394882193883136", "627394882193883136"]
@@ -26,7 +25,6 @@ HEADERS = {
 }
 NAVIGATOR_PATH = "/api/v1/roles/navigator/users"
 STUDY_PATH = f"/api/v1/roles/{STUDY_ROLE_ID}/users"
-SYSTEM_HEADERS = {**HEADERS, "X-Discord-User-ID": str(BOT_ID)}
 
 
 def _discord_error(cls=discord.HTTPException, status=500, code=0):
@@ -38,7 +36,7 @@ def _unknown_member():
 
 
 class FakeGuild:
-    """A guild with a captain caller and some of the target users as members.
+    """A guild with some of the target users as members.
 
     ``cached`` is who the member cache holds; the rest of ``members`` are only
     found by asking Discord, as they would be with the cache missing them.
@@ -47,17 +45,12 @@ class FakeGuild:
     def __init__(
         self,
         *,
-        caller_roles=(CAPTAIN_ROLE_ID,),
         roles=(CAPTAIN_ROLE_ID, NAVIGATOR_ROLE_ID, STUDY_ROLE_ID),
         members=TARGET_IDS,
         cached=(),
     ):
         self.id = GUILD_ID
         self.roles = {role_id: Mock(id=role_id) for role_id in roles}
-        self.caller = Mock()
-        self.caller.get_role.side_effect = (
-            lambda rid: self.roles.get(rid) if rid in caller_roles else None
-        )
         self.targets = {
             uid: Mock(id=int(uid), add_roles=AsyncMock(), remove_roles=AsyncMock())
             for uid in members
@@ -71,11 +64,6 @@ class FakeGuild:
         )
 
     def _fetch(self, user_id):
-        if user_id == int(USER_ID):
-            return self.caller
-        # The bot is a member like any other, holding none of the caller roles.
-        if user_id == BOT_ID:
-            return Mock(get_role=Mock(return_value=None))
         if str(user_id) in self.targets:
             return self.targets[str(user_id)]
         raise _unknown_member()
@@ -108,7 +96,6 @@ def _client(bot, tmp_path, **overrides) -> TestClient:
         "captain_role_id": CAPTAIN_ROLE_ID,
         "navigator_role_id": NAVIGATOR_ROLE_ID,
         "api_key": API_KEY,
-        "bot_id": BOT_ID,
         "db_path": str(tmp_path / "discord.sqlite3"),
     }
     return TestClient(create_app(Settings(**{**values, **overrides}), bot))
@@ -319,8 +306,7 @@ def test_remove_calls_on_a_cached_member_without_fetching_them(tmp_path):
 
     _remove(_client(_bot(guild), tmp_path))
 
-    # Only the caller is fetched.
-    guild.fetch_member.assert_awaited_once_with(int(USER_ID))
+    guild.fetch_member.assert_not_awaited()
     assert len(_changes(guild, "DELETE")) == 3
 
 
@@ -331,7 +317,7 @@ def test_remove_never_takes_a_cache_miss_for_an_absence(tmp_path):
 
     assert response.json()["succeededCount"] == 3
     # Each target missed by the cache is asked about, and the role really goes.
-    assert guild.fetch_member.await_count == 1 + len(TARGET_IDS)
+    assert guild.fetch_member.await_count == len(TARGET_IDS)
     assert len(_changes(guild, "DELETE")) == 3
 
 
@@ -433,7 +419,7 @@ def test_without_the_navigator_setting_conflicts_and_changes_nothing(method, tmp
     response = _call(_client(_bot(guild), tmp_path, navigator_role_id=None), method)
 
     assert response.status_code == 409
-    assert "DISCORD_NAVIGATOR_ROLE_ID" in response.json()["detail"]
+    assert "DISCORD_CONFIG_NAVIGATOR_ROLE_ID" in response.json()["detail"]
     assert _changes(guild, method) == []
 
 
@@ -449,23 +435,15 @@ def test_with_the_navigator_role_missing_is_not_found_and_changes_nothing(method
 
 
 @every
-def test_by_a_navigator_is_forbidden(method, path, tmp_path):
-    guild = FakeGuild(caller_roles=(NAVIGATOR_ROLE_ID,))
+def test_does_not_check_the_caller(method, path, tmp_path):
+    # USER_ID is in no guild here: who may call is the backend's to decide.
+    guild = FakeGuild(cached=TARGET_IDS)
 
     response = _call(_client(_bot(guild), tmp_path), method, path=path)
 
-    assert response.status_code == 403
-    assert _changes(guild, method) == []
-
-
-@every
-def test_by_a_non_member_is_not_found(method, path, tmp_path):
-    guild = FakeGuild()
-    guild.fetch_member.side_effect = _unknown_member()
-
-    response = _call(_client(_bot(guild), tmp_path), method, path=path)
-
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert len(_changes(guild, method)) == 3
+    guild.fetch_member.assert_not_awaited()
 
 
 @every
@@ -562,35 +540,13 @@ def test_remove_role_takes_the_role_in_the_path(tmp_path):
 
 
 @both
-def test_study_role_by_the_system_is_allowed_without_a_member_lookup(method, tmp_path):
-    guild = FakeGuild(cached=TARGET_IDS)
-
-    response = _call(_client(_bot(guild), tmp_path), method, headers=SYSTEM_HEADERS, path=STUDY_PATH)
-
-    assert response.status_code == 200
-    assert len(_changes(guild, method)) == 3
-    guild.fetch_member.assert_not_awaited()
-
-
-@both
-def test_navigator_role_by_the_system_is_forbidden(method, tmp_path):
-    guild = FakeGuild()
-
-    response = _call(_client(_bot(guild), tmp_path), method, headers=SYSTEM_HEADERS)
-
-    assert response.status_code == 403
-    assert _changes(guild, method) == []
-
-
-@both
 @pytest.mark.parametrize("role_id", [CAPTAIN_ROLE_ID, NAVIGATOR_ROLE_ID, GUILD_ID])
-@pytest.mark.parametrize("headers", [HEADERS, SYSTEM_HEADERS])
-def test_study_role_refuses_captain_navigator_and_everyone(method, role_id, headers, tmp_path):
+def test_study_role_refuses_captain_navigator_and_everyone(method, role_id, tmp_path):
     guild = FakeGuild()
     guild.roles[GUILD_ID] = Mock(id=GUILD_ID)
 
     response = _call(
-        _client(_bot(guild), tmp_path), method, headers=headers, path=f"/api/v1/roles/{role_id}/users"
+        _client(_bot(guild), tmp_path), method, path=f"/api/v1/roles/{role_id}/users"
     )
 
     assert response.status_code == 400
@@ -601,14 +557,13 @@ def test_study_role_refuses_captain_navigator_and_everyone(method, role_id, head
 @both
 @pytest.mark.parametrize(
     "missing, setting",
-    [("captain_role_id", "DISCORD_CAPTAIN_ROLE_ID"), ("navigator_role_id", "DISCORD_NAVIGATOR_ROLE_ID")],
+    [("captain_role_id", "DISCORD_CONFIG_CAPTAIN_ROLE_ID"), ("navigator_role_id", "DISCORD_CONFIG_NAVIGATOR_ROLE_ID")],
 )
-def test_study_role_by_the_system_without_a_role_setting_conflicts(method, missing, setting, tmp_path):
-    # The system skips the caller check, so nothing there would notice the gap.
+def test_study_role_without_a_role_setting_conflicts(method, missing, setting, tmp_path):
     guild = FakeGuild()
     client = _client(_bot(guild), tmp_path, **{missing: None})
 
-    response = _call(client, method, headers=SYSTEM_HEADERS, path=STUDY_PATH)
+    response = _call(client, method, path=STUDY_PATH)
 
     assert response.status_code == 409
     assert setting in response.json()["detail"]

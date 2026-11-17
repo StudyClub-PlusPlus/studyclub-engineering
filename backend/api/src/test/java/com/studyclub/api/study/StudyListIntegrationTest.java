@@ -15,6 +15,7 @@ import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
+import com.studyclub.domain.study.StudyTimezone;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -217,6 +218,24 @@ class StudyListIntegrationTest {
         assertThat(titles(get("?timezone=PST"))).containsExactly("Spring 딥다이브");
         assertThat(titles(get("?timezone=BOTH")))
                 .containsExactlyInAnyOrder("지난 알고리즘", "북클럽", "영어 회화 3기", "영어 회화 4기");
+    }
+
+    @Test
+    @DisplayName("성공 - 운영자가 고른 시간대(TIMEZONE)가 있으면 일정 문구보다 앞선다 — 필터와 응답이 같은 값을 쓴다")
+    void selectedTimezoneOverridesSchedule() {
+        // 일정 문구는 KST 지만 운영자가 PST 로 골랐다
+        var leetcode =
+                studyRepo.findAll().stream()
+                        .filter(s -> s.getTitle().equals("데일리 리트코드"))
+                        .findFirst()
+                        .orElseThrow();
+        leetcode.changeTimezone(StudyTimezone.PST);
+        studyRepo.save(leetcode);
+
+        assertThat(titles(get("?timezone=KST"))).isEmpty();
+        assertThat(titles(get("?timezone=PST")))
+                .containsExactlyInAnyOrder("데일리 리트코드", "Spring 딥다이브");
+        assertThat(items(get("?keyword=리트코드")).getFirst()).containsEntry("timezone", "PST");
     }
 
     @Test

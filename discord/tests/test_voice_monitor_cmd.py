@@ -13,8 +13,9 @@ from app.voice_activity_log import VoiceActivityLog
 GUILD_ID = 100000000000000001
 CAPTAIN_ROLE_ID = 100000000000000002
 COMMAND_CHANNEL_ID = 300000000000000001
+ALERT_CHANNEL_ID = 300000000000000002
 USER_ID = 327394882193883136
-ANCHOR = voice_monitor.DEFAULT_NEW_STUDY_ANCHOR_NAME
+ANCHOR_ID = 400000000000000001
 NOW = datetime.datetime(2026, 9, 30, 3, 0, tzinfo=datetime.timezone.utc)
 
 
@@ -22,6 +23,7 @@ def _settings(**overrides) -> Settings:
     return Settings(
         **{
             "guild_id": GUILD_ID,
+            "anchor_channel_id": ANCHOR_ID,
             "captain_role_id": CAPTAIN_ROLE_ID,
             "command_channel_id": COMMAND_CHANNEL_ID,
             **overrides,
@@ -54,6 +56,13 @@ def _category(name, voice_channels=()) -> Mock:
     return category
 
 
+def _anchor() -> Mock:
+    """The divider category, found by its ID; the name is only for the eye."""
+    category = _category("구분선")
+    category.id = ANCHOR_ID
+    return category
+
+
 def _bot(categories=None) -> Mock:
     guild = Mock()
     guild.me = Mock(name="bot member")
@@ -62,7 +71,7 @@ def _bot(categories=None) -> Mock:
         if categories is not None
         else [
             _category("운영진 전용", [_voice(1, "회의실")]),
-            _category(ANCHOR),
+            _anchor(),
             _category("알고리즘 스터디", [_voice(2, "공부방-알고리즘"), _voice(3, "공부방-2조")]),
         ]
     )
@@ -108,9 +117,10 @@ async def test_check_voice_channels_prints_one_line_per_room(log):
 
     ctx.send.assert_awaited_once()
     lines = ctx.send.await_args[0][0].split("\n")
-    assert lines[0] == "알고리즘 스터디 - 공부방-알고리즘 : 2026-08-20"
+    assert lines[0].startswith("마지막 갱신: ")
+    assert lines[1] == "알고리즘 스터디 - 공부방-알고리즘 : 2026-08-20"
     # Never joined: the room says how long that has been true instead.
-    assert lines[1].startswith("알고리즘 스터디 - 공부방-2조 : 기록 없음 (관찰 시작 ")
+    assert lines[2].startswith("알고리즘 스터디 - 공부방-2조 : 기록 없음 (관찰 시작 ")
 
 
 async def test_check_voice_channels_registers_rooms_it_has_not_seen(log):
@@ -143,7 +153,7 @@ async def test_check_voice_channels_refuses_outside_the_command_channel(log):
 
 
 async def test_check_voice_channels_refuses_when_no_command_channel_is_configured(log):
-    """An unset DISCORD_BOT_CHANNEL_ID refuses everywhere rather than allowing anywhere."""
+    """An unset DISCORD_CONFIG_BOT_CHANNEL_ID refuses everywhere rather than allowing anywhere."""
     ctx = _ctx()
     store = Mock()
 
@@ -181,24 +191,45 @@ async def test_check_voice_channels_reports_a_missing_anchor(log):
         ctx, _bot(categories=[_category("운영진 전용", [_voice(1, "회의실")])]), _settings(), log
     )
 
-    ctx.send.assert_awaited_once_with(voice_monitor_cmd.NO_ANCHOR)
+    ctx.send.assert_awaited_once_with(voice_monitor_cmd.NO_ANCHOR.format(anchor_id=ANCHOR_ID))
     assert log.rows() == {}
+
+
+async def test_check_voice_channels_reports_a_missing_anchor_to_the_alert_channel(log):
+    """Whoever fixes the setting may not be the captain who asked."""
+    ctx = _ctx()
+    bot = _bot()
+    alert_channel = Mock(spec=discord.TextChannel, id=ALERT_CHANNEL_ID)
+    alert_channel.permissions_for.return_value = Mock(view_channel=True)
+    alert_channel.send = AsyncMock()
+    bot.get_guild(GUILD_ID).get_channel.side_effect = (
+        lambda cid: alert_channel if cid == ALERT_CHANNEL_ID else None
+    )
+
+    await voice_monitor_cmd.check_voice_channels(
+        ctx, bot, _settings(anchor_channel_id=None, alert_channel_id=ALERT_CHANNEL_ID), log
+    )
+
+    expected = voice_monitor_cmd.NO_ANCHOR.format(anchor_id=None)
+    ctx.send.assert_awaited_once_with(expected)
+    alert_channel.send.assert_awaited_once()
+    assert alert_channel.send.await_args[0][0] == expected
 
 
 async def test_check_voice_channels_with_no_rooms_below_the_anchor(log):
     ctx = _ctx()
 
     await voice_monitor_cmd.check_voice_channels(
-        ctx, _bot(categories=[_category(ANCHOR)]), _settings(), log
+        ctx, _bot(categories=[_anchor()]), _settings(), log
     )
 
     ctx.send.assert_awaited_once()
-    assert ctx.send.await_args[0][0] == voice_monitor.EMPTY_REPORT
+    assert ctx.send.await_args[0][0].endswith(f"\n{voice_monitor.EMPTY_REPORT}")
 
 
 async def test_check_voice_channels_splits_a_long_list_over_several_messages(log):
     ctx = _ctx()
-    categories = [_category(ANCHOR)] + [
+    categories = [_anchor()] + [
         _category(f"스터디 {i:03d}", [_voice(100 + i, f"공부방-{i:03d}")]) for i in range(200)
     ]
 

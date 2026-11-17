@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -76,7 +77,8 @@ class DiscordAttendanceServiceTest {
                 .satisfies(
                         g -> {
                             assertThat(g.studyGroupId()).isEqualTo(GROUP_A);
-                            assertThat(g.studyMeetingId()).isEqualTo(1L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            verifyMarkedOn(GROUP_A, 1L);
                             assertThat(g.meetingStarted()).isFalse();
                         });
         assertThat(upcoming.getStartAt()).isNull();
@@ -97,7 +99,8 @@ class DiscordAttendanceServiceTest {
                 .singleElement()
                 .satisfies(
                         g -> {
-                            assertThat(g.studyMeetingId()).isEqualTo(2L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            verifyMarkedOn(GROUP_A, 2L);
                             assertThat(g.meetingStarted()).isTrue();
                         });
         assertThat(upcoming.getStartAt()).isNotNull();
@@ -149,8 +152,8 @@ class DiscordAttendanceServiceTest {
         givenMeetings(
                 GROUP_A,
                 List.of(
-                        meeting(4L, GROUP_A, Instant.now().plus(50, ChronoUnit.MINUTES), false),
-                        meeting(5L, GROUP_A, Instant.now().plus(10, ChronoUnit.MINUTES), false)));
+                        meeting(5L, GROUP_A, Instant.now().plus(10, ChronoUnit.MINUTES), false),
+                        meeting(4L, GROUP_A, Instant.now().plus(50, ChronoUnit.MINUTES), false)));
         givenAccounts();
 
         DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
@@ -159,7 +162,8 @@ class DiscordAttendanceServiceTest {
                 .singleElement()
                 .satisfies(
                         g -> {
-                            assertThat(g.studyMeetingId()).isEqualTo(5L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            verifyMarkedOn(GROUP_A, 5L);
                             assertThat(g.meetingStarted()).isTrue();
                         });
     }
@@ -184,17 +188,80 @@ class DiscordAttendanceServiceTest {
                 .singleElement()
                 .satisfies(
                         g -> {
-                            assertThat(g.studyMeetingId()).isEqualTo(7L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(2);
+                            verifyMarkedOn(GROUP_A, 7L);
                             assertThat(g.meetingStarted()).isFalse();
                         });
     }
 
     @Test
+    @DisplayName("회차_행_ID_가_아니라_분반_회차_번호와_종류_제목을_돌려준다")
+    void 회차_행_ID_가_아니라_분반_회차_번호와_종류_제목을_돌려준다() {
+        // 행 ID 는 모든 스터디가 같이 쓰는 번호라, 분반 첫 회차가 28 일 수 있다 (2026-11-01).
+        StudyMeeting kickoff =
+                withId(StudyMeeting.kickoff(GROUP_A, Instant.now().minus(7, ChronoUnit.DAYS)), 27L);
+        StudyMeeting first =
+                withId(
+                        StudyMeeting.schedule(
+                                GROUP_A, Instant.now().plus(30, ChronoUnit.MINUTES), "OT"),
+                        28L);
+        StudyMeeting second =
+                withId(
+                        StudyMeeting.schedule(
+                                GROUP_A, Instant.now().plus(7, ChronoUnit.DAYS), null),
+                        29L);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(kickoff, first, second));
+        givenAccounts();
+
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            assertThat(g.meetingType()).isEqualTo("REGULAR");
+                            assertThat(g.meetingTitle()).isEqualTo("OT");
+                        });
+        verifyMarkedOn(GROUP_A, 28L);
+    }
+
+    @Test
+    @DisplayName("진행_중인_킥오프에_찍히면_회차_번호는_0_종류는_KICKOFF")
+    void 진행_중인_킥오프에_찍히면_회차_번호는_0_종류는_KICKOFF() {
+        StudyMeeting kickoff =
+                withId(
+                        StudyMeeting.kickoff(GROUP_A, Instant.now().minus(1, ChronoUnit.HOURS)),
+                        27L);
+        kickoff.start(Instant.now().minus(1, ChronoUnit.HOURS));
+        StudyMeeting first =
+                withId(
+                        StudyMeeting.schedule(
+                                GROUP_A, Instant.now().plus(7, ChronoUnit.DAYS), null),
+                        28L);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(kickoff, first));
+        givenAccounts();
+
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyMeetingNumber()).isZero();
+                            assertThat(g.meetingType()).isEqualTo("KICKOFF");
+                            assertThat(g.meetingTitle()).isEqualTo("킥오프");
+                        });
+        verifyMarkedOn(GROUP_A, 27L);
+    }
+
+    @Test
     @DisplayName("지난주_회차가_열린_채로_남아_있어도_이번_주_회차를_연다")
     void 지난주_회차가_열린_채로_남아_있어도_이번_주_회차를_연다() {
-        // 재현: END_AT 을 쓰는 운영 경로가 없다 (docs/share/2026-11-17-meeting-end.md).
-        // 운영과 같은 길로 만든다 — 화면이 schedule() 로 잡고, 지난주 !출석체크 가 start() 로 열었다.
-        // 생성자로 endAt 을 넣는 픽스처와 달리 END_AT 이 비어 있다.
+        // 재현 (docs/share/2026-11-17-meeting-end.md). 운영과 같은 길로 만든다 — 화면이 schedule() 로 잡고,
+        // 지난주 !출석체크 가 start() 로 열었다. 생성자로 endAt 을 넣는 픽스처와 달리 END_AT 이 비어 있다.
         Instant lastWeek = Instant.now().minus(7, ChronoUnit.DAYS);
         StudyMeeting lastWeekMeeting = withId(StudyMeeting.schedule(GROUP_A, lastWeek, null), 1L);
         lastWeekMeeting.start(lastWeek);
@@ -210,11 +277,12 @@ class DiscordAttendanceServiceTest {
                 .singleElement()
                 .satisfies(
                         g -> {
-                            assertThat(g.studyMeetingId()).isEqualTo(2L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(2);
                             assertThat(g.meetingStarted()).isTrue();
                         });
-        assertThat(thisWeekMeeting.getStartAt()).isNotNull();
+        verifyMarkedOn(GROUP_A, 2L);
         verify(studyAttendanceRepository, never()).markPresent(any(), any(), any(), eq(1L), any());
+        assertThat(lastWeekMeeting.getEndAt()).isEqualTo(lastWeek.plus(StudyMeeting.DURATION));
     }
 
     @Test
@@ -271,7 +339,8 @@ class DiscordAttendanceServiceTest {
                 .anySatisfy(
                         g -> {
                             assertThat(g.studyGroupId()).isEqualTo(GROUP_A);
-                            assertThat(g.studyMeetingId()).isEqualTo(1L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            verifyMarkedOn(GROUP_A, 1L);
                             assertThat(g.marked())
                                     .containsExactlyInAnyOrder(
                                             LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
@@ -279,7 +348,8 @@ class DiscordAttendanceServiceTest {
                 .anySatisfy(
                         g -> {
                             assertThat(g.studyGroupId()).isEqualTo(GROUP_B);
-                            assertThat(g.studyMeetingId()).isEqualTo(9L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            verifyMarkedOn(GROUP_B, 9L);
                             assertThat(g.marked()).containsExactly(OTHER_GROUP_DISCORD_ID);
                         });
         assertThat(response.noMeeting()).isEmpty();
@@ -406,6 +476,42 @@ class DiscordAttendanceServiceTest {
     }
 
     @Test
+    @DisplayName("끝난_회차는_종료_기준_시각으로_닫고_다음_예정_회차를_시작한다")
+    void 끝난_회차는_종료_기준_시각으로_닫고_다음_예정_회차를_시작한다() {
+        // 1주차가 열린 채 방치됨 — 2주차 출석이 1주차에 쌓이는 버그 케이스
+        StudyMeeting stale = meeting(1L, GROUP_A, Instant.now().minus(5, ChronoUnit.HOURS), true);
+        StudyMeeting week2 =
+                meeting(2L, GROUP_A, Instant.now().minus(30, ChronoUnit.MINUTES), false);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(stale, week2));
+        givenAccounts();
+
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        // 1주차는 닫히고, 2주차에 출석이 찍혀야 한다. END_AT 은 닫은 지금이 아니라 종료 기준(시작 + 120분)이다
+        assertThat(stale.getEndAt()).isEqualTo(stale.getStartAt().plus(StudyMeeting.DURATION));
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(g -> assertThat(g.meetingStarted()).isTrue());
+        assertThat(week2.getStartAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("120분_안의_진행중_회차는_닫지_않는다")
+    void 끝나지_않은_진행중_회차는_닫지_않는다() {
+        StudyMeeting recent =
+                meeting(1L, GROUP_A, Instant.now().minus(90, ChronoUnit.MINUTES), true);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(recent));
+        givenAccounts();
+
+        service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(recent.getEndAt()).isNull();
+        assertThat(recent.getStartAt()).isNotNull();
+    }
+
+    @Test
     @DisplayName("연동_안된_유저는_에러가_아니라_unmatched_로_돌려준다")
     void 연동_안된_유저는_에러가_아니라_unmatched_로_돌려준다() {
         givenOneGroupStudy();
@@ -436,6 +542,12 @@ class DiscordAttendanceServiceTest {
 
     private void givenMeetings(Long groupId, List<StudyMeeting> meetings) {
         when(studyMeetingRepository.findByStudyGroupIdForUpdate(groupId)).thenReturn(meetings);
+    }
+
+    /** 응답은 번호만 주므로 어느 회차 행에 찍혔는지는 출석 쓰기로 본다. */
+    private void verifyMarkedOn(Long groupId, Long meetingId) {
+        verify(studyAttendanceRepository, atLeastOnce())
+                .markPresent(any(), eq(STUDY_ID), eq(groupId), eq(meetingId), any());
     }
 
     private void givenAccounts() {

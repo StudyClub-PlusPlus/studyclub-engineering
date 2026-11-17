@@ -146,7 +146,7 @@ erDiagram
   STUDY_GROUP ||--o{ STUDY_PARTICIPANT : "소속"
   STUDY_PARTICIPANT ||--o{ STUDY_ATTENDANCE : "중단 전 기록은 남음"
   STUDY {
-    bigint CREATED_BY "담당 캡틴"
+    bigint OWNER_CAPTAIN_ID "담당 캡틴"
   }
   STUDY_PARTICIPANT {
     varchar PARTICIPANT_ROLE "LEADER = 네비게이터"
@@ -168,12 +168,13 @@ erDiagram
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+> 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front 스터디 일정 › 출석 참여 중단 | 없음 — 스터디 일정 화면이 자리만 있다 | [출석 수정](../navigator-edit-attendance/PRD.md#개발-범위)과 같은 화면에서 만든다 |
+| FE | core-front 스터디 일정 › 출석 참여 중단 | 있음 (#278) — 출석 탭에서 고른 사람을 중단 예정으로 두고 확인 창 뒤 `withdrawals[]` 로 저장 | 10-18 변경 표 |
 | BE | `POST /api/me/studies/{studyId}/attendances` (`withdrawals[]`) | 구현완료 (2026-10-20) — 중단 · 발표자 정리 · 감사 로그 · `study_participant.withdrawn` 이벤트 | 없음 |
-| 기획 | 저장 경로 | 사용자 사이트 경로 `/api/me/…` 에만 더했다. 백오피스 경로는 `withdrawals` 를 400 으로 막는다 (2026-10-20, [스펙](../../../specs/study-participant/spec.md)) | 백오피스 출석 탭의 참여 중단은 그 화면을 만들 때 정한다 |
+| 기획 | 저장 경로 | 사용자 사이트 경로 `/api/me/…` 에만 더했다. 백오피스 경로는 `withdrawals` 를 400 으로 막는다 (2026-10-20, [스펙](../../../specs/study-participant/spec.md)) | ~~백오피스 출석 탭의 참여 중단은 그 화면을 만들 때 정한다~~ → 백오피스 출석부에서 담당 캡틴이 크루 · 네비게이터의 참여를 중단시킬 수 있다 (2026-10-23 기획, [share 10-23](../../../docs/share/2026-10-23-planning-decisions.md)). 구현 진행 중 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업
 
@@ -211,7 +212,7 @@ erDiagram
 
 ### 권한
 
-- 중단: 대상과 **같은 분반**의 네비게이터(명부에 살아 있음) · 담당 캡틴(`STUDY.CREATED_BY`). 아니면 403 — 출석 쓰기와 같은 분반 단위([authz-guards](../../../specs/authz-guards/spec.md) B)
+- 중단: 대상과 **같은 분반**의 네비게이터(명부에 살아 있음) · 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`). 아니면 403 — 출석 쓰기와 같은 분반 단위([authz-guards](../../../specs/authz-guards/spec.md) B)
 - 크루로 참여한 다른 캡틴은 크루다 — 403
 - 서버에서 검증한다. 화면에서 체크박스를 숨기는 것은 편의일 뿐이다
 

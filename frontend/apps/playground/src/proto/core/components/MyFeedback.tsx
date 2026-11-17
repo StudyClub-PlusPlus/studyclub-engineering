@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { FeedbackDialog } from '@core/components/Feedback';
@@ -40,7 +40,7 @@ function UserStatus({ status }: { status: FeedbackStatus }) {
   const done = status === 'done';
   return (
     <span
-      className={`inline-flex whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-semibold ${
+      className={`inline-flex whitespace-nowrap rounded-pill px-2 py-0.5 type-label-sm ${
         done ? 'bg-success-50 text-success-700' : 'bg-surface-2 text-fg-secondary'
       }`}
     >
@@ -77,13 +77,15 @@ function useMe(locale: Locale, next: string): string | null | undefined {
   return me;
 }
 
-export function MyFeedbackList({ locale, discordUrl }: { locale: Locale; discordUrl: string }) {
+export function MyFeedbackList({ locale }: { locale: Locale }) {
   const router = useRouter();
   const base = `/proto/core/${locale}/my/feedbacks`;
   const me = useMe(locale, base);
   const [rows, setRows] = useState<Feedback[] | null>(null);
   const [page, setPage] = useState(1);
-  const [writing, setWriting] = useState(false);
+  // 푸터의 「의견 보내기」는 **쓰러 온 사람**이다. 목록을 보여 주고 한 번 더 누르게 하지 않는다
+  const write = useSearchParams()?.get('write') === '1';
+  const [writing, setWriting] = useState(write);
 
   useEffect(() => {
     if (me) setRows(listMyFeedbacks(me));
@@ -102,19 +104,19 @@ export function MyFeedbackList({ locale, discordUrl }: { locale: Locale; discord
   return (
     <div className={`${PAGE} pb-16 pt-10`}>
       <div className='flex items-end justify-between gap-4'>
-        <h1 className='text-2xl font-extrabold tracking-tight'>내 문의</h1>
+        <h1 className='type-headline-lg'>내 문의</h1>
         {writeButton}
       </div>
 
       <div data-anno='my-feedback:2' className='card mt-6 overflow-x-auto p-0'>
-        <table className='w-full table-fixed text-sm'>
+        <table className='w-full table-fixed type-body-sm'>
           <colgroup>
             <col className='w-[110px]' />
             <col className='min-w-[180px]' />
             <col className='w-[110px]' />
             <col className='w-[110px]' />
           </colgroup>
-          <thead className='border-b border-border text-left text-xs font-semibold text-fg-muted'>
+          <thead className='border-b border-border text-left type-label-sm text-fg-muted'>
             <tr>
               <th className='px-5 py-3'>유형</th>
               <th className='px-5 py-3'>제목</th>
@@ -171,7 +173,6 @@ export function MyFeedbackList({ locale, discordUrl }: { locale: Locale; discord
           if (me) setRows(listMyFeedbacks(me));
           setPage(1);
         }}
-        discordUrl={discordUrl}
       />
     </div>
   );
@@ -189,30 +190,30 @@ export function MyFeedbackDetail({ locale, id }: { locale: Locale; id: string })
 
   return (
     <div className={`${PAGE} pb-16 pt-10`}>
-      <Link href={base} className='inline-flex items-center gap-1 text-sm font-medium text-fg-muted hover:text-fg'>
+      <Link href={base} className='inline-flex items-center gap-1 type-label-lg text-fg-muted hover:text-fg'>
         <ChevronLeft size={15} /> 목록으로
       </Link>
 
       {f === undefined ? (
         <div className='mt-4 h-60 max-w-3xl animate-pulse rounded-card bg-surface-2' />
       ) : f === null ? (
-        <p className='mt-16 text-center text-sm text-fg-muted'>찾을 수 없는 문의입니다.</p>
+        <p className='mt-16 text-center type-body-sm text-fg-muted'>찾을 수 없는 문의입니다.</p>
       ) : (
         <article data-anno='my-feedback:3' className='card mt-4 max-w-3xl divide-y divide-border overflow-hidden p-0'>
           <header className='px-6 py-5'>
             <div className='flex min-w-0 items-center gap-2'>
               <Badge tone={TYPE_TONE[f.type]}>{FEEDBACK_TYPE_LABEL[f.type]}</Badge>
-              <h1 className='min-w-0 break-words text-lg font-bold tracking-tight'>{f.title}</h1>
+              <h1 className='min-w-0 break-words type-title-md'>{f.title}</h1>
             </div>
             <div className='mt-2 flex items-center justify-between gap-3'>
-              <span className='tnum text-sm text-fg-muted'>{stamp(f.createdAt)}</span>
+              <span className='tnum type-body-sm text-fg-muted'>{stamp(f.createdAt)}</span>
               <UserStatus status={f.status} />
             </div>
           </header>
 
           {/* 내가 쓴 내용 — 평문, 줄바꿈 그대로 */}
           <section className='px-6 py-5'>
-            <p className='whitespace-pre-wrap break-words text-base leading-relaxed [overflow-wrap:anywhere]'>{f.body}</p>
+            <p className='whitespace-pre-wrap break-words type-body-md [overflow-wrap:anywhere]'>{f.body}</p>
             {f.images && f.images.length > 0 && (
               <div className='mt-4 flex flex-wrap gap-2'>
                 {f.images.map((src, i) => (
@@ -227,15 +228,15 @@ export function MyFeedbackDetail({ locale, id }: { locale: Locale; id: string })
             {f.reply ? (
               <>
                 <div className='flex items-baseline justify-between gap-3'>
-                  <h2 className='text-sm font-bold'>답변</h2>
-                  <span className='tnum text-sm text-fg-muted'>{stamp(f.reply.at)}</span>
+                  <h2 className='type-label-lg'>답변</h2>
+                  <span className='tnum type-body-sm text-fg-muted'>{stamp(f.reply.at)}</span>
                 </div>
-                <p className='mt-2 whitespace-pre-wrap break-words text-base leading-relaxed [overflow-wrap:anywhere]'>
+                <p className='mt-2 whitespace-pre-wrap break-words type-body-md [overflow-wrap:anywhere]'>
                   {f.reply.body}
                 </p>
               </>
             ) : (
-              <p className='text-sm text-fg-muted'>답변을 준비하고 있어요</p>
+              <p className='type-body-sm text-fg-muted'>답변을 준비하고 있어요</p>
             )}
           </section>
         </article>

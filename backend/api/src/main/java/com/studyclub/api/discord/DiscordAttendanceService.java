@@ -11,6 +11,7 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.MeetingSchedule;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import java.time.Duration;
@@ -184,7 +185,12 @@ public class DiscordAttendanceService {
             }
             groups.add(
                     new DiscordAttendanceResponse.MarkedGroup(
-                            groupId, meetingId, picked.get().started(), marked));
+                            groupId,
+                            picked.get().number(),
+                            picked.get().meeting().getMeetingType().name(),
+                            picked.get().meeting().getTitle(),
+                            picked.get().started(),
+                            marked));
         }
 
         return new DiscordAttendanceResponse(
@@ -200,6 +206,11 @@ public class DiscordAttendanceService {
         List<StudyMeeting> meetings =
                 studyMeetingRepository.findByStudyGroupIdForUpdate(studyGroupId);
         Instant now = Instant.now();
+        Map<Long, Integer> numbers = MeetingSchedule.numbersOf(meetings);
+
+        // 끝난 회차에 END_AT 을 남긴다. 판정은 isInProgress(now) 가 시각으로 하므로 기록용이다 —
+        // 화면이 받는 endAt 이 채워진다 (#423 의 자동 닫기를 계산 판정 위로 옮겼다, 2026-11-17).
+        meetings.forEach(m -> m.closeIfOver(now));
 
         // 후보가 여럿이어도 거절하지 않는다. 한 스터디가 보이스 채널을 두 개 쓰고 각각 세션이 열려 있는 건
         // 깨진 데이터가 아니라 정상 운영이다 (2026-09-24 #111 리뷰, 김민정). 가장 최근에 시작한 회차 =
@@ -209,7 +220,9 @@ public class DiscordAttendanceService {
                         .filter(m -> m.isInProgress(now))
                         .max(Comparator.comparing(StudyMeeting::getStartAt));
         if (inProgress.isPresent()) {
-            return Optional.of(new PickedMeeting(inProgress.get(), false));
+            return Optional.of(
+                    new PickedMeeting(
+                            inProgress.get(), false, numbers.get(inProgress.get().getId())));
         }
 
         // 시작할 회차도 같은 규칙 — 예정 시각이 지금에 가장 가까운 것.
@@ -225,7 +238,7 @@ public class DiscordAttendanceService {
 
         StudyMeeting meeting = startable.get();
         meeting.start(now);
-        return Optional.of(new PickedMeeting(meeting, true));
+        return Optional.of(new PickedMeeting(meeting, true, numbers.get(meeting.getId())));
     }
 
     /** 같은 계정에 명부 행이 둘 이상이면 ACTIVE·PAUSED 를 우선한다. 둘 다 같은 등급이면 먼저 나온 행. */
@@ -242,5 +255,5 @@ public class DiscordAttendanceService {
             List<String> notParticipant,
             Map<String, Long> accountIdByDiscordId) {}
 
-    private record PickedMeeting(StudyMeeting meeting, boolean started) {}
+    private record PickedMeeting(StudyMeeting meeting, boolean started, int number) {}
 }

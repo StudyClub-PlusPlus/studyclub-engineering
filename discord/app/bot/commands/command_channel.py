@@ -1,6 +1,6 @@
 """The channel gate every bot command passes.
 
-Commands are kept to the one channel in ``DISCORD_BOT_CHANNEL_ID``. They are
+Commands are kept to the one channel in ``DISCORD_CONFIG_BOT_CHANNEL_ID``. They are
 moderator tools -- refresh the board, list the quiet 공부방 -- so the people who
 use them are a handful of captains, and keeping the traffic in one place means
 the rest of the guild never has to read it and whoever runs the guild has one
@@ -30,7 +30,7 @@ from app.config import Settings
 
 logger = logging.getLogger(__name__)
 
-DISABLED = "DISCORD_BOT_CHANNEL_ID 가 설정되지 않아 봇 명령을 받을 채널이 없습니다."
+DISABLED = "DISCORD_CONFIG_BOT_CHANNEL_ID 가 설정되지 않아 봇 명령을 받을 채널이 없습니다."
 
 
 def wrong_channel(channel_id: int) -> str:
@@ -45,10 +45,10 @@ def wrong_channel(channel_id: int) -> str:
 async def check(ctx: commands.Context, settings: Settings) -> bool:
     """Whether ``ctx`` is the command channel, telling the caller when it is not.
 
-    An unset ``DISCORD_BOT_CHANNEL_ID`` refuses every command everywhere rather
+    An unset ``DISCORD_CONFIG_BOT_CHANNEL_ID`` refuses every command everywhere rather
     than accepting them anywhere, the same way an unset
-    ``DISCORD_CAPTAIN_ROLE_ID`` shuts the door in ``may_update`` and
-    ``caller_guild``: a missing setting never means "open".
+    ``DISCORD_CONFIG_CAPTAIN_ROLE_ID`` shuts the door in ``may_update``: a missing
+    setting never means "open".
 
     The refusal is sent in whatever channel was used -- a line of noise there,
     but a command that answers with silence reads as a bot that is down. A DM
@@ -57,7 +57,7 @@ async def check(ctx: commands.Context, settings: Settings) -> bool:
     """
     if settings.command_channel_id is None:
         logger.warning(
-            "%s: refused, DISCORD_BOT_CHANNEL_ID is not set so no channel takes commands",
+            "%s: refused, DISCORD_CONFIG_BOT_CHANNEL_ID is not set so no channel takes commands",
             ctx.invoked_with,
         )
         await ctx.send(DISABLED)

@@ -5,11 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.discord.StudyDiscordLink;
+import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyTimezone;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +50,7 @@ class AdminStudyCrudIntegrationTest {
     @Autowired AccountRepository accountRepository;
     @Autowired StudyRepository studyRepository;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired StudyDiscordLinkRepository studyDiscordLinkRepository;
 
     @BeforeEach
     void setUp() {
@@ -73,6 +78,24 @@ class AdminStudyCrudIntegrationTest {
         assertThat(response.getBody())
                 .containsEntry("title", "백오피스 상세")
                 .containsEntry("status", "DRAFT");
+    }
+
+    @Test
+    @DisplayName("상세의 연결 여부는 URL 입력 여부가 아닌 저장된 디스코드 연결을 따른다")
+    void detailReflectsDiscordLink() {
+        Long studyId = createStudy("디스코드 연결 상태");
+        jdbcTemplate.update(
+                "UPDATE STUDY SET DISCORD_CHANNEL_URL = ? WHERE ID = ?",
+                "https://discord.com/channels/123/456",
+                studyId);
+        var unlinked = exchange(HttpMethod.GET, "/api/admin/studies/" + studyId, ADMIN_ID, null);
+        assertThat(unlinked.getBody()).containsEntry("discordLinked", false);
+
+        studyDiscordLinkRepository.save(
+                new StudyDiscordLink(studyId, "1327394882193883136", "1327394882193883140"));
+        jdbcTemplate.update("UPDATE STUDY SET DISCORD_CHANNEL_URL = NULL WHERE ID = ?", studyId);
+        var linked = exchange(HttpMethod.GET, "/api/admin/studies/" + studyId, ADMIN_ID, null);
+        assertThat(linked.getBody()).containsEntry("discordLinked", true);
     }
 
     @Test
@@ -220,6 +243,88 @@ class AdminStudyCrudIntegrationTest {
         assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
     }
 
+    // ── 시간대 ───────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("성공(시간대) - 등록 때 고른 시간대를 저장하고 상세가 그대로 준다")
+    void createSavesTimezone() {
+        Map<String, Object> body = new HashMap<>(createBody("시간대 등록"));
+        body.put("timezone", "PST");
+        Long studyId = createStudy(body);
+
+        var response = exchange(HttpMethod.GET, "/api/admin/studies/" + studyId, ADMIN_ID, null);
+
+        assertThat(response.getBody()).containsEntry("timezone", "PST");
+        assertThat(studyRepository.findById(studyId).orElseThrow().getTimezone())
+                .isEqualTo(StudyTimezone.PST);
+    }
+
+    @Test
+    @DisplayName("성공(시간대) - 안 고르면 null(미정)이다. 일정 문구로 추정한 값을 상세에 채우지 않는다")
+    void createWithoutTimezoneIsNull() {
+        Map<String, Object> body = new HashMap<>(createBody("시간대 미정"));
+        body.put("schedule", "매주 목 20:00 KST");
+        Long studyId = createStudy(body);
+
+        var response = exchange(HttpMethod.GET, "/api/admin/studies/" + studyId, ADMIN_ID, null);
+
+        assertThat(response.getBody()).containsKey("timezone").containsEntry("timezone", null);
+    }
+
+    @Test
+    @DisplayName("실패(시간대) - 등록에 정해진 값 밖의 시간대를 보내면 400 + errorCode INVALID_INPUT")
+    void createRejectsUnknownTimezone() {
+        Map<String, Object> body = new HashMap<>(createBody("시간대 오류"));
+        body.put("timezone", "Asia/Seoul");
+
+        var response = exchange(HttpMethod.POST, "/api/admin/studies", ADMIN_ID, body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @Test
+    @DisplayName("성공(시간대) - 수정으로 바꾸고, 키를 빼면 유지하고, null 이면 미정으로 되돌린다")
+    void updateChangesTimezone() {
+        Long studyId = createStudy("시간대 수정");
+        String url = "/api/admin/studies/" + studyId;
+
+        assertThat(exchange(HttpMethod.PATCH, url, ADMIN_ID, Map.of("timezone", "BOTH")))
+                .extracting(ResponseEntity::getStatusCode)
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(studyRepository.findById(studyId).orElseThrow().getTimezone())
+                .isEqualTo(StudyTimezone.BOTH);
+
+        exchange(HttpMethod.PATCH, url, ADMIN_ID, Map.of("title", "시간대 그대로"));
+        assertThat(studyRepository.findById(studyId).orElseThrow().getTimezone())
+                .isEqualTo(StudyTimezone.BOTH);
+
+        Map<String, Object> clear = new HashMap<>();
+        clear.put("timezone", null);
+        exchange(HttpMethod.PATCH, url, ADMIN_ID, clear);
+        assertThat(studyRepository.findById(studyId).orElseThrow().getTimezone()).isNull();
+    }
+
+    @Test
+    @DisplayName("실패(시간대) - 수정에 정해진 값 밖의 시간대를 보내면 400, 값은 그대로다")
+    void updateRejectsUnknownTimezone() {
+        Map<String, Object> body = new HashMap<>(createBody("시간대 수정 오류"));
+        body.put("timezone", "KST");
+        Long studyId = createStudy(body);
+
+        var response =
+                exchange(
+                        HttpMethod.PATCH,
+                        "/api/admin/studies/" + studyId,
+                        ADMIN_ID,
+                        Map.of("timezone", "EST"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        assertThat(studyRepository.findById(studyId).orElseThrow().getTimezone())
+                .isEqualTo(StudyTimezone.KST);
+    }
+
     // ── 삭제 ─────────────────────────────────────────────────────────────────
 
     @Test
@@ -262,11 +367,12 @@ class AdminStudyCrudIntegrationTest {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private Long createStudy(String title) {
+        return createStudy(createBody(title));
+    }
+
+    private Long createStudy(Map<String, Object> body) {
         var response =
-                rest.postForEntity(
-                        "/api/admin/studies",
-                        authenticated(ADMIN_ID, createBody(title)),
-                        Void.class);
+                rest.postForEntity("/api/admin/studies", authenticated(ADMIN_ID, body), Void.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String path = response.getHeaders().getLocation().getPath();
         return Long.parseLong(path.substring(path.lastIndexOf('/') + 1));

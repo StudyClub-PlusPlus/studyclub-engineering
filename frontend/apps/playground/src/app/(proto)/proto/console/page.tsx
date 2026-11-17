@@ -5,7 +5,8 @@ import { KpiCard } from '@console/components/KpiCard';
 import { StudyStatusBoard } from '@console/components/StudyStatusBoard';
 import { aggregate } from '@console/lib/dashboard';
 import { tx } from '@console/lib/l10n';
-import { events, todayISO } from '@studyclub/mock';
+import { events } from '@studyclub/mock';
+import { todayISO } from '@studyclub/utils';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
@@ -35,8 +36,8 @@ export default function Dashboard() {
     <div>
       <ScreenSpecRegistrar spec={SPEC} />
       <header data-anno='1' className='mb-5 flex flex-wrap items-baseline justify-between gap-2'>
-        <h1 className='text-2xl font-extrabold tracking-tight'>대시보드</h1>
-        <p data-anno='1-1' className='tnum text-xs text-fg-muted'>
+        <h1 className='type-headline-md'>대시보드</h1>
+        <p data-anno='1-1' className='tnum type-label-sm text-fg-muted'>
           전기간 기준 · {updatedAt} 갱신
         </p>
       </header>

@@ -1,10 +1,12 @@
 package com.studyclub.api.participant;
 
+import com.studyclub.api.audit.AdminAuditRecorder;
 import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.audit.AdminAuditLog;
-import com.studyclub.domain.audit.AdminAuditLogRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
@@ -32,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 출석부의 참여 중단 (specs/study-participant/spec.md). 출석 저장과 <b>한 트랜잭션</b>이라 {@link #prepare} 로 전부 검증한 뒤
  * 출석을 쓰고, 마지막에 {@link #apply} 로 반영한다 — 하나라도 거절되면 출석도 중단도 남지 않는다.
+ *
+ * <p>경로마다 누가 누구를 중단하는지가 다르다. 사용자 사이트({@link #prepare})는 담당 캡틴 · 그 분반 네비게이터가 크루만, 백오피스({@link
+ * #prepareForBackOffice})는 담당 캡틴만 크루 · 네비게이터를 (2026-10-23 기획 결정). 잠금 순서 · 감사 로그 · 이벤트는 같다.
  */
 @Service
 public class ParticipantWithdrawalService {
@@ -40,25 +45,28 @@ public class ParticipantWithdrawalService {
     private final StudyGroupRepository studyGroupRepository;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyMeetingRepository studyMeetingRepository;
-    private final AdminAuditLogRepository adminAuditLogRepository;
+    private final AdminAuditRecorder auditRecorder;
     private final StudyCaptainGuard studyCaptainGuard;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccountRepository accountRepository;
 
     public ParticipantWithdrawalService(
             StudyRepository studyRepository,
             StudyGroupRepository studyGroupRepository,
             StudyParticipantRepository studyParticipantRepository,
             StudyMeetingRepository studyMeetingRepository,
-            AdminAuditLogRepository adminAuditLogRepository,
+            AdminAuditRecorder auditRecorder,
             StudyCaptainGuard studyCaptainGuard,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            AccountRepository accountRepository) {
         this.studyRepository = studyRepository;
         this.studyGroupRepository = studyGroupRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyMeetingRepository = studyMeetingRepository;
-        this.adminAuditLogRepository = adminAuditLogRepository;
+        this.auditRecorder = auditRecorder;
         this.studyCaptainGuard = studyCaptainGuard;
         this.eventPublisher = eventPublisher;
+        this.accountRepository = accountRepository;
     }
 
     /**
@@ -73,6 +81,22 @@ public class ParticipantWithdrawalService {
     @Transactional
     public Prepared prepare(
             Long actorAccountId, Long studyId, Long studyGroupId, List<Long> participantIds) {
+        return prepare(actorAccountId, studyId, studyGroupId, participantIds, false);
+    }
+
+    /** 백오피스 출석부 — 담당 캡틴만 부르고, 대상에 네비게이터(LEADER)도 된다. 판정 순서 · 잠금은 {@link #prepare} 와 같다. */
+    @Transactional
+    public Prepared prepareForBackOffice(
+            Long actorAccountId, Long studyId, Long studyGroupId, List<Long> participantIds) {
+        return prepare(actorAccountId, studyId, studyGroupId, participantIds, true);
+    }
+
+    private Prepared prepare(
+            Long actorAccountId,
+            Long studyId,
+            Long studyGroupId,
+            List<Long> participantIds,
+            boolean backOffice) {
         Map<Long, StudyGroup> lockedGroups =
                 studyGroupRepository.findByStudyIdForUpdate(studyId).stream()
                         .collect(Collectors.toMap(StudyGroup::getId, Function.identity()));
@@ -87,9 +111,18 @@ public class ParticipantWithdrawalService {
             }
             throw new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다.");
         }
-        boolean ownerCaptain =
-                studyCaptainGuard.assertCanWithdrawInGroup(
-                        actorAccountId, study.getCreatedBy(), studyGroupId, "참여를 중단시킬 권한이 없습니다.");
+        boolean ownerCaptain = true;
+        if (backOffice) {
+            studyCaptainGuard.assertOwnerCaptain(
+                    actorAccountId, study.getOwnerCaptainId(), "담당 캡틴만 참여를 중단시킬 수 있습니다.");
+        } else {
+            ownerCaptain =
+                    studyCaptainGuard.assertCanWithdrawInGroup(
+                            actorAccountId,
+                            study.getOwnerCaptainId(),
+                            studyGroupId,
+                            "참여를 중단시킬 권한이 없습니다.");
+        }
 
         if (new HashSet<>(participantIds).size() != participantIds.size()) {
             throw new BusinessException(
@@ -114,7 +147,7 @@ public class ParticipantWithdrawalService {
             throw new BusinessException(ErrorCode.STUDY_ENDED);
         }
         for (StudyParticipant target : targets) {
-            assertWithdrawable(target, actorAccountId, study.getCreatedBy());
+            assertWithdrawable(target, actorAccountId, study.getOwnerCaptainId(), backOffice);
         }
         // 회차는 요청한 분반 · 대상 분반만 ID 오름차순으로 미리 잠근다 — 디스코드 출석과 같은 순서. 출석 쓰기 · 발표자 비우기가 뒤에서 다시 잠가도 기다리지
         // 않는다
@@ -139,9 +172,19 @@ public class ParticipantWithdrawalService {
                         .filter(target -> withdrawOne(prepared.actorAccountId(), target, now))
                         .toList();
         releasePresenterSlots(prepared.lockedGroupIds(), withdrawn, now);
+        Map<Long, String> discordIds =
+                accountRepository
+                        .findAllById(
+                                withdrawn.stream().map(StudyParticipant::getAccountId).toList())
+                        .stream()
+                        .filter(Account::isDiscordLinked)
+                        .collect(Collectors.toMap(Account::getId, Account::getDiscordId));
         for (StudyParticipant participant : withdrawn) {
             eventPublisher.publishEvent(
-                    StudyParticipantWithdrawn.of(prepared.actorAccountId(), participant));
+                    StudyParticipantWithdrawn.of(
+                            prepared.actorAccountId(),
+                            participant,
+                            discordIds.get(participant.getAccountId())));
         }
     }
 
@@ -151,9 +194,13 @@ public class ParticipantWithdrawalService {
             return false;
         }
         studyParticipantRepository.save(target);
-        adminAuditLogRepository.save(
+        auditRecorder.record(
                 AdminAuditLog.withdraw(
-                        actorAccountId, target.getAccountId(), target.getId(), before));
+                        actorAccountId,
+                        target.getAccountId(),
+                        target.getId(),
+                        before,
+                        target.getParticipantRole()));
         return true;
     }
 
@@ -176,15 +223,18 @@ public class ParticipantWithdrawalService {
     }
 
     private static void assertWithdrawable(
-            StudyParticipant target, Long actorAccountId, Long studyCreatedBy) {
+            StudyParticipant target,
+            Long actorAccountId,
+            Long studyOwnerCaptainId,
+            boolean backOffice) {
         if (target.getAccountId().equals(actorAccountId)) {
             throw new BusinessException(ErrorCode.CANNOT_WITHDRAW_SELF);
         }
-        // 운영진의 역할 · 참여는 백오피스에서 캡틴이 바꾼다
-        if (target.getParticipantRole() == ParticipantRole.LEADER) {
+        // 네비게이터의 참여는 백오피스에서 담당 캡틴이 중단시킨다 (2026-10-23) — 사용자 사이트에서는 막는다
+        if (!backOffice && target.getParticipantRole() == ParticipantRole.LEADER) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "네비게이터는 출석부에서 중단시킬 수 없습니다.");
         }
-        if (studyCreatedBy != null && studyCreatedBy.equals(target.getAccountId())) {
+        if (studyOwnerCaptainId != null && studyOwnerCaptainId.equals(target.getAccountId())) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "담당 캡틴은 출석부에서 중단시킬 수 없습니다.");
         }
         if (target.getStatus() == ParticipantStatus.DELETED

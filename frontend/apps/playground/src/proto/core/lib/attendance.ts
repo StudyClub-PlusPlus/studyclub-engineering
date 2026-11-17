@@ -1,14 +1,9 @@
 'use client';
 
 import { isKickoff, withAdded, zonedInstant, zoneOfStudy, type ProtoMeeting } from '@core/lib/meetings';
-import {
-  attendancePoint,
-  demoMyAttendance,
-  getStudyCrew,
-  studies,
-  type Study,
-  type StudyMeeting,
-} from '@studyclub/mock';
+import { demoMyAttendance, getStudyCrew, studies } from '@studyclub/mock';
+import { type Study, type StudyMeeting } from '@studyclub/types';
+import { attendancePoint } from '@studyclub/utils';
 
 /**
  * 회원 본인의 출석.

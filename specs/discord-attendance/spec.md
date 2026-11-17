@@ -37,8 +37,10 @@
 
 ```
 1) 진행 중인 회차  (START_AT IS NOT NULL AND now < endsAt)
-   endsAt = END_AT ?? max(SCHEDULED_AT, START_AT) + 120분 — END_AT 을 쓰는 경로가 없어
-   END_AT IS NULL 로만 보면 한 번 연 회차가 영원히 진행 중이다 (2026-11-17 결정)
+   endsAt = END_AT ?? max(SCHEDULED_AT, START_AT) + 120분 (2026-11-17 결정)
+   먼저, 끝났는데 END_AT 이 빈 회차는 END_AT = endsAt 으로 닫는다 — 기록용이다.
+   닫는 지금이 아니라 종료 기준을 적어, 일주일 뒤에 닫혀도 실제 종료가 일주일 뒤로 찍히지 않는다.
+   (#423 은 시작 4시간 뒤 END_AT = 지금으로 닫았다. 판정을 시각 계산으로 옮기며 합쳤다)
    여럿이면 START_AT 이 가장 최근인 것 = 지금 모이는 중인 세션
 2) 없으면, SCHEDULED_AT 이 now ± 2h 이내이고 아직 시작 안 한 회차 → START_AT 을 now 로 찍고 사용
    여럿이면 SCHEDULED_AT 이 now 에 가장 가까운 것
@@ -205,7 +207,9 @@ CREATE TABLE STUDY_DISCORD_LINK (
   "groups": [
     {
       "studyGroupId": 70,
-      "studyMeetingId": 41,
+      "studyMeetingNumber": 1,
+      "meetingType": "REGULAR",
+      "meetingTitle": "OT",
       "meetingStarted": true,
       "marked": ["1327394882193883136"]
     }
@@ -219,7 +223,9 @@ CREATE TABLE STUDY_DISCORD_LINK (
 | 필드 | 뜻 |
 |---|---|
 | `groups[].studyGroupId` | 출석이 찍힌 반 |
-| `groups[].studyMeetingId` | 그 반에서 실제로 찍힌 회차 |
+| `groups[].studyMeetingNumber` | 그 반에서 실제로 찍힌 회차의 회차 번호(킥오프 0). 행 ID(`STUDY_MEETING.ID`)가 아니다 — 일정 화면 `meetings[].number` 와 같은 계산(`MeetingSchedule.numbersOf`). 봇은 「N번 회차」로 적는다 |
+| `groups[].meetingType` | `KICKOFF` · `REGULAR`. 봇은 킥오프를 번호·제목 없이 「킥오프」로 적는다 (킥오프 제목은 「킥오프」 고정) |
+| `groups[].meetingTitle` | 회차 제목. 없으면 null. 봇은 정규 회차에 `1번 회차 「OT」` 처럼 붙인다 |
 | `groups[].meetingStarted` | 이 호출이 그 회차를 시작시켰으면 `true` (판정 2번) |
 | `groups[].marked` | 그 반에서 출석 처리된 디스코드 유저 |
 | `unmatched` | 계정 연동이 안 된 유저 |
@@ -248,6 +254,10 @@ CREATE TABLE STUDY_DISCORD_LINK (
 - 단위: `LATE`·`EXCUSED` 를 덮어쓰지 않고 `ABSENT` 만 올리는지, 미연동 유저가 `unmatched` 인지
 - **봇 없이 전부 돌아간다.** 마이그레이션은 빈 MySQL 8 + `ddl-auto=validate` 부팅으로 따로 확인했다
   (`backend-migration-check` 와 같은 절차)
+
+## 퍼널·계측
+
+해당 없음 — 디스코드 일괄 출석은 봇 → 서버 수신이라 분석 이벤트가 없다.
 
 ## 미확정
 

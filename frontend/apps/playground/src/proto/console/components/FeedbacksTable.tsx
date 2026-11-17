@@ -42,7 +42,7 @@ export const STATUS_CLASS: Record<FeedbackStatus, string> = {
 
 export function StatusBadge({ status }: { status: FeedbackStatus }) {
   return (
-    <span className={`inline-flex rounded-pill px-2 py-0.5 text-xs font-semibold ${STATUS_CLASS[status]}`}>
+    <span className={`inline-flex rounded-pill px-2 py-0.5 type-label-sm ${STATUS_CLASS[status]}`}>
       {FEEDBACK_STATUS_LABEL[status]}
     </span>
   );
@@ -65,7 +65,7 @@ function FilterSelect<T extends string>({
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value as T | 'all')}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
+      className={`h-9 shrink-0 rounded-control border bg-surface px-3 type-body-sm outline-none focus:border-brand ${
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
       }`}
     >
@@ -140,7 +140,7 @@ export function FeedbacksTable() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder='제목·내용 검색'
-          className='h-9 w-52 shrink-0 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-9 w-52 shrink-0 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
         />
         <FilterSelect
           label='유형'
@@ -160,7 +160,7 @@ export function FeedbacksTable() {
           }}
           options={FEEDBACK_STATUSES}
         />
-        <span className='tnum ml-auto shrink-0 pl-2 text-xs text-fg-muted'>총 {filtered.length}건</span>
+        <span className='tnum ml-auto shrink-0 pl-2 type-label-sm text-fg-muted'>총 {filtered.length}건</span>
       </div>
 
       <div data-anno='feedback-admin:2' className='card overflow-x-auto'>

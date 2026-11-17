@@ -18,6 +18,7 @@ export const joinedScheduleScreenStates: ScreenStateDef[] = [
   // ─── 일정 탭 (Schedule) ───────────────────────────────────────────────────
   {
     id: 'my-joined-schedule--crew',
+    prdScenarios: ['CORE-ST-015-V02', 'CORE-ST-011-V01', 'CORE-ST-011-S01'],
     label: '내 스터디 일정 — 크루 (조회 & 발표 신청)',
     pageId: 'my-joined-schedule',
     rationale:
@@ -35,6 +36,7 @@ export const joinedScheduleScreenStates: ScreenStateDef[] = [
   },
   {
     id: 'my-joined-schedule--navigator',
+    prdScenarios: ['CORE-ST-015-V01', 'CORE-ST-015-S03'],
     label: '내 스터디 일정 — 네비게이터 (회차 관리 & 회차 추가)',
     pageId: 'my-joined-schedule',
     rationale:
@@ -51,10 +53,10 @@ export const joinedScheduleScreenStates: ScreenStateDef[] = [
   },
   {
     id: 'my-joined-schedule--captain',
+    prdScenarios: ['CORE-ST-015-V01'],
     label: '내 스터디 일정 — 캡틴 (회차 관리 & 일정 수정)',
     pageId: 'my-joined-schedule',
-    rationale:
-      '캡틴 권한으로 접속했을 때 회차 추가 버튼 및 일정 편집 표가 렌더링되는지 확인한다.',
+    rationale: '캡틴 권한으로 접속했을 때 회차 추가 버튼 및 일정 편집 표가 렌더링되는지 확인한다.',
     recipe: {
       storage: CREW_STORAGE,
       render: { url: '/ko/my/joined/1/schedule' },
@@ -69,6 +71,15 @@ export const joinedScheduleScreenStates: ScreenStateDef[] = [
   // ─── 출석 탭 (Attendance) ─────────────────────────────────────────────────
   {
     id: 'my-joined-attendance--crew',
+    prdScenarios: [
+      'CORE-ST-010-V01',
+      'CORE-ST-010-S01',
+      'CORE-ST-010-S02',
+      'CORE-ST-010-S05',
+      'CORE-ST-017-V07',
+      'CORE-ST-018-V10',
+      'CORE-ST-018-S10',
+    ],
     label: '내 스터디 출석 — 크루 (읽기 전용 출석 격자)',
     pageId: 'my-joined-attendance',
     rationale:
@@ -86,6 +97,7 @@ export const joinedScheduleScreenStates: ScreenStateDef[] = [
   },
   {
     id: 'my-joined-attendance--navigator',
+    prdScenarios: ['CORE-ST-017-V01', 'CORE-ST-017-S01', 'CORE-ST-018-V01', 'CORE-ST-018-V02'],
     label: '내 스터디 출석 — 네비게이터 (출석 격자 & 일괄 변경)',
     pageId: 'my-joined-attendance',
     rationale:
@@ -103,6 +115,7 @@ export const joinedScheduleScreenStates: ScreenStateDef[] = [
   },
   {
     id: 'my-joined-attendance--captain',
+    prdScenarios: ['CORE-ST-017-V01', 'CORE-ST-017-S07'],
     label: '내 스터디 출석 — 캡틴 (출석 격자 & 백오피스 출석부)',
     pageId: 'my-joined-attendance',
     rationale:
@@ -115,6 +128,25 @@ export const joinedScheduleScreenStates: ScreenStateDef[] = [
     assertions: {
       visible: ['button:has-text("백오피스 출석부")', '[role="region"]', 'select[aria-label="바꿀 출석 상태"]'],
       hidden: ['button:has-text("출석 적용")'],
+    },
+    screenshot: { fullPage: true },
+  },
+
+  // ─── 공지 탭 (Notice) ─────────────────────────────────────────────────────
+  {
+    id: 'my-joined-notice--captain',
+    prdScenarios: ['CORE-ST-016-S01', 'CORE-ST-016-S02', 'CORE-ST-016-S04', 'CORE-ST-016-S07'],
+    label: '내 스터디 공지 — 캡틴 (공지 쓰기 & 보낸 공지)',
+    pageId: 'my-joined-notice',
+    rationale:
+      '캡틴이 공지 탭에 들어왔을 때 받는 사람 고르기 · 공지 쓰기 · 보낸 공지 기록이 일정 · 출석 탭과 같은 너비로 렌더링되는지 확인한다.',
+    recipe: {
+      storage: CREW_STORAGE,
+      render: { url: '/ko/my/joined/1/schedule/notice' },
+    },
+    viewports: ['desktop'],
+    assertions: {
+      visible: ['h1'],
     },
     screenshot: { fullPage: true },
   },

@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // 사이드바가 읽는 로그인 정보 — 이 테스트와 무관하다
-vi.mock('@/lib/auth', () => ({ getUser: () => null, logout: vi.fn() }));
+vi.mock('@/features/auth/auth', () => ({ getUser: () => null, logout: vi.fn() }));
 
 beforeEach(() => {
   pathname.current = '/notifications';

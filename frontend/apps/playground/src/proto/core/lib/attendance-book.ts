@@ -9,7 +9,8 @@ import {
   type MyStatus,
 } from '@core/lib/attendance';
 import { isKickoff } from '@core/lib/meetings';
-import { attendancePoint, type Study, type StudyMeeting } from '@studyclub/mock';
+import { type Study, type StudyMeeting } from '@studyclub/types';
+import { attendancePoint } from '@studyclub/utils';
 
 /**
  * 크루가 보는 출석 기록 — **본인 기록만**.

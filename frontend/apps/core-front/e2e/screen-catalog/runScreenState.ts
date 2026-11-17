@@ -15,6 +15,9 @@ export async function runScreenState(
 ): Promise<void> {
   const { recipe, assertions, screenshot } = state;
 
+  // 날짜 의존 일정·발표 신청 가능 상태를 기준 이미지와 동일하게 재현한다.
+  await page.clock.setFixedTime(new Date('2026-10-31T03:00:00Z'));
+
   // 1. 뷰포트 설정
   await page.setViewportSize(VIEWPORTS[viewport]);
 
@@ -25,6 +28,7 @@ export async function runScreenState(
 
   // 3. 타겟 페이지 이동
   await page.goto(recipe.render.url, { waitUntil: 'domcontentloaded' });
+  await expect(page).toHaveURL(new URL(recipe.render.url, testInfo.project.use.baseURL!).href);
 
   // 4. 추가 스텝 실행
   if (recipe.steps && recipe.steps.length > 0) {

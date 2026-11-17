@@ -4,9 +4,9 @@ import { useEffect } from 'react';
 
 import { Button } from '@studyclub/ui';
 
-import { ApplicationFormEditor } from './ApplicationFormEditor';
-import { useApplicationForm, useSaveApplicationForm } from './queries';
-import { toFormValues } from './schema';
+import { ApplicationFormEditor } from '@/features/application-form/ApplicationFormEditor';
+import { useApplicationForm, useSaveApplicationForm } from '@/features/application-form/queries';
+import { toFormValues } from '@/features/application-form/schema';
 import type { ApiStudyDetail } from '@/features/studies/types';
 import { ApiError } from '@/lib/http';
 
@@ -20,7 +20,8 @@ export function ApplicationFormTab({
   const query = useApplicationForm(study.id);
   const mutation = useSaveApplicationForm(study.id);
   const status = mutation.error instanceof ApiError ? mutation.error.status : undefined;
-  const readOnly = status === 403 || status === 409;
+  const locked = query.data?.locked ?? false;
+  const readOnly = locked || status === 403 || status === 409;
 
   useEffect(() => {
     onSavingChange(mutation.isPending);
@@ -29,7 +30,7 @@ export function ApplicationFormTab({
 
   if (query.isPending)
     return (
-      <p role='status' className='py-10 text-center text-sm text-fg-muted'>
+      <p role='status' className='py-10 text-center type-body-sm text-fg-muted'>
         불러오는 중
       </p>
     );
@@ -43,7 +44,7 @@ export function ApplicationFormTab({
           : '신청 폼을 불러오지 못했습니다. 다시 시도해 주세요.';
     return (
       <div className='py-10 text-center'>
-        <p role='alert' className='text-sm text-fg-secondary'>
+        <p role='alert' className='type-body-sm text-fg-secondary'>
           {message}
         </p>
         {code !== 403 && code !== 404 && code !== 401 && (
@@ -54,8 +55,9 @@ export function ApplicationFormTab({
       </div>
     );
   }
-  const message =
-    status === 403
+  const message = locked
+    ? (query.data?.lockReason ?? '신청 폼을 수정할 수 없습니다.')
+    : status === 403
       ? '이 스터디의 신청 폼을 고칠 권한이 없습니다.'
       : status === 409
         ? mutation.error?.message

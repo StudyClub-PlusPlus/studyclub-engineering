@@ -1,4 +1,4 @@
-import type { Study, StudyMeeting } from '@studyclub/mock';
+import type { Study, StudyMeeting } from '@studyclub/types';
 
 /**
  * 진행 일정 규칙 → 회차.

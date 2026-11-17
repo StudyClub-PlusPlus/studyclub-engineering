@@ -1,0 +1,59 @@
+/* Content roles shared by the service, console and prototypes.
+   Keep family/uppercase/tabular-nums independent of the role. */
+@utility type-display-lg {
+  font-size: 2.25rem;
+  line-height: 2.75rem;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  word-break: keep-all;
+  @media (min-width: 48rem) { font-size: 3.5rem; line-height: 4rem; }
+}
+@utility type-display-sm {
+  font-size: 2rem;
+  line-height: 2.625rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  word-break: keep-all;
+  @media (min-width: 48rem) { font-size: 2.75rem; line-height: 3.25rem; }
+}
+@utility type-headline-lg {
+  font-size: 2.25rem; line-height: 2.875rem; font-weight: 600; letter-spacing: -0.025em;
+}
+@utility type-headline-md {
+  font-size: 1.75rem; line-height: 2.375rem; font-weight: 600; letter-spacing: -0.02em;
+}
+@utility type-headline-sm {
+  font-size: 1.5rem; line-height: 2.125rem; font-weight: 600; letter-spacing: -0.015em;
+}
+@utility type-title-lg {
+  font-size: 1.25rem; line-height: 1.875rem; font-weight: 600; letter-spacing: -0.01em;
+}
+@utility type-title-md {
+  font-size: 1.125rem; line-height: 1.6875rem; font-weight: 600; letter-spacing: -0.005em;
+}
+@utility type-body-lg {
+  font-size: 1.125rem; line-height: 1.875rem; font-weight: 400; letter-spacing: 0;
+}
+@utility type-body-md {
+  font-size: 1rem; line-height: 1.6875rem; font-weight: 400; letter-spacing: 0;
+}
+@utility type-body-sm {
+  font-size: 0.875rem; line-height: 1.375rem; font-weight: 400; letter-spacing: 0;
+}
+@utility type-label-lg {
+  font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; letter-spacing: 0;
+}
+@utility type-label-sm {
+  font-size: 0.75rem; line-height: 1.125rem; font-weight: 500; letter-spacing: 0.005em;
+}
+
+@layer base {
+  body { @apply type-body-md; }
+  strong, b { font-weight: 600; }
+}
+
+/* Opt in for reading passages; ch measures Latin glyphs, ic approximates CJK. */
+@utility type-prose {
+  max-inline-size: 65ch;
+  &:lang(ko) { max-inline-size: min(65ch, 40ic); }
+}

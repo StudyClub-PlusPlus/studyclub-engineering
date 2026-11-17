@@ -2,6 +2,7 @@ package com.studyclub.domain.account;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.participant.ParticipationPeriod;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +14,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 /**
  * 회원. 프로필·지역·디스코드 연결. 인증 수단은 AccountIdentity 로 분리.
@@ -136,6 +139,11 @@ public class Account extends BaseEntity {
         return discordHandle;
     }
 
+    /** 디스코드 연동 여부. {@code GET /api/me} 의 {@code discordLinked} 와 신청 제출의 403 이 같은 판정을 쓴다. */
+    public boolean isDiscordLinked() {
+        return discordId != null && !discordId.isBlank();
+    }
+
     /**
      * 디스코드 계정 연동. 값은 서버가 디스코드에서 받은 것만 넘긴다 — 클라이언트가 보낸 ID·핸들을 쓰지 않는다. 다른 계정이 그 ID 를 쓰는지는 호출자가 먼저 본다
      * ({@code UNIQUE(DISCORD_ID)}).
@@ -143,6 +151,12 @@ public class Account extends BaseEntity {
     public void linkDiscord(String discordId, String discordHandle) {
         this.discordId = discordId;
         this.discordHandle = discordHandle;
+    }
+
+    /** 디스코드 연결 해제. 신청할 때 받은 서버 별명({@code discordNickname})은 연동과 따로라 남긴다. */
+    public void unlinkDiscord() {
+        this.discordId = null;
+        this.discordHandle = null;
     }
 
     public String getDiscordNickname() {
@@ -160,6 +174,18 @@ public class Account extends BaseEntity {
 
     public Instant getOnboardingCompletedAt() {
         return onboardingCompletedAt;
+    }
+
+    /** 최근 180일간 명부 참여와 로그인이 모두 없는 회원. 캡틴도 같고, 기록 미확인은 제외한다. */
+    public boolean isDormant(
+            Instant lastLoginAt, List<ParticipationPeriod> participationPeriods, Instant asOf) {
+        Instant cutoff = asOf.minus(180, ChronoUnit.DAYS);
+        return getCreatedAt() != null
+                && getCreatedAt().isBefore(cutoff)
+                && lastLoginAt != null
+                && lastLoginAt.isBefore(cutoff)
+                && participationPeriods != null
+                && participationPeriods.stream().allMatch(period -> period.endedBefore(cutoff));
     }
 
     public void setNickname(String nickname) {
@@ -198,14 +224,18 @@ public class Account extends BaseEntity {
      *
      * <p><b>판정은 여기 하나다</b> — 백오피스 목록의 배지 잠금과 권한 변경 API 의 거절이 모두 이 메서드를 부른다 (endpoint-convention
      * 「판정은 서버가 내려준다」). 캡틴 수는 계정 하나로 알 수 없어 호출자가 세어 넘긴다 ({@code SYSTEM_ROLE = ADMIN} 행 수 — 목록은 그냥
-     * 세고, 변경은 잠그고 센다).
+     * 세고, 변경은 잠그고 센다). 진행 중 담당 스터디가 있는지도 STUDY 를 봐야 알 수 있어 호출자가 넘긴다.
      */
-    public RoleChangeBlockedReason roleChangeBlockedReason(Long actorId, long adminCount) {
+    public RoleChangeBlockedReason roleChangeBlockedReason(
+            Long actorId, long adminCount, boolean ownsOngoingStudy) {
         if (id.equals(actorId)) {
             return RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE;
         }
         if (systemRole == SystemRole.ADMIN && adminCount <= 1) {
             return RoleChangeBlockedReason.LAST_ADMIN_REQUIRED;
+        }
+        if (systemRole == SystemRole.ADMIN && ownsOngoingStudy) {
+            return RoleChangeBlockedReason.OWNS_STUDY;
         }
         return null;
     }

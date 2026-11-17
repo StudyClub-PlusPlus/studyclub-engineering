@@ -107,6 +107,35 @@ class AccountProfileIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 디스코드를 연동한 계정은 discordLinked 가 true 이고 핸들을 내린다. 디스코드 ID 는 내리지 않는다")
+    void returnsDiscordLinked() {
+        Account account = seedOnboardedAccount(uniqueNickname());
+        String discordId = "d" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        account.linkDiscord(discordId, "crew_handle");
+        accountRepository.save(account);
+
+        var response = getMe(account);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("discordLinked", true);
+        assertThat(response.getBody()).containsEntry("discordHandle", "crew_handle");
+        assertThat(response.getBody()).doesNotContainKey("discordId");
+        assertThat(response.getBody().values()).doesNotContain(discordId);
+    }
+
+    @Test
+    @DisplayName("성공 - 디스코드를 연동하지 않은 계정은 discordLinked 가 false 다 — 필드가 빠지지 않는다")
+    void returnsDiscordUnlinked() {
+        Account account = seedOnboardedAccount(uniqueNickname());
+
+        var response = getMe(account);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("discordLinked", false);
+        assertThat(response.getBody()).containsEntry("discordHandle", null);
+    }
+
+    @Test
     @DisplayName("성공 - 온보딩 미완료 계정도 GET /api/me 는 403 이 아니라 200 이다 — 프론트가 이 응답으로 온보딩 화면으로 보낸다")
     void returnsMeBeforeOnboarding() {
         Account account = seedUnonboardedAccount();

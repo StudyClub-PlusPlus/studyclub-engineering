@@ -20,7 +20,7 @@ import { DiscordNicknameField, DISCORD_NICKNAME_LABEL } from '@core/components/D
 import { getUser } from '@core/lib/auth';
 import { DISCORD_NICKNAME_EXAMPLE, getDiscordNickname, getDisplayName } from '@core/lib/me';
 import { PREVIEW_USER } from '@core/lib/preview';
-import type { ApplicationQuestion, ApplicationQuestionType, Study } from '@studyclub/mock';
+import type { ApplicationQuestion, ApplicationQuestionType, Study } from '@studyclub/types';
 import { Button, Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 
@@ -184,7 +184,7 @@ export function ApplicationFormTab({ study }: { study: Study }) {
   }
 
   return (
-    <div className='mx-auto flex w-full max-w-2xl flex-col gap-3'>
+    <div className='flex w-full flex-col gap-3'>
       <div data-anno='form:1'>
         <FormHeaderCard
           cardRef={(el) => {
@@ -300,7 +300,7 @@ export function ApplicationFormTab({ study }: { study: Study }) {
                       ev.stopPropagation();
                       remove(q.id);
                     }}
-                    className='inline-flex items-center gap-1 text-xs font-semibold text-error-600 hover:underline'
+                    className='inline-flex items-center gap-1 type-label-lg text-error-600 hover:underline'
                   >
                     <Trash2 size={13} /> 삭제
                   </button>
@@ -332,7 +332,7 @@ export function ApplicationFormTab({ study }: { study: Study }) {
       })}
 
       <div className='flex items-center gap-3 pt-1'>
-        {saved && <span className='text-sm font-medium text-success-700'>저장되었습니다.</span>}
+        {saved && <span className='type-label-lg text-success-700'>저장되었습니다.</span>}
         <Button data-anno='form:4' className='ml-auto' onClick={save} loading={saving}>
           저장
         </Button>

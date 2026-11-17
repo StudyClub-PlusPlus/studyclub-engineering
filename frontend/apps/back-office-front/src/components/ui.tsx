@@ -36,8 +36,8 @@ export function PageHeader({
   return (
     <div className='mb-6 flex items-end justify-between gap-4'>
       <div>
-        <h1 className='text-2xl font-extrabold tracking-tight'>{title}</h1>
-        {subtitle && <p className='mt-1 text-sm text-fg-muted'>{subtitle}</p>}
+        <h1 className='type-headline-md'>{title}</h1>
+        {subtitle && <p className='mt-1 type-body-sm text-fg-muted'>{subtitle}</p>}
       </div>
       {action ??
         (createLabel && (
@@ -55,7 +55,7 @@ export function RowActions() {
   return (
     <div className='flex justify-end gap-1.5'>
       {/* TODO(api): wire to api.studyclub.life — 편집 */}
-      <Button variant='ghost' size='sm' disabled>
+      <Button variant='tertiary' size='sm' disabled>
         편집
       </Button>
       {/* TODO(api): wire to api.studyclub.life — 삭제 */}

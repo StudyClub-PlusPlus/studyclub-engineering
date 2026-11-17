@@ -1,7 +1,8 @@
+import type { Locale } from '@studyclub/types';
 import type { Metadata } from 'next';
 
-import { StudyDetailView } from '@/components/StudyDetailView';
-import { getStudies, getStudy, type Locale } from '@/lib/content';
+import { getStudies, getStudy } from '@/features/studies/server';
+import { StudyDetailView } from '@/features/studies/StudyDetailView';
 import { t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 
@@ -40,5 +41,7 @@ export async function generateMetadata({
 
 export default async function StudyDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
   const { locale, id } = await params;
-  return <StudyDetailView id={Number(id)} locale={locale} />;
+  // 메타데이터와 같은 요청(fetch 캐시로 한 번) — 첫 HTML 에 본문을 싣는다. 실패하면 null 이고 클라이언트가 다시 받는다
+  const initial = await getStudy(Number(id));
+  return <StudyDetailView id={Number(id)} locale={locale} initial={initial} />;
 }

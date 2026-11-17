@@ -1,14 +1,5 @@
-import type {
-  ApplicationQuestion,
-  AttendanceStatus,
-  Crew,
-  DemoCrewRelation,
-  MemberRegion,
-  Study,
-  StudyCrewData,
-  StudyMeeting,
-} from '../types';
-import { attendancePoint, attendanceRate, LATE_WEIGHT } from '../utils';
+import type { ApplicationQuestion, AttendanceStatus, Crew, DemoCrewRelation, MemberRegion, Study, StudyCrewData, StudyMeeting } from '@studyclub/types';
+import { attendancePoint, attendanceRate, LATE_WEIGHT } from '@studyclub/utils';
 
 export type { AttendanceStatus, Crew, StudyMeeting, StudyCrewData, DemoCrewRelation };
 export { LATE_WEIGHT, attendancePoint, attendanceRate };

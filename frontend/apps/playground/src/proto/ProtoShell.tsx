@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Suspense, useState } from 'react';
 
+import { DiscordPreviewToolbar } from '@core/components/DiscordPreviewToolbar';
 import { RegistrationFeedback, RegistrationPreviewToolbar } from '@core/components/RegistrationPreview';
 import { getUser } from '@core/lib/auth';
 import { enterPreview } from '@core/lib/preview';
 
 import { AnnotateProvider, AnnotateToggle, AnnotationLayer } from '@/proto/annotate';
+import { EventWorkspaceProvider } from '@/proto/events/EventWorkspace';
 
 const LINKS = [
   // href 는 들어가는 문, match 는 "지금 여기에 있는가" 판정. en 으로 보다가도 사용자 사이트가 켜져 있어야 한다.
@@ -16,8 +18,6 @@ const LINKS = [
   { href: '/proto/console', match: '/proto/console', label: '운영 콘솔' },
   // 화면 뒤에 깔린 값과 규칙. 개발이 「상태가 몇 종이더라」를 물을 때 여는 자리다.
   { href: '/proto/policies', match: '/proto/policies', label: '정책 라이브러리' },
-  // DB 에 있는 알림 메일 문구를 실제 모양으로. 디자이너가 메일을 볼 유일한 자리다.
-  { href: '/proto/mail', match: '/proto/mail', label: '메일 템플릿' },
 ];
 
 /**
@@ -26,7 +26,7 @@ const LINKS = [
  * 상단 바는 **일부러 sticky 가 아니다.** 실제 서비스의 헤더가 sticky 라서, 이 바까지 붙어 있으면
  * 스크롤할 때 화면 상단이 두 겹이 되어 시안이 실제와 달라 보인다. 스크롤하면 비켜난다.
  */
-export function ProtoShell({ children }: { children: React.ReactNode }) {
+export function ProtoShell({ children, eventNoticeBody }: { children: React.ReactNode; eventNoticeBody: string }) {
   const pathname = usePathname() || '';
 
   // 마이페이지·내 스터디는 로그인해야 열린다. mock 세션을 미리 깔아 두면
@@ -45,8 +45,8 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
     <AnnotateProvider>
       <div className='proto-stack'>
         <div className='border-b border-[var(--color-border)] bg-[var(--color-fg)] text-white'>
-          <div className='mx-auto flex min-h-10 max-w-none flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2 text-[12px]'>
-            <Link href='/' className='font-bold opacity-70 transition-opacity hover:opacity-100'>
+          <div className='mx-auto flex min-h-10 max-w-none flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2 type-label-sm'>
+            <Link href='/' className='font-semibold opacity-70 transition-opacity hover:opacity-100'>
               ← playground
             </Link>
             <nav className='flex items-center gap-4'>
@@ -57,7 +57,7 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
                     key={l.href}
                     href={l.href}
                     className='transition-opacity'
-                    style={{ opacity: active ? 1 : 0.6, fontWeight: active ? 700 : 400 }}
+                    style={{ opacity: active ? 1 : 0.6, fontWeight: active ? 600 : 400 }}
                   >
                     {l.label}
                   </Link>
@@ -73,8 +73,9 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
         <Suspense fallback={null}>
           <RegistrationPreviewToolbar />
         </Suspense>
+        <DiscordPreviewToolbar />
 
-        {children}
+        <EventWorkspaceProvider noticeBody={eventNoticeBody}>{children}</EventWorkspaceProvider>
 
         <RegistrationFeedback />
 

@@ -3,8 +3,8 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ApplicationFormTab } from './ApplicationFormTab';
-import { applicationFormSchema, toFormValues, toPayload } from './schema';
+import { ApplicationFormTab } from '@/features/application-form/ApplicationFormTab';
+import { applicationFormSchema, toFormValues, toPayload } from '@/features/application-form/schema';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
 const study = { id: 106, title: '테스트 스터디', oneLineSummary: '함께 공부합니다.' } as ApiStudyDetail;
@@ -91,6 +91,21 @@ describe('신청 폼', () => {
     expect(payload.questions[0]).toMatchObject({ label: '선호 시간', type: 'TEXT', required: true });
     expect(payload.questions[0]).not.toHaveProperty('options');
     expect(payload.questions[0]).not.toHaveProperty('allowOther');
+  });
+
+  it('조회 응답이 locked=true면 저장 전부터 편집 컨트롤을 제거하고 사유를 표시한다', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(
+        reply({ ...response, locked: true, lockReason: '모집이 시작되어 신청 폼을 수정할 수 없습니다.' }),
+      );
+    vi.stubGlobal('fetch', fetch);
+    mount();
+    expect(await screen.findByRole('alert')).toHaveTextContent('모집이 시작되어');
+    expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '질문 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '설문지 제목·설명 수정' })).not.toBeInTheDocument();
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
   });
 
   it.each([403, 409])('%s 저장 응답이면 편집 컨트롤을 제거한다', async (status) => {

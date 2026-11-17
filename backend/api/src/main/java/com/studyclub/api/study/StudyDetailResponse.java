@@ -3,6 +3,7 @@ package com.studyclub.api.study;
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyTimezone;
 import java.time.Instant;
 
 public record StudyDetailResponse(
@@ -20,22 +21,28 @@ public record StudyDetailResponse(
         String curriculum,
         Integer capacity,
         String schedule,
+        StudyTimezone timezone,
         Instant recruitDeadlineAt,
         Instant startAt,
         Instant endAt,
         String discordChannelUrl,
-        String driveUrl) {
+        String driveUrl,
+        boolean discordLinked) {
 
     /**
-     * {@code studyKind} · {@code programTitle} 은 기수가 아니라 프로그램의 값이다 — docs/erd/STUDY_PROGRAM.md. 콘솔
-     * 정보 탭이 「프로그램 제목 · 종류 · 변경할 수 없음」을 읽기 전용으로 보여 주는 데 쓴다.
+     * {@code timezone} 은 운영자가 고른 값 그대로다 — {@code null} 이면 미정. 목록처럼 일정 문구로 추정하지 않는다: 수정 폼이 추정값을 고른
+     * 값으로 되돌려 저장하게 된다.
+     *
+     * <p>{@code studyKind} · {@code programTitle} 은 기수가 아니라 프로그램의 값이다 — docs/erd/STUDY_PROGRAM.md.
+     * 콘솔 정보 탭이 「프로그램 제목 · 종류 · 변경할 수 없음」을 읽기 전용으로 보여 주는 데 쓴다.
      */
     public static StudyDetailResponse from(
             Study study,
             StudyProgram program,
             long applicantCount,
             Instant recruitDeadlineAt,
-            Integer recruitmentCapacity) {
+            Integer recruitmentCapacity,
+            boolean discordLinked) {
         return new StudyDetailResponse(
                 study.getId(),
                 study.getProgramId(),
@@ -51,11 +58,13 @@ public record StudyDetailResponse(
                 study.getCurriculum(),
                 recruitmentCapacity,
                 study.getSchedule(),
+                study.getTimezone(),
                 recruitDeadlineAt,
                 study.getStartAt(),
                 study.getEndAt(),
                 study.getDiscordChannelUrl(),
-                study.getDriveUrl());
+                study.getDriveUrl(),
+                discordLinked);
     }
 
     /** 디스코드 채널·자료실 링크를 비운 사본 — 볼 권한이 없는 사람에게 준다. */
@@ -75,10 +84,12 @@ public record StudyDetailResponse(
                 curriculum,
                 capacity,
                 schedule,
+                timezone,
                 recruitDeadlineAt,
                 startAt,
                 endAt,
                 null,
-                null);
+                null,
+                discordLinked);
     }
 }

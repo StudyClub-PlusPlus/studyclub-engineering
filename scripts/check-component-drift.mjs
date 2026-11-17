@@ -11,7 +11,7 @@
  * 2. 토큰 우회 — 토큰 대신 값을 직접 쓴 횟수. 세 가지를 따로 센다.
  *    - palette : Tailwind 기본 팔레트(bg-red-600, text-slate-500 …). tokens.css 가 정의한 이름(neutral·primary …)은 뺀다.
  *    - hex     : 색 코드를 직접 쓴 것(text-[#FCD34D], style 의 '#2D2F35' …).
- *    - fontPx  : 글자 크기를 직접 쓴 것(text-[13px] …). 타입 스케일(text-xs · text-sm …)을 쓴다.
+ *    - fontPx  : 글자 크기를 직접 쓴 것(text-[13px] …). 콘텐츠 역할(type-body-sm · type-label-lg …)을 쓴다.
  *    레이아웃 폭·높이(w-[320px] …)는 정당한 경우가 많아 세지 않는다.
  *
  * 기존 것은 기준선(scripts/component-drift-baseline.json)에 적어 두고 **늘어날 때만** 실패한다.

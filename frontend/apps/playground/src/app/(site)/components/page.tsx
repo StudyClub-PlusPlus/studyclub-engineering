@@ -15,6 +15,7 @@ import {
   FilterChip,
   HotBadge,
   Input,
+  IconButton,
   Modal,
   Pagination,
   Segmented,
@@ -28,7 +29,7 @@ import {
 import type { BadgeTone, ButtonSize, ButtonVariant } from '@studyclub/ui';
 import { CalendarDays, Search, Users } from 'lucide-react';
 
-const VARIANTS: ButtonVariant[] = ['primary', 'tonal', 'secondary', 'ghost', 'destructive'];
+const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'tertiary', 'danger', 'destructive'];
 const SIZES: ButtonSize[] = ['sm', 'md', 'lg'];
 const STATUS_TONES: BadgeTone[] = ['recruiting', 'closingsoon', 'inprogress', 'closed', 'ended'];
 const ROLE_TONES: BadgeTone[] = ['captain', 'navigator', 'member'];
@@ -37,8 +38,8 @@ const ROLE_TONES: BadgeTone[] = ['captain', 'navigator', 'member'];
 function Case({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <section className='border-t border-[var(--color-border)] pt-8'>
-      <h2 className='text-lg font-bold'>{title}</h2>
-      {note && <p className='mt-1 text-sm text-[var(--color-fg-muted)]'>{note}</p>}
+      <h2 className='type-title-md'>{title}</h2>
+      {note && <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>{note}</p>}
       <div className='mt-4'>{children}</div>
     </section>
   );
@@ -60,34 +61,83 @@ export default function ComponentsCatalog() {
     <div className='space-y-10'>
       <Toaster />
       <header>
-        <h1 className='text-3xl font-extrabold tracking-tight'>컴포넌트 카탈로그</h1>
-        <p className='mt-2 max-w-2xl text-sm leading-relaxed text-[var(--color-fg-muted)]'>
+        <h1 className='type-headline-lg'>컴포넌트 카탈로그</h1>
+        <p className='mt-2 max-w-2xl type-body-sm text-[var(--color-fg-muted)]'>
           <code>@studyclub/ui</code> 의 프리미티브를 상태별로 늘어놓았습니다.{' '}
           <strong>여기 보이는 것이 실제 서비스에 나가는 컴포넌트</strong>입니다 — 정적 목업이 아니라 코드를 그대로
           렌더합니다.
         </p>
       </header>
 
-      <Case title='Button' note='variant 5종 × size 3종. disabled 상태도 함께.'>
+      <Case
+        title='Button'
+        note='variant 5종 × size 3종. Hover·Pressed·키보드 Focus도 직접 확인하세요. sm은 label-sm, md/lg는 label-lg.'
+      >
         <div className='space-y-3'>
           {SIZES.map((size) => (
             <div key={size} className='flex flex-wrap items-center gap-2'>
-              <span className='w-8 text-xs font-semibold text-[var(--color-fg-muted)]'>{size}</span>
+              <span className='w-8 type-label-sm text-[var(--color-fg-muted)]'>{size}</span>
               {VARIANTS.map((v) => (
-                <Button key={v} variant={v} size={size}>
+                <Button key={v} variant={v} size={size} className='w-[120px] shrink-0'>
                   {v}
                 </Button>
               ))}
             </div>
           ))}
           <div className='flex flex-wrap items-center gap-2 pt-1'>
-            <span className='w-8 text-xs font-semibold text-[var(--color-fg-muted)]'>off</span>
+            <span className='w-8 type-label-sm text-[var(--color-fg-muted)]'>off</span>
             {VARIANTS.map((v) => (
-              <Button key={v} variant={v} disabled>
+              <Button key={v} variant={v} disabled className='w-[120px] shrink-0'>
                 {v}
               </Button>
             ))}
           </div>
+        </div>
+      </Case>
+
+      <Case
+        title='Button states'
+        note='Error는 variant별 스타일을 비교합니다. Loading은 레이블을 유지하고 중복 클릭을 막으며, 처리 상태는 버튼 밖에서 안내합니다.'
+      >
+        <div className='space-y-4 p-2'>
+          <div className='flex flex-wrap items-center gap-4'>
+            <Button leadingIcon={<Search />}>스터디 검색</Button>
+            <div className='flex items-center gap-2'>
+              <Button loading>저장</Button>
+              <span role='status' className='type-body-sm text-fg-muted'>저장 중…</span>
+            </div>
+          </div>
+          <p id='catalog-save-error' role='alert' className='type-body-sm text-danger-fg'>
+            저장하지 못했어요. 잠시 후 다시 시도해 주세요.
+          </p>
+          <div className='flex flex-wrap items-center gap-4'>
+            {VARIANTS.map((variant) => (
+              <div key={variant} className='flex flex-col items-start gap-2'>
+                <span className='type-label-sm text-fg-muted'>{variant}</span>
+                <Button variant={variant} state='error' aria-describedby='catalog-save-error'>
+                  저장
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Case>
+
+      <Case title='모바일 CTA' note='375px에서도 한 줄 레이블을 유지하고, 작은 화면에서 전체 너비로 표시합니다.'>
+        <Button size='lg' className='w-full sm:w-auto'>스터디 참여 신청 내용을 저장하기</Button>
+      </Case>
+
+      <Case
+        title='IconButton'
+        note='sm 32 / md 40 / lg 48px. aria-label 필수. 터치 환경에서는 클릭 영역을 양축 44px 이상 확보합니다.'
+      >
+        <div className='flex flex-wrap items-center gap-4 p-2'>
+          {SIZES.map((size) => (
+            <IconButton key={size} size={size} variant='tertiary' aria-label='검색' icon={<Search />} />
+          ))}
+          <IconButton aria-label='검색' icon={<Search />} loading />
+          <IconButton aria-label='검색' icon={<Search />} state='error' />
+          <IconButton aria-label='검색' icon={<Search />} disabled />
         </div>
       </Case>
 
@@ -113,11 +163,11 @@ export default function ComponentsCatalog() {
       <Case title='HotBadge · DiscordGlyph' note='마감 임박 뱃지와 디스코드 공식 아이콘. 배너·버튼 등에 사용한다.'>
         <div className='flex flex-wrap items-center gap-4'>
           <div className='flex items-center gap-2 rounded-card bg-[var(--color-surface-2)] p-3'>
-            <span className='text-xs font-semibold text-[var(--color-fg-muted)]'>HotBadge:</span>
+            <span className='type-label-sm text-[var(--color-fg-muted)]'>HotBadge:</span>
             <HotBadge />
           </div>
           <div className='flex items-center gap-3 rounded-card border border-[var(--color-border)] p-3'>
-            <span className='text-xs font-semibold text-[var(--color-fg-muted)]'>DiscordGlyph:</span>
+            <span className='type-label-sm text-[var(--color-fg-muted)]'>DiscordGlyph:</span>
             <DiscordGlyph size={16} />
             <DiscordGlyph size={24} />
           </div>
@@ -127,16 +177,16 @@ export default function ComponentsCatalog() {
       <Case title='Card' note='padding none · md · lg. interactive 를 켜면 hover 반응이 붙는다.'>
         <div className='grid gap-4 sm:grid-cols-3'>
           <Card padding='none' className='p-4'>
-            <p className='text-sm font-semibold'>padding none</p>
-            <p className='mt-1 text-sm text-[var(--color-fg-muted)]'>여백을 직접 준다.</p>
+            <p className='type-label-lg'>padding none</p>
+            <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>여백을 직접 준다.</p>
           </Card>
           <Card padding='md'>
-            <p className='text-sm font-semibold'>padding md</p>
-            <p className='mt-1 text-sm text-[var(--color-fg-muted)]'>기본값.</p>
+            <p className='type-label-lg'>padding md</p>
+            <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>기본값.</p>
           </Card>
           <Card padding='lg' interactive>
-            <p className='text-sm font-semibold'>interactive</p>
-            <p className='mt-1 text-sm text-[var(--color-fg-muted)]'>마우스를 올려보세요.</p>
+            <p className='type-label-lg'>interactive</p>
+            <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>마우스를 올려보세요.</p>
           </Card>
         </div>
       </Case>
@@ -147,7 +197,7 @@ export default function ComponentsCatalog() {
       >
         <div className='space-y-6 max-w-2xl'>
           <div>
-            <p className='mb-2 text-xs font-semibold text-[var(--color-fg-muted)]'>크기 3종 (sm · md · lg)</p>
+            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>크기 3종 (sm · md · lg)</p>
             <div className='grid gap-3 sm:grid-cols-3'>
               <Input label='sm (h-8)' size='sm' placeholder='Small (32px)' />
               <Input label='md / 기본 (h-10)' size='md' placeholder='Medium (40px)' />
@@ -155,7 +205,7 @@ export default function ComponentsCatalog() {
             </div>
           </div>
           <div>
-            <p className='mb-2 text-xs font-semibold text-[var(--color-fg-muted)]'>상태 및 옵션 조합</p>
+            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>상태 및 옵션 조합</p>
             <div className='grid gap-4 sm:grid-cols-2'>
               <Input label='스터디 이름' placeholder='예: 시스템 디자인 스터디' required />
               <Input label='이메일' helper='가입에 쓴 주소를 적어주세요' defaultValue='test@test.com' />
@@ -164,7 +214,7 @@ export default function ComponentsCatalog() {
             </div>
           </div>
           <div>
-            <p className='mb-2 text-xs font-semibold text-[var(--color-fg-muted)]'>아이콘 위치</p>
+            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>아이콘 위치</p>
             <div className='grid gap-4 sm:grid-cols-3'>
               <Select label='기본 (오른쪽)' defaultValue='weekly'>
                 <option value='none'>반복 안 함</option>
@@ -186,7 +236,7 @@ export default function ComponentsCatalog() {
       <Case title='Select' note='드롭다운 선택 필드. sm(h-8) · md(h-10) · lg(h-12) 크기와 helper · error 상태 조합.'>
         <div className='space-y-6 max-w-2xl'>
           <div>
-            <p className='mb-2 text-xs font-semibold text-[var(--color-fg-muted)]'>크기 3종 (sm · md · lg)</p>
+            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>크기 3종 (sm · md · lg)</p>
             <div className='grid gap-3 sm:grid-cols-3'>
               <Select label='sm (h-8)' size='sm' defaultValue='online'>
                 <option value='online'>온라인 (sm / 32px)</option>
@@ -203,7 +253,7 @@ export default function ComponentsCatalog() {
             </div>
           </div>
           <div>
-            <p className='mb-2 text-xs font-semibold text-[var(--color-fg-muted)]'>상태 및 옵션 조합</p>
+            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>상태 및 옵션 조합</p>
             <div className='grid gap-4 sm:grid-cols-2'>
               <Select label='진행 방식' helper='주요 모임 방식을 선택하세요' defaultValue='hybrid'>
                 <option value='hybrid'>하이브리드</option>
@@ -253,7 +303,7 @@ export default function ComponentsCatalog() {
       >
         <div className='space-y-6 max-w-xl'>
           <div>
-            <p className='mb-2 text-xs font-semibold text-[var(--color-fg-muted)]'>멀티라인 자동 높이 확장</p>
+            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>멀티라인 자동 높이 확장</p>
             <AutoTextarea
               label='자동 높이 조절 텍스트'
               placeholder='텍스트를 여러 줄 입력해보세요. 내용에 따라 높이가 자동으로 늘어납니다.'
@@ -264,11 +314,11 @@ export default function ComponentsCatalog() {
           </div>
 
           <div>
-            <p className='mb-2 text-xs font-semibold text-[var(--color-fg-muted)]'>
+            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>
               인라인 한 줄 입력 (singleLine · 엔터 방지)
             </p>
             <div className='flex items-center gap-3 rounded-card border border-[var(--color-border)] bg-[var(--color-bg)] p-3'>
-              <span className='shrink-0 text-sm font-medium text-neutral-800'>스터디 규칙:</span>
+              <span className='shrink-0 type-label-lg text-neutral-800'>스터디 규칙:</span>
               <div className='flex-1 min-w-0'>
                 <AutoTextarea
                   label='인라인 스터디 규칙 입력'
@@ -276,7 +326,7 @@ export default function ComponentsCatalog() {
                   value={singleLineText}
                   onChange={setSingleLineText}
                   singleLine
-                  className='py-1 px-2.5 text-sm'
+                  className='py-1 px-2.5 type-body-sm'
                 />
               </div>
               <Button size='sm'>저장</Button>
@@ -329,7 +379,7 @@ export default function ComponentsCatalog() {
       <Case title='Tabs · Segmented' note='언더라인형 탭과 세그먼트 컨트롤. 목록 필터링이나 뷰 전환에 쓴다.'>
         <div className='space-y-6 max-w-xl'>
           <div>
-            <p className='mb-2 text-xs font-semibold text-[var(--color-fg-muted)]'>Tabs</p>
+            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>Tabs</p>
             <Tabs
               items={[
                 { key: 'studies', label: '스터디 목록', badge: <Badge tone='recruiting'>12</Badge> },
@@ -341,7 +391,7 @@ export default function ComponentsCatalog() {
             />
           </div>
           <div>
-            <p className='mb-2 text-xs font-semibold text-[var(--color-fg-muted)]'>Segmented</p>
+            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>Segmented</p>
             <div className='flex flex-wrap items-center gap-4'>
               <Segmented
                 size='md'
@@ -382,7 +432,7 @@ export default function ComponentsCatalog() {
           <Button variant='secondary' size='sm' onClick={() => toast.error('모집 정원이 마감되었습니다.')}>
             에러 토스트
           </Button>
-          <Button variant='ghost' size='sm' onClick={() => toast('기본 안내 알림입니다.')}>
+          <Button variant='tertiary' size='sm' onClick={() => toast('기본 안내 알림입니다.')}>
             기본 토스트
           </Button>
         </div>
@@ -393,7 +443,7 @@ export default function ComponentsCatalog() {
           icon={<Search size={24} />}
           title='조건에 맞는 스터디가 없어요'
           description='필터를 줄이거나 다른 키워드로 찾아보세요.'
-          action={<Button variant='tonal'>필터 초기화</Button>}
+          action={<Button variant='tertiary'>필터 초기화</Button>}
         />
       </Case>
 
@@ -413,7 +463,7 @@ export default function ComponentsCatalog() {
             </>
           }
         >
-          <p className='text-sm text-[var(--color-fg-muted)]'>모달 본문이 들어가는 자리입니다.</p>
+          <p className='type-body-sm text-[var(--color-fg-muted)]'>모달 본문이 들어가는 자리입니다.</p>
         </Modal>
       </Case>
     </div>

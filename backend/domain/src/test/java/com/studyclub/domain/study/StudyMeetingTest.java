@@ -87,6 +87,31 @@ class StudyMeetingTest {
     }
 
     @Test
+    @DisplayName("끝난 회차를 닫으면 END_AT 은 닫은 시각이 아니라 종료 기준이다")
+    void closeIfOverRecordsEndsAt() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, NOW, null);
+        meeting.start(NOW);
+
+        assertThat(meeting.closeIfOver(NOW.plus(Duration.ofDays(7)))).isTrue();
+        assertThat(meeting.getEndAt()).isEqualTo(NOW.plus(StudyMeeting.DURATION));
+        assertThat(meeting.closeIfOver(NOW.plus(Duration.ofDays(8)))).isFalse();
+    }
+
+    @Test
+    @DisplayName("진행 중이거나 열리지 않은 회차는 닫지 않는다")
+    void closeIfOverSkipsOpenOrNotStarted() {
+        StudyMeeting inProgress = StudyMeeting.schedule(1L, NOW, null);
+        inProgress.start(NOW);
+        StudyMeeting notOpened = StudyMeeting.schedule(1L, NOW, null);
+        Instant later = NOW.plus(Duration.ofMinutes(119));
+
+        assertThat(inProgress.closeIfOver(later)).isFalse();
+        assertThat(inProgress.getEndAt()).isNull();
+        assertThat(notOpened.closeIfOver(NOW.plus(Duration.ofDays(7)))).isFalse();
+        assertThat(notOpened.getEndAt()).isNull();
+    }
+
+    @Test
     @DisplayName("열리지 않은 회차는 진행 중이 아니다")
     void notOpenedIsNotInProgress() {
         assertThat(StudyMeeting.schedule(1L, NOW, null).isInProgress(NOW)).isFalse();

@@ -3,7 +3,8 @@
 // httpOnly 로 심어 미들웨어 게이팅에 쓰고, 토큰/유저는 클라이언트로도 반환.
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ACCESS_COOKIE, REFRESH_COOKIE, PLATFORM } from '@/lib/auth';
+import { ACCESS_COOKIE, REFRESH_COOKIE, PLATFORM } from '@/features/auth/auth';
+import { socialLoginResponseSchema } from '@/features/auth/response-schema';
 import { accessCookie, refreshCookie } from '@/lib/cookies';
 
 // 서버(컨테이너) 내부에서 백엔드에 닿는 URL. 브라우저용 NEXT_PUBLIC_API_BASE_URL 과 구분.
@@ -11,7 +12,9 @@ const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_UR
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const { code, redirectUri } = body ?? {};
+  const { code, redirectUri, name } = body ?? {};
+  // 제공자는 둘만 받는다 — 그 밖의 값은 구글로 본다
+  const provider = body?.provider === 'apple' ? 'apple' : 'google';
   if (!code) {
     return NextResponse.json({ message: 'code 가 필요합니다.' }, { status: 400 });
   }
@@ -22,7 +25,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       // platform 서버측 강제
-      body: JSON.stringify({ code, provider: 'google', platform: PLATFORM, redirectUri }),
+      body: JSON.stringify({ code, provider, platform: PLATFORM, redirectUri, name }),
     });
   } catch {
     return NextResponse.json(
@@ -31,10 +34,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const data = await upstream.json().catch(() => ({}));
+  const raw = await upstream.json().catch(() => null);
   if (!upstream.ok) {
-    return NextResponse.json(data, { status: upstream.status });
+    return NextResponse.json(raw, { status: upstream.status });
   }
+
+  const parsed = socialLoginResponseSchema.safeParse(raw);
+  if (!parsed.success) return NextResponse.json({ message: '백엔드 응답 형식이 올바르지 않습니다.' }, { status: 502 });
+  const data = parsed.data;
 
   // 로그인 응답: account + suggestedNickname (스펙 정합)
   const res = NextResponse.json({

@@ -30,7 +30,7 @@ export function NotificationTabs({ action }: { action?: ReactNode }) {
           <Link
             key={tab.href}
             href={tab.href}
-            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+            className={`-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors ${
               on ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
             }`}
           >

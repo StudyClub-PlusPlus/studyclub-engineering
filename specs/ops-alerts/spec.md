@@ -29,6 +29,9 @@
 |---|---|---|---|
 | 신규 가입 | `UserRegisteredEvent` (온보딩 최초 완료) | INFO | 닉네임 · 이메일(마스킹) — 커밋된 계정 행에서 읽는다 |
 | 스터디 신청 접수 | `StudyApplicationSubmitted` | INFO | 스터디(제목 #id) · 신청자 닉네임 · 신청 ID |
+| 회원 탈퇴 | `AccountDeleted` | INFO | 닉네임 · 디스코드(핸들 (ID), 미연동이면 `미연동`) · 참여 중이던 스터디(탈퇴 직전 ACTIVE·PAUSED, 줄마다 `제목 (#id) · <@&roleId> (roleId)`, 디스코드 연결이 없으면 `디스코드 미연결`, 알림 전에 스터디가 지워졌으면 `#id (삭제된 스터디)`) · 네비게이터(예/아니오). 계정 행은 커밋 뒤에 없으므로 이벤트 값으로 채우고, 스터디 제목·role ID 만 커밋된 행(`STUDY`·`STUDY_DISCORD_LINK`)에서 읽는다. role 멘션은 `allowed_mentions` 가 비어 있어 아무도 부르지 않는다 |
+
+**회원 탈퇴 알림의 용도** — 탈퇴는 디스코드 role 을 떼지 않는다. 받은 운영자가 위 스터디 role(네비게이터였으면 navigator role 도)을 손으로 정리하거나, 그냥 둔다. 그냥 두는 근거는 「스터디가 끝나면 role 도 같이 정리된다」는 디스코드 스쿼드 설명이다. 백엔드의 스터디 삭제(`StudyService`)는 봇에 삭제 API 가 없어 디스코드 role 을 남기므로, 이 보장은 백엔드가 하지 않는다. 프론트는 탈퇴 전에 스터디를 직접 정리하라는 안내를 보여준다 (2026-10-30 #02-squad-discord 합의). 참여 스터디를 읽어 role 을 하나씩 떼는 자동 정리는 봇 지연시간을 본 뒤 MVP 이후에 검토한다.
 
 아직 없는 것 — 생기면 이 표에 추가한다.
 
@@ -54,3 +57,7 @@
 - `OpsAlertListenerTest` — 발행 → 리스너(`event-` 스레드) → notifier, notifier 가 던져도 발행자에게 새지 않는 것을 본다 (notifier 는 목)
 
 실제 디스코드로는 보내지 않는다.
+
+## 퍼널·계측
+
+해당 없음 — 가입 · 신청을 운영 채널에 알리지만 Amplitude · GA4 로 보내는 기능은 아니다. 이벤트는 [analytics](../analytics/spec.md) 의 서버 전송이 따로 맡는다.

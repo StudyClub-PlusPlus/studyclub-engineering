@@ -18,8 +18,7 @@ const ENDPOINTS = [
     id: "create-study",
     method: "POST",
     path: "/api/v1/studies",
-    caller: "captain",
-    expect: "201 · 400 401 403 404 409 502 503",
+    expect: "201 · 400 401 404 409 502 503",
     fields: [
       { name: "studyName", in: "body", type: "text", value: "알고리즘 스터디", note: "1–96자" },
     ],
@@ -28,16 +27,14 @@ const ENDPOINTS = [
     id: "get-study-channels",
     method: "GET",
     path: "/api/v1/studies/{discordStudyId}/channels",
-    caller: "captain · navigator · 시스템",
-    expect: "200 · 400 401 403 404 409 502 503",
+    expect: "200 · 400 401 404 409 503",
     fields: [{ name: "discordStudyId", in: "path", type: "text", value: STUDY }],
   },
   {
     id: "assign-role",
     method: "POST",
     path: "/api/v1/roles/{discordRoleId}/users",
-    caller: "captain · 시스템",
-    expect: "200 · 400 401 403 404 409 502 503",
+    expect: "200 · 400 401 404 409 502 503",
     fields: [
       { name: "discordRoleId", in: "path", type: "text", value: ROLE, note: "captain · navigator · @everyone 불가" },
       { name: "discordStudyId", in: "body", type: "text", value: STUDY, note: "로그용" },
@@ -48,8 +45,7 @@ const ENDPOINTS = [
     id: "remove-role",
     method: "DELETE",
     path: "/api/v1/roles/{discordRoleId}/users",
-    caller: "captain · 시스템",
-    expect: "200 · 400 401 403 404 409 502 503",
+    expect: "200 · 400 401 404 409 502 503",
     fields: [
       { name: "discordRoleId", in: "path", type: "text", value: ROLE, note: "captain · navigator · @everyone 불가" },
       { name: "discordStudyId", in: "body", type: "text", value: STUDY, note: "로그용" },
@@ -60,8 +56,7 @@ const ENDPOINTS = [
     id: "assign-navigator-role",
     method: "POST",
     path: "/api/v1/roles/navigator/users",
-    caller: "captain",
-    expect: "200 · 400 401 403 404 409 502 503",
+    expect: "200 · 400 401 404 409 502 503",
     fields: [
       { name: "discordStudyId", in: "body", type: "text", value: STUDY, note: "로그용" },
       { name: "discordUserIds", in: "body", type: "list", value: USER_A, note: "1–100개, 중복 제거 후" },
@@ -71,8 +66,7 @@ const ENDPOINTS = [
     id: "remove-navigator-role",
     method: "DELETE",
     path: "/api/v1/roles/navigator/users",
-    caller: "captain",
-    expect: "200 · 400 401 403 404 409 502 503",
+    expect: "200 · 400 401 404 409 502 503",
     fields: [
       { name: "discordStudyId", in: "body", type: "text", value: STUDY, note: "로그용" },
       { name: "discordUserIds", in: "body", type: "list", value: USER_A, note: "1–100개, 중복 제거 후" },
@@ -82,8 +76,7 @@ const ENDPOINTS = [
     id: "send-message",
     method: "POST",
     path: "/api/v1/channels/{discordChannelId}/msg",
-    caller: "captain · navigator",
-    expect: "204 · 400 401 403 404 409 502 503",
+    expect: "204 · 400 401 404 409 502 503",
     fields: [
       { name: "discordChannelId", in: "path", type: "text", value: STUDY },
       { name: "discordStudyId", in: "body", type: "text", value: STUDY, note: "채널 소속 검증" },
@@ -101,8 +94,7 @@ const ENDPOINTS = [
     id: "send-alert-message",
     method: "POST",
     path: "/api/v1/channels/alert/msg",
-    caller: "captain · 시스템",
-    expect: "204 · 400 401 403 404 409 502 503",
+    expect: "204 · 400 401 404 409 502 503",
     fields: [
       {
         name: "msg",
@@ -117,8 +109,7 @@ const ENDPOINTS = [
     id: "send-announcement-message",
     method: "POST",
     path: "/api/v1/channels/announcement/msg",
-    caller: "captain",
-    expect: "204 · 400 401 403 404 409 502 503",
+    expect: "204 · 400 401 404 409 502 503",
     fields: [
       {
         name: "msg",
@@ -157,7 +148,6 @@ function renderEndpoints() {
     const summary = el("summary");
     summary.append(el("span", `method ${ep.method.toLowerCase()}`, ep.method));
     summary.append(el("code", "path", ep.path));
-    summary.append(el("span", "caller", ep.caller));
     card.append(summary);
 
     const meta = el("p", "note");

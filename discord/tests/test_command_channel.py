@@ -45,7 +45,7 @@ async def test_check_refuses_when_no_command_channel_is_configured(caplog):
 
     assert result is False
     ctx.send.assert_awaited_once_with(command_channel.DISABLED)
-    assert "DISCORD_BOT_CHANNEL_ID" in caplog.text
+    assert "DISCORD_CONFIG_BOT_CHANNEL_ID" in caplog.text
 
 
 async def test_check_refuses_a_dm():

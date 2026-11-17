@@ -32,9 +32,9 @@
 log.info("Study created: studyId={}, createdBy={}", study.getId(), userId);
 log.info("User joined study: studyId={}, userId={}", studyId, userId);
 
-// 외부 호출 결과
-log.info("Google OAuth token exchange: success, userId={}", userId);
-log.warn("Google OAuth token exchange: failed, status={}", response.getStatusCode());
+// 외부 호출 결과 — key=value 로 필드를 구분한다 (Loki 쿼리에서 op="..." 등으로 걸러 쓴다)
+log.info("op=google-oauth requester={} status=ok elapsedMs={}", userId, elapsed);
+log.warn("op=google-oauth requester={} status=failure reason=HTTP-{} elapsedMs={}", userId, status, elapsed);
 
 // 예외 (GlobalExceptionHandler 에서)
 log.error("Unexpected error: uri={}", request.getRequestURI(), exception);

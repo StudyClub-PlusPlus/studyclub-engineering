@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 /**
- * 출석 저장. {@code withdrawals} 는 참여를 중단할 명부 행 ID 로, 사용자 사이트 출석부만 받는다
+ * 출석 저장. {@code withdrawals} 는 참여를 중단할 명부 행 ID 다 — 사용자 사이트 · 백오피스 출석부가 받고, 누가 누구를 중단하는지는 경로마다 다르다
  * (specs/study-participant/spec.md). 둘 다 비면 400 — 서비스가 판정한다.
  */
 public record AttendanceUpsertRequest(
@@ -27,6 +27,7 @@ public record AttendanceUpsertRequest(
         return !withdrawals.isEmpty();
     }
 
+    /** {@code status = null} 은 출석 행 삭제 — 미체크로 되돌리기. */
     public record AttendanceUpsertItem(
-            @NotNull Long meetingId, @NotNull Long participantId, @NotNull String status) {}
+            @NotNull Long meetingId, @NotNull Long participantId, String status) {}
 }

@@ -5,12 +5,12 @@ import discord
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.routes.studies import DEFAULT_NEW_STUDY_ANCHOR_NAME, MAX_STUDY_NAME
+from app.api.routes.studies import MAX_STUDY_NAME
 from app.api.server import create_app
 from app.config import Settings
 
 GUILD_ID = 100000000000000001
-CAPTAIN_ROLE_ID = 100000000000000002
+ANCHOR_ID = 100000000000000002
 USER_ID = "327394882193883136"
 API_KEY = "test-api-key"
 HEADERS = {
@@ -32,14 +32,12 @@ def _created(obj_id: int) -> Mock:
 
 
 class FakeGuild:
-    """A guild with one captain member, recording what gets created."""
+    """A guild the caller is not a member of, recording what gets created."""
 
     def __init__(
         self,
         *,
-        captain=True,
-        captain_role_exists=True,
-        categories=(DEFAULT_NEW_STUDY_ANCHOR_NAME,),
+        categories=((ANCHOR_ID, "구분선"),),
     ):
         self.category = _created(11)
         self.text = _created(12)
@@ -54,19 +52,14 @@ class FakeGuild:
 
         self.default_role = Mock(name="@everyone")
         self.me = Mock(name="bot member")
-        self.captain_role = Mock(id=CAPTAIN_ROLE_ID)
-        self.member = Mock()
-        self.member.get_role.return_value = self.captain_role if captain else None
-        self.fetch_member = AsyncMock(return_value=self.member)
-        self._captain_role_exists = captain_role_exists
+        # Who may call is the backend's to decide, so the caller is never looked up.
+        self.fetch_member = AsyncMock(side_effect=_discord_error(discord.NotFound, 404))
         self.categories = [Mock() for _ in categories]
-        for category, n in zip(self.categories, categories):
+        for category, (category_id, n) in zip(self.categories, categories):
+            category.id = category_id
             category.name = n
-        # discord.utils.get reads attributes, so only the names need to be real.
+        # discord.utils.get reads attributes, so only the IDs and names need to be real.
         self.anchor = self.categories[0] if self.categories else None
-
-    def get_role(self, role_id):
-        return self.captain_role if self._captain_role_exists and role_id == CAPTAIN_ROLE_ID else None
 
 
 def _bot(guild=None, ready=True) -> Mock:
@@ -84,9 +77,9 @@ def db_path(tmp_path):
 def _client(bot, db_path, **overrides) -> TestClient:
     values = {
         "guild_id": GUILD_ID,
-        "captain_role_id": CAPTAIN_ROLE_ID,
         "api_key": API_KEY,
         "db_path": db_path,
+        "anchor_channel_id": ANCHOR_ID,
     }
     settings = Settings(**{**values, **overrides})
     return TestClient(create_app(settings, bot))
@@ -123,7 +116,7 @@ def test_create_study_creates_category_channels_and_role(db_path):
 
     assert response.status_code == 201
     assert response.json() == {"discordStudyId": "11", "discordRoleId": "14"}
-    guild.fetch_member.assert_awaited_once_with(int(USER_ID))
+    guild.fetch_member.assert_not_awaited()
     guild.create_category.assert_awaited_once_with("알고리즘 스터디")
     guild.category.move.assert_awaited_once_with(after=guild.anchor)
     guild.category.create_text_channel.assert_awaited_once()
@@ -158,13 +151,11 @@ def test_create_study_voice_channel_is_visible_to_all_but_joinable_by_the_study_
     guild.voice.set_permissions.assert_awaited_once_with(guild.role, connect=True)
 
 
-def test_create_study_goes_below_the_current_reference_category(db_path):
-    """The reference name is read per request, so changing it at runtime takes effect."""
-    guild = FakeGuild(categories=("===== Old =====", "--- studies ---"))
-    client = _client(_bot(guild), db_path)
-    client.app.state.new_study_anchor_name = "--- studies ---"
+def test_create_study_goes_below_the_configured_reference_category(db_path):
+    """The reference category is found by its ID, wherever it sits and whatever it is named."""
+    guild = FakeGuild(categories=((21, "구분선"), (22, "--- studies ---")))
 
-    response = _post(client)
+    response = _post(_client(_bot(guild), db_path, anchor_channel_id=22))
 
     assert response.status_code == 201
     guild.category.move.assert_awaited_once_with(after=guild.categories[1])
@@ -172,14 +163,26 @@ def test_create_study_goes_below_the_current_reference_category(db_path):
 
 def test_create_study_without_reference_category_goes_to_the_top(db_path, caplog):
     """A missing reference category does not block creation; it is logged and the study goes on top."""
-    guild = FakeGuild(categories=("other",))
+    guild = FakeGuild(categories=((21, "구분선"),))
 
     with caplog.at_level("WARNING"):
         response = _post(_client(_bot(guild), db_path))
 
     assert response.status_code == 201
     guild.category.move.assert_awaited_once_with(beginning=True)
-    assert DEFAULT_NEW_STUDY_ANCHOR_NAME in caplog.text
+    assert str(ANCHOR_ID) in caplog.text
+
+
+def test_create_study_without_configured_reference_goes_to_the_top_quietly(db_path, caplog):
+    """An unset DISCORD_CONFIG_ANCHOR_CHANNEL_ID is a choice, so the study goes on top without a warning."""
+    guild = FakeGuild()
+
+    with caplog.at_level("WARNING"):
+        response = _post(_client(_bot(guild), db_path, anchor_channel_id=None))
+
+    assert response.status_code == 201
+    guild.category.move.assert_awaited_once_with(beginning=True)
+    assert "reference category" not in caplog.text
 
 
 def test_create_study_rolls_back_when_the_move_fails(db_path):
@@ -298,12 +301,11 @@ def test_create_study_before_connect_is_unavailable(db_path):
     assert response.status_code == 503
 
 
-@pytest.mark.parametrize("missing", ["guild_id", "captain_role_id"])
-def test_create_study_without_configuration_conflicts(missing, db_path):
-    response = _post(_client(_bot(FakeGuild()), db_path, **{missing: None}))
+def test_create_study_without_configuration_conflicts(db_path):
+    response = _post(_client(_bot(FakeGuild()), db_path, guild_id=None))
 
     assert response.status_code == 409
-    assert missing.upper() in response.json()["detail"]
+    assert "DISCORD_CONFIG_GUILD_ID" in response.json()["detail"]
 
 
 def test_create_study_with_unknown_guild_is_not_found(db_path):
@@ -311,37 +313,6 @@ def test_create_study_with_unknown_guild_is_not_found(db_path):
 
     assert response.status_code == 404
     assert "guild" in response.json()["detail"]
-
-
-def test_create_study_by_non_member_is_not_found(db_path):
-    guild = FakeGuild()
-    guild.fetch_member.side_effect = _discord_error(discord.NotFound, 404)
-
-    response = _post(_client(_bot(guild), db_path))
-
-    assert response.status_code == 404
-    assert "not a member" in response.json()["detail"]
-
-
-def test_create_study_without_captain_role_in_guild_is_not_found(db_path):
-    """A missing captain role is a guild setup problem, not the caller's -- and it is never created."""
-    guild = FakeGuild(captain_role_exists=False)
-
-    response = _post(_client(_bot(guild), db_path))
-
-    assert response.status_code == 404
-    assert "captain role" in response.json()["detail"]
-    guild.create_role.assert_not_awaited()
-
-
-def test_create_study_by_non_captain_is_forbidden(db_path):
-    guild = FakeGuild(captain=False)
-
-    response = _post(_client(_bot(guild), db_path))
-
-    assert response.status_code == 403
-    guild.create_category.assert_not_awaited()
-    assert _status(db_path, "알고리즘 스터디") is None
 
 
 def test_create_study_twice_conflicts(db_path):
@@ -369,7 +340,7 @@ def test_create_study_while_same_name_is_processing_conflicts(db_path):
 
 def test_create_study_with_existing_category_conflicts_and_frees_the_name(db_path):
     """A category made outside this service blocks the name without leaving a reservation."""
-    guild = FakeGuild(categories=[DEFAULT_NEW_STUDY_ANCHOR_NAME, "알고리즘 스터디"])
+    guild = FakeGuild(categories=[(ANCHOR_ID, "구분선"), (21, "알고리즘 스터디")])
 
     response = _post(_client(_bot(guild), db_path))
 

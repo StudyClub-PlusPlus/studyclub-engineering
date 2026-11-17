@@ -58,9 +58,35 @@ public class AttendanceUpsertService {
             upsert(studyId, request.studyGroupId(), request);
             return;
         }
-        ParticipantWithdrawalService.Prepared withdrawals =
+        saveWithWithdrawals(
+                studyId,
+                request,
                 participantWithdrawalService.prepare(
-                        actorAccountId, studyId, request.studyGroupId(), request.withdrawals());
+                        actorAccountId, studyId, request.studyGroupId(), request.withdrawals()));
+    }
+
+    /**
+     * 백오피스 출석부 저장 — 사용자 사이트와 같은 한 트랜잭션이다. 출석만이면 {@code @RequireAdmin} 을 통과한 캡틴 누구나, 중단이 있으면 담당 캡틴만
+     * · 대상에 네비게이터도 (2026-10-23 기획 결정, specs/study-participant/spec.md).
+     */
+    @Transactional
+    public void saveFromBackOffice(
+            Long actorAccountId, Long studyId, AttendanceUpsertRequest request) {
+        if (!request.hasWithdrawals()) {
+            upsert(studyId, request.studyGroupId(), request);
+            return;
+        }
+        saveWithWithdrawals(
+                studyId,
+                request,
+                participantWithdrawalService.prepareForBackOffice(
+                        actorAccountId, studyId, request.studyGroupId(), request.withdrawals()));
+    }
+
+    private void saveWithWithdrawals(
+            Long studyId,
+            AttendanceUpsertRequest request,
+            ParticipantWithdrawalService.Prepared withdrawals) {
         if (!request.updates().isEmpty()) {
             writeUpdates(studyId, request.studyGroupId(), request.updates());
         }
@@ -70,7 +96,7 @@ public class AttendanceUpsertService {
     /**
      * 권한은 호출자(컨트롤러)가 검사한다. 어드민 경로는 {@code @RequireAdmin}, 사용자 경로는 {@code
      * studyCaptainGuard.assertCaptainOrNavigatorOfGroup} 으로 각각 처리한다. 참여 중단({@code withdrawals})은 받지
-     * 않는다 — 사용자 사이트는 {@link #saveFromSite} 를 쓴다.
+     * 않는다 — 중단이 있으면 {@link #saveFromSite} · {@link #saveFromBackOffice} 를 쓴다.
      */
     @Transactional
     public void upsert(Long studyId, Long studyGroupId, AttendanceUpsertRequest request) {
@@ -78,6 +104,7 @@ public class AttendanceUpsertService {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "이 경로는 참여 중단(withdrawals)을 받지 않습니다.");
         }
+        // null-status 항목은 출석 행 삭제로 처리되므로 비어 있는 것이 아님 — isEmpty()로 충분
         if (request.updates().isEmpty()) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "updates 와 withdrawals 가 모두 비었습니다.");
@@ -96,21 +123,33 @@ public class AttendanceUpsertService {
 
         validateMeetingsBelongToGroup(validRequestContext.meetingIds(), studyId, studyGroupId);
         Map<Long, StudyParticipant> participantById =
-                loadAndValidateParticipants(validRequestContext.participantIds(), studyId);
+                loadAndValidateParticipants(
+                        validRequestContext.participantIds(), studyId, studyGroupId);
 
         Instant now = Instant.now();
         for (int i = 0; i < upsertRequests.size(); i++) {
             AttendanceUpsertRequest.AttendanceUpsertItem item = upsertRequests.get(i);
             StudyParticipant participant = participantById.get(item.participantId());
-            studyAttendanceRepository.upsertStatus(
-                    participant.getAccountId(),
-                    studyId,
-                    participant.getStudyGroupId(),
-                    item.meetingId(),
-                    validRequestContext.statuses().get(i).name(),
-                    now);
+            AttendanceStatus status = validRequestContext.statuses().get(i);
+            if (status == null) {
+                // null = 미체크로 되돌리기 — 출석 행을 지운다
+                studyAttendanceRepository.deleteByStudyMeetingIdAndAccountId(
+                        item.meetingId(), participant.getAccountId());
+            } else {
+                studyAttendanceRepository.upsertStatus(
+                        participant.getAccountId(),
+                        studyId,
+                        participant.getStudyGroupId(),
+                        item.meetingId(),
+                        status.name(),
+                        now);
+            }
         }
     }
+
+    // ValidRequestContext 의 statuses 는 items 와 1:1 대응. null = 삭제(미체크 되돌리기)
+    private record ValidRequestContext(
+            List<AttendanceStatus> statuses, Set<Long> meetingIds, Set<Long> participantIds) {}
 
     private void validateStudyExists(Long studyId) {
         studyRepository
@@ -136,10 +175,14 @@ public class AttendanceUpsertService {
         Set<Pair<Long, Long>> seenPairs = new HashSet<>();
 
         for (AttendanceUpsertRequest.AttendanceUpsertItem item : updates) {
-            try {
-                statuses.add(AttendanceStatus.from(item.status()));
-            } catch (IllegalArgumentException e) {
-                throw new BusinessException(ErrorCode.INVALID_INPUT, e.getMessage());
+            if (item.status() == null) {
+                statuses.add(null); // null = 삭제(미체크 되돌리기)
+            } else {
+                try {
+                    statuses.add(AttendanceStatus.from(item.status()));
+                } catch (IllegalArgumentException e) {
+                    throw new BusinessException(ErrorCode.INVALID_INPUT, e.getMessage());
+                }
             }
             if (!seenPairs.add(Pair.of(item.meetingId(), item.participantId()))) {
                 throw new BusinessException(
@@ -180,15 +223,17 @@ public class AttendanceUpsertService {
     }
 
     private Map<Long, StudyParticipant> loadAndValidateParticipants(
-            Set<Long> participantIds, Long studyId) {
+            Set<Long> participantIds, Long studyId, Long studyGroupId) {
         List<StudyParticipant> participants =
                 studyParticipantRepository.findByIdInAndStudyId(participantIds, studyId);
         if (participants.size() != participantIds.size()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "participantId가 이 스터디에 속하지 않습니다.");
         }
+        boolean wrongGroup =
+                participants.stream().anyMatch(p -> !studyGroupId.equals(p.getStudyGroupId()));
+        if (wrongGroup) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "participantId가 요청한 반에 속하지 않습니다.");
+        }
         return participants.stream().collect(Collectors.toMap(StudyParticipant::getId, p -> p));
     }
-
-    private record ValidRequestContext(
-            List<AttendanceStatus> statuses, Set<Long> meetingIds, Set<Long> participantIds) {}
 }

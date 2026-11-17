@@ -75,6 +75,7 @@ class AdminStudyGroupCreateIntegrationTest {
                                 .description("설명")
                                 .status(StudyStatus.DRAFT)
                                 .createdBy(ADMIN_ID)
+                                .ownerCaptainId(ADMIN_ID)
                                 .build());
     }
 

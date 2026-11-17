@@ -145,6 +145,7 @@ public class AccountOnboardingService {
                                 request.marketingAgreed(),
                                 agreedAt,
                                 ConsentType.MARKETING.currentVersion())));
-        applicationEventPublisher.publishEvent(UserRegisteredEvent.of(account.getId()));
+        applicationEventPublisher.publishEvent(
+                UserRegisteredEvent.of(account.getId(), request.gaClientId()));
     }
 }

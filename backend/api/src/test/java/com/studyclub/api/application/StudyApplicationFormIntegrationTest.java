@@ -106,8 +106,8 @@ class StudyApplicationFormIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 네비게이터는 사용자 사이트에서 신청 폼을 저장하고 정규화된 폼을 다시 받는다")
-    void navigatorReplacesFormFromSite() {
+    @DisplayName("실패 - 사용자 사이트 PUT은 삭제되어 존재하지 않는다 (4xx — 메서드 불일치)")
+    void sitePutIsRemoved() {
         var response =
                 rest.exchange(
                         "/api/studies/" + EDITABLE_STUDY_ID + "/application-form",
@@ -115,20 +115,7 @@ class StudyApplicationFormIntegrationTest {
                         authenticatedJsonRequest(LEADER_ID, validRequest()),
                         Map.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("title", "새 신청 폼");
-        assertThat(response.getBody()).containsEntry("description", "마크다운 **원문**");
-        List<?> questions = (List<?>) response.getBody().get("questions");
-        assertThat(questions).hasSize(1);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> question = (Map<String, Object>) questions.get(0);
-        assertThat(question).containsEntry("id", "motivation");
-        assertThat(question).containsEntry("label", "지원 동기");
-        assertThat(question).containsEntry("type", "TEXTAREA");
-        assertThat(question).containsEntry("required", true);
-        assertThat(question).containsEntry("placeholder", "자유롭게 적어주세요");
-        assertThat(question).containsEntry("options", null);
-        assertThat(question).containsEntry("allowOther", null);
+        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
     }
 
     @Test
@@ -143,11 +130,11 @@ class StudyApplicationFormIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 그 스터디의 네비게이터도 캡틴도 아니면 저장할 수 없다")
+    @DisplayName("실패 - 일반 멤버는 백오피스로 신청 폼을 저장할 수 없다")
     void rejectsOutsider() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
                         HttpMethod.PUT,
                         authenticatedJsonRequest(MEMBER_ID, validRequest()),
                         Map.class);
@@ -189,9 +176,9 @@ class StudyApplicationFormIntegrationTest {
     void rejectsLockedForm() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + LOCKED_STUDY_ID + "/application-form",
+                        "/api/admin/studies/" + LOCKED_STUDY_ID + "/application-form",
                         HttpMethod.PUT,
-                        authenticatedJsonRequest(LEADER_ID, validRequest()),
+                        authenticatedJsonRequest(CAPTAIN_ID, validRequest()),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
@@ -221,9 +208,9 @@ class StudyApplicationFormIntegrationTest {
 
         var response =
                 rest.exchange(
-                        "/api/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
                         HttpMethod.PUT,
-                        authenticatedJsonRequest(LEADER_ID, request),
+                        authenticatedJsonRequest(CAPTAIN_ID, request),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);

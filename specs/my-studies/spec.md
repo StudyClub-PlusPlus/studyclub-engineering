@@ -1,8 +1,9 @@
 # 내 스터디 API Spec
 
 > ERD: [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY](../../docs/erd/STUDY.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
+> 갱신: 2026-11-16 — 담당 캡틴 판정을 `STUDY.CREATED_BY` 에서 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md)). 처음 값은 만든 캡틴, 백오피스 신청자 탭에서 바꾼다
 > 생성일: 2026-09-30
-> 상태: 구현완료 (프론트 core-front `/my/joined` 구현 완료. 담당 캡틴 `captain` 플래그는 추가 필요)
+> 상태: 구현완료 (프론트 core-front `/my/joined` 구현 완료)
 >
 > Story PRD:
 > - [크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다](../../01-planning/stories/crew-joined-studies/PRD.md)
@@ -14,7 +15,7 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/me/studies | 내 스터디 — 명부에 있는 스터디 전부 + 회차별 내 출석 | O | 구현완료 · `captain` 플래그 추가 필요 |
+| GET | /api/me/studies | 내 스터디 — 명부에 있는 스터디 전부 + 회차별 내 출석 | O | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -101,7 +102,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].relation | String | N | 나와의 관계 — 탭·배지. 아래 표 | 계산: `participantStatus` + `startAt` |
 | items[].participantStatus | String | Y | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED` | STUDY_PARTICIPANT.STATUS |
 | items[].participantRole | String | Y | `MEMBER` / `LEADER`. 네비게이터 배지·스터디 관리 버튼 | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
-| items[].captain | Boolean | N | 내가 이 스터디의 **담당 캡틴**(스터디를 생성한 캡틴)이면 true — 「캡틴」 배지. 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다. 다른 캡틴(ADMIN)이 신청해 참여한 스터디는 false(크루) | 계산: `STUDY.CREATED_BY = 나` |
+| items[].captain | Boolean | N | 내가 이 스터디의 **담당 캡틴**(처음엔 스터디를 생성한 캡틴, 백오피스에서 바뀔 수 있다)이면 true — 「캡틴」 배지. 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다. 다른 캡틴(ADMIN)이 신청해 참여한 스터디는 false(크루) | 계산: `STUDY.OWNER_CAPTAIN_ID = 나` |
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |
 | items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김 | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |
@@ -163,7 +164,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | 시작 전 회차에 EXCUSED 행 있음 | 그 회차 `attendanceStatus` EXCUSED, `countedInRate` false |
 | 편입(`JOINED_AT`) 전 지난 회차 | 격자에 나오고 `countedInRate` false |
 | 다른 회원의 명부·출석 | 응답에 안 나옴 |
-| 내가 만든(`CREATED_BY = 나`) 스터디, 신청하지 않음(명부 행 없음) | 응답에 안 나옴 |
+| 내가 담당하는(`OWNER_CAPTAIN_ID = 나`) 스터디, 신청하지 않음(명부 행 없음) | 응답에 안 나옴 |
 | 다른 캡틴이 만든 스터디에 내가 신청해 명부 MEMBER | `captain` false |
 | 담당 캡틴이 신청해 명부 MEMBER 행 있음 | 명부 값(출석률·회차 포함) + `captain` true |
 | 토큰 없음 | 401 |
@@ -179,9 +180,16 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 
 ### 미확정
 
-- 출석률에서 휴가(`EXCUSED`)는 **출석과 똑같이 센다**(1회 = 1.0) — #146(2026-09-30 머지)이 계산기·출석 스펙·ERD 를 이렇게 맞췄다. PRD §4-8 의 "휴가 회차는 계산에서 뺀다" 와 열린 #147 문서는 바뀌기 전 기준이다. 휴가 신청 자체는 MVP 이후(디스코드 09-08)라 `EXCUSED` 는 반장 정정으로만 생긴다
+- 출석률에서 휴가(`EXCUSED`)는 **분모에서 뺀다**, 출석 행이 없는 회차도 세지 않는다 — PRD §4-8 기준 (2026-10-24 기획 결정. 전에는 #146 이 휴가를 출석과 같이 1.0 으로 셌다). 휴가 신청 자체는 MVP 이후(디스코드 09-08)라 `EXCUSED` 는 반장 정정으로만 생긴다
 - [NEEDS CLARIFICATION] 명부 `PAUSED` 의 탭·배지 (PRD §4 미확정과 같음)
 - [NEEDS CLARIFICATION] 클럽 디스코드 초대(로비) URL 은 지금 프론트 mock `site.discord_invite`(`frontend/packages/mock/src/index.ts`)에 있다. 서버 설정으로 옮길지만 미정 — 옮기기 전까지 이 응답에 넣지 않는다
 - [NEEDS CLARIFICATION] 회차 예정 길이. 컬럼이 없어 120분으로 본다(프로토 가정). 반·스터디마다 다르면 예정 종료 컬럼이 필요하다
 - 공개 상세 `GET /api/studies/{id}` 도 같은 규칙으로 막았다 — 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 `discordChannelUrl`·`driveUrl` 을 채운다 ([docs/share/2026-09-30-study-detail-private-urls.md](../../docs/share/2026-09-30-study-detail-private-urls.md))
 - [NEEDS CLARIFICATION] 회차 번호 컬럼(`MEETING_NO`)이 생기면 `sequence` 소스를 바꾼다. 지금은 예정 시각 순번이라 회차를 중간에 추가하면 뒤 번호가 밀린다
+
+## 퍼널·계측
+
+- 단계: 재방문
+- 화면 조회는 공통 `Page Viewed` (`page_name`=`my_studies` · `study_room_schedule` · `study_room_attendance` · `study_room_notice`, 스터디룸은 `study_id` 함께)
+- 이벤트 (front): 정보 카드 「디스코드」 버튼에 `Study Discord Opened{study_id}`. 발표 신청은 [study-meeting](../study-meeting/spec.md)
+- A/B 없음

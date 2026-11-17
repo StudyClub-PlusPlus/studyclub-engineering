@@ -9,7 +9,8 @@ import { Providers } from '@/app/providers';
 import { Footer } from '@/components/Footer';
 import { RegistrationNavigation } from '@/components/RegistrationNavigation';
 import { SiteHeader } from '@/components/SiteHeader';
-import { getSite } from '@/lib/content';
+import { getSite } from '@/features/community/server';
+import { PlusPlusCombo } from '@/features/credits/PlusPlusCombo';
 import { LOCALES, isLocale, m } from '@/lib/i18n';
 import { JsonLd, organizationJsonLd, webSiteJsonLd } from '@/lib/jsonld';
 import { IS_INDEXABLE, SITE_NAME, SITE_URL, alternatesFor } from '@/lib/seo';
@@ -32,6 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   if (!isLocale(locale)) return {};
   return {
+    verification: { other: { 'naver-site-verification': '704d84f239ac8c0255ff0d16fff86b95ce6138c9' } },
     metadataBase: new URL(SITE_URL),
     title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
     description: m('seo.site_description', locale),
@@ -89,6 +91,7 @@ export default async function LocaleLayout({
             <main className='flex-1 overflow-x-clip'>{children}</main>
             <Footer locale={locale} site={site} />
             <Toaster position='bottom-center' />
+            <PlusPlusCombo locale={locale} />
           </div>
         </Providers>
       </body>

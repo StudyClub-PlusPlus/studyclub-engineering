@@ -8,25 +8,29 @@ import com.studyclub.common.event.EventMeta;
  * (specs/domain-events/spec.md). 이미 중단된 행을 다시 보내면 발행하지 않는다. 디스코드 스터디 role 회수(DSC-09)가 듣는다.
  *
  * @param participantRole 중단 직전 역할 — 네비게이터였으면 구독자가 네비게이터 role 도 본다
+ * @param discordUserId 중단 시점의 디스코드 ID, 미연동이면 null. 구독자가 돌기 전에 연결을 해제해도 옛 계정에서 role 을 뗄 수 있게 담는다
  */
 public record StudyParticipantWithdrawn(
         EventMeta meta,
         Long studyId,
         Long participantId,
         Long accountId,
-        ParticipantRole participantRole)
+        ParticipantRole participantRole,
+        String discordUserId)
         implements DomainEvent {
 
     public static final String NAME = "study_participant.withdrawn";
 
     /** 행위자 = 중단시킨 사람(네비게이터·담당 캡틴). */
-    public static StudyParticipantWithdrawn of(Long actorAccountId, StudyParticipant participant) {
+    public static StudyParticipantWithdrawn of(
+            Long actorAccountId, StudyParticipant participant, String discordUserId) {
         return new StudyParticipantWithdrawn(
                 EventMeta.now(actorAccountId),
                 participant.getStudyId(),
                 participant.getId(),
                 participant.getAccountId(),
-                participant.getParticipantRole());
+                participant.getParticipantRole(),
+                discordUserId);
     }
 
     @Override

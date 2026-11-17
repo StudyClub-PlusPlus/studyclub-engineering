@@ -1,6 +1,10 @@
 import { expect, test, type BrowserContext, type Route } from '@playwright/test';
 
-const study = {
+import { studyDetailFixture } from '../fixtures/study-detail';
+// PRD 부분 연결: BO-ST-025-S01/S02, BO-ST-026-S02 (반 편성·저장·이탈 일부)
+// 전체 대응표: docs/frontend-development-guide/admin-e2e-prd-map.md
+
+const study = studyDetailFixture({
   id: 20,
   programId: 1,
   programTitle: '백오피스 테스트',
@@ -20,7 +24,7 @@ const study = {
   endAt: null,
   discordChannelUrl: null,
   driveUrl: null,
-};
+});
 
 function participants() {
   return {
@@ -109,6 +113,10 @@ async function mockParticipants(
           'Access-Control-Allow-Headers': 'Content-Type',
         },
       });
+      return;
+    }
+    if (url.endsWith('/application-form')) {
+      await route.fulfill({ json: { studyId: 20, title: '신청 폼', description: null, questions: [] } });
       return;
     }
     if (url.endsWith('/participants')) {
@@ -204,7 +212,8 @@ test('저장 중 이동을 막고 권한 회수 응답이면 명단을 숨긴다
   await expect(page.getByRole('button', { name: '정보', exact: true })).toBeDisabled();
   await page.getByRole('link', { name: '스터디 관리', exact: true }).click();
   await expect(page).toHaveURL(/tab=crew/);
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: '변경을 취소하고 이동' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '변경 취소 후 이동' })).toBeDisabled();
   release();
   await expect(page.getByRole('alert').filter({ hasText: '권한' })).toBeVisible();
   await expect(page.getByText('crew@example.com', { exact: true })).toHaveCount(0);

@@ -7,9 +7,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 
-import { TimeZonePicker } from '@core/components/TimeZonePicker';
+import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
+import { useDiscordLink } from '@core/components/useDiscordLink';
 import { getUser, type SessionUser } from '@core/lib/auth';
 import { type Locale } from '@core/lib/content';
+import { hasDiscordParticipation } from '@core/lib/discord-preview';
 import { PAGE } from '@core/lib/layout';
 import {
   getDiscord,
@@ -24,16 +26,17 @@ import {
   type DiscordLink,
 } from '@core/lib/me';
 import { checkNicknameAvailability, normalizeNickname } from '@core/lib/nickname-availability';
-import { nicknameError } from '@core/lib/onboarding';
+import { isOnboardingTimeZone, nicknameError, snapToOnboardingZone } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
 import { Button, Checkbox } from '@studyclub/ui';
 import { Check, Pencil } from 'lucide-react';
 
-import { SPEC } from './spec';
+import { MY_EVENTS_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { MyEventsSummary } from '@/proto/events/MyEventsSummary';
 
 /**
- * 마이페이지 — 내 정보만 다룬다.
+ * 마이페이지 — beta 실제 프로필 카드에 행사 신청 요약을 더한다.
  *
  * 스터디 목록은 두지 않는다. 참여 중·참여 종료는 내 스터디룸, 관심은 찜한 스터디가 맡는다.
  * 신청에는 승인 대기가 없다 (POL-0004) — 신청하면 곧 참여라 따로 기다리는 목록이 필요 없다.
@@ -50,12 +53,14 @@ export default function MyPage() {
   const [timeZone, setTimeZoneState] = useState('Asia/Seoul');
   const [name, setName] = useState('');
   const [discord, setDiscordState] = useState<DiscordLink>(null);
-  // 인라인 편집 — 고치는 값 옆에서 바로 고친다. 항목이 둘뿐이라 따로 지면을 열 일이 아니다.
-  // 닉네임만 따로 고친다 — 검사(형식·중복)가 있어 확정 단계가 필요하다. 나머지 줄은 누르면 바로 저장된다
+  const [disconnectBlocked, setDisconnectBlocked] = useState(false);
+  const { linking, error: discordError, connect } = useDiscordLink(locale);
+  // 서비스와 같이 닉네임·시간대를 함께 편집하고 저장한다.
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState('');
+  const [draftZone, setDraftZone] = useState('');
   /** 방금 저장된 줄 — 잠깐 「저장됨」을 띄운다 */
-  const [savedRow, setSavedRow] = useState<'name' | 'zone' | 'discord' | 'marketing' | null>(null);
+  const [savedRow, setSavedRow] = useState<'profile' | 'discord' | null>(null);
   const [composing, setComposing] = useState(false);
   const [marketing, setMarketingState] = useState(false);
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
@@ -78,7 +83,7 @@ export default function MyPage() {
 
   const trimmedName = draftName.trim();
   const unchangedName = normalizeNickname(trimmedName) === normalizeNickname(name);
-  const nameFormatError = composing ? undefined : nicknameError(draftName, locale);
+  const nameFormatError = composing || unchangedName ? undefined : nicknameError(draftName, locale);
 
   useEffect(() => {
     if (!editing || composing || nameFormatError || unchangedName) {
@@ -113,58 +118,62 @@ export default function MyPage() {
             ? { text: '확인하지 못했습니다. 다시 시도해 주세요', tone: 'muted' }
             : { text: '2~20자 · 한글, 영문, 숫자, 밑줄(_)', tone: 'muted' };
 
-  const nameBlocked = Boolean(nameFormatError) || nickStatus === 'taken' || nickStatus === 'checking';
+  const nameBlocked = !unchangedName && (Boolean(nameFormatError) || nickStatus === 'taken' || nickStatus === 'checking');
+  const profileBlocked = composing || nameBlocked || !isOnboardingTimeZone(draftZone);
 
 
   if (!ready || !user) {
-    return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
+    return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
 
-  function flash(row: 'name' | 'zone' | 'discord' | 'marketing') {
+  function flash(row: 'profile' | 'discord') {
     setSavedRow(row);
     window.setTimeout(() => setSavedRow((cur) => (cur === row ? null : cur)), 1800);
   }
 
   function openEditor() {
     setDraftName(name);
+    setDraftZone(snapToOnboardingZone(timeZone));
+    setNickStatus('idle');
     setEditing(true);
   }
 
-  function saveName() {
-    if (nameBlocked) return;
+  function saveProfile() {
+    if (profileBlocked) return;
     if (!unchangedName) {
-      // TODO(api): PATCH /api/me { nickname, timeZone } — 시간대는 지금 값을 같이 보낸다
       setName(trimmedName);
       setDisplayName(trimmedName);
-      flash('name');
     }
+    if (draftZone !== timeZone) {
+      setTimeZoneState(draftZone);
+      setTimeZone(draftZone);
+    }
+    if (!unchangedName || draftZone !== timeZone) flash('profile');
     setEditing(false);
-  }
-
-  function changeZone(zone: string) {
-    if (zone === timeZone) return;
-    // TODO(api): PATCH /api/me { nickname, timeZone } — 닉네임은 지금 값을 같이 보낸다
-    setTimeZoneState(zone);
-    setTimeZone(zone);
-    flash('zone');
   }
 
   function changeMarketing(on: boolean) {
     // TODO(api): PUT /api/me/marketing-consent — 실패하면 이전 값으로 되돌리고 사유를 보여준다
     setMarketingState(on);
     setMarketing(on);
-    flash('marketing');
+    // 「저장됨」을 띄우지 않는다 — 체크 상태가 곧 결과다
   }
 
   function connectDiscord() {
-    // TODO(api): 디스코드 OAuth 로 교체
-    setDiscord('jiwon_dev');
-    setDiscordState(getDiscord());
-    flash('discord');
+    connect(() => {
+      setDiscordState(getDiscord());
+      setDisconnectBlocked(false);
+      flash('discord');
+    });
   }
 
   function disconnectDiscord() {
+    if (hasDiscordParticipation()) {
+      setDisconnectBlocked(true);
+      return;
+    }
+    setDisconnectBlocked(false);
     setDiscord(null);
     setDiscordState(null);
     flash('discord');
@@ -172,17 +181,31 @@ export default function MyPage() {
 
   return (
     <div className={`${PAGE} pb-16 pt-10`}>
-      <h1 className='text-2xl font-extrabold tracking-tight'>마이페이지</h1>
+      <h1 className='type-headline-lg'>마이페이지</h1>
 
       <ScreenSpecRegistrar spec={SPEC} />
-      {/*
-        내 정보 — 줄마다 스스로 저장된다. 카드 전체를 편집 모드로 바꾸지 않는다:
-        닉네임·시간대는 저장 버튼을, 마케팅·디스코드는 누르는 즉시를 따르면 한 카드에 저장 방식이 둘이 된다.
-        닉네임만 검사가 있어 그 자리에서 고치고 확정한다.
-      */}
-      {/* 고칠 값이 넷뿐이라 페이지 폭을 다 쓰지 않는다 — 넓히면 이름과 값·동작 사이가 멀어진다 */}
-      <section data-anno='profile:1' className='card mt-5 max-w-xl'>
-        <div className='px-6 pb-5 pt-6'>
+      <ScreenSpecRegistrar spec={MY_EVENTS_SPEC} />
+      {/* beta 실제 화면과 같은 사진·프로필 카드 구조. 닉네임·시간대는 저장으로 함께 확정한다. */}
+      <section
+        data-anno='profile:1'
+        data-clarity-mask='true'
+        className={`card mt-5 ${editing ? '' : 'overflow-hidden'}`}
+      >
+        <div className='flex items-start gap-4 px-6 pb-5 pt-6'>
+          <div className='shrink-0'>
+            {user.picture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.picture} alt='' className='h-14 w-14 rounded-full object-cover' />
+            ) : (
+              <div
+                aria-hidden='true'
+                className='grid h-14 w-14 place-items-center rounded-full bg-surface-2 type-title-lg text-fg-secondary'
+              >
+                {(name || user.email).trim().slice(0, 1).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <div className='min-w-0 flex-1 pt-2'>
           {editing ? (
             /* 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다 — 카드 높이가 그대로다 */
             <div data-anno='profile:2'>
@@ -194,25 +217,19 @@ export default function MyPage() {
                   onCompositionEnd={() => setComposing(false)}
                   onKeyDown={(e) => {
                     if (composing) return;
-                    if (e.key === 'Enter') saveName();
+                    if (e.key === 'Enter') saveProfile();
                     if (e.key === 'Escape') setEditing(false);
                   }}
                   autoFocus
                   maxLength={20}
                   aria-label='닉네임'
                   /* 테두리 대신 밑줄 — 상자로 만들면 그 줄만 키가 커져 카드가 달라 보인다 */
-                  className='min-w-0 flex-1 border-0 border-b-2 border-brand bg-transparent p-0 pb-0.5 text-xl font-extrabold tracking-tight text-fg outline-none'
+                  className='min-w-0 flex-1 border-0 border-b-2 border-brand bg-transparent p-0 pb-0.5 type-title-lg text-fg outline-none'
                 />
-                <span className='tnum shrink-0 text-xs text-fg-placeholder'>{trimmedName.length}/20</span>
-                <Button size='sm' variant='ghost' onClick={() => setEditing(false)}>
-                  취소
-                </Button>
-                <Button size='sm' onClick={saveName} disabled={nameBlocked}>
-                  저장
-                </Button>
+                <span className='tnum shrink-0 type-label-sm text-fg-placeholder'>{trimmedName.length}/20</span>
               </div>
               <p
-                className={`mt-1 truncate text-sm ${
+                className={`mt-1 truncate type-body-sm ${
                   nameLine.tone === 'ok'
                     ? 'text-success-700'
                     : nameLine.tone === 'error'
@@ -226,55 +243,83 @@ export default function MyPage() {
           ) : (
             <div>
               <div className='flex min-w-0 items-center gap-1.5'>
-                <p className='truncate text-xl font-extrabold tracking-tight text-fg'>{name}</p>
-                {/* 고치는 자리는 고칠 값 바로 옆 — 카드 모서리의 버튼은 무엇을 고치는지 읽히지 않는다 */}
+                <p className='truncate type-title-lg text-fg'>{name}</p>
                 <button
                   type='button'
                   data-anno='profile:1-1'
                   onClick={openEditor}
-                  title='닉네임 수정'
-                  aria-label='닉네임 수정'
+                  title='내 정보 수정'
+                  aria-label='내 정보 수정'
                   className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
                 >
                   <Pencil size={14} />
                 </button>
-                <Saved show={savedRow === 'name'} />
+                <Saved show={savedRow === 'profile'} />
               </div>
-              <p className='mt-0.5 truncate text-sm text-fg-muted'>{user.email}</p>
+              <p className='mt-0.5 truncate type-body-sm text-fg-muted'>{user.email}</p>
             </div>
           )}
+          </div>
         </div>
 
-        <dl className='divide-y divide-border border-t border-border text-sm'>
-          <Field label='시간대' anno='profile:3' saved={savedRow === 'zone'}>
-            <div className='w-full sm:w-52'>
-              <TimeZonePicker value={timeZone} onChange={changeZone} locale={locale} hideLabel compact />
-            </div>
+        <dl className='divide-y divide-border border-t border-border type-body-sm'>
+          <Field label='시간대' anno='profile:3' saved={false}>
+            {editing ? (
+              <div className='w-full max-w-xs'>
+                <TimeZonePicker value={draftZone} onChange={setDraftZone} locale={locale} hideLabel />
+              </div>
+            ) : (
+              <span className='font-semibold text-fg'>{zoneName(timeZone, locale) ?? timeZone}</span>
+            )}
           </Field>
 
           <Field label='디스코드' anno='profile:4' saved={savedRow === 'discord'}>
+            <div className='min-w-0 flex-1'>
+            <div className='flex flex-wrap items-center gap-2'>
             {discord ? (
               <>
                 <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
-                <Button size='sm' variant='ghost' onClick={disconnectDiscord}>
+                <Button size='sm' variant='tertiary' onClick={disconnectDiscord}>
                   연결 해제
                 </Button>
               </>
             ) : (
               <>
                 <span className='text-fg-muted'>연결 안 됨</span>
-                <Button size='sm' variant='secondary' onClick={connectDiscord}>
+                <Button size='sm' variant='secondary' onClick={connectDiscord} loading={linking}>
                   연결하기
                 </Button>
               </>
             )}
+            </div>
+            {discordError && <p data-anno='profile:4-2' role='alert' className='mt-3 type-body-sm text-error-700'>{discordError}</p>}
+            {disconnectBlocked && (
+              <div data-anno='profile:4-1' className='mt-3 rounded-control bg-error-50 p-3 type-body-sm'>
+                {/*
+                  첫 줄(「해제할 수 없어요」)은 뺀다 — 눌렀는데 안 됐다는 건 화면이 이미 말한다.
+                  남길 것은 **그래서 무엇을 해야 하는가**다.
+                  **「캡틴」이라고 부른다** — 스터디마다 배정된 운영진이라는 개념이 아직 없고,
+                  참여 중단은 백오피스에서만 되는데 백오피스는 캡틴만 들어온다. 화면에서 사람을
+                  가리킬 때는 역할 이름(캡틴 · 네비게이터 · 크루)으로 적는다.
+                */}
+                <p role='alert' className='leading-relaxed text-error-700'>
+                  참여 중인 모든 스터디의 참여를 중단한 뒤 다시 시도해 주세요.
+                  <br />참여 중단은 캡틴에게 문의해 주세요.
+                </p>
+                <Link href={`/proto/core/${locale}/my/joined`} className='mt-2 inline-flex min-h-9 items-center font-semibold text-fg underline underline-offset-4'>
+                  내 스터디 확인하기
+                </Link>
+              </div>
+            )}
+            </div>
           </Field>
 
           {/*
             가입 때 받는 선택 동의라 끄고 켜는 길이 있어야 한다. 가입 화면에만 두면 바꿀 수 없다.
             가입 완료·탈퇴 안내는 이 값과 무관하게 나간다.
           */}
-          <Field label='마케팅 수신' anno='profile:5' saved={savedRow === 'marketing'}>
+          {/* 체크박스는 **상태가 곧 결과**다 — 켜졌는지 꺼졌는지가 보이므로 「저장됨」이 할 말이 없다 */}
+          <Field label='마케팅 수신' anno='profile:5' saved={false}>
             <Checkbox
               label='스터디 소식과 행사 안내를 이메일로 받기'
               checked={marketing}
@@ -282,24 +327,35 @@ export default function MyPage() {
             />
           </Field>
         </dl>
-
+        {editing && (
+          <div className='flex justify-end gap-2 border-t border-border px-6 py-3'>
+            <Button size='sm' variant='tertiary' onClick={() => setEditing(false)}>
+              취소
+            </Button>
+            <Button size='sm' onClick={saveProfile} disabled={profileBlocked}>
+              저장
+            </Button>
+          </div>
+        )}
       </section>
 
       {/* 찾을 수 있되 눈에 띄지 않게 — 카드 안 한 줄을 통째로 내주면 링크 하나에 무게가 실린다 */}
-      <div className='mt-3 max-w-xl px-1'>
+      <div className='mt-3 px-1'>
         <Link
           data-anno='profile:7'
           href={`/proto/core/${locale}/my/leave`}
-          className='text-xs text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
+          className='type-label-sm text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
         >
           회원 탈퇴
         </Link>
       </div>
+
+      <MyEventsSummary locale={locale} />
     </div>
   );
 }
 
-/** 내 정보 한 줄 — 이름은 왼쪽 고정 폭, 값과 동작은 오른쪽. 줄마다 스스로 저장된다. */
+/** 내 정보 한 줄 — 이름은 왼쪽 고정 폭, 값과 동작은 오른쪽. */
 function Field({
   label,
   anno,
@@ -331,7 +387,7 @@ function Saved({ show }: { show: boolean }) {
   return (
     <span
       aria-live='polite'
-      className={`inline-flex items-center gap-0.5 text-xs font-semibold text-success-700 transition-opacity duration-300 ${
+      className={`inline-flex items-center gap-0.5 type-label-sm text-success-700 transition-opacity duration-300 ${
         show ? 'opacity-100' : 'opacity-0'
       }`}
     >

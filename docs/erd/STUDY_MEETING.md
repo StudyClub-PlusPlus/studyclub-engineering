@@ -10,7 +10,7 @@
 | STUDY_GROUP_ID | BIGINT FK → STUDY_GROUP | N | |
 | SCHEDULED_AT | DATETIME | N | 예정 시각 (UTC) |
 | START_AT | DATETIME | Y | 실제 시작 — 반장이 시작 명령 시 기록 |
-| END_AT | DATETIME | Y | 실제 종료 — 종료 명령이 생기면 기록한다. 지금은 쓰는 경로가 없어 늘 비어 있고, 종료 기준은 아래 「상태」 대로 시각으로 계산한다 |
+| END_AT | DATETIME | Y | 종료 기록 — 끝난 회차를 그 반의 다음 `!출석체크` 가 닫으며 종료 기준(`endsAt`)을 적는다(`closeIfOver`). 그래서 늦게 채워진다 — **판정은 이 칸이 아니라 아래 「상태」 의 시각 계산으로 한다** |
 | TITLE | VARCHAR(50) | Y | 표시용 제목 (`3주차 논문 읽기`). 반복으로 만들면 그때 만든 회차 모두에 같은 제목 |
 | SERIES_ID | VARCHAR(36) | Y | 반복 묶음 ID (UUID). 한 번에 2개 이상 만든 회차가 같은 값을 갖는다. 한 번만 만든 회차는 NULL |
 | MEETING_TYPE | VARCHAR(16) | N | `KICKOFF` · `REGULAR`(기본). 킥오프는 분반마다 하나, 번호 0, 삭제 불가, 출석률 제외 |
@@ -20,7 +20,7 @@
 **반복 묶음은 `SERIES_ID` 로 남긴다** — 지금은 쓰는 기능이 없고 삭제·수정은 한 회차씩이다. 반복 단위 수정·삭제를 붙일 때 쓴다.
 **발표 여부는 저장하지 않는다** — 출석부의 발표 표시·횟수는 `PRESENTER1·2_PARTICIPANT_ID` 에서 계산한다.
 **회차 번호는 저장하지 않는다** — 킥오프는 0, 정규 회차는 `SCHEDULED_AT` 오름차순으로 센 순번으로 계산한다. 저장하면 추가·삭제·수정 때마다 뒤 회차를 전부 다시 써야 한다.
-쓰기 규칙(같은 날 중복 금지 · 31일 상한 · 시작한 회차 수정·삭제 금지)은 [study-meeting 스펙](../../specs/study-meeting/spec.md).
+쓰기 규칙(같은 날 중복 금지 · 1년 상한 · 시작한 회차 수정·삭제 금지)은 [study-meeting 스펙](../../specs/study-meeting/spec.md).
 
 ## 관계
 - N : 1 [STUDY_GROUP](./STUDY_GROUP.md)

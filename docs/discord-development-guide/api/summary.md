@@ -18,17 +18,17 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 
 ## 엔드포인트 목록
 
-| 메서드 | 경로 | 문서 | 호출 권한 | 성공 |
-|--------|------|------|-----------|------|
-| `POST` | `/api/v1/studies` | [create-study](create-study.md) | captain | 201 + `{discordStudyId, discordRoleId}` |
-| `GET` | `/api/v1/studies/{discordStudyId}/channels` | [get-study-channels](get-study-channels.md) | captain · navigator · 시스템 | 200 + 채널 배열 |
-| `POST` | `/api/v1/roles/{discordRoleId}/users` | [assign-role](assign-role.md) | captain · 시스템 | 200 + `{succeededCount, failed}` |
-| `DELETE` | `/api/v1/roles/{discordRoleId}/users` | [remove-role](remove-role.md) | captain · 시스템 | 200 + `{succeededCount, failed}` |
-| `POST` | `/api/v1/roles/navigator/users` | [assign-navigator-role](assign-navigator-role.md) | captain | 200 + `{succeededCount, failed}` |
-| `DELETE` | `/api/v1/roles/navigator/users` | [remove-navigator-role](remove-navigator-role.md) | captain | 200 + `{succeededCount, failed}` |
-| `POST` | `/api/v1/channels/{discordChannelId}/msg` | [send-message](send-message.md) | captain · navigator | 204 |
-| `POST` | `/api/v1/channels/alert/msg` | [send-alert-message](send-alert-message.md) | captain · 시스템 | 204 |
-| `POST` | `/api/v1/channels/announcement/msg` | [send-announcement-message](send-announcement-message.md) | captain | 204 |
+| 메서드 | 경로 | 문서 | 성공 |
+|--------|------|------|------|
+| `POST` | `/api/v1/studies` | [create-study](create-study.md) | 201 + `{discordStudyId, discordRoleId}` |
+| `GET` | `/api/v1/studies/{discordStudyId}/channels` | [get-study-channels](get-study-channels.md) | 200 + 채널 배열 |
+| `POST` | `/api/v1/roles/{discordRoleId}/users` | [assign-role](assign-role.md) | 200 + `{succeededCount, failed}` |
+| `DELETE` | `/api/v1/roles/{discordRoleId}/users` | [remove-role](remove-role.md) | 200 + `{succeededCount, failed}` |
+| `POST` | `/api/v1/roles/navigator/users` | [assign-navigator-role](assign-navigator-role.md) | 200 + `{succeededCount, failed}` |
+| `DELETE` | `/api/v1/roles/navigator/users` | [remove-navigator-role](remove-navigator-role.md) | 200 + `{succeededCount, failed}` |
+| `POST` | `/api/v1/channels/{discordChannelId}/msg` | [send-message](send-message.md) | 204 |
+| `POST` | `/api/v1/channels/alert/msg` | [send-alert-message](send-alert-message.md) | 204 |
+| `POST` | `/api/v1/channels/announcement/msg` | [send-announcement-message](send-announcement-message.md) | 204 |
 
 ## 공통 규칙
 
@@ -40,7 +40,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 |------|------|---------------|
 | `Content-Type: application/json` | 바디가 있을 때만 | — |
 | `X-API-Key` | 항상 — 서비스 간 인증 | 401. 단 없는 경로는 키 검사 전에 404 (401 우선은 [아직 미구현](common-header.md)) |
-| `X-Discord-User-ID` | 역할 확인이 필요한 요청 — **현재 모든 엔드포인트**. 시스템 호출은 `DISCORD_BOT_ID` | 400, 길드 멤버 아님 404, 자격 없음 403 |
+| `X-Discord-User-ID` | 항상 — 요청자. 봇은 역할도 길드 멤버인지도 보지 않고 `발신:` 줄에만 쓴다. 시스템 호출은 `DISCORD_CONFIG_BOT_ID` | 400 |
 | `Idempotency-Key` | 상태를 바꾸는 요청 (`GET` 제외 전부) — 로그 추적용 요청 ID | 없으면 400 |
 
 **ID 와 설정**
@@ -48,26 +48,27 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 - snowflake 는 경계에서 **항상 문자열**이고 `^[0-9]{17,20}$` 로 검증한다 (JS 정밀도 문제).
 - 이름에 `discord` 가 붙은 ID 는 StudyClub 가 아니라 **Discord 쪽 ID** 다.
 - captain · navigator 역할, alert · announcement 채널은 길드에 **이미 있는** 것이고, 모두 **설정값으로 ID 를 받는다**
-  (`DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` · `DISCORD_ALERT_CHANNEL_ID` · `DISCORD_ANNOUNCEMENT_CHANNEL_ID`).
+  (`DISCORD_CONFIG_CAPTAIN_ROLE_ID` · `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` · `DISCORD_CONFIG_ALERT_CHANNEL_ID` · `DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID`).
   이름으로 찾지 않고, 못 찾으면 만들지 않고 404 로 실패한다 — 호출자가 고칠 수 없는 **서버·길드 설정 문제**다.
-- captain · navigator 역할은 **길드 전체에 하나**다. 봇은 "역할이 있다" 까지만 보고, 스터디 단위 권한
-  (그 스터디의 captain 인지, 대상이 그 스터디 멤버인지)은 **백엔드가 호출 전에** 확인한다.
+- **누가 부를 수 있는지는 봇이 보지 않는다.** 봇은 `X-API-Key` 로 백엔드가 부른 것인지만 확인한다.
+  요청자의 역할(captain · navigator 인지)도, 스터디 단위 권한(그 스터디의 captain 인지, 대상이 그 스터디 멤버인지)도
+  **백엔드가 호출 전에** 확인한다.
 
 **에러와 재시도**
 
 | 상태 | 뜻 | 재시도 |
 |------|----|--------|
 | 400 | 요청 형식·값 잘못 | 소용없음 |
-| 401 / 403 | 인증 실패 / 역할 없음 | 조건이 바뀌기 전엔 소용없음 |
-| 404 | 요청자·대상 멤버, 역할, 채널 없음 — `detail` 로 구분 | 원인에 따라 다름 |
+| 401 | 인증 실패 (`X-API-Key`) | 키를 고치기 전엔 소용없음 |
+| 404 | 대상 멤버, 역할, 채널 없음 — `detail` 로 구분 | 원인에 따라 다름 |
 | 409 | 같은 이름의 스터디가 있거나 만드는 중(create-study), 또는 서버 설정 누락 — `detail` 로 구분 | 소용없음 |
 | 502 | Discord 가 거부 (권한 부족, Discord 5xx) | 5xx 는 가능, 권한은 설정을 고쳐야 함 |
 | 503 | 봇 비활성 또는 아직 미연결 | 가능 |
 
 - 에러 바디는 FastAPI 기본형 `{"detail": "..."}` 이다.
 - **역할 배정·회수 단계의 Discord 실패는 502 가 아니다** — 유저별로 `failed`(`DISCORD_REJECTED`) 에 담기고 응답은 200 이다.
-  역할 서열 문제도 여기로 나간다. 역할 API 의 502 는 대상을 건드리기 전의 실패뿐이다 — 요청자 조회 실패,
-  그리고 붙이기에서 캐시에 없는 대상 유저를 Discord 에 물었는데 답이 없을 때.
+  역할 서열 문제도 여기로 나간다. 역할 API 의 502 는 대상을 건드리기 전의 실패뿐이다 — 붙이기에서
+  캐시에 없는 대상 유저를 Discord 에 물었는데 답이 없을 때.
 - **429 는 밖으로 나가지 않는다** — discord.py 가 내부에서 기다리므로 응답이 느려질 뿐이다. 호출자는 타임아웃을 넉넉히 잡는다.
 - **먼저 다 확인하고, 그 다음에 실행한다** — 검증에서 걸리면 Discord 에 아무것도 보내지 않는다.
 - **`Idempotency-Key` 는 저장하지 않는다** — 로그 추적용이다. 재시도할 때 **같은 키**를 보내 시도들을 로그에서 묶는다.
@@ -95,7 +96,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 
 ## 역할
 
-navigator 고정 둘은 **captain 만**, 아무 역할 둘은 **captain · 시스템**이 호출한다. `discordStudyId` 는 **로그용**이고 봇은 그 값으로 아무것도 검증하지 않는다.
+`discordStudyId` 는 **로그용**이고 봇은 그 값으로 아무것도 검증하지 않는다.
 
 | | 붙이기 | 떼기 |
 |------|--------|------|
@@ -110,7 +111,7 @@ navigator 고정 둘은 **captain 만**, 아무 역할 둘은 **captain · 시�
 
 - 붙이기·떼기 모두 **멱등**이다. `succeededCount` 는 "지금 그 상태인 유저 수" 이고, 이번에 바뀌었는지는 구분하지 않는다.
 - `discordRoleId` 로 **captain · navigator · `@everyone` 은 안 된다** (400) — captain 은 사람이 손으로 주고,
-  navigator 는 전용 엔드포인트가 있다. 막으려면 두 ID 가 필요해서 시스템 호출이어도 설정이 비면 409 다.
+  navigator 는 전용 엔드포인트가 있다. 막으려면 두 ID 가 필요해서 설정이 비면 409 다.
   그 밖의 역할은 제한하지 않는다 — 올바른 스터디↔역할 쌍을 보내는 건 백엔드 책임이다.
 - **navigator 역할은 길드 전체에 하나라**, 스터디 A 때문에 떼면 스터디 B 의 navigator 권한도 사라진다.
   백엔드는 유저가 **남은 어떤 스터디에서도 navigator 가 아닐 때만** `remove-navigator-role` 을 부른다.
@@ -129,7 +130,6 @@ navigator 고정 둘은 **captain 만**, 아무 역할 둘은 **captain · 시�
 |------|------|------|------|
 | 채널 | 경로로 호출자가 고름 | alert 채널 고정 | announcement 채널 고정 |
 | 용도 | 스터디 채널 안내 | captain 이 조치할 운영 알림 | 길드 전체 공지 |
-| 호출 권한 | captain · navigator | captain · 시스템 | captain |
 | 추가 바디 | `discordStudyId`, `discordUserIds` (최대 40명, 빈 배열 허용) | — | — |
 | 맨 위에 붙는 줄 | `발신: <@요청자>` + 멘션 줄 | `발신: <@요청자>` | `@everyone` |
 | 알림이 울리는 대상 | `discordUserIds` 의 유저만 | 없음 | `@everyone` |
@@ -140,7 +140,7 @@ navigator 고정 둘은 **captain 만**, 아무 역할 둘은 **captain · 시�
 - **send-message** 는 채널이 `discordStudyId` 카테고리 **바로 아래인지** 확인한다 (아니면 404).
   **요청에 들어온 두 ID 가 서로 맞는지만** 보는 검증이라 그 카테고리가 스터디 카테고리인지는 보지 않는다 —
   메시지가 스터디 채널 밖으로 나가지 않는 것은 **백엔드가 올바른 `(discordStudyId, 채널)` 쌍을 보낸다는 전제**이고,
-  navigator 를 막는 방어선은 아니다 ([send-message](send-message.md#discordstudyid-의-역할)).
+  봇이 막아 주는 것은 아니다 ([send-message](send-message.md#discordstudyid-의-역할)).
   길드에 없는 멘션 대상은 **빼고 올린 뒤**(204)
   alert 채널에 어떤 작업에서 누가 빠졌는지 알린다 (그 알림이 실패해도 204).
 - **alert · announcement** 는 채널 ID 설정이 없으면 409, 채널을 못 찾으면 404 다. 봇에게 `Send Messages` 권한이 없으면 **모든 요청이** 502 다.

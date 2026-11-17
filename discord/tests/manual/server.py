@@ -613,7 +613,7 @@ class CallRequest(BaseModel):
     body: Any = None
     baseUrl: str | None = None
     # Negative-test switches: most of what these API docs specify is the
-    # 400/401/403 behaviour, so every required header has to be breakable.
+    # 400/401 behaviour, so every required header has to be breakable.
     omitIdempotencyKey: bool = False
     idempotencyKey: str | None = None
     badApiKey: bool = False

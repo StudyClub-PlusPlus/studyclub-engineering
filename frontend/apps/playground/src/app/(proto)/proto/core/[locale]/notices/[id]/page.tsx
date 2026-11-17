@@ -32,7 +32,7 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
 
   return (
     <div className={`${PAGE} py-12`}>
-      <Link href={base} className='text-sm font-semibold text-(--color-fg-muted) hover:text-(--color-fg)'>
+      <Link href={base} className='type-label-lg text-(--color-fg-muted) hover:text-(--color-fg)'>
         {m('notices.title', locale)}
       </Link>
 
@@ -40,12 +40,12 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
       <article className='mt-3 border-t-2 border-(--color-fg)'>
         <header className='border-b border-(--color-border) px-2 py-6'>
           {/* 제목은 본문(16px)의 1.4배 안쪽 — 크게 벌리면 제목만 떠 보이고 본문이 작아 보인다 */}
-          <h1 className='break-words text-[20px] font-bold leading-[1.4] tracking-tight sm:text-[22px]'>{t(n.title, locale)}</h1>
-          <time className='mt-2 block text-sm tabular-nums text-(--color-fg-muted)'>{n.date}</time>
+          <h1 className='break-words type-headline-lg'>{t(n.title, locale)}</h1>
+          <time className='mt-2 block type-body-sm tabular-nums text-(--color-fg-muted)'>{n.date}</time>
         </header>
         {/* 긴 공백·긴 주소가 들어와도 넘치지 않게 — pre-wrap + 단어 중간 줄바꿈 허용 */}
         <div
-          className={`${READ} min-h-40 whitespace-pre-wrap break-words px-2 py-10 text-[16px] leading-[1.85] text-(--color-fg) [overflow-wrap:anywhere]`}
+          className={`${READ} min-h-40 whitespace-pre-wrap break-words px-2 py-10 type-body-md text-(--color-fg) [overflow-wrap:anywhere]`}
         >
           {autolink(t(n.body, locale))}
         </div>
@@ -74,7 +74,7 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
       <div className='mt-8 flex justify-end'>
         <Link
           href={base}
-          className='inline-flex items-center rounded-full border border-(--color-border) bg-(--color-bg) px-6 py-2.5 text-sm font-semibold hover:bg-(--color-surface-subtle)'
+          className='inline-flex items-center rounded-full border border-(--color-border) bg-(--color-bg) px-6 py-2.5 type-label-lg hover:bg-(--color-surface-subtle)'
         >
           {t({ ko: '목록으로', en: 'Back to list' }, locale)}
         </Link>
@@ -100,7 +100,7 @@ function NeighborRow({
   icon: React.ReactNode;
 }) {
   const head = (
-    <span className='inline-flex w-24 shrink-0 items-center gap-1 text-sm font-semibold text-(--color-fg-muted)'>
+    <span className='inline-flex w-24 shrink-0 items-center gap-1 type-label-lg text-(--color-fg-muted)'>
       {icon}
       {label}
     </span>
@@ -109,7 +109,7 @@ function NeighborRow({
     return (
       <div aria-disabled='true' className='flex items-center gap-4 px-2 py-4 opacity-50 [&+*]:border-t [&+*]:border-(--color-border)'>
         {head}
-        <span className='text-sm text-(--color-fg-muted)'>{empty}</span>
+        <span className='type-body-sm text-(--color-fg-muted)'>{empty}</span>
       </div>
     );
   return (
@@ -118,8 +118,8 @@ function NeighborRow({
       className='flex items-center gap-4 px-2 py-4 transition-colors hover:bg-(--color-surface-subtle) [&+*]:border-t [&+*]:border-(--color-border)'
     >
       {head}
-      <span className='min-w-0 flex-1 truncate text-sm font-semibold'>{title}</span>
-      <time className='hidden shrink-0 text-sm tabular-nums text-(--color-fg-muted) sm:block'>{date}</time>
+      <span className='min-w-0 flex-1 truncate type-label-lg'>{title}</span>
+      <time className='hidden shrink-0 type-body-sm tabular-nums text-(--color-fg-muted) sm:block'>{date}</time>
     </Link>
   );
 }

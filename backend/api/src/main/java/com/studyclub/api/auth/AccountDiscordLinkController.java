@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,6 +38,16 @@ public class AccountDiscordLinkController {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
         accountDiscordLinkService.link(accountId, request.code());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "디스코드 계정 연결 해제 — 참여 중인 스터디가 있으면 409, 연동 안 된 계정도 204")
+    @DeleteMapping("/link")
+    public ResponseEntity<Void> unlink(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long accountId)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        accountDiscordLinkService.unlink(accountId);
         return ResponseEntity.noContent().build();
     }
 }

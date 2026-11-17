@@ -4,9 +4,9 @@ import { cx } from './cx';
 export type AvatarSize = 24 | 32 | 40;
 
 const SIZE: Record<AvatarSize, string> = {
-  24: 'h-6 w-6 text-[10px]',
-  32: 'h-8 w-8 text-xs',
-  40: 'h-10 w-10 text-sm',
+  24: 'h-6 w-6 type-label-sm',
+  32: 'h-8 w-8 type-label-sm',
+  40: 'h-10 w-10 type-body-sm',
 };
 
 export interface AvatarProps {

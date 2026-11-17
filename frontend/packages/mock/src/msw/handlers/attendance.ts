@@ -1,15 +1,9 @@
 import { HttpResponse } from 'msw';
 
+import { getStudyMeetingIds, CAPTAIN_STUDY_IDS, NAVIGATOR_STUDY_IDS, withdrawnState, getWithdrawnParticipants } from './meetings';
 import { studies } from '../../data';
 import { getStudyCrew } from '../../data/crew';
 import { currentUserName, mockClient, type MockResolveContext } from '../utils';
-import {
-  getStudyMeetingIds,
-  CAPTAIN_STUDY_IDS,
-  NAVIGATOR_STUDY_IDS,
-  withdrawnState,
-  getWithdrawnParticipants,
-} from './meetings';
 
 const STATUS: Record<string, string> = {
   present: 'PRESENT',
@@ -234,6 +228,7 @@ export const attendanceHandlers = mockClient.createHandlerGroup('/api/me/studies
         label: '정상',
         status: 200,
         response: (context: MockResolveContext) =>
+          // 참여자 discordNickname 은 스펙에 있고(10-18 D6) 백엔드가 아직 내리지 않는다 — 목은 먼저 채워 둔다
           responseFor(context) ??
           HttpResponse.json(
             { errorCode: 'NOT_FOUND', errorMessage: '스터디를 찾을 수 없습니다.' },
@@ -285,6 +280,26 @@ export const attendanceHandlers = mockClient.createHandlerGroup('/api/me/studies
         label: '권한 없음',
         status: 403,
         response: { errorCode: 'FORBIDDEN', errorMessage: '권한이 없습니다.' },
+      },
+    ],
+  },
+]);
+
+/**
+ * TODO(api): GET /api/admin/studies/:studyId/attendances/summary — 스터디 출석률(모든 반 가중평균, 0 ~ 1)
+ * 백오피스 스터디 상세 위 요약 카드 (specs/attendance 「스터디 출석률 요약」).
+ */
+export const adminAttendanceSummaryHandlers = mockClient.createHandlerGroup('/api/admin/studies', [
+  {
+    method: 'GET',
+    path: '/:studyId/attendances/summary',
+    presets: [
+      { label: '정상 (82%)', status: 200, response: { attendanceRate: 0.82 } },
+      { label: '체크된 회차 없음', status: 200, response: { attendanceRate: null } },
+      {
+        label: '서버 오류',
+        status: 500,
+        response: { errorMessage: '서버 오류가 발생했습니다.' },
       },
     ],
   },

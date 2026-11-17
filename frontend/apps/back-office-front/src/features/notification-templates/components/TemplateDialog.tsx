@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from 'react';
 
-import { Button, Input, Modal, Select, Textarea } from '@studyclub/ui';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button, Input, Modal, Select, Tabs, Textarea, toast } from '@studyclub/ui';
+import { useForm } from 'react-hook-form';
 
+import { TemplatePreview } from '@/features/notification-templates/components/TemplatePreview';
+import { templateSchema, TemplateValues } from '@/features/notification-templates/form-schema';
 import {
   useCreateNotificationTemplate,
   useDeleteNotificationTemplate,
@@ -12,7 +16,14 @@ import {
   useUpdateNotificationTemplate,
 } from '@/features/notification-templates/queries';
 import {
+  applyBodyEdit,
+  BODY_MAX_BYTES,
+  bodyHelp,
+  deleteImpact,
+  moveImpact,
+  SUBJECT_MAX_LENGTH,
   TEMPLATE_CONDITIONS,
+  utf8Bytes,
   type NotificationTemplate,
   type TemplateDraft,
 } from '@/features/notification-templates/types';
@@ -23,12 +34,13 @@ const EMPTY: TemplateDraft = { eventType: TEMPLATE_CONDITIONS[0].value, subject:
 const SAVE_FAILED = '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 const DELETE_FAILED = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 const GONE = '이미 삭제된 템플릿입니다. 목록을 새로 불러왔습니다.';
+const BODY_LIMIT = `본문은 ${BODY_MAX_BYTES.toLocaleString()}바이트까지 입력할 수 있습니다.`;
 
 /**
  * 알림 템플릿 추가·수정 팝업.
  *
  * **추가 팝업이 곧 수정 팝업이다.** 목록에서 조건을 누르면 값이 채워진 채 열린다. 전문을 보는 화면을 따로 두지
- * 않는다 — 제목·본문 칸이 곧 전문이라 치환 변수(`{{nickname}}`)와 줄바꿈도 원문 그대로다.
+ * 않는다 — 본문 편집·미리보기를 오가며 저장 전 내용을 확인한다. 치환 변수와 저장 원문은 그대로 둔다.
  * 삭제도 이 안에서 한다 — 목록 행에 삭제 버튼을 두면 스치듯 눌러 지우는 사고가 난다.
  */
 export function TemplateDialog(props: { open: boolean; onClose: () => void; template?: NotificationTemplate }) {
@@ -37,7 +49,7 @@ export function TemplateDialog(props: { open: boolean; onClose: () => void; temp
   const loading = fresh.isPending || !fresh.isFetchedAfterMount;
   if (loading || fresh.isError || !fresh.data) {
     return (
-      <Modal open={props.open} onClose={props.onClose} title='템플릿 수정'>
+      <Modal open={props.open} onClose={props.onClose} title='템플릿 수정' size='lg'>
         {loading ? (
           <p role='status'>최신 템플릿을 불러오는 중…</p>
         ) : (
@@ -51,21 +63,32 @@ export function TemplateDialog(props: { open: boolean; onClose: () => void; temp
       </Modal>
     );
   }
-  return <TemplateEditor {...props} template={fresh.data} />;
+  return (
+    <TemplateEditor {...props} template={fresh.data.template} sameConditionCount={fresh.data.sameConditionCount} />
+  );
 }
 
 function TemplateEditor({
   open,
   onClose,
   template,
+  sameConditionCount = 1,
 }: {
   open: boolean;
   onClose: () => void;
   /** 지정하면 수정, 없으면 추가. */
   template?: NotificationTemplate;
+  /** 수정 중인 템플릿의 조건에 있는 템플릿 수(자기 자신 포함). 삭제 확인의 영향 안내를 가른다. */
+  sameConditionCount?: number;
 }) {
   const editing = Boolean(template);
-  const [draft, setDraft] = useState<TemplateDraft>(EMPTY);
+  const { watch, setValue, reset, handleSubmit } = useForm<TemplateValues>({
+    resolver: zodResolver(templateSchema),
+    defaultValues: EMPTY,
+    mode: 'onChange',
+  });
+  const draft = watch();
+  const [bodyTab, setBodyTab] = useState('edit');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** 서버에 이미 없는 템플릿 — 저장·삭제를 더 보내지 않는다. */
@@ -76,11 +99,18 @@ function TemplateEditor({
   const remove = useDeleteNotificationTemplate();
   const refresh = useInvalidateTemplates();
   const busy = create.isPending || update.isPending || remove.isPending;
-  const blocked = !draft.subject.trim() || !draft.body.trim();
+  const blocked = !templateSchema.safeParse(draft).success;
+  const impact = template ? deleteImpact(template.eventType, sameConditionCount) : null;
+  // 조건을 다른 것으로 바꾸면 원래 조건에서 이 템플릿이 빠진다 — 마지막이었다면 삭제와 같은 결과라 저장 전에 알린다
+  const moveWarning =
+    template && draft.eventType !== template.eventType
+      ? moveImpact(template.eventType, eventLabel(template.eventType), sameConditionCount)
+      : null;
 
   useEffect(() => {
     if (!open) return;
-    setDraft(template ? { eventType: template.eventType, subject: template.subject, body: template.body } : EMPTY);
+    reset(template ? { eventType: template.eventType, subject: template.subject, body: template.body } : EMPTY);
+    setBodyTab('edit');
     setConfirmDelete(false);
     setError(null);
     setGone(false);
@@ -109,7 +139,7 @@ function TemplateEditor({
     return false;
   }
 
-  function save() {
+  const save = handleSubmit((draft) => {
     if (blocked || busy || gone) return;
     setError(null);
     const body: TemplateDraft = { ...draft, subject: draft.subject.trim() };
@@ -120,7 +150,7 @@ function TemplateEditor({
     };
     if (template) update.mutate({ id: template.id, draft: body }, done);
     else create.mutate(body, done);
-  }
+  });
 
   function destroy() {
     if (!template || busy) return;
@@ -143,6 +173,7 @@ function TemplateEditor({
         if (!busy) onClose();
       }}
       title={editing ? '템플릿 수정' : '템플릿 추가'}
+      size='lg'
       /* 닫는 수단은 X 하나다 — 취소 버튼을 따로 두지 않는다 (POL-0008) */
       footer={
         confirmDelete ? (
@@ -169,7 +200,7 @@ function TemplateEditor({
                 type='button'
                 onClick={() => setConfirmDelete(true)}
                 disabled={busy || gone}
-                className='mr-auto h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
+                className='mr-auto h-10 type-label-lg text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
               >
                 템플릿 삭제
               </button>
@@ -183,11 +214,16 @@ function TemplateEditor({
     >
       {confirmDelete && template ? (
         <div className='py-6 text-center'>
-          <p className='text-sm font-semibold text-fg'>‘{eventLabel(template.eventType)}’ 알림 템플릿을 삭제합니다.</p>
-          <p className='mt-1 text-sm text-fg-secondary'>{template.subject}</p>
-          <p className='mt-3 text-sm text-fg-muted'>
+          <p className='type-label-lg text-fg'>‘{eventLabel(template.eventType)}’ 알림 템플릿을 삭제합니다.</p>
+          <p className='mt-1 type-body-sm text-fg-secondary'>{template.subject}</p>
+          <p className='mt-3 type-body-sm text-fg-muted'>
             이 문구로는 더 이상 메일이 나가지 않으며 되돌릴 수 없습니다. 지난 발송 이력은 남습니다.
           </p>
+          {impact && (
+            <p className={`mt-2 type-body-sm ${impact.severe ? 'text-danger-fg' : 'text-fg-secondary'}`}>
+              {impact.message}
+            </p>
+          )}
         </div>
       ) : (
         <div className='flex flex-col gap-4'>
@@ -197,7 +233,7 @@ function TemplateEditor({
             disabled={busy}
             required
             value={draft.eventType}
-            onChange={(e) => setDraft({ ...draft, eventType: e.target.value })}
+            onChange={(e) => setValue('eventType', e.target.value, { shouldDirty: true, shouldValidate: true })}
           >
             {conditions.map((c) => (
               <option key={c.value} value={c.value}>
@@ -205,29 +241,69 @@ function TemplateEditor({
               </option>
             ))}
           </Select>
+          {moveWarning && (
+            <p role='alert' className='-mt-2 type-body-sm text-danger-fg'>
+              {moveWarning}
+            </p>
+          )}
           <Input
             label='제목'
             disabled={busy}
             required
+            maxLength={SUBJECT_MAX_LENGTH}
+            labelHint={`${draft.subject.length.toLocaleString()} / ${SUBJECT_MAX_LENGTH.toLocaleString()}자`}
             value={draft.subject}
-            onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+            onChange={(e) => setValue('subject', e.target.value, { shouldDirty: true, shouldValidate: true })}
             placeholder='[StudyClub] 회원가입을 환영합니다'
           />
-          {/* 치환 변수({{nickname}})는 원문 그대로 둔다 — 미리 채워 보여주면 원문을 알 수 없다 */}
-          <Textarea
-            label='본문'
-            disabled={busy}
-            required
-            rows={10}
-            value={draft.body}
-            onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-            placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
-            labelHint='{{nickname}} 으로 닉네임 삽입'
+          <Tabs
+            activeKey={bodyTab}
+            onChange={setBodyTab}
+            items={[
+              {
+                key: 'edit',
+                label: '본문 편집',
+                content: (
+                  <div role='tabpanel' aria-label='본문 편집'>
+                    <Textarea
+                      label='본문'
+                      disabled={busy}
+                      required
+                      rows={12}
+                      labelHint={`${utf8Bytes(draft.body).toLocaleString()} / ${BODY_MAX_BYTES.toLocaleString()}바이트`}
+                      value={draft.body}
+                      // 한도를 넘는 입력은 받지 않는다 — 붙여 넣은 긴 글은 한도까지만 남는다
+                      onChange={(e) => {
+                        const field = e.target;
+                        const edit = applyBodyEdit(draft.body, field.value, BODY_MAX_BYTES);
+                        setValue('body', edit.value, { shouldDirty: true, shouldValidate: true });
+                        if (edit.caret === null) return;
+                        toast(BODY_LIMIT, { id: 'template-body-limit' });
+                        // 값을 되돌리면 커서가 끝으로 튄다 — 친 자리로 돌려 놓는다
+                        const caret = edit.caret;
+                        requestAnimationFrame(() => field.setSelectionRange(caret, caret));
+                      }}
+                      placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
+                      helper={bodyHelp(draft.eventType)}
+                    />
+                  </div>
+                ),
+              },
+              {
+                key: 'preview',
+                label: '미리보기',
+                content: (
+                  <div role='tabpanel' aria-label='미리보기'>
+                    <TemplatePreview subject={draft.subject} body={draft.body} />
+                  </div>
+                ),
+              },
+            ]}
           />
         </div>
       )}
       {error && (
-        <p role='alert' className='mt-3 text-sm text-danger-fg'>
+        <p role='alert' className='mt-3 type-body-sm text-danger-fg'>
           {error}
         </p>
       )}

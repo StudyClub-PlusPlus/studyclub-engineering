@@ -80,6 +80,11 @@ class StudyThumbnailIntegrationTest {
                         StudyCategory.ALGORITHM,
                         thumbnailFileId,
                         Instant.now().plus(7, ChronoUnit.DAYS),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null));
     }
 

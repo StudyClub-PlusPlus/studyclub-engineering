@@ -22,9 +22,9 @@
 ```
 src/
 ├── app/              # 라우팅 + 페이지 구성 (데이터 fetch → 컴포넌트 조합)
-├── components/       # UI 렌더링 (props 받아서 그리기만)
-├── lib/              # 비즈니스 로직, API 호출, 유틸
-└── models/           # 타입 정의
+├── features/         # 기능별 타입·쿼리·전용 컴포넌트
+├── components/       # 여러 기능이 공유하는 앱 UI
+└── lib/              # http·인증·포맷 등 공통 유틸
 ```
 
 ### app/ (페이지)
@@ -83,7 +83,7 @@ export default function StudyCard({ study, onJoin }: StudyCardProps) {
 한 기능의 **타입·fetcher·쿼리 훅·전용 컴포넌트**가 한 폴더에 산다. 기능이 없어지면 폴더째 지운다.
 
 ```ts
-// features/studies/queries.ts — 키·fetcher·훅을 같이 둔다
+// features/studies/queries.ts — HTTP 요청은 같은 기능의 repository에 둔다
 export const studyKeys = {
   all: ['studies'] as const,
   list: (filter: StudyFilter) => [...studyKeys.all, 'list', filter] as const,
@@ -92,17 +92,21 @@ export const studyKeys = {
 export function useStudies(filter: StudyFilter) {
   return useQuery({
     queryKey: studyKeys.list(filter),
-    queryFn: () => http<ApiStudyPage>(`/api/studies${qs(filter)}`),
+    queryFn: () => getStudies(filter),
     select: (page) => ({ rows: page.items.map(toRow), total: page.total }),
   });
 }
 ```
 
-### lib/ (기능을 모르는 유틸)
+### lib/ (앱 공통 기반 코드)
 
-- `http.ts` — BFF 호출 래퍼, `ApiError`
+- `http.ts` — 백엔드 직접 호출 래퍼, `ApiError`
 - `query-client.ts` — QueryClient 생성
-- `auth.ts` · 날짜·포맷 유틸
+- 앱의 쿠키 정책·국제화 메시지·업로드 등
+
+앱에 의존하지 않는 공용 타입은 `@studyclub/types`, 공용 함수·상수는 `@studyclub/utils`에서 가져온다. 브라우저 저장소·서울 날짜·옛 도메인 리다이렉트는 이미 utils로 이동했으므로 앱에 다시 만들지 않는다. mock 데이터는 `@studyclub/mock`에서 가져온다. [패키지별 소유권](project-structure.md#공용-코드의-소유권)을 기준으로 배치한다.
+
+core-front 로그인·세션은 `features/auth`, 계정·프로필·가입은 각각 `features/account`, `profile`, `onboarding`에 둔다.
 
 **기능 이름이 등장하면 `lib/` 이 아니다.** `lib/api/studies.ts` 같은 파일을 만들지 않는다 —
 그건 `features/studies/` 로 간다.
@@ -131,14 +135,16 @@ Server Component (page.tsx) → fetch → props → Client Component (인터랙�
 ```
 Client Component (page.tsx)
   → useXxx() 훅            (features/<기능>/queries.ts)
-    → http()               (lib/http.ts)
-      → /api/* BFF         (app/api/*)
-        → 백엔드
+    → repository.ts        (features/<기능>/repository.ts, 요청이 여러 개일 때 분리)
+      → http()             (lib/http.ts)
+      → 백엔드 /api/*      (credentials: include)
 ```
 
-**페이지에서 `fetch` 를 직접 부르지 않는다.** 훅을 거친다 — 그래야 로딩·에러·캐시를 매 화면에서
+**클라이언트 페이지의 서버 상태 조회는** 기능 쿼리 훅을 거친다 — 그래야 로딩·에러·캐시를 매 화면에서
 다시 짜지 않는다. 서버 상태는 `useState` 로 들고 있지 않는다(그건 캐시를 손으로 만드는 것이다).
 
 - **단방향 데이터 흐름**: 위에서 아래로 props 전달
 - **이벤트는 위로**: 콜백 함수를 props 로 전달, 자식이 호출
 - **전역 상태 최소화**: props drilling 이 2단계 이하면 Context 불필요
+
+인증 코드 교환·쿠키 설정은 앱의 `app/api/auth`가 담당한다. [인증 흐름](auth-flow.md)을 참고한다. 테스트의 응답 준비는 E2E fixture에 두고 제품 컴포넌트에 테스트 전용 분기를 추가하지 않는다.

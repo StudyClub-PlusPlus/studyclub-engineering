@@ -7,9 +7,11 @@ import { DiscordCell } from '@console/components/DiscordCell';
 import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
-import { MEMBER_REGIONS, type Crew } from '@studyclub/mock';
-import { Badge, Button, SelectionCount, TableActionBar } from '@studyclub/ui';
-import { Plus } from 'lucide-react';
+import { captainOptions } from '@console/lib/users';
+import { type Crew } from '@studyclub/types';
+import { Badge, Button, Select, SelectionCount, TableActionBar, cx, toast } from '@studyclub/ui';
+import { MEMBER_REGIONS } from '@studyclub/utils';
+import { Loader2, Plus } from 'lucide-react';
 
 /**
  * 신청자 탭 — 반, 참여 명단.
@@ -22,6 +24,8 @@ import { Plus } from 'lucide-react';
  *
  * **캡틴도 참여하려면 신청한다.** 스터디를 만든 캡틴이라고 명부에 저절로 들어가지 않는다 — 참여할지는
  * 스터디마다 다르다. 신청하면 크루와 같은 줄로 여기 나온다 (POL-0001).
+ *
+ * **담당 캡틴은 명부와 따로 선다.** 맨 위 「담당 캡틴」 칸은 스터디당 한 명이고, 참여하지 않는 캡틴도 고를 수 있다.
  */
 
 function regionLabel(key: Crew['region']) {
@@ -38,7 +42,12 @@ export function CrewTab({
   onDirtyChange,
   navigators,
   onToggleNavigator,
+  ownerCaptainId,
+  onOwnerCaptainChange,
 }: {
+  /** 담당 캡틴 계정 id — 스터디당 한 명. */
+  ownerCaptainId: string;
+  onOwnerCaptainChange: (captainId: string) => void;
   crew: Crew[];
   classes: StudyClass[];
   assign: Record<string, string>;
@@ -103,10 +112,10 @@ export function CrewTab({
             aria-invalid={empty || undefined}
             aria-describedby={errId}
             onChange={(ev) => setRenaming({ ...renaming, title: ev.target.value })}
-            className='h-9 w-1/2 min-w-0 rounded-control border border-border-strong bg-bg px-3 text-sm font-bold text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+            className='h-9 w-1/2 min-w-0 rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
           />
           <div className='ml-auto flex shrink-0 gap-1.5'>
-            <Button type='button' size='sm' variant='ghost' onClick={() => setRenaming(null)}>
+            <Button type='button' size='sm' variant='tertiary' onClick={() => setRenaming(null)}>
               취소
             </Button>
             <Button type='submit' size='sm'>
@@ -114,7 +123,7 @@ export function CrewTab({
             </Button>
           </div>
         </div>
-        <p id={errId} role='status' className='text-xs text-error-600'>
+        <p id={errId} role='status' className='type-label-sm text-error-600'>
           {empty ? '반 제목을 입력해 주세요.' : ''}
         </p>
       </form>
@@ -186,9 +195,10 @@ export function CrewTab({
 
   return (
     <div className='flex flex-col gap-6'>
+      <OwnerCaptainField value={ownerCaptainId} onChange={onOwnerCaptainChange} />
       <section data-anno='class:1'>
-        <h2 className='flex items-baseline gap-2 text-[15px] font-bold'>
-          반<span className='tnum text-[13px] font-medium text-fg-muted'>{classes.length}</span>
+        <h2 className='flex items-baseline gap-2 type-title-lg'>
+          반<span className='tnum type-label-lg text-fg-muted'>{classes.length}</span>
           <span className='ml-auto'>
             <Button
               size='sm'
@@ -201,64 +211,64 @@ export function CrewTab({
             </Button>
           </span>
         </h2>
-          <ul data-anno='class:1-1' className='mt-2 flex flex-col gap-2'>
-            {classes.map((cls, i) => (
-              <li key={cls.id} className='card px-4 py-3'>
-                {renaming?.id === cls.id ? (
-                  editor(cls)
-                ) : (
-                  <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
-                    <span className='text-sm font-bold'>{classLabel(cls)}</span>
-                    {/* 첫 반 = 기본반. 스터디를 만들 때 생기고, 새로 신청한 크루가 여기로 들어온다 */}
-                    {i === 0 && (
-                      <span data-anno='class:1-5'>
-                        <Badge tone='neutral'>기본</Badge>
-                      </span>
-                    )}
-                    <span className='tnum ml-auto text-sm text-fg-secondary'>
-                      {active.filter((c) => assign[c.id] === cls.id).length}명
+        <ul data-anno='class:1-1' className='mt-2 flex flex-col gap-2'>
+          {classes.map((cls, i) => (
+            <li key={cls.id} className='card px-4 py-3'>
+              {renaming?.id === cls.id ? (
+                editor(cls)
+              ) : (
+                <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
+                  <span className='type-label-lg'>{classLabel(cls)}</span>
+                  {/* 첫 반 = 기본반. 스터디를 만들 때 생기고, 새로 신청한 크루가 여기로 들어온다 */}
+                  {i === 0 && (
+                    <span data-anno='class:1-5'>
+                      <Badge tone='neutral'>기본</Badge>
                     </span>
-                    <Button
-                      size='sm'
-                      variant='secondary'
-                      data-anno='class:1-2'
-                      aria-label={`${classLabel(cls)} 수정`}
-                      onClick={() => setRenaming({ id: cls.id, title: cls.title, touched: false })}
-                    >
-                      수정
-                    </Button>
-                    {/* 기본반과 사람이 든 반은 지우지 않는다 — 기본반은 신청자가 들어올 곳이고, 사람이 든 반은 출석 기록까지 사라진다 */}
-                    <Button
-                      size='sm'
-                      variant='danger'
-                      data-anno='class:1-3'
-                      aria-label={`${classLabel(cls)} 삭제`}
-                      disabled={i === 0 || active.some((c) => assign[c.id] === cls.id)}
-                      title={
-                        i === 0
-                          ? '기본반은 지울 수 없습니다. 새로 신청한 크루가 들어오는 반입니다'
-                          : active.some((c) => assign[c.id] === cls.id)
-                            ? '크루가 있는 반은 지울 수 없습니다'
-                            : undefined
-                      }
-                      onClick={() => onRemoveClass(cls.id)}
-                    >
-                      삭제
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
-            {/* 「반 추가」 — 목록 맨 아래 새 카드가 입력칸으로 열린다. 저장해야 반이 생긴다 */}
-            {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
-          </ul>
+                  )}
+                  <span className='tnum ml-auto type-body-sm text-fg-secondary'>
+                    {active.filter((c) => assign[c.id] === cls.id).length}명
+                  </span>
+                  <Button
+                    size='sm'
+                    variant='secondary'
+                    data-anno='class:1-2'
+                    aria-label={`${classLabel(cls)} 수정`}
+                    onClick={() => setRenaming({ id: cls.id, title: cls.title, touched: false })}
+                  >
+                    수정
+                  </Button>
+                  {/* 기본반과 사람이 든 반은 지우지 않는다 — 기본반은 신청자가 들어올 곳이고, 사람이 든 반은 출석 기록까지 사라진다 */}
+                  <Button
+                    size='sm'
+                    variant='danger'
+                    data-anno='class:1-3'
+                    aria-label={`${classLabel(cls)} 삭제`}
+                    disabled={i === 0 || active.some((c) => assign[c.id] === cls.id)}
+                    title={
+                      i === 0
+                        ? '기본반은 지울 수 없습니다. 새로 신청한 크루가 들어오는 반입니다'
+                        : active.some((c) => assign[c.id] === cls.id)
+                          ? '크루가 있는 반은 지울 수 없습니다'
+                          : undefined
+                    }
+                    onClick={() => onRemoveClass(cls.id)}
+                  >
+                    삭제
+                  </Button>
+                </div>
+              )}
+            </li>
+          ))}
+          {/* 「반 추가」 — 목록 맨 아래 새 카드가 입력칸으로 열린다. 저장해야 반이 생긴다 */}
+          {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
+        </ul>
       </section>
       <section data-anno='attendee:3'>
         <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
-          <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 text-[15px] font-bold'>
+          <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 type-title-lg'>
             참여 크루
             {/* 반 제목 옆 개수와 같은 모양 — 숫자만. 필터와 상관없이 전체 인원 */}
-            <span className='tnum text-[13px] font-medium text-fg-muted'>{active.length}</span>
+            <span className='tnum type-label-lg text-fg-muted'>{active.length}</span>
           </h2>
         </div>
         {/* 필터는 제목 아래 줄, 왼쪽부터 반 · 지역 드롭다운 */}
@@ -310,7 +320,7 @@ export function CrewTab({
                         onPick={(v) => applyBulk({ role: v as 'crew' | 'navigator' })}
                       />
                       {selected.length > 0 && (
-                        <Button size='sm' variant='ghost' onClick={() => setCheckedIds(new Set())}>
+                        <Button size='sm' variant='tertiary' onClick={() => setCheckedIds(new Set())}>
                           선택 해제
                         </Button>
                       )}
@@ -318,11 +328,11 @@ export function CrewTab({
                   }
                   save={
                     <span data-anno='attendee:3-5' className='flex items-center gap-2'>
-                      <span role='status' className='text-xs text-fg-muted'>
+                      <span role='status' className='type-label-sm text-fg-muted'>
                         {saved && changed === 0 ? '저장했습니다.' : ''}
                       </span>
                       {changed > 0 && (
-                        <Button variant='ghost' size='sm' onClick={discard}>
+                        <Button variant='tertiary' size='sm' onClick={discard}>
                           변경 취소
                         </Button>
                       )}
@@ -373,18 +383,22 @@ export function CrewTab({
                     {c.discordNickname || '-'}
                   </td>
                   {/*
-                    별명은 **신청서에 적어 낸 이름**이고 이쪽은 **계정 그 자체**다. 둘은 다를 수 있다 —
-                    별명으로 찾다 못 찾는 일이 생기므로 핸들을 옆에 함께 적는다.
+                    별명은 **신청서에 적어 낸 이름**이고 이쪽은 **계정 그 자체**다. 둘은 다를 수 있다.
+                    아이디는 가린 채로 두고 필요한 줄만 펼친다 — 유저 목록과 같은 규칙 (POL-0007).
                   */}
                   <DiscordCell email={c.email} />
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
                   <td className='whitespace-nowrap text-fg-secondary'>{regionLabel(c.region)}</td>
                   <td data-anno='class:2' className='whitespace-nowrap'>
-                    {/* 반 이동 = 이 값 변경 */}
-                    <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
+                    {/* 반 이동 = 이 값 변경. 칸 너비가 아니라 글자 너비로 — 화살표가 상자 안에 붙게 감싼다 */}
+                    <div className='inline-flex'>
+                      <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
+                    </div>
                   </td>
                   <td data-anno='attendee:3-2' className='whitespace-nowrap'>
-                    <RolePick name={c.name} navigator={isNavigator(c.id)} onChange={(nav) => pickRole(c.id, nav)} />
+                    <div className='inline-flex'>
+                      <RolePick name={c.name} navigator={isNavigator(c.id)} onChange={(nav) => pickRole(c.id, nav)} />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -425,18 +439,20 @@ function RolePick({
   onChange: (navigator: boolean) => void;
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={`${name} 역할`}
       value={navigator ? 'navigator' : 'crew'}
       onChange={(ev) => onChange(ev.target.value === 'navigator')}
       // 네비게이터는 몇 안 된다 — 긴 명단에서 바로 눈에 띄게 테두리를 칠한다
-      className={`h-8 rounded-control border bg-bg px-2 text-sm outline-none focus:border-brand focus:shadow-[var(--ring)] ${
-        navigator ? 'border-brand font-semibold text-fg' : 'border-border-strong text-neutral-900'
-      }`}
+      className={cx(
+        'w-auto',
+        navigator ? 'border-brand font-semibold text-fg' : 'border-border-strong text-neutral-900',
+      )}
     >
       <option value='crew'>크루</option>
       <option value='navigator'>네비게이터</option>
-    </select>
+    </Select>
   );
 }
 
@@ -446,6 +462,53 @@ function withDraft<T>(drafts: Record<string, T>, id: string, value: T | undefine
   if (value === undefined) delete next[id];
   else next[id] = value;
   return next;
+}
+
+/**
+ * 담당 캡틴 — 스터디당 한 명, 캡틴 계정 중에서 고른다. 명부(참여 크루)와 상관없다.
+ *
+ * 명단의 반 · 역할처럼 모았다가 「저장」하지 않고 **고르는 즉시 저장**한다 — 명부 행이 아니라 스터디 한 칸이고,
+ * 한 번에 한 명만 바뀐다. 저장되기 전에는 지금 값 그대로 두고 옆에서 하나가 돈다 (유저 지면 권한 바꾸기와 같다).
+ */
+function OwnerCaptainField({ value, onChange }: { value: string; onChange: (captainId: string) => void }) {
+  const [saving, setSaving] = useState(false);
+  const options = captainOptions();
+  function pick(next: string) {
+    if (next === value) return;
+    setSaving(true);
+    // TODO(api): PATCH /api/admin/studies/{studyId}/owner-captain { accountId }
+    window.setTimeout(() => {
+      setSaving(false);
+      onChange(next);
+      toast.success('담당 캡틴을 바꿨습니다.');
+    }, 600);
+  }
+  return (
+    <section data-anno='attendee:4' className='card flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3'>
+      <h2 className='type-title-md'>담당 캡틴</h2>
+      <div className='flex items-center gap-2'>
+        <Select
+          size='sm'
+          data-anno='attendee:4-1'
+          aria-label='담당 캡틴'
+          value={value}
+          disabled={saving}
+          onChange={(ev) => pick(ev.target.value)}
+          className='w-auto border-border-strong text-neutral-900'
+        >
+          {options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </Select>
+        {saving && <Loader2 size={16} className='animate-spin text-fg-muted' aria-label='저장 중' />}
+      </div>
+      <p data-anno='attendee:4-2' className='type-body-sm text-fg-muted'>
+        신청 폼 수정 · 참여 중단 · 사이트 일정 관리를 맡습니다. 참여하지 않아도 됩니다.
+      </p>
+    </section>
+  );
 }
 
 /** 「반 추가」로 연 새 카드의 자리 표시 id — 저장하면 진짜 id 를 받는다. */
@@ -464,13 +527,16 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? label : `${label} 전체`}</option>
       {options.map((o) => (
@@ -478,7 +544,7 @@ function FilterSelect({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -492,20 +558,21 @@ function ClassPick({
   value: string | undefined;
   onChange: (id: string) => void;
 }) {
-  if (classes.length === 0) return <span className='text-xs text-fg-muted'>반 없음</span>;
-  if (classes.length === 1) return <span className='text-sm text-fg-secondary'>{classLabel(classes[0]!)}</span>;
+  if (classes.length === 0) return <span className='type-label-sm text-fg-muted'>반 없음</span>;
+  if (classes.length === 1) return <span className='type-body-sm text-fg-secondary'>{classLabel(classes[0]!)}</span>;
   return (
-    <select
+    <Select
+      size='sm'
       aria-label='반'
       value={value ?? classes[0]!.id}
       onChange={(ev) => onChange(ev.target.value)}
-      className='h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+      className='w-auto text-neutral-900'
     >
       {classes.map((c) => (
         <option key={c.id} value={c.id}>
           {classLabel(c)}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

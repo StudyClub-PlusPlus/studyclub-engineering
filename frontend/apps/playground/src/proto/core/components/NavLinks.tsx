@@ -19,7 +19,7 @@ export function NavLinks({
   const pathname = usePathname() ?? '';
 
   return (
-    <nav className='ml-2 hidden items-center gap-6 text-sm font-medium md:flex'>
+    <nav className='ml-2 hidden items-center gap-6 type-label-lg md:flex'>
       {links.map((l) => {
         // /ko/studies 와 /ko/studies/xxx 는 같은 메뉴로 본다
         const active = pathname === l.href || pathname.startsWith(`${l.href}/`);

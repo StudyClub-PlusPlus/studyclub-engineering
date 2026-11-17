@@ -1,15 +1,18 @@
 import Link from 'next/link';
 
+import type { Locale } from '@studyclub/types';
 import { ArrowRight } from 'lucide-react';
 import type { Metadata } from 'next';
 
-import { EventCard } from '@/components/EventCard';
-import { FeaturedStudies } from '@/components/FeaturedStudies';
 import { HeroCTADiscordLink, HeroCTAStudiesLink } from '@/components/HeroCTAButton';
 import { JoinCta } from '@/components/JoinCta';
 import { Marquee } from '@/components/Marquee';
-import { PAST_STUDIES, VOICES } from '@/lib/community-voices';
-import { getStudies, getEvents, getOperatorMap, getSite, type Locale } from '@/lib/content';
+import { getSite } from '@/features/community/server';
+import { PAST_STUDIES, VOICES } from '@/features/community/voices';
+import { EventCard } from '@/features/events/EventCard';
+import { getEvents } from '@/features/events/server';
+import { FeaturedStudies } from '@/features/studies/FeaturedStudies';
+import { getStudies } from '@/features/studies/server';
 import { m, t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 
@@ -26,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 
 export default async function Landing({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
-  const [studies, events, leads, site] = await Promise.all([getStudies(), getEvents(), getOperatorMap(), getSite()]);
+  const [studies, events, site] = await Promise.all([getStudies(), getEvents(), getSite()]);
   const upcoming = [...events].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
   const stats = [
@@ -40,14 +43,14 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
       {/* Hero */}
       <section className='relative py-16 sm:py-24'>
         <div className='hero-glow' />
-        <div className='inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1 text-xs font-semibold text-[var(--color-fg-muted)] shadow-sm'>
+        <div className='inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1 type-label-sm text-[var(--color-fg-muted)] shadow-sm'>
           <span className='h-1.5 w-1.5 rounded-full' style={{ background: 'var(--color-brand)' }} />
           {m('hero.eyebrow', locale)}
         </div>
-        <h1 className='mt-5 max-w-3xl whitespace-pre-line text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl'>
+        <h1 className='mt-5 max-w-3xl whitespace-pre-line type-display-lg'>
           {m('hero.title', locale)}
         </h1>
-        <p className='mt-5 max-w-2xl text-lg leading-relaxed text-[var(--color-fg-muted)]'>
+        <p className='mt-5 max-w-2xl type-body-lg text-[var(--color-fg-muted)] type-prose'>
           {m('hero.subtitle', locale)}
         </p>
         <div className='mt-8 flex flex-wrap items-center gap-3'>
@@ -55,7 +58,7 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
             href={site.discord_invite}
             target='_blank'
             rel='noreferrer'
-            className='group inline-flex items-center gap-2 rounded-full px-6 py-3 text-base font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]'
+            className='group inline-flex items-center gap-2 rounded-full px-6 py-3 type-label-lg text-white shadow-sm transition-transform hover:scale-[1.02]'
             style={{ background: 'var(--color-brand)' }}
           >
             {m('hero.cta', locale)}
@@ -63,7 +66,7 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
           </HeroCTADiscordLink>
           <HeroCTAStudiesLink
             href={`/${locale}/studies`}
-            className='rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-6 py-3 text-base font-semibold shadow-sm transition-colors hover:border-[var(--color-border-interactive)] hover:bg-[var(--color-surface-2)]'
+            className='rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-6 py-3 type-label-lg shadow-sm transition-colors hover:border-[var(--color-border-interactive)] hover:bg-[var(--color-surface-2)]'
           >
             {m('hero.cta_studies', locale)}
           </HeroCTAStudiesLink>
@@ -73,8 +76,8 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
         <div className='mt-12 flex flex-wrap gap-8'>
           {stats.map((s) => (
             <div key={s.v}>
-              <div className='text-3xl font-extrabold tracking-tight'>{s.k}</div>
-              <div className='mt-0.5 text-sm text-[var(--color-fg-muted)]'>{s.v}</div>
+              <div className='type-headline-md'>{s.k}</div>
+              <div className='mt-0.5 type-body-sm text-[var(--color-fg-muted)]'>{s.v}</div>
             </div>
           ))}
         </div>
@@ -82,14 +85,14 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
 
       {/* 지금까지 열린 스터디 — 흐르는 띠 */}
       <section className='-mx-6 pb-14'>
-        <p className='mb-4 px-6 text-sm font-semibold text-[var(--color-fg-muted)]'>
+        <p className='mb-4 px-6 type-label-lg text-[var(--color-fg-muted)]'>
           {t({ ko: '지금까지 함께 공부한 주제들', en: "Topics we've studied together" }, locale)}
         </p>
         <Marquee label={t({ ko: '지난 스터디 목록', en: 'Past studies' }, locale)} seconds={60}>
           {PAST_STUDIES.map((name) => (
             <span
               key={name}
-              className='whitespace-nowrap rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-sm font-medium text-[var(--color-fg)]'
+              className='whitespace-nowrap rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 type-label-lg text-[var(--color-fg)]'
             >
               {name}
             </span>
@@ -98,7 +101,7 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
       </section>
 
       {/* Featured studies (MSW / API 반응형) */}
-      <FeaturedStudies locale={locale} leads={leads} />
+      <FeaturedStudies locale={locale} />
 
       {/* 함께한 사람들의 이야기 — 실제 후기(이름 대신 직군·도시) */}
       <section className='-mx-6 pb-14'>
@@ -114,8 +117,8 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
         <Marquee label={t({ ko: '회원 후기', en: 'Member reviews' }, locale)} seconds={80}>
           {VOICES.map((v, i) => (
             <figure key={i} className='card flex w-80 shrink-0 flex-col justify-between gap-4 p-5'>
-              <blockquote className='text-base leading-relaxed text-[var(--color-fg)]'>“{t(v.quote, locale)}”</blockquote>
-              <figcaption className='text-xs font-medium text-[var(--color-fg-muted)]'>
+              <blockquote className='type-body-md text-[var(--color-fg)]'>“{t(v.quote, locale)}”</blockquote>
+              <figcaption className='type-label-sm text-[var(--color-fg-muted)]'>
                 {v.who ? `${t(v.who, locale)} · ` : ''}
                 {t(v.from, locale)}
               </figcaption>
@@ -162,11 +165,11 @@ function SectionHead({
   return (
     <div className='mb-5 flex items-end justify-between gap-4'>
       <div>
-        <h2 className='text-xl font-bold tracking-tight'>{title}</h2>
-        {subtitle && <p className='mt-1 text-sm text-[var(--color-fg-muted)]'>{subtitle}</p>}
+        <h2 className='type-title-lg'>{title}</h2>
+        {subtitle && <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>{subtitle}</p>}
       </div>
       {href && (
-        <Link href={href} className='shrink-0 text-sm font-medium text-[var(--color-brand)] hover:underline'>
+        <Link href={href} className='shrink-0 type-label-lg text-[var(--color-brand)] hover:underline'>
           {more} →
         </Link>
       )}

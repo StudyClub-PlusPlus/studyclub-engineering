@@ -36,7 +36,7 @@ flowchart LR
 8-2. 킥오프는 캡틴이 일정 탭 「킥오프 정하기 · 수정」으로 일자 · 시각을 정함. 1회차보다 앞, 지난 날도 가능. 네비게이터는 고칠 수 없음
 9. 일정 탭 반 정보 카드의 스터디 시간 「수정」 — 요일·시각·시간대만 변경. 회차 추가·재생성 없음
 10. 반의 기간은 저장하지 않음 — 첫 회차 ~ 마지막 회차
-10. 캡틴 전용 명단 줄 없음. 참여하려는 캡틴은 신청 폼 제출 후 크루와 같은 줄로 표시
+11. 캡틴 전용 명단 줄 없음. 참여하려는 캡틴은 신청 폼 제출 후 크루와 같은 줄로 표시
 
 ## 2. 화면명세
 
@@ -215,11 +215,16 @@ erDiagram
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+> 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
+> 2026-10-24 갱신 — 일정 탭을 서버에 연결하고 백오피스 회차 쓰기 · 규칙 API 를 더했다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front 신청자 탭의 반 만들기 · 반 목록 · 크루의 반, 일정 탭의 반 일정 | 없음 | 프로토대로 만든다 |
-| BE | 반 `POST` · `PATCH` · `DELETE` · 크루 반 지정 | 스펙작성중 · 컨트롤러 없음 | [study-group 스펙](../../../specs/study-group/spec.md) 확정 → 구현 |
+| FE | back-office-front 신청자 탭의 반 만들기 · 반 목록 · 크루의 반 | 있음 (#302) — 반 만들기 · 이름 바꾸기 · 삭제 · 크루 반 지정 (`features/participants`). 명단은 `GET …/participants` (#324) | 없음 |
+| FE | back-office-front 일정 탭의 반 일정 · 킥오프 정하기 | 있음 (2026-10-24) — 반 칩 · 회차 표 · 회차 추가 · 수정 · 삭제 · 킥오프 · 규칙을 아래 백오피스 API 에 연결 (`features/schedule`). 스터디 시간(요일 · 시각)만 브라우저에 남는다 | 스터디 시간 — 반 `PATCH` 가 받으면 연결 |
+| BE | 반 `POST` · `PATCH` · `DELETE` · 크루 반 지정 | 반 `POST` · `DELETE` 구현완료. `PATCH` 는 제목만. 반 지정 일괄 `PATCH …/participants` 구현완료 (#303). 명단 `GET …/participants` 구현완료 (#324) | `PATCH` 스터디 시간 ([study-group 스펙](../../../specs/study-group/spec.md)) |
+| BE | `PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff` · 반 회차 목록 `GET …/groups/{groupId}/meetings` | 구현완료 (#312) | 없음 |
+| BE | 백오피스 회차 추가 · 수정 · 삭제 `POST · PUT · DELETE …/groups/{groupId}/meetings` · 규칙 `PUT …/groups/{groupId}/rules` | 구현완료 (2026-10-24) — 사이트 회차 API 와 같은 규칙, 캡틴이면 어느 반이든 ([회차 스펙](../../../specs/study-meeting/spec.md#백오피스-회차-쓰기--규칙)) | 없음 |
 
 ### 데이터
 

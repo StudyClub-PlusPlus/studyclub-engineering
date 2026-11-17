@@ -2,6 +2,7 @@ package com.studyclub.api.auth;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.account.Issuer;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -30,14 +31,17 @@ public class GoogleOAuthClient {
     @Value("${google.redirect-uri:}")
     private String defaultRedirectUri;
 
-    public GoogleUser exchange(String code, String redirectOverride) {
+    /**
+     * @param redirectOverride null 이면 설정의 웹 콜백. iOS SDK 가 준 serverAuthCode 는 콜백 없이 발급돼서 앱은 빈 문자열을
+     *     보낸다 — 빈 값도 그대로 넘겨야 구글이 받는다
+     */
+    public SocialUser exchange(String code, String redirectOverride) {
         if (!StringUtils.hasText(clientId) || !StringUtils.hasText(clientSecret)) {
             throw new BusinessException(
                     ErrorCode.EXTERNAL_SERVICE_ERROR,
                     "구글 OAuth 클라이언트가 설정되지 않았습니다 (GOOGLE_CLIENT_ID/SECRET).");
         }
-        String redirect =
-                StringUtils.hasText(redirectOverride) ? redirectOverride : defaultRedirectUri;
+        String redirect = redirectOverride != null ? redirectOverride : defaultRedirectUri;
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("code", code);
@@ -79,22 +83,18 @@ public class GoogleOAuthClient {
         if (info == null) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "구글 계정 정보를 가져오지 못했습니다.");
         }
-        return new GoogleUser(
+        return new SocialUser(
+                Issuer.GOOGLE,
                 asString(info.get("sub")),
                 asString(info.get("email")),
                 // 없으면 false — 검증 여부를 모르는 이메일은 검증 안 된 것으로 취급
                 Boolean.TRUE.equals(info.get("email_verified")),
                 asString(info.get("name")),
-                asString(info.get("picture")));
+                asString(info.get("picture")),
+                null);
     }
 
     private static String asString(Object o) {
         return o == null ? null : String.valueOf(o);
     }
-
-    /**
-     * @param emailVerified 구글이 이메일 소유를 확인했는지. Gmail 은 항상 true, 외부 이메일로 만든 계정은 false 일 수 있다
-     */
-    public record GoogleUser(
-            String sub, String email, boolean emailVerified, String name, String picture) {}
 }

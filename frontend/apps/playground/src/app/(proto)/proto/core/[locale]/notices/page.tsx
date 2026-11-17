@@ -29,16 +29,16 @@ export default async function NoticesPage({
 
   return (
     <div className={`${PAGE} py-14`}>
-      <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{m('notices.title', locale)}</h1>
+      <h1 className='type-headline-lg sm:type-headline-lg'>{m('notices.title', locale)}</h1>
 
       {/* 게시판 모양 — 페이지 폭을 다 쓰고 카드로 감싸지 않는다. 가운데 한 덩어리로 두면 앱 화면처럼 보인다 */}
       <div className='mt-10 border-t-2 border-(--color-fg)'>
-        <div className='hidden items-center gap-6 border-b border-(--color-border) px-2 py-3 text-xs font-semibold text-(--color-fg-muted) sm:flex'>
+        <div className='hidden items-center gap-6 border-b border-(--color-border) px-2 py-3 type-label-sm text-(--color-fg-muted) sm:flex'>
           <span className='flex-1'>{t({ ko: '제목', en: 'Title' }, locale)}</span>
           <span className='w-28 text-right'>{t({ ko: '게시일', en: 'Posted' }, locale)}</span>
         </div>
         {rows.length === 0 ? (
-          <p className='border-b border-(--color-border) py-20 text-center text-sm text-(--color-fg-muted)'>
+          <p className='border-b border-(--color-border) py-20 text-center type-body-sm text-(--color-fg-muted)'>
             {t({ ko: '등록된 공지가 없습니다.', en: 'No notices yet.' }, locale)}
           </p>
         ) : (
@@ -50,8 +50,8 @@ export default async function NoticesPage({
                   className='flex flex-col gap-1 px-2 py-5 transition-colors hover:bg-(--color-surface-subtle) sm:flex-row sm:items-center sm:gap-6'
                 >
                   {/* 제목은 남는 폭을 다 쓰고 한 줄로 자른다. 게시일은 고정폭·줄바꿈 없음 */}
-                  <span className='min-w-0 flex-1 truncate text-[16px] font-semibold'>{t(n.title, locale)}</span>
-                  <time className='shrink-0 whitespace-nowrap text-sm tabular-nums text-(--color-fg-muted) sm:w-28 sm:text-right'>
+                  <span className='min-w-0 flex-1 truncate type-title-md'>{t(n.title, locale)}</span>
+                  <time className='shrink-0 whitespace-nowrap type-body-sm tabular-nums text-(--color-fg-muted) sm:w-28 sm:text-right'>
                     {n.date}
                   </time>
                 </Link>
@@ -68,7 +68,7 @@ export default async function NoticesPage({
               key={p}
               href={p === 1 ? base : `${base}?page=${p}`}
               aria-current={p === page ? 'page' : undefined}
-              className={`grid h-9 w-9 place-items-center rounded-full text-sm tabular-nums ${
+              className={`grid h-9 w-9 place-items-center rounded-full type-body-sm tabular-nums ${
                 p === page ? 'bg-(--color-brand) font-semibold text-white' : 'hover:bg-(--color-surface-subtle)'
               }`}
             >

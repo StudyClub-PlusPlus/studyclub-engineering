@@ -8,5 +8,8 @@ public enum RoleChangeBlockedReason {
     /** 요청자 본인의 계정이다. */
     CANNOT_CHANGE_OWN_ROLE,
     /** 남은 마지막 캡틴(ADMIN)이다 — 내리면 백오피스에 들어갈 사람이 없다. */
-    LAST_ADMIN_REQUIRED
+    LAST_ADMIN_REQUIRED,
+    /** 진행 중인 스터디(끝나지 않은 스터디)의 담당 캡틴이다 — 내리면 크루가 담당 캡틴으로 남는다. 담당을 먼저 넘긴다 (POL-0001). */
+    OWNS_STUDY
+    // 디스코드 미연동 크루를 막던 DISCORD_LINK_REQUIRED 는 2026-10-27 뺐다 — 캡틴에게 디스코드 연동은 필수가 아니다
 }

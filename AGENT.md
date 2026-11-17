@@ -17,7 +17,7 @@
 ## 이게 뭐
 
 StudyClub 스터디 클럽 서비스. **frontend**(사용자향 core-front + 운영자향 back-office-front) + **backend**(Spring Boot 멀티모듈).
-프론트는 현재 **MSW Mock API 및 mock 데이터**로 동작 (백엔드 API 붙으면 교체). 백엔드는 기본 스캐폴드 단계.
+core-front·back-office-front 는 **실제 백엔드 API** 로 동작하고, 백엔드는 stage·prod 에 배포된다. MSW mock 은 개발 모드에서만 켜진다 (core-front 는 `next dev` 면 항상, back-office-front 는 `NEXT_PUBLIC_API_MOCKING=enabled` 일 때만). playground 는 mock 으로 동작.
 
 ## 구조 (monorepo)
 
@@ -30,12 +30,16 @@ frontend/                # Node 워크스페이스(turbo) — 프론트 루트
   packages/
     design/              # 디자인 토큰 & 정본 CSS (@studyclub/design — base, core, console)
     ui/                  # 공용 UI 컴포넌트 (@studyclub/ui — Storybook 포함)
-    mock/                # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티 (@studyclub/mock)
+    mock/                # mock 데이터 + MSW API 계층 (@studyclub/mock)
+    types/               # 공용 도메인·국제화 타입 (@studyclub/types)
+    utils/               # 공용 함수·상수 (@studyclub/utils)
 01-planning/             # 기획 — stories/{story-name}/PRD.md · _registry/(스토리 목록·정책 POL-####)
 specs/                   # API 스펙 — specs/{도메인}/spec.md
 backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain / common
   api/  domain/  common/
 ```
+
+공용 타입은 `@studyclub/types`, 공용 함수·상수는 `@studyclub/utils`에서 직접 가져온다. mock은 이를 재수출하지 않는다.
 
 ### packages/mock 상세 구조
 
@@ -44,23 +48,11 @@ frontend/packages/mock/
 ├── package.json
 ├── tsconfig.json
 └── src/
-    ├── index.ts                     # 패키지 최상위 진입점 (types, data re-export)
-    ├── types.ts                     # 하위 호환성을 위한 types, constants, utils 통합 export
+    ├── index.ts                     # mock 데이터·설정 진입점
     │
     ├── constants/                   # 상수 정의
-    │   ├── study.ts                 # 카테고리 표시명, 신청 폼 템플릿 등
+    │   ├── study.ts                 # 예시 신청 폼 템플릿
     │   ├── community.ts
-    │   └── index.ts
-    │
-    ├── types/                       # 도메인 모델 인터페이스/타입 정의
-    │   ├── study.ts                 # Study, StudyProgram, Recruitment 등
-    │   ├── crew.ts
-    │   ├── community.ts
-    │   └── index.ts
-    │
-    ├── utils/                       # 날짜/텍스트 포맷팅 등 유틸 함수
-    │   ├── study.ts
-    │   ├── crew.ts
     │   └── index.ts
     │
     ├── data/                        # 순수 Mock 데이터 소스
@@ -125,7 +117,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   5. [`docs/share/`](docs/share/README.md) — 목록의 **반영** 칸이 `됨`·`해당 없음` 이 아닌 같은 도메인 건. 문서에 아직 안 들어간 결정이다
   - PRD 머리의 **`관련 결정:`** 줄이 그 화면에 걸린 share 결정이다. share 를 PRD 에 반영할 때 이 줄에 링크를 단다 — [share README §반영](docs/share/README.md#반영--결정이-기획-문서에-들어갔나)
   - **무엇이 이미 있고 무엇을 만들지**는 PRD §3 「개발 범위」 표에 있다. 스펙 상태나 PRD 를 고쳤으면 `node scripts/check-dev-scope.mjs` 로 코드와 어긋나지 않았는지 본다
-- **메일을 새로 만들거나 고치면 [`docs/mail-templates/README.md`](docs/mail-templates/README.md) 를 따른다** — 제목은 `[StudyClub] 무엇`, 본문 시안은 [`frontend/apps/playground/src/proto/mail/templates/`](frontend/apps/playground/src/proto/mail/templates/) 에 두고 가입메일(`user-registered-email.html`)을 복사해 시작한다 — playground `/proto/mail` 에서 고치며 바로 본다. 문구 정본은 DB 라 반영은 `V{n}` 마이그레이션(stage 는 Flyway off — 손으로 한 번)
+- **메일을 새로 만들거나 고치면 [`docs/mail-templates/README.md`](docs/mail-templates/README.md) 를 따른다** — 제목은 `[StudyClub] 무엇`, 본문 시안은 [`frontend/apps/playground/src/proto/mail/templates/`](frontend/apps/playground/src/proto/mail/templates/) 에 두고 가입메일(`user-registered-email.html`)을 복사해 시작한다 — playground `/proto/console/notifications/templates` 의 추가·수정 팝업에서 본문 편집과 미리보기를 오가며 확인한다. 문구 정본은 DB 라 반영은 `V{n}` 마이그레이션(stage 는 Flyway off — 손으로 한 번)
 - **팀에 물을 것·정해진 것은 `docs/share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `docs/share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`docs/share/README.md`](docs/share/README.md) 목록에 한 줄 추가한다.
   목록의 공유 칸은 **`공유전`** 으로 둔다 — 팀에는 모아서 한 번에 알리고 그때 `공유됨 (MM-DD)` 로 바꾼다 ([§공유](docs/share/README.md#공유--모아서-한-번에)).
@@ -148,12 +140,18 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   시키기를 기다리지 않는다. 확인 주소는 `stage.studyclub.life`.
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
-- 프론트 데이터는 지금 `frontend/packages/mock` 의 MSW 및 목 데이터로 동작. 데이터 수정: 스터디는 `src/data/studies/` (`recruiting.ts`, `ongoing.ts`, `closed-*.ts`), 크루는 `src/data/crew.ts`, 커뮤니티·행사·공지는 `src/data/community.ts`. 실 API 교체 지점은 `// TODO(api)` 주석.
+- 개발 모드·playground 의 목 데이터는 `frontend/packages/mock` 에 있다. 데이터 수정: 스터디는 `src/data/studies/` (`recruiting.ts`, `ongoing.ts`, `closed-*.ts`), 크루는 `src/data/crew.ts`, 커뮤니티·행사·공지는 `src/data/community.ts`. 실 API 교체 지점은 `// TODO(api)` 주석.
 - PR 은 CODEOWNERS(@titaniper) 승인 후에만 main 머지 (외부 기여자 포함).
 - CI: 프론트=`.github/workflows/{core,back-office}-front-*` (context `frontend/`), 백엔드=`backend-*`.
   **playground 만 `beta` 브랜치에서 배포된다** (`playground-beta.yaml`) — 프로토타입이라 main 을 기다리지 않는다.
   `backend-PR-CI` 는 PR 마다 `./gradlew check` 를 돌린다 — 컴파일 실패·포맷 위반이 머지되는 걸 막는 게이트.
   `backend-migration-check` 는 PR 마다 빈 MySQL 에 마이그레이션을 적용해 본다 — 여기서 깨지면 `V*.sql` 을 고친다.
+- **디스코드 봇의 `CREATE TABLE` 을 고치면 같은 커밋에서 `discord/.prober/map/schema.json` 도 다시 뽑는다** —
+  `cd discord && python -m tests.test_prober_schema > .prober/map/schema.json`. 봇은 백엔드 MySQL 과 별개로 SQLite 테이블을 쓰고,
+  Prober(DB 구조 지도)는 이 파일을 그대로 읽는다(`prober-map`). 파일이 실제 테이블과 다르면 `discord-PR-CI` 의 pytest 가 막는다.
+- **`.prober/map/` 는 Prober 지도의 위층이다** — `concepts.json` 은 테이블을 개념 묶음으로 나누고 이름으로 못 찾는 관계(`CREATED_BY` → ACCOUNT, 디스코드 snowflake 등)를 적는다.
+  `flows/*.json` 은 흐름 하나의 단계 순서(테이블 · op · 이벤트 · 시스템 밖). 테이블을 추가·삭제·이름 변경했거나 스펙의 처리 순서를 바꿨으면 같은 PR 에서 고친다.
+  `prober-map` CI 가 스펙·`docs/erd`·`docs/flows` 와 함께 올리고, DB 구조에 없는 테이블을 가리키면 경고를 찍는다.
 
 ---
 
@@ -194,7 +192,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 1. **DDD 먼저** — 애그리거트를 정하고 규칙을 엔티티에 둔다. 서비스는 조립만 한다
 2. **엔티티는 `BaseEntity` 상속** — `createdAt`/`updatedAt` 을 손으로 채우지 않는다
-3. **테이블 이름은 대문자**(`ACCOUNT`), 컬럼은 소문자 snake_case
+3. **테이블·컬럼 이름은 대문자 snake_case**(`ACCOUNT`, `ACCOUNT_ID`), 테이블은 단수형
 4. **스키마를 만드는 주체는 환경마다 하나** — prod·로컬은 Flyway(`validate`), **stage 는
    Hibernate(`update`, Flyway off)**. 둘 다 켜면 나중에 `Duplicate column` 으로 죽는다.
    엔티티를 바꿨으면 같은 PR 에 `V{n}__*.sql` — 검증은 `backend-migration-check` CI 가 한다
@@ -224,8 +222,8 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 #### FE 핵심 요약
 
-1. **관심사 분리** — 페이지(데이터 fetch) / 컴포넌트(렌더링) / lib(로직·API) 역할 구분
-2. **API 레이어** — `lib/api/` 에 모아두고 컴포넌트에서 직접 fetch 하지 않는다
+1. **관심사 분리** — 페이지(조립) / features(기능 API·규칙·화면) / lib(앱 공통 기반) / packages(앱 간 공유) 역할 구분
+2. **API 레이어** — `features/<기능>/repository.ts`에 HTTP 요청을, `queries.ts`에 React Query 훅을 둔다. 전송은 앱의 `lib/http.ts`를 사용하고 응답 Zod 스키마를 필수로 전달한다. 입력 폼은 기능별 스키마와 RHF `zodResolver`를 연결한다
 3. **Server Component 기본** — `'use client'` 는 인터랙션 필요한 말단에만
 4. **Mock 교체** — `// TODO(api)` 검색 → mock import 를 API 함수 호출로 교체
 5. **판정을 다시 하지 않는다** — `recruitStatus` 같은 응답 필드를 그린다. 날짜·숫자로 재계산 금지, 없으면 스펙에 요청 ([api-integration §판정](docs/frontend-development-guide/api-integration.md#판정을-다시-하지-않는다))

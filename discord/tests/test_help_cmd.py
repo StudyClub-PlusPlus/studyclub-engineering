@@ -9,6 +9,7 @@ from app.config import Settings
 
 EXPECTED = {
     "checkVoiceChannels": "Captain",
+    "config": "Captain",
     "updateBulletin": "Captain",
     "출석체크": "Navigator",
     "help": "ETC",

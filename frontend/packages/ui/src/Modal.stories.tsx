@@ -35,7 +35,7 @@ function ModalDemo({ size }: { size?: 'md' | 'lg' }) {
           </>
         }
       >
-        <div className='flex flex-col gap-4 text-sm text-neutral-700'>
+        <div className='flex flex-col gap-4 type-body-sm text-neutral-700'>
           <p>스터디명: 알고리즘 마스터 클래스</p>
           <p>일정: 매주 화요일 20:00</p>
           <p>정원: 8/10명</p>
@@ -59,7 +59,7 @@ function NoFooterDemo() {
     <>
       <Button onClick={() => setOpen(true)}>푸터 없는 모달</Button>
       <Modal open={open} onClose={() => setOpen(false)} title='안내' description='확인 후 닫아 주세요.'>
-        <p className='text-sm text-neutral-700'>Esc 키 또는 오버레이 클릭으로 닫을 수 있습니다.</p>
+        <p className='type-body-sm text-neutral-700'>Esc 키 또는 오버레이 클릭으로 닫을 수 있습니다.</p>
       </Modal>
     </>
   );

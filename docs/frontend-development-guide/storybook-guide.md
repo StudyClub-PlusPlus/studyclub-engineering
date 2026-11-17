@@ -414,3 +414,11 @@ export const Controlled: Story = {
 - [ ] 주요 variant / 상태별 스토리 추가 (Default 포함 최소 2개)
 - [ ] 너비가 중요한 컴포넌트는 decorator로 너비 고정
 - [ ] `pnpm run storybook` 으로 로컬 확인 후 PR
+
+## 화면 카탈로그와의 구분
+
+현재 설정은 Storybook 9의 `@storybook/react-vite`이며 `main.ts`가 `src/**/*.stories.@(ts|tsx)`를 찾는다.
+`preview.tsx`는 autodocs와 공통 데코레이터를 적용하고, `index.css`는 `@studyclub/design/base.css`를 불러온다.
+
+Storybook은 공용 부품 단위의 표시·인터랙션 확인이다. 앱 인증, URL, API 응답별 화면, PRD 완료 기준은
+[E2E 카탈로그](e2e-guide.md)와 별도로 검증한다. Storybook 빌드만으로 앱 스크린샷이 갱신되지 않는다.
