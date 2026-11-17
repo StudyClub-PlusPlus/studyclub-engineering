@@ -168,7 +168,10 @@ class DiscordAttendanceServiceTest {
     @DisplayName("진행_중인_회차가_2개여도_거절하지_않고_가장_최근에_시작한_것을_고른다")
     void 진행_중인_회차가_2개여도_거절하지_않고_가장_최근에_시작한_것을_고른다() {
         // 한 스터디가 보이스 채널 둘을 쓰고 각각 세션이 열려 있는 정상 운영 상황.
-        StudyMeeting older = meeting(6L, GROUP_A, Instant.now().minus(3, ChronoUnit.HOURS), true);
+        // 둘 다 진행 중이어야 하므로 먼저 연 쪽도 회차 길이(120분) 안에 둔다.
+        StudyMeeting older =
+                meeting(6L, GROUP_A, Instant.now().minus(90, ChronoUnit.MINUTES), true);
+        assertThat(older.isInProgress(Instant.now())).isTrue();
         StudyMeeting newer =
                 meeting(7L, GROUP_A, Instant.now().minus(20, ChronoUnit.MINUTES), true);
         givenOneGroupStudy();
