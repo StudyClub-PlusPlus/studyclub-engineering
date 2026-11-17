@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 
@@ -26,6 +27,9 @@ public class StudyMeeting extends BaseEntity {
 
     static final int TITLE_MAX_LENGTH = 50;
     static final String KICKOFF_TITLE = "킥오프";
+
+    /** 회차 길이. 길이 컬럼이 없어 종료 기준을 이 값으로 계산한다 — core-front {@code MEETING_MIN} 과 같다. */
+    public static final Duration DURATION = Duration.ofMinutes(120);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -258,9 +262,26 @@ public class StudyMeeting extends BaseEntity {
         return title.isBlank() ? null : title.strip();
     }
 
-    /** 회차가 진행 중인지 — 시작했고 아직 끝나지 않았다. 상태를 저장하지 않으므로 시각으로 판정한다. */
-    public boolean isInProgress() {
-        return startAt != null && endAt == null;
+    /**
+     * 회차가 진행 중인지 — 시작했고 종료 기준({@link #endsAt()})이 아직 안 지났다. 상태를 저장하지 않으므로 시각으로 판정한다.
+     *
+     * <p>{@code END_AT} 을 쓰는 운영 경로가 없어, 비어 있다는 것만으로 진행 중이라 보면 한 번 연 회차가 영원히 진행 중이 된다
+     * (docs/share/2026-11-17-meeting-end.md).
+     */
+    public boolean isInProgress(Instant now) {
+        return startAt != null && now.isBefore(endsAt());
+    }
+
+    /**
+     * 종료 기준 시각. 실제 종료({@code END_AT})가 있으면 그것, 없으면 {@code max(예정 시각, 실제 시작) + DURATION}. 늦게 연 회차는 연
+     * 시각부터, 일찍 연 회차는 예정 시각부터 센다 — 화면의 예정 종료와 같다.
+     */
+    public Instant endsAt() {
+        if (endAt != null) {
+            return endAt;
+        }
+        Instant base = startAt != null && startAt.isAfter(scheduledAt) ? startAt : scheduledAt;
+        return base.plus(DURATION);
     }
 
     /** 아직 시작하지 않았는지. */

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,53 @@ class StudyMeetingTest {
         meeting.start(NOW);
 
         assertThat(meeting.isStarted(NOW)).isTrue();
+    }
+
+    @Test
+    @DisplayName("연 지 119분이면 진행 중, 120분이면 끝난 회차")
+    void inProgressUntilDuration() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, NOW, null);
+        meeting.start(NOW);
+
+        assertThat(meeting.isInProgress(NOW.plus(Duration.ofMinutes(119)))).isTrue();
+        assertThat(meeting.isInProgress(NOW.plus(Duration.ofMinutes(120)))).isFalse();
+    }
+
+    @Test
+    @DisplayName("예정보다 늦게 연 회차는 연 시각부터 120분 동안 진행 중")
+    void lateOpenedCountsFromStart() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, NOW, null);
+        Instant openedAt = NOW.plus(Duration.ofHours(2));
+        meeting.start(openedAt);
+
+        assertThat(meeting.endsAt()).isEqualTo(openedAt.plus(StudyMeeting.DURATION));
+        assertThat(meeting.isInProgress(openedAt.plus(Duration.ofMinutes(119)))).isTrue();
+    }
+
+    @Test
+    @DisplayName("예정보다 일찍 연 회차는 예정 시각 + 120분까지 진행 중")
+    void earlyOpenedCountsFromScheduledAt() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, NOW, null);
+        meeting.start(NOW.minus(Duration.ofHours(1)));
+
+        assertThat(meeting.endsAt()).isEqualTo(NOW.plus(StudyMeeting.DURATION));
+        assertThat(meeting.isInProgress(NOW.plus(Duration.ofMinutes(119)))).isTrue();
+    }
+
+    @Test
+    @DisplayName("열리지 않은 회차는 진행 중이 아니다")
+    void notOpenedIsNotInProgress() {
+        assertThat(StudyMeeting.schedule(1L, NOW, null).isInProgress(NOW)).isFalse();
+    }
+
+    @Test
+    @DisplayName("실제 종료가 있으면 그것이 종료 기준이다")
+    void endAtOverridesComputedEnd() {
+        Instant endAt = NOW.plus(Duration.ofMinutes(30));
+        StudyMeeting meeting = new StudyMeeting(1L, NOW, NOW, endAt);
+
+        assertThat(meeting.endsAt()).isEqualTo(endAt);
+        assertThat(meeting.isInProgress(endAt)).isFalse();
     }
 
     @Test

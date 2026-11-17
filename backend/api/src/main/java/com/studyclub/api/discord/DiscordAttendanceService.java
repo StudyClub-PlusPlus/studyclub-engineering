@@ -209,7 +209,7 @@ public class DiscordAttendanceService {
         // 지금 모이는 중인 세션으로 본다.
         Optional<StudyMeeting> inProgress =
                 meetings.stream()
-                        .filter(StudyMeeting::isInProgress)
+                        .filter(m -> m.isInProgress(now))
                         .max(Comparator.comparing(StudyMeeting::getStartAt));
         if (inProgress.isPresent()) {
             return Optional.of(new PickedMeeting(inProgress.get(), false));

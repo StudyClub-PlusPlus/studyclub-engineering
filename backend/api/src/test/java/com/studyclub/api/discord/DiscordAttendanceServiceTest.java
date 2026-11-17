@@ -187,6 +187,52 @@ class DiscordAttendanceServiceTest {
     }
 
     @Test
+    @DisplayName("지난주_회차가_열린_채로_남아_있어도_이번_주_회차를_연다")
+    void 지난주_회차가_열린_채로_남아_있어도_이번_주_회차를_연다() {
+        // 재현: END_AT 을 쓰는 운영 경로가 없다 (docs/share/2026-11-17-meeting-end.md).
+        // 운영과 같은 길로 만든다 — 화면이 schedule() 로 잡고, 지난주 !출석체크 가 start() 로 열었다.
+        // 생성자로 endAt 을 넣는 픽스처와 달리 END_AT 이 비어 있다.
+        Instant lastWeek = Instant.now().minus(7, ChronoUnit.DAYS);
+        StudyMeeting lastWeekMeeting = withId(StudyMeeting.schedule(GROUP_A, lastWeek, null), 1L);
+        lastWeekMeeting.start(lastWeek);
+        StudyMeeting thisWeekMeeting =
+                withId(StudyMeeting.schedule(GROUP_A, Instant.now(), null), 2L);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(lastWeekMeeting, thisWeekMeeting));
+        givenAccounts();
+
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyMeetingId()).isEqualTo(2L);
+                            assertThat(g.meetingStarted()).isTrue();
+                        });
+        assertThat(thisWeekMeeting.getStartAt()).isNotNull();
+        verify(studyAttendanceRepository, never()).markPresent(any(), any(), any(), eq(1L), any());
+    }
+
+    @Test
+    @DisplayName("연_지_120분이_지난_회차는_끝난_회차라_소급_입력하지_않는다")
+    void 연_지_120분이_지난_회차는_끝난_회차라_소급_입력하지_않는다() {
+        Instant openedAt = Instant.now().minus(130, ChronoUnit.MINUTES);
+        StudyMeeting opened = withId(StudyMeeting.schedule(GROUP_A, openedAt, null), 1L);
+        opened.start(openedAt);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(opened));
+        givenAccounts();
+
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups()).isEmpty();
+        assertThat(response.noMeeting())
+                .containsExactlyInAnyOrder(LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
+        verify(studyAttendanceRepository, never()).markPresent(any(), any(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("반이_여러_개면_각자_자기_반_회차에_찍힌다")
     void 반이_여러_개면_각자_자기_반_회차에_찍힌다() {
         when(studyDiscordLinkRepository.findByDiscordStudyId(DISCORD_STUDY_ID))

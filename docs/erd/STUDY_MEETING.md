@@ -10,7 +10,7 @@
 | STUDY_GROUP_ID | BIGINT FK → STUDY_GROUP | N | |
 | SCHEDULED_AT | DATETIME | N | 예정 시각 (UTC) |
 | START_AT | DATETIME | Y | 실제 시작 — 반장이 시작 명령 시 기록 |
-| END_AT | DATETIME | Y | 실제 종료 |
+| END_AT | DATETIME | Y | 실제 종료 — 종료 명령이 생기면 기록한다. 지금은 쓰는 경로가 없어 늘 비어 있고, 종료 기준은 아래 「상태」 대로 시각으로 계산한다 |
 | TITLE | VARCHAR(50) | Y | 표시용 제목 (`3주차 논문 읽기`). 반복으로 만들면 그때 만든 회차 모두에 같은 제목 |
 | SERIES_ID | VARCHAR(36) | Y | 반복 묶음 ID (UUID). 한 번에 2개 이상 만든 회차가 같은 값을 갖는다. 한 번만 만든 회차는 NULL |
 | MEETING_TYPE | VARCHAR(16) | N | `KICKOFF` · `REGULAR`(기본). 킥오프는 분반마다 하나, 번호 0, 삭제 불가, 출석률 제외 |
@@ -29,12 +29,15 @@
 
 ## 상태 (저장하지 않음 — 시각으로 계산)
 
+종료 기준 `endsAt = END_AT ?? max(SCHEDULED_AT, START_AT) + 120분` (`StudyMeeting.endsAt()`, 길이는 `StudyMeeting.DURATION`).
+늦게 연 회차는 연 시각부터, 일찍 연 회차는 예정 시각부터 센다 ([2026-11-17 결정](../share/2026-11-17-meeting-end.md)).
+
 | 판정 | 조건 |
 |---|---|
 | `SCHEDULED` | `START_AT IS NULL AND now() < SCHEDULED_AT` |
-| `IN_PROGRESS` | `START_AT IS NOT NULL AND END_AT IS NULL` |
-| `DONE` | `END_AT IS NOT NULL` |
-| `MISSED` | `START_AT IS NULL AND now() > SCHEDULED_AT + 여유` — 열리지 않은 회차 |
+| `IN_PROGRESS` | `START_AT IS NOT NULL AND now() < endsAt` |
+| `DONE` | `START_AT IS NOT NULL AND now() ≥ endsAt` |
+| `MISSED` | `START_AT IS NULL AND now() > SCHEDULED_AT + 2시간` — 열리지 않은 회차. 2시간은 디스코드 출석이 회차를 열 수 있는 창(`MEETING_PICK_WINDOW`) |
 
 ## 제약
 - 인덱스 `(STUDY_GROUP_ID, SCHEDULED_AT)` — `idx_study_meeting_group_scheduled`

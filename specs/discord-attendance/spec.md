@@ -36,7 +36,9 @@
 **반마다** 따로 고른다. 그 반의 회차 중에서 아래 순서다.
 
 ```
-1) 진행 중인 회차  (START_AT IS NOT NULL AND END_AT IS NULL)
+1) 진행 중인 회차  (START_AT IS NOT NULL AND now < endsAt)
+   endsAt = END_AT ?? max(SCHEDULED_AT, START_AT) + 120분 — END_AT 을 쓰는 경로가 없어
+   END_AT IS NULL 로만 보면 한 번 연 회차가 영원히 진행 중이다 (2026-11-17 결정)
    여럿이면 START_AT 이 가장 최근인 것 = 지금 모이는 중인 세션
 2) 없으면, SCHEDULED_AT 이 now ± 2h 이내이고 아직 시작 안 한 회차 → START_AT 을 now 로 찍고 사용
    여럿이면 SCHEDULED_AT 이 now 에 가장 가까운 것
@@ -59,7 +61,8 @@
 |---|---|---|
 | 예정 시각 1시간 전에 모여서 체크 | 2번으로 시작 | ±2h 안 |
 | 예정 시각 3시간 뒤에 체크 | `noMeeting[]` | 여유를 넘겼다. 화면에서 회차를 만들고 다시 |
-| 이미 `END_AT` 이 찍힌 회차뿐 | `noMeeting[]` | 끝난 회차에 소급 입력하지 않는다. 화면(`attendance/spec.md`)에서 수정 |
+| 끝난 회차뿐 (`endsAt` 경과 — 연 지 120분이 지났다) | `noMeeting[]` | 끝난 회차에 소급 입력하지 않는다. 화면(`attendance/spec.md`)에서 수정 |
+| 지난주 회차가 열린 채로 이번 주 체크 | 이번 주 회차를 연다 | 지난주 회차는 `endsAt` 이 지나 진행 중이 아니다 |
 | 옆 반 사람이 공부방에 앉아 있음 | `noMeeting[]` | 그 반은 지금 모이는 중이 아니다 |
 | 같은 반에 진행 중 회차가 2개 | 최근 시작한 쪽 | 보이스 채널 둘을 쓰는 정상 운영이다. 거절하지 않는다 |
 
@@ -123,8 +126,8 @@ cross-group 출석을 만들지 않고, 자기 반이 모이는 중이 아니면
 - 회차 잠금(`SELECT ... FOR UPDATE`)은 **예정 회차 자동 시작에만** 남는다. 반은 id 오름차순으로
   잠근다 — 요청의 `discordUserIds` 순서를 따라가면 같은 사람들을 순서만 바꿔 보낸 두 요청이
   서로를 기다려 교착한다.
-- 보이스에 없는 나머지 참가자는 건드리지 않는다. 회차 종료 시 미체크 인원을 `ABSENT` 로
-  만드는 건 [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md) 의 별도 항목이다.
+- 보이스에 없는 나머지 참가자는 건드리지 않는다. 회차를 추가할 때 전원을 이미 `ABSENT` 로
+  깔아 두므로([STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)) 회차가 끝날 때 할 일은 없다.
 
 `STUDY_ID` · `STUDY_GROUP_ID` 는 비정규화 컬럼이므로 회차에서 끌어와 같이 채운다.
 
