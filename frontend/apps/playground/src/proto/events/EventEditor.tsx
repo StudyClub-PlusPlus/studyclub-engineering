@@ -234,6 +234,7 @@ export function EventEditor({
                 className={`flex items-start gap-3 rounded-control border p-4 ${readOnly || confirmationLocked ? '' : 'cursor-pointer'} ${draft.confirmation === value ? 'border-brand bg-brand-subtle' : 'border-border'}`}
               >
                 <input
+                  // ui-native: 확정 방식 카드 — 설명 두 줄을 품은 카드 전체가 고르는 곳
                   className='mt-1 accent-(--color-brand)'
                   type='radio'
                   name='confirmation'

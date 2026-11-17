@@ -146,7 +146,8 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
           confirmDelete ? (
             <>
               {/* 결정을 묻는 단계 — 안전한 쪽이 기본 포커스 (POL-0008) */}
-              <Button variant='secondary' autoFocus data-autofocus onClick={() => setConfirmDelete(false)}>
+              {/* key 로 새로 붙인다 — 앞 단계의 「템플릿 삭제」 Button 자리를 물려받으면 autoFocus 가 돌지 않는다 */}
+              <Button key='confirm-cancel' variant='secondary' autoFocus data-autofocus onClick={() => setConfirmDelete(false)}>
                 취소
               </Button>
               <Button variant='destructive' onClick={remove}>
@@ -157,14 +158,15 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
             <>
               {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}
               {editing && (
-                <button
+                <Button
                   type='button'
+                  variant='danger'
                   data-anno='template:2-2'
                   onClick={() => setConfirmDelete(true)}
-                  className='mr-auto h-10 type-label-lg text-error-600 underline-offset-4 hover:underline'
+                  className='mr-auto'
                 >
                   템플릿 삭제
-                </button>
+                </Button>
               )}
               <Button onClick={save} disabled={blocked}>
                 {editing ? '저장' : '추가'}

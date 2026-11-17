@@ -1,6 +1,7 @@
 'use client';
 
 import { classLabel, type StudyClass } from '@console/lib/classes';
+import { FilterChip } from '@studyclub/ui';
 
 /**
  * 반 고르기 — 일정 탭과 출석 탭이 같은 줄을 쓴다. 회차·출석부는 반마다 하나다.
@@ -23,19 +24,9 @@ export function ClassPicker({
   return (
     <nav data-anno={anno} aria-label='반' className='mb-4 flex flex-wrap gap-1.5'>
       {classes.map((c) => (
-        <button
-          key={c.id}
-          type='button'
-          aria-pressed={c.id === classId}
-          onClick={() => onClass(c.id)}
-          className={`rounded-pill border px-3 py-1.5 type-label-lg transition-colors ${
-            c.id === classId
-              ? 'border-brand bg-brand text-white'
-              : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
-          }`}
-        >
+        <FilterChip key={c.id} selected={c.id === classId} selectMode='single' onClick={() => onClass(c.id)}>
           {classLabel(c)}
-        </button>
+        </FilterChip>
       ))}
     </nav>
   );

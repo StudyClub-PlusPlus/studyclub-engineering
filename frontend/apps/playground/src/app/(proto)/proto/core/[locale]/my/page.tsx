@@ -28,7 +28,7 @@ import {
 import { checkNicknameAvailability, normalizeNickname } from '@core/lib/nickname-availability';
 import { isOnboardingTimeZone, nicknameError, snapToOnboardingZone } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
-import { Button, Checkbox } from '@studyclub/ui';
+import { Button, Checkbox, IconButton } from '@studyclub/ui';
 import { Check, Pencil } from 'lucide-react';
 
 import { MY_EVENTS_SPEC, SPEC } from './spec';
@@ -211,6 +211,7 @@ export default function MyPage() {
             <div data-anno='profile:2'>
               <div className='flex items-center gap-2'>
                 <input
+                  // ui-native: 닉네임 바로 고치기 — 이름 줄이 그대로 밑줄 칸이 되어 카드 높이를 지킨다
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
                   onCompositionStart={() => setComposing(true)}
@@ -244,16 +245,15 @@ export default function MyPage() {
             <div>
               <div className='flex min-w-0 items-center gap-1.5'>
                 <p className='truncate type-title-lg text-fg'>{name}</p>
-                <button
-                  type='button'
+                <IconButton
+                  variant='tertiary'
+                  size='sm'
                   data-anno='profile:1-1'
                   onClick={openEditor}
                   title='내 정보 수정'
                   aria-label='내 정보 수정'
-                  className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-                >
-                  <Pencil size={14} />
-                </button>
+                  icon={<Pencil />}
+                />
                 <Saved show={savedRow === 'profile'} />
               </div>
               <p className='mt-0.5 truncate type-body-sm text-fg-muted'>{user.email}</p>

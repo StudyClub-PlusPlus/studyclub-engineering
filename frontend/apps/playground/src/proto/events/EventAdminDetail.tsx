@@ -377,6 +377,7 @@ export function EventAdminDetail({ id }: { id: string }) {
             ) : (
               mails.map((mail) => (
                 <button
+                  // ui-native: 발송 메일 카드 — 카드 전체가 누르는 곳
                   key={mail.id}
                   onClick={() => setMailPreview(mail)}
                   className='card flex w-full items-center justify-between gap-4 p-4 text-left hover:border-brand'

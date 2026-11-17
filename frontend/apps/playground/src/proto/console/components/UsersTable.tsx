@@ -21,8 +21,8 @@ import {
 } from '@console/lib/roles';
 import { DORMANCY_DESCRIPTION } from '@console/lib/user-dormancy';
 import { consoleUsers, ownedOngoingStudies, studyTitleById, type ConsoleUser } from '@console/lib/users';
-import { Badge, Modal, Pagination, toast, type BadgeTone } from '@studyclub/ui';
-import { Check, ChevronDown, Eye, EyeOff, Info, Loader2, Minus } from 'lucide-react';
+import { Badge, IconButton, Input, Modal, Pagination, toast, type BadgeTone, Button, Segmented } from '@studyclub/ui';
+import { Check, ChevronDown, Eye, EyeOff, Info, Loader2, Minus, Search } from 'lucide-react';
 
 /** 한 화면에 20명. 스크롤로 다 내리는 것보다 「몇 번째 장을 보고 있는가」가 남는 편이 낫다. */
 const PAGE_SIZE = 20;
@@ -47,15 +47,14 @@ function EmailCell({ email }: { email: string }) {
         <span className='tnum' title={shown ? email : undefined}>
           {shown ? email : maskEmail(email)}
         </span>
-        <button
-          type='button'
+        <IconButton
+          variant='tertiary'
+          size='xs'
           onClick={() => setShown((v) => !v)}
           aria-label={shown ? '전체 주소 가리기' : '전체 주소 보기'}
           title={shown ? '가리기' : '전체 주소 보기'}
-          className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-        >
-          {shown ? <EyeOff size={14} /> : <Eye size={14} />}
-        </button>
+          icon={shown ? <EyeOff /> : <Eye />}
+        />
       </span>
     </td>
   );
@@ -143,6 +142,7 @@ function RoleBadgeSelect({
   return (
     <>
       <button
+        // ui-native: 역할 고르기 열기 — 역할 뱃지 모양의 고유 listbox 팝오버 단추
         ref={buttonRef}
         type='button'
         data-anno='role:1'
@@ -170,6 +170,7 @@ function RoleBadgeSelect({
         >
           {ACCOUNT_ROLES.map((r) => (
             <button
+              // ui-native: 역할 목록의 한 줄 — listbox 팝오버의 option
               key={r.key}
               type='button'
               role='option'
@@ -306,16 +307,17 @@ export function UsersTable() {
         (t) => (
           <span className='flex items-center gap-3'>
             권한을 바꾸지 못했습니다. 다시 시도해 주세요.
-            <button
+            <Button
               type='button'
-              className='shrink-0 font-semibold text-primary-600 underline-offset-2 hover:underline'
+              variant='tertiary'
+              size='sm'
               onClick={() => {
                 toast.dismiss(t.id);
                 void changeAccount(id, account);
               }}
             >
               다시 시도
-            </button>
+            </Button>
           </span>
         ),
         { duration: 8000 },
@@ -346,51 +348,42 @@ export function UsersTable() {
         <PageHeader
           title='유저'
           action={
-            <button
-              type='button'
+            <IconButton
+              variant='tertiary'
+              size='sm'
               data-anno='role:3'
               onClick={() => setMatrixOpen(true)}
               title='역할별 기본 권한'
               aria-label='역할별 기본 권한'
-              className='grid h-8 w-8 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-            >
-              <Info size={17} />
-            </button>
+              icon={<Info size={17} />}
+            />
           }
         />
       </div>
 
       <div data-anno='list:2' className='mb-3 flex flex-wrap items-center gap-3'>
         {/* 역할은 셋뿐이라 접어 둘 이유가 없다 — 펴 두면 지금 무엇으로 걸러져 있는지 한눈에 보인다 */}
-        <nav className='inline-flex rounded-pill bg-surface-2 p-1'>
-          {ROLE_FILTERS.map((o) => {
-            const on = roleFilter === o.value;
-            return (
-              <button
-                key={o.value}
-                type='button'
-                onClick={() => {
-                  setRoleFilter(o.value);
-                  setPage(1);
-                }}
-                className={`rounded-pill px-3 py-1.5 type-label-lg transition-colors ${
-                  on ? 'bg-surface text-fg shadow-sm' : 'text-fg-muted hover:text-fg'
-                }`}
-              >
-                {o.label}
-              </button>
-            );
-          })}
-        </nav>
-        <input
+        <Segmented
+          shape='pill'
+          options={ROLE_FILTERS}
+          value={roleFilter}
+          onChange={(value) => {
+            setRoleFilter(value);
+            setPage(1);
+          }}
+        />
+        <Input
           type='search'
+          size='sm'
+          aria-label='유저 검색'
+          leadingIcon={<Search size={15} />}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
             setPage(1);
           }}
           placeholder='이름 · 이메일 검색'
-          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
+          className='w-56'
         />
         {/* 탭·검색으로 걸러진 뒤의 수다 — 표 위에 두어야 무엇을 세고 있는지가 분명하다 */}
         <span className='tnum ml-auto type-body-sm text-fg-muted'>총 {filtered.length}명</span>

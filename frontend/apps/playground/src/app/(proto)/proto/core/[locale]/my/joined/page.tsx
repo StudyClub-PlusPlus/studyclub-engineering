@@ -32,8 +32,8 @@ import { SCHEDULE_ROLE_LABEL, isKickoff, manageAccessOf, type ScheduleRole } fro
 import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { type Study } from '@studyclub/types';
-import { categoryGradient, categoryMeta } from '@studyclub/ui';
-import { Badge, Button, IconButton, Card, EmptyState, Select, cx } from '@studyclub/ui';
+import { categoryGradient, categoryMeta, Pagination } from '@studyclub/ui';
+import { Badge, IconButton, Card, EmptyState, Select, cx } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { MEETING_SPEC, SPEC } from './spec';
@@ -200,6 +200,7 @@ function WeekStrip({
                   return (
                     <li key={`${hit.studyId}-${hit.meetingId}`}>
                       <button
+                        // ui-native: 달력 칸의 일정 — 스터디 색 띠가 칠해진 칸 전체가 누르는 곳
                         type='button'
                         title={`${hit.time} ${hit.title} ${hit.no === 0 ? '킥오프' : `${hit.no}회차`}`}
                         onClick={() => study && router.push(schedulePath(locale, study))}
@@ -226,49 +227,6 @@ function WeekStrip({
         </ol>
       </div>
     </section>
-  );
-}
-
-function Pager({ page, pages, onChange }: { page: number; pages: number; onChange: (page: number) => void }) {
-  if (pages <= 1) return null;
-  return (
-    <nav data-anno='5' className='mt-8 flex items-center justify-center gap-1' aria-label='목록 페이지'>
-      <Button
-        variant='tertiary'
-        size='sm'
-        disabled={page <= 1}
-        leadingIcon={<ChevronLeft size={16} />}
-        onClick={() => onChange(page - 1)}
-      >
-        이전
-      </Button>
-      {Array.from({ length: pages }, (_, i) => i + 1).map((n) => {
-        const on = n === page;
-        return (
-          <button
-            key={n}
-            type='button'
-            aria-current={on ? 'page' : undefined}
-            onClick={() => onChange(n)}
-            className={cx(
-              'grid h-8 min-w-8 place-items-center rounded-control px-2.5 type-label-lg transition-colors',
-              on ? 'bg-brand text-on-brand' : 'text-fg-secondary hover:bg-surface-2 hover:text-fg',
-            )}
-          >
-            {n}
-          </button>
-        );
-      })}
-      <Button
-        variant='tertiary'
-        size='sm'
-        disabled={page >= pages}
-        trailingIcon={<ChevronRight size={16} />}
-        onClick={() => onChange(page + 1)}
-      >
-        다음
-      </Button>
-    </nav>
   );
 }
 
@@ -421,7 +379,7 @@ export default function MyJoinedPage() {
               <StudyItem key={study.id} study={study} locale={locale} wallTz={wallTz} />
             ))}
           </ul>
-          <Pager page={pageSafe} pages={pages} onChange={changePage} />
+          {pages > 1 && <Pagination data-anno='5' className='mt-8' page={pageSafe} total={pages} onChange={changePage} />}
         </div>
       )}
     </div>
