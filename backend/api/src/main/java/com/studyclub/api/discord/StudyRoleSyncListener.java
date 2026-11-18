@@ -12,6 +12,7 @@ import com.studyclub.domain.participant.StudyParticipantJoined;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.participant.StudyParticipantRoleChanged;
 import com.studyclub.domain.participant.StudyParticipantWithdrawn;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -234,7 +235,9 @@ public class StudyRoleSyncListener {
 
     private void syncNavigatorRole(
             String eventName, EventMeta meta, Long accountId, String discordIdAtEvent) {
-        boolean holds = studyParticipantRepository.existsActiveNavigatorInAnyActiveStudy(accountId);
+        boolean holds =
+                studyParticipantRepository.existsActiveNavigatorInAnyActiveStudy(
+                        accountId, Instant.now());
         // 뗄 때는 이벤트 시점의 ID 가 먼저다 — 그사이 연결을 해제해도 옛 계정에서 role 을 뗀다
         Optional<String> discordUserId =
                 Optional.ofNullable(!holds ? discordIdAtEvent : null)

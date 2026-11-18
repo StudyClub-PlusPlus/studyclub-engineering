@@ -167,6 +167,52 @@ class AdminStatsIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 진행중 보드는 END_AT 이 지난 기수를 빼고, 전체 보기(status=ONGOING)와 건수가 같다 (bug-37)")
+    void ongoingBoardExcludesPastEndAndMatchesList() {
+        long over = 9803L;
+        Timestamp now = Timestamp.from(Instant.now());
+        insertStudy(
+                over,
+                "AAA 대시보드 끝남",
+                "ALGORITHM",
+                "OPEN",
+                Timestamp.from(Instant.now().minus(30, ChronoUnit.DAYS)),
+                now);
+        jdbcTemplate.update(
+                "UPDATE STUDY SET END_AT = ? WHERE ID = ?",
+                Timestamp.from(Instant.now().minus(1, ChronoUnit.DAYS)),
+                over);
+        try {
+            var board =
+                    rest.exchange(
+                            "/api/admin/stats/study-board?view=ONGOING",
+                            HttpMethod.GET,
+                            auth(ADMIN_ID),
+                            Map.class);
+            var list =
+                    rest.exchange(
+                            "/api/admin/studies?status=ONGOING&sort=TITLE_ASC&offset=0&limit=100",
+                            HttpMethod.GET,
+                            auth(ADMIN_ID),
+                            Map.class);
+            assertThat(studyIds(board.getBody())).contains(ONGOING_STUDY).doesNotContain(over);
+            assertThat(studyIds(list.getBody())).contains(ONGOING_STUDY).doesNotContain(over);
+            assertThat(((Number) board.getBody().get("total")).longValue())
+                    .isEqualTo(((Number) list.getBody().get("total")).longValue());
+            var ended =
+                    rest.exchange(
+                            "/api/admin/studies?status=ENDED&offset=0&limit=100",
+                            HttpMethod.GET,
+                            auth(ADMIN_ID),
+                            Map.class);
+            assertThat(studyIds(ended.getBody())).contains(over);
+        } finally {
+            jdbcTemplate.update("DELETE FROM STUDY WHERE ID = ?", over);
+            jdbcTemplate.update("DELETE FROM STUDY_PROGRAM WHERE ID = ?", over);
+        }
+    }
+
+    @Test
     @DisplayName("성공 - 모집 보드와 전체 보기는 같은 DB 필터·정렬을 사용한다")
     void recruitmentBoardMatchesAdminListOrder() {
         var board =
