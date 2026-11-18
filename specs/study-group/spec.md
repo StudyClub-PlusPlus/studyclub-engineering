@@ -3,6 +3,7 @@
 > ERD: [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md)
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
+> 갱신: 2026-11-18 — 반 수정 `PATCH /{groupId}` 에 `moveUpcomingMeetings` — 시간대 · 정규 시각을 바꿀 때 시작 전 회차도 옮길 수 있다 ([회차 스펙 결정 14](../study-meeting/spec.md#결정-사항))
 > 갱신: 2026-11-16 — 담당 캡틴 바꾸기 `PATCH …/owner-captain` 추가, 참여 명단에 `ownerCaptain`. 담당 캡틴 판정을 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
 > 갱신: 2026-11-01 — `PATCH /{groupId}` 구현완료 — daysOfWeek · startTime · timezone 추가 (V54 마이그레이션)
 > 갱신: 2026-10-23 — 참여 명단 `groups[].isDefault` 추가 (기본 반 칩을 서버 판정으로)
@@ -21,7 +22,7 @@
 | PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId}/owner-captain | 담당 캡틴 바꾸기 (신청자 탭 맨 위 「담당 캡틴」 칸) | O (ADMIN) | 구현완료 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현완료 |
-| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현완료 |
+| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않고, 고르면 시작 전 회차를 새 시각으로 옮긴다 | O (ADMIN) | 구현완료 |
 | DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -299,7 +300,7 @@
 - **Method**: PATCH
 - **Path**: `/api/admin/studies/{studyId}/groups/{groupId}`
 - **인증**: 필요 — ADMIN
-- **설명**: 반 제목(신청자 탭 「수정」)이나 스터디 시간(일정 탭 「스터디 시간 정하기 · 수정」)을 바꾼다. 보낸 필드만 바꾼다. **회차는 만들지도 바꾸지도 않는다** (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md))
+- **설명**: 반 제목(신청자 탭 「수정」)이나 스터디 시간(일정 탭 「스터디 시간 정하기 · 수정」)을 바꾼다. 보낸 필드만 바꾼다. **회차는 만들지 않는다** (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md)). `moveUpcomingMeetings: true` 면 시작 전 회차를 새 시각으로 옮긴다 (2026-11-18, [회차 스펙 결정 14](../study-meeting/spec.md#결정-사항))
 
 ### Request Body
 
@@ -308,7 +309,8 @@
   "name": "A반",
   "daysOfWeek": ["thu"],
   "startTime": "20:00",
-  "timezone": "Asia/Seoul"
+  "timezone": "Asia/Seoul",
+  "moveUpcomingMeetings": true
 }
 ```
 
@@ -320,6 +322,7 @@
 | daysOfWeek | String[] | N | `mon` ~ `sun`, 1개 이상 |
 | startTime | String (HH:mm, 분반 현지) | N | timezone 없으면 `Asia/Seoul` 기준으로 저장 |
 | timezone | String (IANA) | N | [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) 의 4개 값 중 하나 |
+| moveUpcomingMeetings | Boolean | N | 기본 false. true 이고 `timezone` 이나 `startTime` 을 보냈을 때만 시작 전 회차를 옮긴다 |
 
 기간(시작일 · 종료일)은 받지 않는다. 반의 기간은 저장하지 않고 첫 회차 ~ 마지막 회차로 계산한다.
 
@@ -329,8 +332,15 @@
 - 이름 중복 규칙은 「반 만들기」와 같다 — 같은 스터디의 다른 반과 이름(대소문자 무시)이 겹치면 409 `CONFLICT`. 지금 이름 그대로 보내면 통과
 - `timezone` 만 바뀌고 `startTime` 이 없으면 벽시계 시각을 유지한 채 `START_AT` Instant 를 새 시간대로 재계산한다
 - `startTime` 을 보낼 때 반에 `timezone` 이 없으면 `Asia/Seoul` 기준으로 저장한다 — 회차 조회(`MeetingSchedule.zoneOf`)와 같은 기본값
-- 회차 · 출석은 건드리지 않는다. 회차는 [회차 스펙](../study-meeting/spec.md)의 추가 · 수정 · 삭제로만 바뀐다
-- 이미 있는 회차의 시각은 따라 바뀌지 않는다 — 회차마다 `SCHEDULED_AT` 을 갖는다
+- 반 행을 `FOR UPDATE` 로 잠그고 시작한다 — 트랜잭션의 첫 조회. 회차 API 와 같은 순서다 ([회차 스펙 「잠금」](../study-meeting/spec.md#잠금))
+- 출석은 건드리지 않는다. 회차를 만들거나 지우지 않는다
+- `moveUpcomingMeetings` 가 없거나 false 면 이미 있는 회차의 시각은 따라 바뀌지 않는다 — 회차마다 `SCHEDULED_AT` 을 갖는다
+- `moveUpcomingMeetings: true` 이고 `timezone` · `startTime` 중 하나라도 보냈으면, 반 회차를 `FOR UPDATE` 로 잠근 뒤 **시작 전 회차**(`START_AT IS NULL AND SCHEDULED_AT > now`, 킥오프 포함)의 `SCHEDULED_AT` 을 다시 계산한다
+  - 날짜: 옛 시간대의 현지 날짜 그대로
+  - 시각: `startTime` 을 보냈으면 그 시각, 시간대만 보냈으면 회차마다의 옛 벽시계 시각
+  - 새 시간대(보내지 않았으면 지금 시간대)로 UTC 를 계산한다. 서머타임으로 같은 시각이 두 번 있으면 앞쪽, 없는 시각이면 그만큼 뒤로 민다 — 반 시각 저장과 같은 `java.time` 기본 규칙
+  - 시작한 회차는 그대로 둔다. 출석 행은 회차 ID 에 붙어 따라온다
+  - 옮긴 결과가 지난 시각이면 400 `INVALID_INPUT`, 다른 회차와 같은 날(새 시간대 현지 날짜)이면 409 `MEETING_DATE_CONFLICT`. 반 이름 · 시각 변경까지 전부 되돌린다
 
 ### Response — 200
 
@@ -342,10 +352,11 @@
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 이름 길이 밖 · 요일 0개 · 요일 키 밖 · startTime HH:mm 형식 밖 · 시간대 목록 밖 |
+| 400 | INVALID_INPUT | 이름 길이 밖 · 요일 0개 · 요일 키 밖 · startTime HH:mm 형식 밖 · 시간대 목록 밖 · 회차를 옮기면 지난 시각이 되는 회차가 있음 |
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 반 |
 | 409 | CONFLICT | 이 스터디의 다른 반과 이름이 같음 |
+| 409 | MEETING_DATE_CONFLICT | 회차를 옮기면 다른 회차와 같은 날이 됨 |
 
 ### 킥오프
 
@@ -392,7 +403,7 @@
 ## 프론트엔드 사용처
 
 - back-office-front 스터디 상세 · `/studies/{id}/applicants` — `features/participants/ParticipantsTab.tsx`: 명단 · 반 생성/제목 수정/삭제 · 개별/일괄 반 · 역할(크루 · 네비게이터) 변경 후 한 번에 저장 — 한 줄에 `groupId` · `participantRole` 중 바뀐 것만 싣는다. 참여 명단 GET · 일괄 PATCH는 위 계약에 연결했으며 BE 구현 후 실제 연동 검증이 필요하다.
-- back-office-front 일정 탭 — 스터디 시간 정하기 · 수정(`GroupTimeDialog`)이 이 PATCH 로 `daysOfWeek` · `startTime` · `timezone` 을 저장한다. 요일(`weekdays`)은 참여 명단 GET 응답에 없어 브라우저 저장소에도 함께 남긴다 — 해당 GET 이 `daysOfWeek` 를 반환하면 제거 예정
+- back-office-front 일정 탭 — 스터디 시간 정하기 · 수정(`GroupTimeDialog`)이 이 PATCH 로 `daysOfWeek` · `startTime` · `timezone` 을 저장한다. 시각이나 시간대가 바뀌고 시작 전 회차(서버 `started` 가 false)가 있으면 「아직 시작 안 한 회차 N개도 새 시각으로 옮길까요?」 를 묻고 「옮기기」면 `moveUpcomingMeetings: true`, 「반 정보만 바꾸기」면 false 를 보낸다. 요일(`weekdays`)은 참여 명단 GET 응답에 없어 브라우저 저장소에도 함께 남긴다 — 해당 GET 이 `daysOfWeek` 를 반환하면 제거 예정
 - 역할 변경 프로토: playground `console/studies/{id}` 신청자 탭
 
 ## 퍼널·계측
