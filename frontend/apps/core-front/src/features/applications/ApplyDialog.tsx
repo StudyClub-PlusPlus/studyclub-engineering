@@ -470,20 +470,15 @@ export function ApplyDialog({
     >
       {done ? (
         // 신청하면 곧 참여다 — 승인 대기가 없다 (POL-0004)
-        <div className='flex flex-col gap-2 py-4 type-body-sm'>
-          <p className='text-fg'>
-            {t(
-              {
-                ko: '스터디 신청이 완료되었습니다. 내 스터디룸으로 이동할까요?',
-                en: 'Your application is in. Go to My study room?',
-              },
-              locale,
-            )}
-          </p>
-          <p className='text-fg-secondary'>
-            {t({ ko: '제출한 내용은 수정할 수 없습니다.', en: 'Submitted answers cannot be edited.' }, locale)}
-          </p>
-        </div>
+        <p className='py-4 type-body-sm text-fg'>
+          {t(
+            {
+              ko: '스터디 신청이 완료되었습니다. 내 스터디룸으로 이동할까요?',
+              en: 'Your application is in. Go to My study room?',
+            },
+            locale,
+          )}
+        </p>
       ) : (
         <div className='-mx-6 -my-4 h-full bg-surface-1 px-6 py-4'>
           <div className='flex flex-col gap-3'>
