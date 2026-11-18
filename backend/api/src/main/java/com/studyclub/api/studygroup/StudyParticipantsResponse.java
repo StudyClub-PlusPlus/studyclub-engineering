@@ -24,6 +24,7 @@ public record StudyParticipantsResponse(
             String discordNickname,
             String email,
             String regionGroup,
+            String timeZone,
             Long groupId,
             ParticipantRole participantRole,
             ParticipantStatus status,

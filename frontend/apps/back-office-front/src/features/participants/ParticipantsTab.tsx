@@ -12,12 +12,12 @@ import { OwnerCaptainSection } from '@/features/participants/OwnerCaptainSection
 import { participantKeys, useParticipants } from '@/features/participants/queries';
 import type { Participant, ParticipantsResponse } from '@/features/participants/types';
 import { useGroupAssignment } from '@/features/participants/use-group-assignment';
+import { DISPLAY_ZONES, zoneLabel, zoneTitle } from '@/features/schedule/time';
 import { ApiError } from '@/lib/http';
 import { useUrlState } from '@/lib/use-url-state';
 
-const FILTER_DEFAULTS = { region: 'all', group: 'all' };
-const FILTER_ALLOWED = { region: ['all', 'KR', 'NA', 'ETC'] };
-const REGION_LABELS = { KR: '한국', NA: '북미', ETC: '기타' };
+const FILTER_DEFAULTS = { tz: 'all', group: 'all' };
+const FILTER_ALLOWED = { tz: ['all', ...DISPLAY_ZONES.map((z) => z.iana)] };
 const ROLE_LABELS = { MEMBER: '크루', LEADER: '네비게이터' };
 
 export function ParticipantsTab({
@@ -62,7 +62,7 @@ function ParticipantAssignment({
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [filters, setFilters] = useUrlState(FILTER_DEFAULTS, FILTER_ALLOWED);
-  const region = filters.region;
+  const tz = filters.tz;
   const group = data.groups.some((g) => String(g.groupId) === filters.group) ? filters.group : 'all';
   const [selected, setSelected] = useState<number[]>([]);
   const {
@@ -81,7 +81,7 @@ function ParticipantAssignment({
   const groupSaving = useIsMutating({ mutationKey: participantKeys.groups(studyId) }) > 0;
   const busy = saving || groupSaving;
   const rows = data.participants.filter(
-    (p) => (region === 'all' || p.regionGroup === region) && (group === 'all' || String(p.groupId) === group),
+    (p) => (tz === 'all' || p.timeZone === tz) && (group === 'all' || String(p.groupId) === group),
   );
   const editable = rows.filter((p) => p.status === 'ACTIVE' || p.status === 'PAUSED');
   const picked = editable.filter((p) => selected.includes(p.participantId));
@@ -115,11 +115,11 @@ function ParticipantAssignment({
                 ))}
               </Select>
             )}
-            <Select aria-label='지역 필터' value={region} onChange={(e) => setFilters({ region: e.target.value })}>
-              <option value='all'>전체 지역</option>
-              {Object.entries(REGION_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
+            <Select aria-label='시간대 필터' value={tz} onChange={(e) => setFilters({ tz: e.target.value })}>
+              <option value='all'>전체 시간대</option>
+              {DISPLAY_ZONES.map((z) => (
+                <option key={z.iana} value={z.iana}>
+                  {zoneTitle(z.iana)}
                 </option>
               ))}
             </Select>
@@ -232,7 +232,7 @@ function ParticipantAssignment({
               <th>닉네임</th>
               <th>디스코드 닉네임</th>
               <th>이메일</th>
-              <th>지역</th>
+              <th>시간대</th>
               <th>반</th>
               <th>역할</th>
             </tr>
@@ -268,7 +268,7 @@ function ParticipantAssignment({
                   </td>
                   <td>{p.discordNickname ?? '-'}</td>
                   <td>{p.email}</td>
-                  <td>{p.regionGroup ? REGION_LABELS[p.regionGroup] : '-'}</td>
+                  <td title={p.timeZone ?? undefined}>{p.timeZone ? zoneLabel(p.timeZone) : '-'}</td>
                   <td>
                     {data.groups.length > 1 ? (
                       // 칸 너비가 아니라 글자 너비로 — 화살표가 상자 안에 붙게 감싼다

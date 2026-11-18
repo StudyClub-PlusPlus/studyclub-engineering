@@ -160,6 +160,7 @@ public class AdminStudyParticipantQueryService {
                 account != null ? account.getDiscordNickname() : null,
                 account != null ? account.getEmail() : null,
                 account != null ? account.getRegionGroup() : null,
+                account != null ? account.getTimeZone() : null,
                 p.getStudyGroupId(),
                 p.getParticipantRole(),
                 p.getStatus(),

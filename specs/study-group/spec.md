@@ -68,7 +68,8 @@
       "nickname": "jamie",
       "discordNickname": "제이미/BE/서울/분산시스템",
       "email": "jamie@example.com",
-      "regionGroup": "KR",
+      "regionGroup": null,
+      "timeZone": "Asia/Seoul",
       "groupId": 7,
       "participantRole": "LEADER",
       "status": "ACTIVE",
@@ -91,7 +92,8 @@
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].nickname · email | String | N | 이메일은 이 백오피스 응답에만 | ACCOUNT |
 | participants[].discordNickname | String | Y | 디스코드 서버 별명. 신청 때 받은 값으로 갱신된다. 없으면 null — 화면 「—」 | ACCOUNT.DISCORD_NICKNAME |
-| participants[].regionGroup | String | Y | `KR` · `NA` · `ETC` | ACCOUNT.REGION_GROUP |
+| participants[].regionGroup | String | Y | `KR` · `NA` · `ETC`. 지금 어느 코드도 채우지 않아 늘 null 이다(profile-edit 「지역은 시간대에서 파생한다」). 화면은 `timeZone` 을 쓴다 | ACCOUNT.REGION_GROUP |
+| participants[].timeZone | String | Y | 프로필 IANA 시간대(`Asia/Seoul` 등). 온보딩 전이면 null. 화면은 약칭(KST · ET · PCT · PT)으로 보이고 이 값으로 거른다 | ACCOUNT.TIME_ZONE |
 | participants[].groupId | Long | N | 반. 신청 직후에는 기본 반 (2026-10-20) | STUDY_PARTICIPANT.STUDY_GROUP_ID |
 | participants[].participantRole | String | N | `LEADER` = 네비게이터 · `MEMBER` | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | participants[].captain | Boolean | N | 이 행이 담당 캡틴이면 true — 「캡틴」 칩. 담당 캡틴은 신청했을 때만 행이 있다 | 계산: `Study.isOwnedBy(ACCOUNT_ID)` — `STUDY.OWNER_CAPTAIN_ID = ACCOUNT_ID` |
