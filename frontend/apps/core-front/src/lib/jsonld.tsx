@@ -117,8 +117,7 @@ export function eventJsonLd(ev: StudyclubEvent, locale: Locale, url: string): Js
     description: t(ev.summary, locale),
     // 연도만 아는 행사는 연도만 (ISO 8601 은 YYYY 를 허용) — 지어낸 1월 1일을 검색엔진에 내보내지 않는다
     startDate: ev.datePrecision === 'year' ? ev.date.slice(0, 4) : ev.date,
-    // eventStatus · offers(남은 자리) 는 넣지 않는다. 행사 데이터에 상태 · 정원이 없어 고정값을 쓰면
-    // 취소 · 마감된 행사도 「예정 · 자리 있음」 으로 검색엔진에 나간다. 사이트 행사 응답에 그 값이 생기면 거기서 채운다
+    // eventStatus · offers 는 넣지 않는다 — 상태 · 정원 데이터가 없어 고정값이면 취소 · 마감 행사도 「예정 · 자리 있음」 으로 나간다
     eventAttendanceMode: online
       ? 'https://schema.org/OnlineEventAttendanceMode'
       : 'https://schema.org/OfflineEventAttendanceMode',
