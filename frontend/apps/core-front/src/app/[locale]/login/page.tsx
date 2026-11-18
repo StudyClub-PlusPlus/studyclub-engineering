@@ -3,6 +3,8 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
+
 import {
   appleRedirectUri,
   buildAppleAuthUrl,
@@ -20,6 +22,7 @@ import {
   loginErrorFromOAuthPopup,
 } from '@/features/auth/login-errors';
 import { exchangeSocialLogin } from '@/features/auth/repository';
+import { returnPath } from '@/features/onboarding/model';
 import { track } from '@/lib/analytics';
 import { afterAnalyticsReady } from '@/lib/analytics-privacy-state';
 
@@ -40,7 +43,8 @@ function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const locale = (params?.locale as string) ?? 'ko';
-  const next = search.get('next') ?? `/${locale}/my`;
+  // 보던 화면으로 돌아간다. 바깥 주소·로그인 화면 자체는 /my 로 (open redirect 방지)
+  const next = returnPath(search.get('next'), locale as Locale);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
