@@ -14,7 +14,15 @@
 /* 슬라이딩 띠 — components/Marquee.tsx */
 .marquee {
   overflow: hidden;
+  /* 띠가 문단 글줄(px-6)과 같은 자리에서 시작한다. 트랙 밖 여백이라 -50% 이음매 계산은 그대로다 */
+  padding-left: 1.5rem;
   mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+}
+/* 좁은 화면에서 6% 는 카드 한 장 폭에 비해 커서 왼쪽 카드가 잘린 것처럼 보인다 (bug-9) */
+@media (max-width: 639px) {
+  .marquee {
+    mask-image: linear-gradient(to right, transparent, black 0.75rem, black calc(100% - 0.75rem), transparent);
+  }
 }
 .marquee-track {
   display: flex;
@@ -34,8 +42,17 @@
     transform: translateX(-50%);
   }
 }
+/* 움직임 줄이기 설정이면 흐르지 않고 손으로 넘기는 가로 목록이 된다. 이어 붙인 복제본은 숨긴다 */
 @media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+    mask-image: none;
+    padding-right: 1.5rem;
+  }
   .marquee-track {
     animation: none;
+  }
+  .marquee-group[aria-hidden='true'] {
+    display: none;
   }
 }
