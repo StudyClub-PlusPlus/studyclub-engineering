@@ -22,7 +22,6 @@ export function BookmarkButton({
   /** 어느 화면의 하트인지 — 분석용 */
   source?: 'card_landing' | 'card_list' | 'detail';
 }) {
-  // ready 전(서버 렌더 · 목록 받는 중)에는 빈 하트로 그린다
   const { ids, ready, toggle: save } = useBookmarks();
   const marked = ids.includes(studyId);
 

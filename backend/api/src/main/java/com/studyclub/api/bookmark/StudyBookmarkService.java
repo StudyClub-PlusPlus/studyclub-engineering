@@ -32,7 +32,6 @@ public class StudyBookmarkService {
         return new Result(new StudyBookmarkResponse(items, total, offset, limit), HttpStatus.OK);
     }
 
-    /** 담기. 이미 담겨 있어도 성공 — 두 기기에서 동시에 눌러도 한 줄만 남는다(UNIQUE). 공개 전(DRAFT)·없는 스터디는 404. */
     public void addBookmark(Long accountId, Long studyId) {
         studyRepository
                 .findById(studyId)
@@ -48,7 +47,6 @@ public class StudyBookmarkService {
         }
     }
 
-    /** 빼기. 본인 줄만 지운다. 없어도 성공. */
     public void removeBookmark(Long accountId, Long studyId) {
         studyBookmarkRepository.deleteByAccountIdAndStudyId(accountId, studyId);
     }

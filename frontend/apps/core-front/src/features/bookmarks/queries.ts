@@ -19,7 +19,6 @@ export async function fetchMyBookmarkIds(): Promise<string[]> {
   return items.map((it) => String(it.studyId));
 }
 
-/** POST(담기) · DELETE(빼기) /api/me/bookmarks/{studyId} — 여러 번 불러도 결과가 같다 */
 export function saveBookmark(studyId: string, on: boolean): Promise<null> {
   return http(`/api/me/bookmarks/${encodeURIComponent(studyId)}`, emptyResponseSchema, {
     method: on ? 'POST' : 'DELETE',
@@ -60,7 +59,6 @@ export function useBookmarks() {
       setLocal(getBookmarks());
       return;
     }
-    // 먼저 그려 두고, 실패하면 서버 값으로 되돌린다
     queryClient.setQueryData<string[]>(queryKey, (prev = []) => [
       ...prev.filter((x) => x !== studyId),
       ...(on ? [studyId] : []),

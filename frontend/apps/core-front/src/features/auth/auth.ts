@@ -115,7 +115,6 @@ export function clearSession(): void {
   suspendAnalytics();
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(USER_KEY);
-  // 로그인 전에 이 브라우저에 담은 하트 — 다음에 이 브라우저를 쓰는 사람에게 남기지 않는다
   window.localStorage.removeItem(BOOKMARK_KEY);
   setSuggestedNickname(null);
   window.dispatchEvent(new Event(USER_CHANGED_EVENT));

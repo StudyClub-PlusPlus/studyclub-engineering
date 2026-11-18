@@ -27,7 +27,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-/** 관심 스터디(하트) 담기 · 빼기 · 목록 (specs/study-bookmark/spec.md). */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"spring.datasource.url=jdbc:h2:mem:bookmark;MODE=MySQL;DB_CLOSE_DELAY=-1"})
