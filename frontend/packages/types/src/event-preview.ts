@@ -40,6 +40,9 @@ export type EventRegistration = {
   email: string;
   /** 신청 당시 회원 프로필 시간대. 기존 기록은 행사 시간대를 사용한다. */
   timeZone?: string;
+  /** 현재 계정 정보를 나타내는 시안 값. */
+  profileTimeZone?: string;
+  accountDeleted?: boolean;
   channel: EventChannel;
   status: EventRegistrationStatus;
   createdAt: string;

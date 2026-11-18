@@ -11,6 +11,12 @@ import { SELF, isEventNoticeTemplate, mergeNotificationTemplates, settleEndedReg
 
 const STORAGE_KEY = 'studyclub-event-preview-v1';
 const LEGACY_PREVIEW_EMAIL = 'me@example.test';
+function withCurrentProfile(state: EventPreviewState): EventPreviewState {
+  const profileTimeZone = getTimeZone();
+  if (!state.registrations.some((row) => row.memberId === SELF.memberId && row.profileTimeZone !== profileTimeZone)) return state;
+  return { ...state, registrations: state.registrations.map((row) => row.memberId === SELF.memberId ? { ...row, profileTimeZone } : row) };
+}
+
 // 이전 플레이그라운드에 저장된 행사와 예시 참가자를 현재 표시 형식에 맞춘다.
 function normalizeStoredWorkspace(state: EventPreviewState): EventPreviewState {
   return {
@@ -186,7 +192,7 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
     );
     const loadedAt = Date.now();
     next = populateEventExamples(next, createEventPreviewState(new Date(loadedAt), noticeBody), loadedAt, getTimeZone());
-    next = settleEndedRegistrations(next, loadedAt);
+    next = settleEndedRegistrations(withCurrentProfile(next), loadedAt);
     if (JSON.stringify(next) !== previous) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -201,12 +207,13 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
       const currentTime = Date.now();
       const current = ref.current;
       if (current) {
-        const settled = settleEndedRegistrations(current, currentTime);
+        const withProfiles = withCurrentProfile(current);
+        const settled = settleEndedRegistrations(withProfiles, currentTime);
         if (settled !== current) commit(settled);
       }
       setNow(currentTime);
     };
-    const timer = window.setInterval(refresh, 15000);
+    const timer = window.setInterval(refresh, 60000);
     const sync = (event: StorageEvent) => {
       if (event.key !== STORAGE_KEY || !event.newValue) return;
       try {
@@ -240,7 +247,8 @@ export function EventWorkspaceProvider({ children, noticeBody }: { children: Rea
       const current = ref.current;
       if (!current) return '예시를 불러오는 중입니다.';
       const currentTime = Date.now();
-      const settled = settleEndedRegistrations(current, currentTime);
+      const withProfiles = withCurrentProfile(current);
+      const settled = settleEndedRegistrations(withProfiles, currentTime);
       setNow(currentTime);
       try {
         commit(transition(settled, action, currentTime));
