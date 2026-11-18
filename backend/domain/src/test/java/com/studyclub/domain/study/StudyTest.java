@@ -1,7 +1,10 @@
 package com.studyclub.domain.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.DisplayName;
@@ -266,6 +269,43 @@ class StudyTest {
 
     private static Instant days(long days) {
         return Instant.now().plus(days, ChronoUnit.DAYS);
+    }
+
+    @Test
+    @DisplayName("비공개 전환: 시작 전 OPEN 은 DRAFT 가 된다")
+    void unpublish_beforeStart() {
+        var study = phased(StudyStatus.OPEN, days(3), days(30));
+        study.unpublish(Instant.now());
+        assertThat(study.getStatus()).isEqualTo(StudyStatus.DRAFT);
+    }
+
+    @Test
+    @DisplayName("비공개 전환: 시작일이 지난 OPEN 은 STUDY_ALREADY_STARTED")
+    void unpublish_afterStart() {
+        var study = phased(StudyStatus.OPEN, days(-1), days(30));
+        assertThatThrownBy(() -> study.unpublish(Instant.now()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.STUDY_ALREADY_STARTED);
+        assertThat(study.getStatus()).isEqualTo(StudyStatus.OPEN);
+    }
+
+    @Test
+    @DisplayName("비공개 전환: 종료일이 지난 OPEN 도 STUDY_ALREADY_STARTED")
+    void unpublish_afterEnd() {
+        var study = phased(StudyStatus.OPEN, days(-30), days(-1));
+        assertThatThrownBy(() -> study.unpublish(Instant.now()))
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.STUDY_ALREADY_STARTED);
+    }
+
+    @Test
+    @DisplayName("비공개 전환: DRAFT 는 CONFLICT")
+    void unpublish_draft() {
+        var study = phased(StudyStatus.DRAFT, days(3), null);
+        assertThatThrownBy(() -> study.unpublish(Instant.now()))
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.CONFLICT);
     }
 
     private Study phased(StudyStatus status, Instant startAt, Instant endAt) {
