@@ -57,14 +57,15 @@ export function channelLabel(recipientType: string): string {
 }
 
 /**
- * 보는 사람의 시간대로 24시간제로 적는다. 서버는 UTC 로 주고 브라우저가 바꾼다.
+ * `tz`(`useDisplayTimeZone()`)로 24시간제로 적는다. 서버는 UTC 로 준다.
  * **약칭은 줄마다 달지 않는다** — 어느 시간대 기준인지는 표 위에서 한 번 밝힌다(`TimezoneNote`, POL-0006).
  * 읽을 수 없는 값이면 **원문을 그대로** 둔다 — 비우면 값이 없는 것으로 읽힌다.
  */
-export function formatStamp(iso: string): string {
+export function formatStamp(iso: string, tz: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
   return at.toLocaleString('ko-KR', {
+    timeZone: tz,
     year: '2-digit',
     month: '2-digit',
     day: '2-digit',
