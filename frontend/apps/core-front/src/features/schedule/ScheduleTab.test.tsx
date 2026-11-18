@@ -165,6 +165,23 @@ describe('schedule timezone interaction', () => {
   });
 });
 
+describe('google calendar link', () => {
+  it('다음 회차를 구글 캘린더 일정 만들기 화면으로 새 탭에 연다', () => {
+    setup(false);
+    const link = screen.getByRole('link', { name: '다음 회차 구글 캘린더에 추가' });
+    expect(link).toHaveAttribute('target', '_blank');
+    const url = new URL(link.getAttribute('href')!);
+    expect(url.searchParams.get('text')).toBe('DDIA 1회차');
+    expect(url.searchParams.get('dates')).toBe('20261104T113000Z/20261104T123000Z');
+  });
+
+  it('남은 회차가 없으면 링크를 두지 않는다', () => {
+    vi.setSystemTime(new Date('2026-12-01T00:00:00Z'));
+    setup(false);
+    expect(screen.queryByRole('link', { name: '다음 회차 구글 캘린더에 추가' })).not.toBeInTheDocument();
+  });
+});
+
 describe('DST review regressions', () => {
   it('retains the saved second occurrence after clearing and re-entering the same date and time', async () => {
     const original = '2026-11-01T06:30:00Z';
