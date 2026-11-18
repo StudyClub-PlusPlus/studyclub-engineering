@@ -8,6 +8,7 @@ export const sessionUserSchema = z.object({
   role: z.string(),
   timeZone: z.union([z.string(), z.null()]).optional(),
   onboardingCompletedAt: z.union([z.string(), z.null()]).optional(),
+  discordNickname: z.union([z.string(), z.null()]).optional(),
 });
 
 export const tokenResponseSchema = z.object({

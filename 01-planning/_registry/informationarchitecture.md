@@ -34,8 +34,8 @@
 | IA-016 | 소개 | `/about` | IA-001 | — | **고아** — Story 없음 |
 | IA-017 | 가이드 | `/guide` | IA-001 | — | **고아** — Story 없음 |
 | IA-018 | 공지 | `/notices` · `/notices/{id}` | IA-001 | ST-034 | 목록 · 상세. 비로그인도 본다. 스터디별 공지(ST-016)와 다르다 |
-| IA-019 | 행사 목록 | `/events` | IA-001 | — | **고아** — 행사 Story 없음 |
-| IA-020 | 행사 상세 | `/events/{id}` | IA-019 | — | **고아** |
+| IA-019 | 행사 목록 | `/events` | IA-001 | ST-038 | 공개 행사·본인 신청 상태 |
+| IA-020 | 행사 상세 | `/events/{id}` | IA-019 | ST-038 | 신청·본인 상태·취소 |
 
 ### 운영 콘솔 (console)
 
@@ -56,7 +56,8 @@
 | IA-037 | 문의·오류 신고 | `/feedbacks` · `/feedbacks/{id}` | IA-021 | ST-036 | 목록 · 상세(상태 · 회신 · 캡틴 전용 메모) |
 | IA-033 | 알림 발송 이력 | `/notifications` | IA-021 | ST-032 | 실패 건 재발송 |
 | IA-034 | 알림 템플릿 | `/notifications/templates` | IA-033 | ST-030 | 보기 · 추가 |
-| IA-031 | 행사 | `/events` | IA-021 | — | **고아** — 행사 Story 없음 |
+| IA-031 | 행사 | `/events` | IA-021 | ST-037 | 목록·등록 |
+| IA-039 | 행사 운영 | `/events/{id}` | IA-031 | ST-037 | 행사 정보·신청폼·참가자·메일 미리보기 |
 
 ### 아직 화면이 없는 Story
 
@@ -143,8 +144,8 @@ IA-001 홈 /
 ├─ IA-016 소개 /about                         (고아)
 ├─ IA-017 가이드 /guide                       (고아)
 ├─ IA-018 공지 /notices
-└─ IA-019 행사 /events                        (고아)
-   └─ IA-020 행사 상세 /events/{id}           (고아)
+└─ IA-019 행사 /events                        (ST-038)
+   └─ IA-020 행사 상세 /events/{id}           (ST-038)
 
 운영 콘솔 /proto/console
 IA-021 대시보드 /
@@ -162,5 +163,13 @@ IA-021 대시보드 /
 ├─ IA-037 문의·오류 신고 /feedbacks
 ├─ IA-033 알림 발송 이력 /notifications
 │  └─ IA-034 알림 템플릿 /notifications/templates
-└─ IA-031 행사 /events                        (고아)
+└─ IA-031 행사 /events                        (ST-037)
+   └─ IA-039 행사 운영 /events/{id}           (ST-037)
 ```
+
+### 행사 시안
+
+| IA | 화면 | 구현하는 유저스토리 | PRD |
+|---|---|---|---|
+| IA-019 · IA-020 | 행사 목록·상세·신청 | ST-038 크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다. | [crew-apply-event](../stories/crew-apply-event/PRD.md) |
+| IA-031 · IA-039 | 행사 목록·운영 | ST-037 캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다. | [captain-manage-events](../stories/captain-manage-events/PRD.md) |

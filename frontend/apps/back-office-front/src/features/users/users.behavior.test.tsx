@@ -161,7 +161,8 @@ describe('이메일 보기', () => {
     const button = await screen.findByRole('button', { name: '하늘 이메일 보기' });
     fireEvent.click(button);
     await waitFor(() => expect(button).toBeDisabled());
-    expect(button).toHaveTextContent('확인 중…');
+    // 처리 중 안내는 버튼 옆 role=status 에 있다 (design-system §9-1)
+    expect(button.parentElement).toHaveTextContent('확인 중…');
     // 다른 줄은 막히지 않는다
     expect(screen.getByRole('button', { name: '나래 이메일 보기' })).toBeEnabled();
     // 중복 클릭은 요청을 더 보내지 않는다
@@ -242,7 +243,8 @@ describe('디스코드 보기', () => {
     // 같은 틱에 다시 눌러도 서버 요청은 한 번이다.
     fireEvent.click(button);
     await waitFor(() => expect(button).toBeDisabled());
-    expect(button).toHaveTextContent('확인 중…');
+    // 처리 중 안내는 버튼 옆 role=status 에 있다 (design-system §9-1)
+    expect(button.parentElement).toHaveTextContent('확인 중…');
     expect(screen.getByRole('button', { name: '나래 디스코드 아이디 보기' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '하늘 이메일 보기' })).toBeEnabled();
     expect(revealCalls()).toHaveLength(1);

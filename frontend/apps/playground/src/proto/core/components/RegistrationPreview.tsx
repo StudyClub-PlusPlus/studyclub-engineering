@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { getUser } from '@core/lib/auth';
 import { clearDrafts, LOGIN_SCENARIOS, ONBOARDING_SCENARIOS, SUCCESS_KEY } from '@core/lib/onboarding';
+import { Button, IconButton, Select } from '@studyclub/ui';
 import { CheckCircle2, RotateCcw, X } from 'lucide-react';
 
 const LABELS = {
@@ -84,26 +85,16 @@ export function RegistrationPreviewToolbar() {
           <label htmlFor='registration-scenario' className='text-fg-muted'>
             {ko ? '화면 상태' : 'Scenario'}
           </label>
-          <select
-            id='registration-scenario'
-            value={current}
-            onChange={(event) => navigate(event.target.value)}
-            className='min-h-9 rounded-control border border-border-strong bg-bg px-2 type-body-md focus-visible:outline-none focus-visible:shadow-(--ring)'
-          >
+          <Select id='registration-scenario' size='sm' value={current} onChange={(event) => navigate(event.target.value)}>
             {scenarios.map((value) => (
               <option key={value} value={value}>
                 {LABELS[locale][value]}
               </option>
             ))}
-          </select>
-          <button
-            type='button'
-            onClick={() => navigate(current, true)}
-            className='inline-flex min-h-9 items-center gap-1 rounded-control px-2 text-fg-muted hover:bg-surface-2 focus-visible:outline-none focus-visible:shadow-(--ring)'
-          >
-            <RotateCcw size={13} />
+          </Select>
+          <Button variant='tertiary' size='sm' leadingIcon={<RotateCcw size={13} />} onClick={() => navigate(current, true)}>
             {ko ? '초기화' : 'Reset'}
-          </button>
+          </Button>
         </div>
       </div>
     </aside>
@@ -145,14 +136,13 @@ export function RegistrationFeedback() {
       <p className='flex-1 type-label-lg'>
         {ko ? `${notice.nickname}님, 가입이 완료됐어요!` : `Welcome, ${notice.nickname}! Your sign-up is complete.`}
       </p>
-      <button
-        type='button'
+      <IconButton
+        variant='tertiary'
+        size='sm'
+        icon={<X size={16} />}
         onClick={() => setNotice(null)}
         aria-label={ko ? '안내 닫기' : 'Dismiss notification'}
-        className='rounded-control p-2 text-fg-muted hover:bg-surface-1'
-      >
-        <X size={16} />
-      </button>
+      />
     </div>
   );
 }

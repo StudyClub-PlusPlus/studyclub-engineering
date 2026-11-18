@@ -100,8 +100,8 @@ test('신청 결과 질문별·응답자별 전환, 새로고침과 모바일 �
   expect(requests.length).toBeGreaterThan(0);
   expect(requests.every((method) => method === 'GET')).toBe(true);
   await page.getByRole('tab', { name: '응답자별' }).click();
-  await page.getByRole('button', { name: '정보', exact: true }).click();
+  await page.getByRole('tab', { name: '정보', exact: true }).click();
   await expect(page).not.toHaveURL(/recruitmentId|resultsView/);
-  await page.getByRole('button', { name: '신청 결과', exact: true }).click();
+  await page.getByRole('tab', { name: '신청 결과', exact: true }).click();
   await expect(page.getByRole('tab', { name: '질문별' })).toHaveAttribute('aria-selected', 'true');
 });

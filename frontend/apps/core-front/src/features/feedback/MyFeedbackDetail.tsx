@@ -95,6 +95,7 @@ function FeedbackArticle({ feedback: f }: { feedback: Detail }) {
             <div className='mt-4 flex flex-wrap gap-2'>
               {f.images.map((img, i) => (
                 <button
+                  // ui-native: 첨부 썸네일 — 이미지 전체가 누르는 곳
                   key={`${i}-${img.url}`}
                   type='button'
                   onClick={() => setZoomed(i)}

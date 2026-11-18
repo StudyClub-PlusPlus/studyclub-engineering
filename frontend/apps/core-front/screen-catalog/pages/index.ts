@@ -14,6 +14,8 @@ export const pages: PageDef[] = [
   { id: 'my-joined-notice', label: '내 스터디 공지', path: '/ko/my/joined/:id/schedule/notice' },
   { id: 'my-saved', label: '찜한 스터디', path: '/ko/my/saved' },
   { id: 'my-leave', label: '회원 탈퇴', path: '/ko/my/leave' },
+  { id: 'my-feedbacks', label: '내 문의', path: '/ko/my/feedbacks' },
+  { id: 'my-feedback-detail', label: '내 문의 상세', path: '/ko/my/feedbacks/:id' },
   { id: 'about', label: '소개', path: '/ko/about' },
   { id: 'guide', label: '이용 가이드', path: '/ko/guide' },
   { id: 'notice-list', label: '공지 목록', path: '/ko/notices' },

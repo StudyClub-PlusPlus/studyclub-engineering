@@ -8,7 +8,11 @@ import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.RoleChangeBlockedReason;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.audit.AdminAuditLog;
+import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +24,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminAccountRoleService {
 
     private final AccountRepository accountRepository;
+    private final StudyRepository studyRepository;
     private final AdminAuditRecorder auditRecorder;
 
     public AdminAccountRoleService(
-            AccountRepository accountRepository, AdminAuditRecorder auditRecorder) {
+            AccountRepository accountRepository,
+            StudyRepository studyRepository,
+            AdminAuditRecorder auditRecorder) {
         this.accountRepository = accountRepository;
+        this.studyRepository = studyRepository;
         this.auditRecorder = auditRecorder;
     }
 
@@ -45,8 +53,16 @@ public class AdminAccountRoleService {
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.NOT_FOUND, "회원을 찾을 수 없습니다."));
 
+        // 진행 중 담당 스터디 — 잠그고 읽는다. 담당 캡틴 바꾸기는 「새 담당 계정 → 스터디」 순서로 잠그므로(이 트랜잭션은 「ADMIN 행 → 스터디」)
+        // 교착 없이 한쪽이 끝날 때까지 기다린다. 새 담당 지정으로 늘지도, 다른 캡틴에게 넘어가며 줄지도 않은 값으로 판정한다
+        // (specs/study-group/spec.md 「담당 캡틴 바꾸기」)
+        List<Study> ownedOngoing =
+                studyRepository.findByOwnerCaptainIdAndStatusNotIn(
+                        targetId, StudyStatus.ENDED_STATUSES);
+
         // 판정은 엔티티 한 곳 — 목록이 배지를 잠그는 이유와 같은 메서드다. 캡틴 수는 1 에서 잠그고 센 값을 넘긴다
-        RoleChangeBlockedReason blocked = target.roleChangeBlockedReason(actorId, admins.size());
+        RoleChangeBlockedReason blocked =
+                target.roleChangeBlockedReason(actorId, admins.size(), !ownedOngoing.isEmpty());
 
         // 3. 본인이면 값이 같아도 막는다
         if (blocked == RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE) {
@@ -62,6 +78,20 @@ public class AdminAccountRoleService {
         // 5. 마지막 캡틴은 내릴 수 없다 — 값이 다르고 대상이 캡틴이면 곧 내리는 요청이다
         if (blocked == RoleChangeBlockedReason.LAST_ADMIN_REQUIRED) {
             throw new BusinessException(ErrorCode.LAST_ADMIN_REQUIRED);
+        }
+
+        // 5-1. 진행 중인 스터디의 담당 캡틴은 내릴 수 없다 — 담당을 먼저 넘긴다
+        if (blocked == RoleChangeBlockedReason.OWNS_STUDY) {
+            String titles =
+                    ownedOngoing.stream().map(Study::getTitle).collect(Collectors.joining(", "));
+            throw new BusinessException(
+                    ErrorCode.OWNS_STUDY,
+                    "담당 중인 스터디가 있습니다: " + titles + ". 스터디 신청자 탭에서 담당 캡틴을 먼저 바꿔 주세요.");
+        }
+
+        // 5-2. 끝난 스터디만 맡았으면 담당 칸을 비운다 — 크루 계정이 담당 캡틴으로 남지 않게. 원인 기록은 아래 ROLE_CHANGE
+        if (newRole == SystemRole.MEMBER) {
+            studyRepository.clearOwnerCaptainIn(target.getId(), StudyStatus.ENDED_STATUSES);
         }
 
         // 6~7. 값 전이와 감사 기록은 같은 트랜잭션 — 기록 없이 권한만 바뀌는 일이 없다

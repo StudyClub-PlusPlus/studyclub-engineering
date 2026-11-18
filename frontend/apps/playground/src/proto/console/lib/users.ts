@@ -189,3 +189,20 @@ export function studyAuthor(study: Study): { id: string; name: string; email: st
   const { id, name, email } = CAPTAINS[hash(study.id) % CAPTAINS.length];
   return { id, name, email };
 }
+
+/**
+ * 담당 캡틴으로 고를 수 있는 사람 — 캡틴 계정 전체. 명부에 있는지와 상관없다.
+ *
+ * TODO(api): GET /api/admin/users?role=CAPTAIN&limit=100
+ */
+export function captainOptions(): { id: string; name: string }[] {
+  return CAPTAINS.map(({ id, name }) => ({ id, name }));
+}
+
+/**
+ * 이 캡틴이 담당 캡틴인 **진행 중** 스터디 — 끝난 스터디는 빼고 센다. 하나라도 있으면 캡틴 권한을 내릴 수 없다.
+ * 프로토는 담당 캡틴을 바꾸지 않은 처음 값(만든 캡틴)으로 센다.
+ */
+export function ownedOngoingStudies(captainId: string): Study[] {
+  return studies.filter((s) => s.status !== 'closed' && studyAuthor(s).id === captainId);
+}

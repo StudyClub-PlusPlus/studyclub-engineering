@@ -1,0 +1,11 @@
+CREATE TABLE REFRESH_TOKEN
+(
+    ID         BIGINT       NOT NULL AUTO_INCREMENT,
+    TOKEN_HASH CHAR(64)     NOT NULL,
+    ACCOUNT_ID BIGINT       NOT NULL,
+    EXPIRES_AT DATETIME(6)  NOT NULL,
+    CREATED_AT DATETIME(6)  NOT NULL,
+    PRIMARY KEY (ID),
+    UNIQUE KEY uk_refresh_token_hash (TOKEN_HASH),
+    INDEX idx_refresh_token_account_id (ACCOUNT_ID)
+);

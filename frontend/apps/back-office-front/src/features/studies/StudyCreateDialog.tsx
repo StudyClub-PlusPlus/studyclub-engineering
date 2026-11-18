@@ -13,6 +13,7 @@ import {
 } from '@/features/studies/form-schema';
 import { useCreateStudy } from '@/features/studies/queries';
 import { StudyForm, useStudyForm } from '@/features/studies/StudyForm';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /**
  * 스터디 등록 팝업.
@@ -52,6 +53,7 @@ export function StudyCreateDialog({
   const create = useCreateStudy();
   const saving = create.isPending;
   const busy = saving || uploading;
+  const displayTz = useDisplayTimeZone();
 
   useEffect(() => {
     if (!open) return;
@@ -73,7 +75,7 @@ export function StudyCreateDialog({
 
     setFailure(null);
     try {
-      await create.mutateAsync(formToCreatePayload(form));
+      await create.mutateAsync(formToCreatePayload(form, displayTz));
       setDone(true);
     } catch (err) {
       // 서버가 `필드: 사유` 로 주면 그 칸에 붙이고, 아니면 입력값을 그대로 둔 채 위에 알린다

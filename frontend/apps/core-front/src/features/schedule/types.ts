@@ -7,12 +7,13 @@ export type ApiMeetingList = {
     startTime: string | null;
     navigatorName: string | null;
     rules: string | null;
+    daysOfWeek?: string[] | null;
   };
   me: { participantId: number | null; canEdit: boolean };
   /** 실제 API `ParticipantView` 는 participantId · name 뿐. 아래 셋은 아직 내리지 않는다 — 참여 중단은 출석 응답으로 안다 */
   participants: Array<{
     participantId: number;
-    name: string;
+    name: string | null;
     discordNickname?: string | null;
     left?: boolean;
     active?: boolean;

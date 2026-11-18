@@ -123,7 +123,8 @@ public class AttendanceUpsertService {
 
         validateMeetingsBelongToGroup(validRequestContext.meetingIds(), studyId, studyGroupId);
         Map<Long, StudyParticipant> participantById =
-                loadAndValidateParticipants(validRequestContext.participantIds(), studyId);
+                loadAndValidateParticipants(
+                        validRequestContext.participantIds(), studyId, studyGroupId);
 
         Instant now = Instant.now();
         for (int i = 0; i < upsertRequests.size(); i++) {
@@ -222,11 +223,16 @@ public class AttendanceUpsertService {
     }
 
     private Map<Long, StudyParticipant> loadAndValidateParticipants(
-            Set<Long> participantIds, Long studyId) {
+            Set<Long> participantIds, Long studyId, Long studyGroupId) {
         List<StudyParticipant> participants =
                 studyParticipantRepository.findByIdInAndStudyId(participantIds, studyId);
         if (participants.size() != participantIds.size()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "participantId가 이 스터디에 속하지 않습니다.");
+        }
+        boolean wrongGroup =
+                participants.stream().anyMatch(p -> !studyGroupId.equals(p.getStudyGroupId()));
+        if (wrongGroup) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "participantId가 요청한 반에 속하지 않습니다.");
         }
         return participants.stream().collect(Collectors.toMap(StudyParticipant::getId, p -> p));
     }

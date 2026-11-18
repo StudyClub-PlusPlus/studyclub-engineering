@@ -85,6 +85,7 @@ class AdminStudyGroupDeleteIntegrationTest {
                                 .description("설명")
                                 .status(StudyStatus.DRAFT)
                                 .createdBy(ADMIN_ID)
+                                .ownerCaptainId(ADMIN_ID)
                                 .build());
         // 첫 반은 기본 반이라 지울 수 없다 — 삭제 대상은 두 번째 반
         defaultGroup = studyGroupRepo.save(StudyGroup.create(study.getId(), "기본반"));
@@ -273,6 +274,7 @@ class AdminStudyGroupDeleteIntegrationTest {
                                 .description("설명")
                                 .status(StudyStatus.DRAFT)
                                 .createdBy(ADMIN_ID)
+                                .ownerCaptainId(ADMIN_ID)
                                 .build());
 
         var response = delete(ADMIN_ID, otherStudy.getId(), group.getId());

@@ -81,6 +81,7 @@ export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
             <div className='flex flex-wrap gap-2'>
               {detail.images.map((image, i) => (
                 <button
+                  // ui-native: 첨부 썸네일 — 이미지 전체가 누르는 곳
                   key={image.url}
                   type='button'
                   onClick={() => setZoom(i)}

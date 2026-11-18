@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { getUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
+import { ButtonLink } from '@studyclub/ui';
 
 /**
  * 상단 「내 스터디룸」 — 로그인한 회원에게만 보인다.
@@ -21,13 +22,13 @@ export function MyStudiesLink({ locale }: { locale: Locale }) {
   if (!signedIn) return null;
 
   return (
-    <Link
+    <ButtonLink
+      linkAs={Link}
+      variant='secondary'
       href={`/proto/core/${locale}/my/joined`}
-      className='sc-button hidden type-label-lg sm:inline-flex'
-      data-variant='secondary'
-      data-size='md'
+      className='hidden sm:inline-flex'
     >
       {t({ ko: '내 스터디룸', en: 'My study room' }, locale)}
-    </Link>
+    </ButtonLink>
   );
 }

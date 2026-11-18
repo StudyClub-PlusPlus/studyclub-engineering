@@ -10,7 +10,7 @@ import { t } from '@core/lib/i18n';
 import { PAGE } from '@core/lib/layout';
 import { getBookmarks, setBookmarked } from '@core/lib/me';
 import { type Study } from '@studyclub/types';
-import { categoryGradient, categoryMeta } from '@studyclub/ui';
+import { categoryGradient, categoryMeta, IconButton } from '@studyclub/ui';
 import { Button, Card, EmptyState } from '@studyclub/ui';
 import { Heart } from 'lucide-react';
 
@@ -87,17 +87,15 @@ export default function SavedStudiesPage() {
                     </Link>
                     <p className='mt-0.5 type-body-sm text-fg-muted'>{label}</p>
                   </div>
-                  <button
-                    type='button'
+                  <IconButton
+                    variant='tertiary'
                     aria-label='찜한 스터디에서 빼기'
-                    className='grid h-9 w-9 place-items-center rounded-full text-error-500 hover:bg-surface-2'
+                    icon={<Heart strokeWidth={2} className='fill-current text-error-500' />}
                     onClick={() => {
                       setBookmarked(study.id, false);
                       setIds(getBookmarks());
                     }}
-                  >
-                    <Heart size={16} strokeWidth={2} className='fill-current' />
-                  </button>
+                  />
                 </Card>
               </li>
             );

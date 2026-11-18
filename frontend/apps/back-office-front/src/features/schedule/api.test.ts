@@ -11,6 +11,7 @@ const res: ApiGroupMeetings = {
     startTime: '19:00',
     navigatorName: null,
     rules: null,
+    daysOfWeek: null,
   },
   me: { participantId: null, canEdit: true },
   participants: [{ participantId: 78, name: '건우' }],

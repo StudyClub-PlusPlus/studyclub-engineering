@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import type { Locale, L10n } from '@studyclub/types';
+import { ButtonLink } from '@studyclub/ui';
 import { BookOpen, Flag, HelpCircle, Sparkles, Star, UserPlus, Users } from 'lucide-react';
 import type { Metadata } from 'next';
 
@@ -207,14 +208,16 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       {/* 목차 */}
       <nav aria-label={t({ ko: '가이드 목차', en: 'Guide contents' }, locale)} className='mt-6 flex flex-wrap gap-2'>
         {SECTIONS.slice(1).map((s) => (
-          <a
+          <ButtonLink
             key={s.id}
             href={`#${s.id}`}
-            className='inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-1.5 type-label-lg text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-interactive)] hover:text-[var(--color-fg)]'
+            variant='secondary'
+            size='sm'
+            leadingIcon={<s.icon className='text-brand' />}
+            className='rounded-pill'
           >
-            <s.icon size={14} style={{ color: 'var(--color-brand)' }} />
             {t(s.title, locale)}
-          </a>
+          </ButtonLink>
         ))}
       </nav>
 
@@ -276,19 +279,18 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
           ))}
         </ol>
         <div className='mt-8 flex flex-wrap gap-3'>
-          <Link href={`/${locale}/studies`} className='sc-button type-label-lg' data-size='lg'>
+          <ButtonLink linkAs={Link} size='lg' href={`/${locale}/studies`}>
             {t({ ko: '모집 중인 스터디 보기', en: 'See open studies' }, locale)}
-          </Link>
-          <a
+          </ButtonLink>
+          <ButtonLink
+            variant='secondary'
+            size='lg'
             href={site.discord_invite}
             target='_blank'
             rel='noreferrer'
-            className='sc-button type-label-lg'
-            data-size='lg'
-            data-variant='secondary'
           >
             {t({ ko: '디스코드 합류', en: 'Join Discord' }, locale)}
-          </a>
+          </ButtonLink>
         </div>
       </section>
 

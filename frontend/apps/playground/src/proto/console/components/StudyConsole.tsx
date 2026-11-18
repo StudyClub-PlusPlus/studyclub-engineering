@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 
 import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
@@ -18,6 +18,7 @@ import { tx } from '@console/lib/l10n';
 import { useStudiesListHref } from '@console/lib/list-return';
 import { type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
+import { studyAuthor } from '@console/lib/users';
 import { ScheduleManager } from '@core/components/ScheduleManager';
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
@@ -26,7 +27,7 @@ import { DISPLAY_ZONES, wallParts, zonedInstant, type ProtoMeeting } from '@core
 import { dropPresenters } from '@core/lib/schedule-source';
 import { getStudyCrew } from '@studyclub/mock';
 import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
-import { Badge, Button, Modal } from '@studyclub/ui';
+import { Badge, Button, Modal, Switch, Tabs } from '@studyclub/ui';
 import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState, recruitState, toISODate, todayISO } from '@studyclub/utils';
 import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
@@ -103,6 +104,8 @@ export function StudyConsole({ study }: { study: Study }) {
   // 이 스터디를 맡은 크루. 역할은 스터디마다 따로 서므로 전역 역할 값과 섞지 않는다.
   // TODO(api): STUDY_PARTICIPANT 에 담당 표시가 필요하다. 지금은 화면 상태로만 둔다.
   const [navigators, setNavigators] = useState<string[]>([]);
+  // 담당 캡틴 — 스터디당 한 명. 처음 값은 만든 캡틴이다. 명부와 따로 선다 (STUDY.OWNER_CAPTAIN_ID)
+  const [ownerCaptainId, setOwnerCaptainId] = useState<string>(() => studyAuthor(study).id);
   // 참여 중단한 크루 — 출석부에서 고른다. 하차 · 제명을 가르지 않고, 되돌리지 않는다 (사용자 사이트와 같다).
   // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT
   const [left, setLeft] = useState<Record<string, { at: string }>>({});
@@ -202,6 +205,7 @@ export function StudyConsole({ study }: { study: Study }) {
   const [publishConfirm, setPublishConfirm] = useState<boolean | null>(null);
   // 아직 켜지 않은 스터디는 사이트에 없다 — 헤더에서 그 사실을 알린다.
   const draft = !published;
+  const publishReasonId = useId();
   const publishBlocked = published
     ? lifecycleState(study) !== 'OPEN' && lifecycleState(study) !== 'DRAFT'
       ? '진행 중이거나 종료된 스터디는 비공개로 돌릴 수 없습니다.'
@@ -381,24 +385,19 @@ export function StudyConsole({ study }: { study: Study }) {
           </div>
           {/* 사이트 공개 스위치 — 상세에서도 켜고 끈다. 막히면 이유를 바로 아래 글로 (백오피스 PublishSwitch 와 같다) */}
           <div data-anno='attendee:1-3' className='flex flex-col items-end gap-1'>
-            <button
-              type='button'
-              role='switch'
-              aria-checked={published}
+            <Switch
+              label='사이트 공개'
+              tone='success'
+              checked={published}
               aria-disabled={publishBlocked ? true : undefined}
-              onClick={() => !publishBlocked && setPublishConfirm(!published)}
-              className={`inline-flex items-center gap-2 rounded-control px-1 py-0.5 type-label-lg text-fg-secondary outline-none focus-visible:shadow-[var(--ring)] ${publishBlocked ? 'opacity-60' : ''}`}
-            >
-              사이트 공개
-              <span
-                className={`relative h-5 w-9 rounded-full transition-colors duration-300 ease-in-out ${published ? 'bg-success-600' : 'bg-surface-3'}`}
-              >
-                <span
-                  className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${published ? 'translate-x-4 shadow' : ''}`}
-                />
-              </span>
-            </button>
-            {publishBlocked && <p className='type-label-sm text-fg-muted'>{publishBlocked}</p>}
+              aria-describedby={publishBlocked ? publishReasonId : undefined}
+              onCheckedChange={setPublishConfirm}
+            />
+            {publishBlocked && (
+              <p id={publishReasonId} className='type-label-sm text-fg-muted'>
+                {publishBlocked}
+              </p>
+            )}
           </div>
         </div>
       </header>
@@ -454,20 +453,9 @@ export function StudyConsole({ study }: { study: Study }) {
           sub='모든 반 · 지각 포함'
         />
       </div>
-      <nav data-anno='attendee:2 crew:1 results:1' className='mt-6 flex gap-1 border-b border-border'>
-        {TABS.map((tb) => (
-          <button
-            key={tb.key}
-            type='button'
-            onClick={() => requestTab(tb.key)}
-            className={`-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors ${
-              tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
-            }`}
-          >
-            {tb.label}
-          </button>
-        ))}
-      </nav>
+      <div data-anno='attendee:2 crew:1 results:1' className='mt-6'>
+        <Tabs activeKey={tab} items={TABS.map((tb) => ({ key: tb.key, label: tb.label }))} onChange={(key) => requestTab(key as TabKey)} />
+      </div>
 
       <div className='mt-5'>
         {tab === 'crew' && (
@@ -480,6 +468,8 @@ export function StudyConsole({ study }: { study: Study }) {
             onRemoveClass={removeClass}
             onAssign={(crewId, id) => setAssign((a) => ({ ...a, [crewId]: id }))}
             navigators={navigators}
+            ownerCaptainId={ownerCaptainId}
+            onOwnerCaptainChange={setOwnerCaptainId}
             onToggleNavigator={(crewId) =>
               setNavigators((ns) => (ns.includes(crewId) ? ns.filter((n) => n !== crewId) : [...ns, crewId]))
             }

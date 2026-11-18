@@ -28,13 +28,20 @@ export function useScheduleGroups(
   return { groups, loading: participants.isPending, error: participants.isError ? participants.error : null };
 }
 
+const DOW_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+
 /**
- * startTime · timezone 은 서버 반의 값으로 덮는다.
+ * startTime · timezone · daysOfWeek 는 서버 반의 값으로 덮는다.
  * startTime 은 회차 추가 창의 기본값에, timezone 은 회차 일자·시각 저장·검증에 쓴다.
+ * daysOfWeek 는 서버 string[] → 화면 number[](0=일…6=토)로 변환한다.
  */
 export function withServerTz(group: ScheduleGroup, res: ApiGroupMeetings | undefined): ScheduleGroup {
   if (!res) return group;
   const tz = res.studyGroup.timezone as StudyTz | undefined;
   const time = res.studyGroup.startTime ?? '';
-  return { ...group, time: { ...group.time, ...(tz ? { tz } : {}), time } };
+  const serverDays = res.studyGroup.daysOfWeek;
+  const weekdays = serverDays
+    ? serverDays.map((d) => DOW_KEYS.indexOf(d as (typeof DOW_KEYS)[number])).filter((n) => n >= 0)
+    : group.time.weekdays;
+  return { ...group, time: { ...group.time, ...(tz ? { tz } : {}), time, weekdays } };
 }

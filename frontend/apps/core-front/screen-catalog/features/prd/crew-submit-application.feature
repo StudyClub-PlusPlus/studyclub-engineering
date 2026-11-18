@@ -107,6 +107,7 @@ Feature: ST-008 크루는 스터디 신청 폼을 제출할 수 있다.
     When 대상 화면에 진입하거나 해당 상태로 전환하는 동작을 수행한다
     Then 신청 폼 / 기본 문항만. 빈 안내 없음
 
+  # 현재 코드: 버튼 안 스피너 없이 잠그고 aria-busy 로 알린다(design-system §9-1). PRD 원문의 「스피너」와 다르다 — core-e2e-prd-map ST-008
   @CORE-ST-008-V07
   Scenario: CORE-ST-008-V07 연동 확인중
     Given 대상 화면이 PRD의 「연동 확인중」 상태가 되도록 데이터·권한·응답을 준비한다

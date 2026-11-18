@@ -2,6 +2,7 @@
 
 > ERD: [STUDY](../../docs/erd/STUDY.md) · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md)
 > Story PRD: [등록](../../01-planning/stories/study-create/PRD.md) · [수정·삭제](../../01-planning/stories/study-edit/PRD.md) · [공개](../../01-planning/stories/captain-publish-study/PRD.md) · [다음 기수](../../01-planning/stories/captain-reregister-cohort/PRD.md) · [운영 콘솔 목록](../../01-planning/stories/captain-list-all-studies/PRD.md) · [사용자 상세](../../01-planning/stories/crew-view-study-detail/PRD.md) · [운영 현황](../../01-planning/stories/study-detail/PRD.md) · [목록](../../01-planning/stories/crew-browse-studies/PRD.md)
+> 갱신: 2026-11-16 — 등록 시 `STUDY.OWNER_CAPTAIN_ID`(담당 캡틴)도 채운다. `CREATED_BY` 는 등록자 기록만 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
 > 생성일: 2026-09-08 (GET) · 2026-09-11 (POST 절 추가)
 > 갱신: 2026-09-19 — 신청 폼·제출·결과 API 는 [study-application/spec.md](../study-application/spec.md) 로 분리
 > 갱신: 2026-09-20 — STUDY_COHORT 테이블 폐기. 코호트 필드는 STUDY 로 통합, 모집 마감은 STUDY_RECRUITMENT 로 분리. 응답·요청 구조 반영
@@ -447,7 +448,8 @@ private StudyDetailResponse toDetail(Study study) {
 | STUDY.STATUS               | `DRAFT`                    | 등록 후 ADMIN이 [공개(모집 시작)](#스터디-공개--공개-취소)로 OPEN 으로 전환                                                                   |
 | STUDY_RECRUITMENT.START_AT | `null`                     | 등록 시 비워 둔다(V49 부터 NULL 허용). 공개(`STATUS: DRAFT → OPEN`) 시 최신 회차 `START_AT` 을 `now()` 로 채우고, 공개 취소 시 `null` 로 되돌린다. 공개 판정 자체는 `STATUS` 로 한다 — `START_AT` 은 "모집이 언제 시작됐는가"를 기록하는 사실 데이터이고, 신청 폼 잠금이 이 값을 본다 |
 | STUDY_PROGRAM.TITLE        | 요청의 `title`             | 새 프로그램일 때만. 프로그램 제목은 첫 기수 제목을 따른다                                                                                     |
-| STUDY.CREATED_BY           | 요청한 계정의 `ACCOUNT.ID` | 작성자. 인증 토큰의 계정으로 채우고 요청 바디로 받지 않는다. 등록 뒤 바뀌지 않는다 — PATCH 가 건드리지 않는다. 구현됨(V29). 이 값이 **담당 캡틴** 판정의 근거다 — 등록할 때 명부에 넣지 않는다. 참여하려면 신청한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) |
+| STUDY.CREATED_BY           | 요청한 계정의 `ACCOUNT.ID` | 작성자. 인증 토큰의 계정으로 채우고 요청 바디로 받지 않는다. 등록 뒤 바뀌지 않는다 — PATCH 가 건드리지 않는다. 구현됨(V29). 「등록한 사람」 기록이다 — 권한 판정에 쓰지 않는다 (2026-11-16) |
+| STUDY.OWNER_CAPTAIN_ID     | 요청한 계정의 `ACCOUNT.ID` | **담당 캡틴**. 등록할 때 만든 캡틴으로 채운다. PATCH 가 건드리지 않는다 — 바꾸는 곳은 [신청자 탭 담당 캡틴 바꾸기](../study-group/spec.md#담당-캡틴-바꾸기). 명부에 넣지 않는다 — 참여하려면 신청한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) |
 
 ### Response — 201 No Content
 

@@ -8,7 +8,6 @@ import { CalendarPlus } from 'lucide-react';
 import { toBook, toUpdates, useGroupAttendance, useSaveAttendance } from '@/features/attendance/api';
 import { AttendanceBook, type BookColumn, type BookRow } from '@/features/attendance/AttendanceBook';
 import { toMeetings, useGroupMeetings } from '@/features/schedule/api';
-import { useCrew } from '@/features/schedule/crew';
 import { GroupPicker } from '@/features/schedule/GroupPicker';
 import { useScheduleGroups } from '@/features/schedule/groups';
 import { hasTime, isKickoff } from '@/features/schedule/meetings';
@@ -60,25 +59,23 @@ export function AttendanceTab({
   const attendanceQuery = useGroupAttendance(studyId, serverGroupId);
   const meetings = useMemo(() => (meetingsQuery.data ? toMeetings(meetingsQuery.data) : []), [meetingsQuery.data]);
   const attendance = useMemo(() => (attendanceQuery.data ? toBook(attendanceQuery.data) : {}), [attendanceQuery.data]);
-  const crew = useCrew(studyId, group?.id);
   const save = useSaveAttendance(studyId, serverGroupId ?? 0);
 
-  // 줄은 출석 명부(중단한 사람 포함). 디스코드 닉네임은 참여 명단에서 붙인다 — 명부 응답에는 없다.
+  // 줄은 출석 명부(중단한 사람 포함). 디스코드 닉네임은 명부 응답에서 직접 읽는다 (share D6).
   // 중단한 사람은 맨 아래로. 누구나 골라 출석을 바꿀 수 있고, 네비게이터는 참여 중단이 잠긴다 —
   // 신청자 탭에서 네비게이터 권한을 회수(크루로)한 뒤 중단한다. 역할은 명부의 LEADER.
   const rows = useMemo<BookRow[]>(() => {
-    const nick = new Map(crew.map((c) => [c.id, c.discordNickname]));
     return (attendanceQuery.data?.participants ?? [])
       .map((p) => ({
         id: String(p.participantId),
         name: p.displayName,
-        discordNickname: nick.get(String(p.participantId)) ?? null,
+        discordNickname: p.discordNickname ?? null,
         ...(p.participantRole === 'LEADER' && { role: 'navigator' as const }),
         leftAt: p.leftAt ?? undefined,
         serverRate: p.attendanceRate,
       }))
       .sort((a, b) => Number(Boolean(a.leftAt)) - Number(Boolean(b.leftAt)));
-  }, [attendanceQuery.data, crew]);
+  }, [attendanceQuery.data]);
 
   const columns = useMemo<BookColumn[]>(
     () =>

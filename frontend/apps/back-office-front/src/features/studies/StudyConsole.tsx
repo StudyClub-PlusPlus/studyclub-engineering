@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { Badge, Button, Modal } from '@studyclub/ui';
+import { Badge, Button, Modal, Tabs } from '@studyclub/ui';
 import { useIsMutating } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 
@@ -16,12 +16,12 @@ import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupC
 import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
 import { participantKeys, useParticipants } from '@/features/participants/queries';
 import { ScheduleTab } from '@/features/schedule/ScheduleTab';
-import { DISPLAY_ZONES } from '@/features/schedule/time';
 import { useStudiesListHref } from '@/features/studies/list-return';
 import { NextCohortButton } from '@/features/studies/NextCohortButton';
 import { PublishSwitch } from '@/features/studies/PublishSwitch';
 import { StudyInfoTab } from '@/features/studies/StudyInfoTab';
 import { CATEGORY_OPTIONS, STATUS_LABEL, type ApiStudyDetail } from '@/features/studies/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 import { useUrlState } from '@/lib/use-url-state';
 
 const TABS = [
@@ -58,8 +58,13 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   const [dirty, setDirty] = useState(false);
   // 고른 반 — 일정 탭과 출석 탭이 같이 쓴다. 비면 첫 반
   const [groupId, setGroupId] = useState('');
-  // 출석부 회차 머리의 시간대 — 반을 바꿔도 남는다. 처음엔 KST
-  const [zone, setZone] = useState<string>(DISPLAY_ZONES[0].iana);
+  const displayTz = useDisplayTimeZone();
+  // 출석부 회차 머리의 시간대 — 반을 바꿔도 남는다. POL-0006: 브라우저 시간대 → 서울
+  const [zone, setZone] = useState<string>(() => displayTz);
+  // SSR→클라이언트 전환 후 displayTz가 바뀌면(서울 고정 → 브라우저 시간대) zone을 맞춘다.
+  useEffect(() => {
+    setZone(displayTz);
+  }, [displayTz]);
   /** 출석 탭의 「회차 추가하러 가기」로 넘어왔으면 일정 탭에서 회차 추가 창을 바로 연다. */
   const [addOnOpen, setAddOnOpen] = useState(false);
   const startedAdding = useCallback(() => setAddOnOpen(false), []);
@@ -164,7 +169,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   const attendanceRate = useStudyAttendanceRate(detail.id).data;
   const open = detail.recruitStatus === 'RECRUITING';
   const deadline = detail.recruitDeadlineAt
-    ? new Date(detail.recruitDeadlineAt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
+    ? new Date(detail.recruitDeadlineAt).toLocaleDateString('sv-SE', { timeZone: displayTz })
     : null;
   // 목록에 걸어 둔 필터 · 페이지로 돌아간다
   const listHref = useStudiesListHref();
@@ -234,26 +239,18 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
         />
       </div>
 
-      <nav className='mt-6 flex gap-1 border-b border-border'>
-        {TABS.map((tb) => (
-          <button
-            key={tb.key}
-            type='button'
-            disabled={savingForm || savingParticipants}
-            onClick={() => {
-              if (tb.key === tab) return;
-              // 신청자 탭(반 편성)과 일정 탭은 저장 전 고침을 따로 묻는다 — 한 번에 한 탭만 열려 있다
-              if (dirtyParticipants) setPendingTab(tb.key);
-              else guard(() => setTab(tb.key));
-            }}
-            className={`-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors ${
-              tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
-            }`}
-          >
-            {tb.label}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        className='mt-6'
+        activeKey={tab}
+        items={TABS.map((tb) => ({ key: tb.key, label: tb.label, disabled: savingForm || savingParticipants }))}
+        onChange={(key) => {
+          const next = key as (typeof TABS)[number]['key'];
+          if (next === tab) return;
+          // 신청자 탭(반 편성)과 일정 탭은 저장 전 고침을 따로 묻는다 — 한 번에 한 탭만 열려 있다
+          if (dirtyParticipants) setPendingTab(next);
+          else guard(() => setTab(next));
+        }}
+      />
 
       <div className='mt-5'>
         {tab === 'results' && <ApplicationResultsTab studyId={detail.id} onEditForm={() => setTab('form')} />}

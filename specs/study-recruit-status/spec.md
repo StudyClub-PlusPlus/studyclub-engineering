@@ -34,43 +34,41 @@
 ```
 status != OPEN                        → null
 now >= recruitDeadline                            → RECRUIT_CLOSED
-recruitmentCapacity != null && 신청자수 >= recruitmentCapacity → RECRUIT_CLOSED
+recruitmentCapacity != null && 현재 크루 수 >= recruitmentCapacity → RECRUIT_CLOSED
 그 외                                              → RECRUITING
 ```
 
 | 경계 | 결과 | 근거 |
 |---|---|---|
 | `now == recruitDeadline` (정확히 마감 시각) | `RECRUIT_CLOSED` | ERD 가 `now() >= RECRUIT_DEADLINE` 을 마감으로 쓴다. 마감 시각 그 순간은 이미 못 받는다 |
-| `recruitmentCapacity == null` | 정원으로는 마감 안 됨 | 무제한. 신청자가 9999 여도 `RECRUITING` |
-| 신청자수 `== recruitmentCapacity` | `RECRUIT_CLOSED` | 정원 "도달"이 마감. 초과까지 기다리지 않는다 |
+| `recruitmentCapacity == null` | 정원으로는 마감 안 됨 | 무제한. 크루가 9999 여도 `RECRUITING` |
+| 현재 크루 수 `== recruitmentCapacity` | `RECRUIT_CLOSED` | 정원 "도달"이 마감. 초과까지 기다리지 않는다 |
 
-**정원·마감·신청자 수는 모집 회차 단위다.** `STUDY.CAPACITY` 는 없고 `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 만 쓴다. 신청자 수는 그 회차의 `STUDY_APPLICATION` 수다. 모집 회차가 여러 개면 id 최대인 회차 1건을 기준으로 판정한다 ([study/spec.md](../study/spec.md)). 응답 필드명 `capacity` 는 유지하되 값은 그 회차의 `RECRUITMENT_CAPACITY` 다.
+**정원·마감·현재 크루 수는 스터디 단위다.** `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 를 정원으로 쓴다. **정원을 차지하는 인원은 명부 기준이다 — 하차(WITHDRAWN) 가 생기면 빈자리가 열린다 (결정 D4-A).** 현재 크루 수는 `STUDY_PARTICIPANT.STATUS = ACTIVE` 이면서 `PARTICIPANT_ROLE IN (MEMBER, LEADER)` 인 행의 수다. 모집 회차가 여러 개면 id 최대인 회차 1건을 기준으로 판정한다 ([study/spec.md](../study/spec.md)). 응답 필드명 `capacity` 는 유지하되 값은 그 회차의 `RECRUITMENT_CAPACITY` 다.
 
-구현: `StudyCohort.recruitStatus(long applicantCount)` — `isClosingSoon()` 바로 옆.
-신청자 수는 `STUDY_APPLICATION` 애그리거트 소관이라 엔티티가 직접 세지 않고 **인자로 받는다**
-(애그리거트 사이는 ID 참조 — [ddd-guide](../../docs/backend-development-guide/ddd-guide.md)).
+구현: `Study.recruitStatus(long crewCount)` — `isClosingSoon()` 바로 옆.
+현재 크루 수는 `STUDY_PARTICIPANT` 애그리거트 소관이라 엔티티가 직접 세지 않고 **인자로 받는다**
+(`StudyParticipantRepository.countCapacityHoldersByStudyIds` — 애그리거트 사이는 ID 참조, [ddd-guide](../../docs/backend-development-guide/ddd-guide.md)).
 
-## 정원을 차지하는 신청 — `countByStudyIds` 수정
+## 정원을 차지하는 인원 — 명부 기준 (결정 D4-A)
 
-`StudyApplicationRepository.countByCohortIds` 가 `REJECTED` 만 빼고 세고 있었다.
-`WITHDRAWN`(철회) · `WAITLISTED`(대기자)까지 세는 값을 정원 도달 판정에 그대로 쓰면
-**철회한 사람이 자리를 잡고 있어서 모집이 닫힌다.**
+신청(STUDY_APPLICATION)은 명부(STUDY_PARTICIPANT) 합류와 동시에 이루어지며 별도 상태 없이 행이 남는다.
+하차(WITHDRAWN) 후 신청 행은 그대로 남지만 명부 행 상태가 WITHDRAWN 으로 바뀐다.
+신청 행 수는 감소하지 않으므로 하차가 생겨도 모집이 "정원 마감"으로 고정되는 버그가 발생한다.
 
-| `ApplicationStatus` | 정원 차지 | 왜 |
+**정원을 차지하는 인원은 현재 명부(ACTIVE + CAPACITY_ROLES)로 센다.**
+
+| 명부 역할/상태 | 정원 차지 | 왜 |
 |---|---|---|
-| `PENDING` | O | 심사 중이지만 자리는 잡고 있다. 정원이 찬 뒤 들어오는 신청이 `WAITLISTED` 가 되려면 `PENDING` 이 세어져야 한다 |
-| `APPROVED` | O | |
-| `REJECTED` | X | |
-| `WITHDRAWN` | X | 자리를 비웠다 |
-| `WAITLISTED` | X | 정의상 정원 **밖**이다 |
+| ACTIVE + MEMBER | O | 현재 참여 중 |
+| ACTIVE + LEADER | O | 네비게이터도 자리를 차지한다 |
+| WITHDRAWN (모든 역할) | X | 하차로 자리를 비웠다 |
+| PAUSED (모든 역할) | X | 휴식 중이므로 자리를 열어 둔다 |
 
-**표시용 수와 정원용 수를 나누지 않고 쿼리 하나를 고쳤다.** 프론트가 이미 이 값을
+**표시(`currentApplicants`)와 정원 판정은 같은 수를 쓴다.** 프론트가 이 값을
 `seats: { total: capacity, taken: currentApplicants }` 로 그리고 있어
-(`frontend/apps/core-front/src/features/studies/model.ts`), 두 수가 갈리면 정원 20 에 `21/20` 이 찍힌다.
-"N명 신청" 표시와 "정원 도달" 판정은 같은 수여야 한다.
-
-> 대기자(`WAITLISTED`) 를 **만드는** 로직은 이 스펙 범위 밖 — 이슈 50 (정원 관리·대기자).
-> 여기서는 이미 그 상태인 행을 어떻게 셀지만 정한다.
+두 수가 갈리면 정원 20 에 `21/20` 이 찍힌다.
+"N명 참여 중" 표시와 "정원 도달" 판정은 같은 수여야 한다.
 
 ---
 
@@ -108,7 +106,7 @@ recruitmentCapacity != null && 신청자수 >= recruitmentCapacity → RECRUIT_C
 | 필드 | 타입 | NULL | 설명 | 소스 |
 |------|------|------|------|------|
 | cohort.recruitStatus | String | Y | `RECRUITING` / `RECRUIT_CLOSED`. `status != OPEN` 이면 null | 계산: 위 [판정 규칙](#판정-규칙) |
-| cohort.currentApplicants | long | N | 정원을 차지하는 신청자 수 | 계산: `STUDY_APPLICATION` 중 `STATUS IN (PENDING, APPROVED)` **(판정 기준 변경)** |
+| cohort.currentApplicants | long | N | 현재 참여 중인 크루 수 (명부 ACTIVE + CAPACITY_ROLES) | 계산: `STUDY_PARTICIPANT.STATUS=ACTIVE AND ROLE IN (MEMBER, LEADER)` |
 
 ### Error Responses
 
@@ -168,7 +166,7 @@ recruitmentCapacity != null && 신청자수 >= recruitmentCapacity → RECRUIT_C
 | 위치 | 덮는 것 |
 |---|---|
 | `domain/.../StudyCohortTest` | 판정 규칙 단위 — 마감 시각 정확히 now / 1초 전 / 경과, 정원 도달·초과, `recruitmentCapacity` null, `DRAFT`·`CLOSED` → null |
-| `api/.../StudyRecruitStatusIntegrationTest` | 목록·상세 응답에 필드가 실제로 실리는지, `REJECTED`·`WITHDRAWN`·`WAITLISTED` 가 정원을 안 차지하는지 |
+| `api/.../StudyRecruitStatusIntegrationTest` | 목록·상세 응답에 필드가 실제로 실리는지, 마감 시각·정원 도달·무제한 정원·`STATUS != OPEN` 케이스 종단 검증 (명부 WITHDRAWN 하차 후 빈자리 오픈 케이스는 `AdminStudyListIntegrationTest`·`AdminStudyQueryIntegrationTest` 참조) |
 
 ## 퍼널·계측
 
@@ -195,3 +193,4 @@ recruitmentCapacity != null && 신청자수 >= recruitmentCapacity → RECRUIT_C
 |---|---|---|
 | 2026-09-15 | 최초 작성 — `RecruitStatus` 파생 상태 + `countByStudyIds` 정원 판정 기준 수정 | Notion 이슈 51 |
 | 2026-09-22 | 상시 모집·`UPCOMING`·`STUDY.CAPACITY`·`IS_HIDDEN` 폐지, `status` 5단계로 확장 (제안 — 백엔드 미반영) | 스키마 정리 제안 |
+| 2026-11-07 | 정원 판정 기준을 신청 건수 → 명부 ACTIVE 로 변경 (결정 D4-A). 하차 후 빈자리가 열린다 | P1-10 |

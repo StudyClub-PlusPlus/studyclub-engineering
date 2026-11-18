@@ -752,6 +752,8 @@ API의 `application.yml`은 `spring.config.import: classpath:notification.yml`�
   - 같은 조건·같은 제목의 중복은 막지 않는다. 같은 문구를 둘 두면 같은 메일이 두 통 나간다 — 운영 규칙으로 다룬다([share 10-29](../../docs/share/2026-10-29-notification-template-ops-rules.md)).
   - 발송 이력에서 같은 수신자의 N행은 `templateId` 로만 구분된다. 템플릿 제목을 함께 내려주는 것은 후속.
   - 폴링은 한 번에 100건이라 팬아웃으로 행이 늘면 사이클이 더 걸릴 수 있다(밀린 행은 다음 폴링에서 이어서 나가므로 유실은 없다).
+  - 공지 한 번의 INSERT 는 받는 사람(최대 500) × 템플릿 수만큼이고, ID 가 `IDENTITY` 라 JDBC 배치 없이 행마다 나간다. 템플릿이 늘면 그 요청의 트랜잭션이 그만큼 길어진다.
+  - **마이그레이션 V50 의 롤아웃**: (1) 롤링 배포 중 옛 인스턴스가 한 조건에 템플릿이 둘일 때 `Optional` 조회를 하면 예외가 나므로(웰컴은 삼켜져 메일이 안 가고, 공지는 롤백) 배포가 끝나기 전에는 같은 조건에 둘째 템플릿을 추가하지 않는다. (2) 둘째 템플릿이 생긴 뒤에는 유니크 제약을 다시 걸 수 없어 되돌릴 수 없다. (3) stage 는 Flyway 가 꺼져 있어 손으로 한 번 실행하는데, Hibernate `update` 가 `@Index` 를 먼저 만들었을 수 있으니 `SHOW INDEX` 로 보고 `idx_notification_template_event_channel` 이 있으면 `DROP INDEX uk_notification_template_event_channel` 만 실행한다 ([tasks T075](./tasks.md)).
 - 재발송은 **누가 언제 눌렀는지 남기지 않는다** — 같은 행을 되돌리므로 남길 자리가 없고(`ADMIN_AUDIT_LOG` 는 계정 대상), 시도 이력을 남기지 않는 것이 기획이다. 필요해지면 별도 스펙.
 - 이 스펙 이후 두 번째 이벤트를 구현할 때 `NotificationSender` 전략 패턴·`RecipientResolver` 도입, 그리고 `notification` 모듈이 아직 `domain` 에 직접 의존하는 부분(진짜 서버 분리 시 끊어야 할 지점)을 재검토한다(알림 설계 문서 참고).
 - **스케줄러 중복 실행 방지 — `@Lock` vs `ShedLock`(리뷰 코멘트, PR #82).** 지금은 `NotificationRepository.findByIdForUpdate`(`@Lock(PESSIMISTIC_WRITE)`)로 `markSent`/`markFailed`의 확인·갱신만 원자적으로 묶어 데이터 정합성을 지킨다. 이건 "같은 행을 두 서버가 동시에 잘못 덮어쓰지 않는다"는 보장이지, "같은 스케줄 작업 자체를 한 서버만 실행한다"는 보장은 아니다 — 서버가 여러 대면 `@Scheduled` 폴링이 인스턴스마다 독립적으로 돈다. 서버가 실제로 여러 대가 될 때 어느 쪽으로 갈지는 그때의 요구사항에 달려 있다: 메일량이 늘어 여러 서버가 나눠 처리하는 게 유리하면 지금의 `@Lock` 방식을 그대로 확장하고, 메일량은 적지만 운영을 단순화하고 중복 실행 자체를 막는 게 더 중요해지면 `ShedLock` 같은 분산 락으로 스케줄러를 아예 한 인스턴스만 돌게 한다.

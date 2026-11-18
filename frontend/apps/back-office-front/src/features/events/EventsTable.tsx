@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { StudyclubEvent } from '@studyclub/types';
-import { Badge } from '@studyclub/ui';
+import { Badge, Input, Select, cx } from '@studyclub/ui';
+import { Search } from 'lucide-react';
 
 import { TableCard } from '@/components/ui';
 import { EventDialog } from '@/features/events/EventDialog';
@@ -37,28 +38,34 @@ const WHEN_OPTIONS: { value: WhenFilter; label: string }[] = [
 
 /** 필터 셀렉트 — 스터디 목록과 같은 생김새. */
 function FilterSelect<T extends string>({
+  label,
   value,
   onChange,
   options,
 }: {
+  label: string;
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
 }) {
   return (
-    <select
+    <Select
+      size='sm'
+      aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className={`h-9 rounded-control border bg-surface px-3 type-body-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border text-fg-secondary' : 'border-border-strong font-semibold text-fg'
-      }`}
+      // 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다 (스터디 목록 FilterSelect 와 같다)
+      className={cx(
+        'w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -102,15 +109,18 @@ export function EventsTable({ events }: { events: StudyclubEvent[] }) {
   return (
     <div>
       <div className='mb-5 flex flex-wrap items-center gap-2'>
-        <input
+        <Input
           type='search'
+          size='sm'
+          aria-label='행사 검색'
+          leadingIcon={<Search size={15} />}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='행사명 · 한 줄 소개 검색'
-          className='h-9 w-56 rounded-control border border-border bg-surface px-3 type-body-sm outline-none focus:border-border-interactive'
+          className='w-56'
         />
-        <FilterSelect value={type} onChange={(v) => setFilters({ type: v })} options={TYPE_OPTIONS} />
-        <FilterSelect value={when} onChange={(v) => setFilters({ when: v })} options={WHEN_OPTIONS} />
+        <FilterSelect label='종류' value={type} onChange={(v) => setFilters({ type: v })} options={TYPE_OPTIONS} />
+        <FilterSelect label='시기' value={when} onChange={(v) => setFilters({ when: v })} options={WHEN_OPTIONS} />
         <span className='ml-auto type-label-sm text-fg-muted'>{rows.length}개</span>
       </div>
 
@@ -131,6 +141,7 @@ export function EventsTable({ events }: { events: StudyclubEvent[] }) {
               <tr key={e.id}>
                 <td className='w-[42%] max-w-0'>
                   <button
+                    // ui-native: 표의 제목 칸 — 누르면 그 줄을 여는 글자 링크
                     type='button'
                     onClick={() => setEditing(e)}
                     className='block w-full truncate text-left font-semibold underline-offset-4 hover:text-brand hover:underline'

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Checkbox, Input, Select, Textarea, useImageUpload } from '@studyclub/ui';
+import { Checkbox, Input, Select, Textarea, useImageUpload, Button, FilterChip } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import {
@@ -137,20 +137,15 @@ function TimezoneField({
       <span className='type-label-lg text-neutral-800'>시간대</span>
       <div role='radiogroup' aria-label='시간대' className='flex flex-wrap gap-1'>
         {TIMEZONE_OPTIONS.map((o) => (
-          <button
+          <FilterChip
             key={o.key || 'unset'}
-            type='button'
             role='radio'
-            aria-checked={value === o.key}
+            selected={value === o.key}
+            selectMode='single'
             onClick={() => onChange(o.key)}
-            className={`h-8 rounded-pill border px-3 type-label-lg transition-colors ${
-              value === o.key
-                ? 'border-brand bg-brand text-white'
-                : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
-            }`}
           >
             {o.label}
-          </button>
+          </FilterChip>
         ))}
       </div>
       <span className='type-label-sm text-fg-muted'>모임이 실제로 도는 요일·시간은 「진행 일정」에 적습니다</span>
@@ -225,10 +220,10 @@ function ProgramField({
   }
 
   const modeBtn = (m: StudyFormValues['programMode'], label: string) => (
-    <button
-      type='button'
+    <FilterChip
       role='radio'
-      aria-checked={value.programMode === m}
+      selected={value.programMode === m}
+      selectMode='single'
       onClick={() =>
         // 모드를 옮기면 이전 모드의 선택을 들고 가지 않는다
         onChange({
@@ -239,14 +234,10 @@ function ProgramField({
           kind: m === 'existing' ? 'CLUB' : 'STUDY',
         })
       }
-      className={`h-9 flex-1 rounded-control border px-3 type-label-lg transition-colors ${
-        value.programMode === m
-          ? 'border-brand bg-brand/5 font-semibold text-fg'
-          : 'border-border text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
-      }`}
+      className='flex-1 justify-center'
     >
       {label}
-    </button>
+    </FilterChip>
   );
 
   return (
@@ -265,20 +256,15 @@ function ProgramField({
           <span className='type-label-sm text-fg-muted'>종류</span>
           <div role='radiogroup' aria-label='종류' className='inline-flex gap-1'>
             {(['STUDY', 'CLUB'] as StudyKind[]).map((k) => (
-              <button
+              <FilterChip
                 key={k}
-                type='button'
                 role='radio'
-                aria-checked={value.kind === k}
+                selected={value.kind === k}
+                selectMode='single'
                 onClick={() => onChange({ ...value, kind: k })}
-                className={`h-8 rounded-pill border px-3 type-label-lg transition-colors ${
-                  value.kind === k
-                    ? 'border-brand bg-brand text-white'
-                    : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
-                }`}
               >
                 {KIND_LABEL[k]}
-              </button>
+              </FilterChip>
             ))}
           </div>
           <span className='type-label-sm text-fg-muted'>
@@ -367,28 +353,24 @@ function ThumbnailField({
         )}
         <div className='flex flex-col gap-1'>
           <div className='flex gap-1.5'>
-            <button
-              type='button'
-              onClick={thumb.pick}
-              disabled={thumb.isUploading}
-              className='h-8 rounded-control border border-border-strong bg-bg px-3 type-label-lg text-fg-secondary transition-colors hover:bg-surface-2 disabled:opacity-50'
-            >
+            <Button type='button' variant='secondary' size='sm' onClick={thumb.pick} disabled={thumb.isUploading}>
               {thumb.isUploading ? '올리는 중' : value.thumbnailUrl ? '다른 이미지로 바꾸기' : '이미지 업로드'}
-            </button>
+            </Button>
             {value.thumbnailUrl && (
-              <button
+              <Button
                 type='button'
+                variant='tertiary'
+                size='sm'
                 onClick={() => onChange({ ...value, thumbnailUrl: '', thumbnailFileId: null })}
                 disabled={thumb.isUploading}
-                className='h-8 rounded-control border border-border-strong bg-bg px-3 type-label-lg text-fg-secondary transition-colors hover:bg-surface-2 disabled:opacity-50'
               >
                 제거
-              </button>
+              </Button>
             )}
           </div>
           <span className='type-label-sm text-fg-muted'>비우면 카테고리에 맞는 기본 이미지가 쓰입니다</span>
         </div>
-        <input {...thumb.inputProps} className='hidden' aria-label='썸네일 파일' />
+        <input /* ui-native: 숨긴 파일 선택 칸 — 이미지 업로드 버튼이 연다 */ {...thumb.inputProps} className='hidden' aria-label='썸네일 파일' />
       </div>
       {shown && (
         <p role='alert' className='type-label-sm text-error-700'>
@@ -425,21 +407,16 @@ function CategoryField({
         {CATEGORY_OPTIONS.map((c) => {
           const on = value === c.value;
           return (
-            <button
+            <FilterChip
               key={c.value}
-              type='button'
               role='radio'
-              aria-checked={on}
+              selected={on}
+              selectMode='single'
               // 이미 고른 것을 다시 누르면 풀리지 않는다 — 카테고리는 필수다
               onClick={() => onChange(c.value)}
-              className={`rounded-pill border px-3 py-1.5 type-label-lg transition-colors ${
-                on
-                  ? 'border-brand bg-brand text-white'
-                  : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
-              }`}
             >
               {c.label}
-            </button>
+            </FilterChip>
           );
         })}
       </div>
@@ -447,9 +424,6 @@ function CategoryField({
     </div>
   );
 }
-
-const DATE_INPUT =
-  'h-10 w-full rounded-control border border-border bg-bg px-3 type-body-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]';
 
 export function StudyForm({
   value,
@@ -521,20 +495,15 @@ export function StudyForm({
       <TimezoneField value={value.timezone} onChange={(next) => set('timezone', next)} />
 
       <div className='grid gap-3 sm:grid-cols-2'>
-        <div className='flex flex-col gap-1.5'>
-          <label htmlFor='deadline' className='type-label-lg text-neutral-800'>
-            모집 마감일
-            <span className='ml-0.5 text-error-600'>*</span>
-          </label>
-          <input
-            id='deadline'
-            type='date'
-            value={value.deadline}
-            onChange={(ev) => set('deadline', ev.target.value)}
-            className={DATE_INPUT}
-          />
-          {errors.deadline && <p className='type-label-sm text-error-600'>{errors.deadline}</p>}
-        </div>
+        <Input
+          id='deadline'
+          type='date'
+          label='모집 마감일'
+          required
+          value={value.deadline}
+          onChange={(ev) => set('deadline', ev.target.value)}
+          error={errors.deadline}
+        />
 
         <Input
           label='모집 정원'
@@ -559,28 +528,16 @@ export function StudyForm({
 
       {/* 모집 마감일과 같은 두 칸 그리드 — 왼쪽 칸에 서서 마감일과 너비가 같다 */}
       <div className='grid gap-3 sm:grid-cols-2'>
-        <div className='flex flex-col gap-1.5'>
-          <label htmlFor='startAt' className='type-label-lg text-neutral-800'>
-            진행 시작일
-          </label>
-          <input
-            id='startAt'
-            type='date'
-            min={value.deadline || undefined}
-            value={value.startAt}
-            onChange={(ev) => set('startAt', ev.target.value)}
-            className={DATE_INPUT}
-            aria-invalid={Boolean(errors.startAt)}
-            aria-describedby={errors.startAt ? 'startAt-error' : undefined}
-          />
-          {errors.startAt ? (
-            <p id='startAt-error' className='type-label-sm text-error-600'>
-              {errors.startAt}
-            </p>
-          ) : (
-            <span className='type-label-sm text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
-          )}
-        </div>
+        <Input
+          id='startAt'
+          type='date'
+          label='진행 시작일'
+          min={value.deadline || undefined}
+          value={value.startAt}
+          onChange={(ev) => set('startAt', ev.target.value)}
+          error={errors.startAt}
+          helper='모임이 실제로 시작하는 날. 미정이면 비워 둡니다'
+        />
       </div>
 
       <Input

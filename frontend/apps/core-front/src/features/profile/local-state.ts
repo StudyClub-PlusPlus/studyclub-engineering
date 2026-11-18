@@ -13,7 +13,10 @@ export const DISCORD_NICKNAME_EXAMPLE = '홍길동/SWE/산호세/시스템디자
 
 export function getDiscordNickname(): string | undefined {
   const v = readJSON(DISCORD_NICK_KEY, z.string(), '');
-  return v.trim() || undefined;
+  if (v.trim()) return v.trim();
+  // localStorage 가 없으면 로그인 시 세션에 캐시된 서버 값을 쓴다
+  const serverNick = getUser()?.discordNickname;
+  return serverNick?.trim() || undefined;
 }
 
 export function setDiscordNickname(nickname: string) {

@@ -122,6 +122,7 @@ class StudyMeetingIntegrationTest {
                                 .status(StudyStatus.OPEN)
                                 .startAt(Instant.now().minus(7, ChronoUnit.DAYS))
                                 .createdBy(CREATOR_ID)
+                                .ownerCaptainId(CREATOR_ID)
                                 .discordChannelUrl("https://discord.gg/test")
                                 .driveUrl("https://drive.google.com/test")
                                 .build());

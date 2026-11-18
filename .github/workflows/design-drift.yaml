@@ -1,7 +1,7 @@
 name: design-drift
 
 # 프로토타입·앱이 디자인 시스템에서 다시 갈라지면 PR 을 막는다.
-# @studyclub/ui 부품의 사본, 토큰을 건너뛴 색·글자 크기가 기준선(scripts/component-drift-baseline.json)보다
+# @studyclub/ui 부품의 사본, ui 부품이 있는데 직접 쓴 <input>·<select>·<textarea>·<button>(태그 안 `ui-native: 이유` 표시가 없는 것), 버튼처럼 꾸민 링크, 손으로 짠 말풍선, 스토리가 없거나 /components 카탈로그에 없는 ui 부품, 토큰을 건너뛴 색·글자 크기가 기준선(scripts/component-drift-baseline.json)보다
 # 늘면 실패한다. 줄였으면 `node scripts/check-component-drift.mjs --update` 로 기준선을 낮춰 함께 커밋한다.
 on:
   pull_request:

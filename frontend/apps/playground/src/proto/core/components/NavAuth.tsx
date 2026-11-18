@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getUser, logout, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@core/lib/preview';
+import { Button, ButtonLink } from '@studyclub/ui';
 import { ChevronDown, DoorOpen, Heart, LogOut, UserRound } from 'lucide-react';
 
 export function NavAuth({ locale }: { locale: Locale }) {
@@ -40,39 +41,35 @@ export function NavAuth({ locale }: { locale: Locale }) {
 
   if (user?.onboardingCompletedAt === null) {
     return (
-      <Link
+      <ButtonLink
+        linkAs={Link}
+        variant='tertiary'
         href={`/proto/core/${locale}/onboarding`}
-        className='sc-button type-label-lg'
-        data-variant='tertiary'
-        data-size='md'
       >
         {locale === 'en' ? 'Finish sign-up' : '가입 마무리'}
-      </Link>
+      </ButtonLink>
     );
   }
 
   if (!user) {
     return (
       <div className='flex items-center gap-2'>
-        <Link
+        <ButtonLink
+          linkAs={Link}
+          variant='secondary'
           href={`/proto/core/${locale}/login`}
-          className='sc-button type-label-lg'
-          data-variant='secondary'
-          data-size='md'
         >
           {locale === 'en' ? 'Log in' : '로그인'}
-        </Link>
+        </ButtonLink>
         {IS_DEV && (
-          <button
+          <Button
             type='button'
+            variant='tertiary'
             onClick={enterPreview}
             title='로그인 없이 마이페이지 보기 (로컬 개발 서버 전용)'
-            className='sc-button type-label-lg'
-            data-variant='tertiary'
-            data-size='md'
           >
             MY
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -81,6 +78,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
   return (
     <div className='relative' ref={ref}>
       <button
+        // ui-native: 아바타 메뉴 열기 — 프로필 사진 · 이름을 담은 고유 팝오버 위젯
         type='button'
         onClick={() => setOpen((v) => !v)}
         className='flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-[var(--color-surface-subtle)]'
@@ -124,6 +122,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
           {/* 「문의·오류 신고」는 푸터에 있다 — 눌러야 나오는 자리에 두면 할 말이 생긴 사람이 찾지 못한다 */}
           <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
+            // ui-native: 아바타 메뉴 항목 — 팝오버 메뉴의 한 줄(menuitem 목록)
             type='button'
             onClick={async () => {
               setOpen(false);

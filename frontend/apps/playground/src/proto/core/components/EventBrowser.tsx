@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import type { Locale, StudyclubEvent } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
+import { FilterChip, Segmented } from '@studyclub/ui';
 import { Search } from 'lucide-react';
 
 import { EventRow } from './EventCard';
@@ -34,24 +35,23 @@ type TypeFilter = 'all' | 'meetup' | 'workshop' | 'talk' | 'online';
 
 function TypeChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      type='button'
-      onClick={onClick}
-      aria-pressed={active}
-      className={`shrink-0 rounded-pill border px-3 py-1.5 type-label-lg transition-colors ${
-        active
-          ? 'border-brand bg-brand text-on-brand'
-          : 'border-border-strong bg-bg text-fg-secondary hover:border-fg-muted hover:text-fg'
-      }`}
-    >
+    <FilterChip selected={active} selectMode='single' onClick={onClick}>
       {children}
-    </button>
+    </FilterChip>
   );
 }
 
-export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; locale: Locale }) {
+export function EventBrowser({
+  events,
+  locale,
+  archiveMode = false,
+}: {
+  events: StudyclubEvent[];
+  locale: Locale;
+  archiveMode?: boolean;
+}) {
   const [query, setQuery] = useState('');
-  const [when, setWhen] = useState<WhenTab>('all');
+  const [when, setWhen] = useState<WhenTab>(archiveMode ? 'past' : 'all');
   const [type, setType] = useState<TypeFilter>('all');
 
   /** 시점 탭을 제외한 조건만 적용한 집합 — 탭별 건수의 기준. */
@@ -88,27 +88,24 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
 
   return (
     <div>
-      <div className='mb-3 flex items-center justify-between gap-3'>
-        <div role='tablist' className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'>
-          {WHEN_ORDER.map((w) => {
-            const on = when === w;
-            return (
-              <button
-                key={w}
-                type='button'
-                role='tab'
-                aria-selected={on}
-                onClick={() => setWhen(w)}
-                className={`flex items-center gap-1.5 whitespace-nowrap rounded-pill px-4 py-1.5 type-label-lg transition-colors ${
-                  on ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
-                }`}
-              >
-                {t(WHEN_LABEL[w], locale)}
-                <span className={`tnum type-label-sm ${on ? 'text-fg-secondary' : 'text-fg-muted'}`}>{counts[w]}</span>
-              </button>
-            );
-          })}
-        </div>
+      <div className={`mb-3 flex items-center gap-3 ${archiveMode ? 'justify-end' : 'justify-between'}`}>
+        {!archiveMode && (
+          <Segmented
+            shape='pill'
+            value={when}
+            onChange={setWhen}
+            options={WHEN_ORDER.map((w) => ({
+              value: w,
+              label: (
+                <>
+                  {t(WHEN_LABEL[w], locale)}{' '}
+                  <span className='tnum type-label-sm text-fg-muted'>{counts[w]}</span>
+                </>
+              ),
+            }))}
+            className='shrink-0'
+          />
+        )}
 
         <div className='relative w-52 shrink-0'>
           <Search
@@ -116,6 +113,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
             className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-placeholder'
           />
           <input
+            // ui-native: 행사 검색창 — 돋보기를 품은 알약 모양으로 따로 꾸민 검색칸
             type='search'
             value={query}
             onChange={(e) => setQuery(e.target.value)}

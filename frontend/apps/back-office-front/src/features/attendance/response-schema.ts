@@ -18,6 +18,7 @@ export const apiAttendanceSchema = z.object({
     z.object({
       participantId: z.number(),
       displayName: z.string(),
+      discordNickname: z.union([z.string(), z.null()]).optional(),
       participantRole: z.string(),
       captain: z.boolean(),
       participantStatus: z.string(),
