@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Modal, Select, FilterChip } from '@studyclub/ui';
+import { Button, Modal, Select, FilterChip, TimeSelect } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import { groupTimeSchema, type GroupTimeValues } from '@/features/schedule/form-schemas';
@@ -87,19 +87,15 @@ export function GroupTimeDialog({
         </div>
 
         <div className='flex flex-col gap-2'>
-          <label htmlFor='group-time-clock' className='type-label-lg text-neutral-800'>
-            스터디 시간
-          </label>
+          <div className='w-48'>
+            <TimeSelect
+              size='sm'
+              label='스터디 시간'
+              value={time.time}
+              onChange={(value) => setValue('time', value, { shouldDirty: true, shouldValidate: touched })}
+            />
+          </div>
           <div className='flex flex-col gap-2'>
-            <div className='w-48'>
-              <Input
-                size='sm'
-                type='time'
-                id='group-time-clock'
-                value={time.time}
-                onChange={(ev) => setValue('time', ev.target.value, { shouldDirty: true, shouldValidate: touched })}
-              />
-            </div>
             <Select
               size='sm'
               aria-label='시간대'
