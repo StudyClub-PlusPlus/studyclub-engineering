@@ -1,5 +1,7 @@
 package com.studyclub.domain.study;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -297,8 +299,15 @@ public class Study extends BaseEntity {
         this.status = StudyStatus.OPEN;
     }
 
-    /** OPEN → DRAFT. 선행 조건 검사는 서비스에서 한다. */
-    public void unpublish() {
+    /** OPEN → DRAFT. 시작일이 지난 스터디는 크루·출석이 이미 돌고 있어 내리지 않는다. */
+    public void unpublish(Instant now) {
+        StudyStatus current = statusAsOf(now);
+        if (current == StudyStatus.ONGOING || current == StudyStatus.ENDED) {
+            throw new BusinessException(ErrorCode.STUDY_ALREADY_STARTED);
+        }
+        if (status != StudyStatus.OPEN) {
+            throw new BusinessException(ErrorCode.CONFLICT, "공개 중인 스터디만 공개 취소할 수 있습니다.");
+        }
         this.status = StudyStatus.DRAFT;
     }
 }
