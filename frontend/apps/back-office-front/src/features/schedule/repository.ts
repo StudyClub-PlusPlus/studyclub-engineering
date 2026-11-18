@@ -49,6 +49,8 @@ export type GroupTimePayload = {
   daysOfWeek: string[] | null;
   startTime: string | null;
   timezone: string | null;
+  /** 시작 전 회차도 새 시간대 · 시각으로 옮긴다. */
+  moveUpcomingMeetings: boolean;
 };
 
 /** 반은 경로로 보낸다. */

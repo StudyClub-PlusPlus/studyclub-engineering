@@ -28,7 +28,15 @@ describe('일정 API 전송', () => {
     vi.stubGlobal('fetch', fetch);
     const signal = new AbortController().signal;
     await expect(repository.fetchMeetings(10, 3, signal)).resolves.toEqual({
-      studyGroup: { id: 3, name: '반', timezone: 'Asia/Seoul', startTime: null, navigatorName: null, rules: null, daysOfWeek: null },
+      studyGroup: {
+        id: 3,
+        name: '반',
+        timezone: 'Asia/Seoul',
+        startTime: null,
+        navigatorName: null,
+        rules: null,
+        daysOfWeek: null,
+      },
       me: { participantId: null, canEdit: true },
       participants: [],
       meetings: [],
@@ -79,7 +87,12 @@ describe('일정 API 전송', () => {
     };
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(saved), { status: 200 }));
     vi.stubGlobal('fetch', fetch);
-    const payload = { daysOfWeek: ['wed', 'fri'], startTime: '12:03', timezone: 'America/New_York' };
+    const payload = {
+      daysOfWeek: ['wed', 'fri'],
+      startTime: '12:03',
+      timezone: 'America/New_York',
+      moveUpcomingMeetings: false,
+    };
     await expect(repository.updateGroupTime(10, 3, payload)).resolves.toEqual(saved);
     const [url, init] = fetch.mock.calls[0]!;
     expect(new URL(url).pathname).toBe('/api/admin/studies/10/groups/3');
