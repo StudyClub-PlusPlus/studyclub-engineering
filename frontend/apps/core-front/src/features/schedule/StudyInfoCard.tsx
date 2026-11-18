@@ -90,6 +90,10 @@ export function StudyInfoCard({
   const discordHref = discordChannelUrl ?? discordUrl(study);
   const hasDrive = driveUrlOverride != null ? !!driveUrlOverride : canOpenDrive(study);
   const driveHref = driveUrlOverride ?? driveUrl(study);
+  const showDiscord = hasDiscord && !!discordHref;
+  const showDrive = hasDrive && !!driveHref;
+  // 링크가 아직 없으면 칸을 지우지 않고 준비 중이라고 알린다 (bug-28)
+  const pendingLinks = [!showDiscord && '디스코드', !showDrive && '자료실'].filter(Boolean).join(' · ');
 
   return (
     <section className='card px-5 py-4'>
@@ -107,7 +111,7 @@ export function StudyInfoCard({
         <div className='flex w-full items-center justify-between gap-1.5 sm:w-auto sm:justify-start'>
           <div className='flex flex-wrap items-center gap-1.5'>
             {leadingAction}
-            {hasDiscord && discordHref && (
+            {showDiscord && (
               <ButtonLink
                 href={discordHref}
                 external
@@ -120,7 +124,7 @@ export function StudyInfoCard({
                 디스코드
               </ButtonLink>
             )}
-            {hasDrive && driveHref && (
+            {showDrive && (
               <ButtonLink
                 href={driveHref}
                 external
@@ -131,6 +135,9 @@ export function StudyInfoCard({
               >
                 자료실
               </ButtonLink>
+            )}
+            {pendingLinks && (
+              <span className='type-label-sm text-fg-muted'>{pendingLinks} 링크는 아직 준비 중이에요</span>
             )}
           </div>
           <IconButton
