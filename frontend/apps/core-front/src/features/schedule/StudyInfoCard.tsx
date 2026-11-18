@@ -92,7 +92,6 @@ export function StudyInfoCard({
   const driveHref = driveUrlOverride ?? driveUrl(study);
   const showDiscord = hasDiscord && !!discordHref;
   const showDrive = hasDrive && !!driveHref;
-  // 링크가 아직 없으면 칸을 지우지 않고 준비 중이라고 알린다 (bug-28)
   const pendingLinks = [!showDiscord && '디스코드', !showDrive && '자료실'].filter(Boolean).join(' · ');
 
   return (
