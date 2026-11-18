@@ -114,12 +114,12 @@ public class ParticipantWithdrawalService {
         boolean ownerCaptain = true;
         if (backOffice) {
             studyCaptainGuard.assertOwnerCaptain(
-                    actorAccountId, study.getCreatedBy(), "담당 캡틴만 참여를 중단시킬 수 있습니다.");
+                    actorAccountId, study.getOwnerCaptainId(), "담당 캡틴만 참여를 중단시킬 수 있습니다.");
         } else {
             ownerCaptain =
                     studyCaptainGuard.assertCanWithdrawInGroup(
                             actorAccountId,
-                            study.getCreatedBy(),
+                            study.getOwnerCaptainId(),
                             studyGroupId,
                             "참여를 중단시킬 권한이 없습니다.");
         }
@@ -147,7 +147,7 @@ public class ParticipantWithdrawalService {
             throw new BusinessException(ErrorCode.STUDY_ENDED);
         }
         for (StudyParticipant target : targets) {
-            assertWithdrawable(target, actorAccountId, study.getCreatedBy(), backOffice);
+            assertWithdrawable(target, actorAccountId, study.getOwnerCaptainId(), backOffice);
         }
         // 회차는 요청한 분반 · 대상 분반만 ID 오름차순으로 미리 잠근다 — 디스코드 출석과 같은 순서. 출석 쓰기 · 발표자 비우기가 뒤에서 다시 잠가도 기다리지
         // 않는다
@@ -223,7 +223,10 @@ public class ParticipantWithdrawalService {
     }
 
     private static void assertWithdrawable(
-            StudyParticipant target, Long actorAccountId, Long studyCreatedBy, boolean backOffice) {
+            StudyParticipant target,
+            Long actorAccountId,
+            Long studyOwnerCaptainId,
+            boolean backOffice) {
         if (target.getAccountId().equals(actorAccountId)) {
             throw new BusinessException(ErrorCode.CANNOT_WITHDRAW_SELF);
         }
@@ -231,7 +234,7 @@ public class ParticipantWithdrawalService {
         if (!backOffice && target.getParticipantRole() == ParticipantRole.LEADER) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "네비게이터는 출석부에서 중단시킬 수 없습니다.");
         }
-        if (studyCreatedBy != null && studyCreatedBy.equals(target.getAccountId())) {
+        if (studyOwnerCaptainId != null && studyOwnerCaptainId.equals(target.getAccountId())) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "담당 캡틴은 출석부에서 중단시킬 수 없습니다.");
         }
         if (target.getStatus() == ParticipantStatus.DELETED

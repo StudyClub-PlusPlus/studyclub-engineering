@@ -1,16 +1,12 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Modal } from '@studyclub/ui';
+import { Button, Input, Modal, Select, FilterChip } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import { groupTimeSchema, type GroupTimeValues } from '@/features/schedule/form-schemas';
 import { hasTime, type GroupTime, type ScheduleGroup } from '@/features/schedule/meetings';
-import { DOW_LABEL, otherClock, STUDY_TZS, tzAbbr } from '@/features/schedule/time';
-
-const CHIP = 'h-10 rounded-control border type-label-lg transition-colors';
-const chipTone = (on: boolean) =>
-  on ? 'border-brand bg-brand text-white' : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2';
+import { DOW_LABEL, otherClock, STUDY_TZS, type StudyTz } from '@/features/schedule/time';
 
 /**
  * 반의 스터디 시간(요일 · 시각 · 시간대) — 「스터디 시간 정하기」(처음) · 「스터디 시간 수정」(있을 때) (일정 탭 14-1).
@@ -77,15 +73,15 @@ export function GroupTimeDialog({
             className='flex gap-1'
           >
             {DOW_LABEL.map((label, d) => (
-              <button
+              <FilterChip
                 key={label}
-                type='button'
-                aria-pressed={time.weekdays.includes(d)}
+                selected={time.weekdays.includes(d)}
+                selectMode='single'
                 onClick={() => toggleDay(d)}
-                className={`${CHIP} w-9 ${chipTone(time.weekdays.includes(d))}`}
+                className='w-9 justify-center px-0'
               >
                 {label}
-              </button>
+              </FilterChip>
             ))}
           </div>
         </div>
@@ -94,7 +90,7 @@ export function GroupTimeDialog({
           <label htmlFor='group-time-clock' className='type-label-lg text-neutral-800'>
             스터디 시간
           </label>
-          <div className='flex flex-wrap items-center gap-2'>
+          <div className='flex flex-col gap-2'>
             <div className='w-48'>
               <Input
                 size='sm'
@@ -104,29 +100,27 @@ export function GroupTimeDialog({
                 onChange={(ev) => setValue('time', ev.target.value, { shouldDirty: true, shouldValidate: touched })}
               />
             </div>
-            {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다.
-                시간대는 서버 반의 것으로 고정이다 — 회차를 그 시간대로 저장한다. TODO(api): 반 PATCH 가 timezone 을 받으면 연다 */}
-            <div role='group' aria-label='시간대' className='flex gap-1'>
+            <Select
+              size='sm'
+              aria-label='시간대'
+              value={time.tz}
+              onChange={(ev) =>
+                setValue('tz', ev.target.value as StudyTz, { shouldDirty: true, shouldValidate: touched })
+              }
+            >
               {STUDY_TZS.map((tz) => (
-                <button
-                  key={tz.key}
-                  type='button'
-                  aria-pressed={time.tz === tz.key}
-                  disabled={tz.key !== group.time.tz}
-                  onClick={() => setValue('tz', tz.key, { shouldDirty: true, shouldValidate: touched })}
-                  className={`${CHIP} px-3 ${chipTone(time.tz === tz.key)} disabled:cursor-not-allowed disabled:opacity-50`}
-                >
-                  {tz.label} <span className='opacity-70'>{tzAbbr(tz.key)}</span>
-                </button>
+                <option key={tz.key} value={tz.key}>
+                  {tz.label}
+                </option>
               ))}
-            </div>
+            </Select>
           </div>
         </div>
 
         {/* 반대편 시각을 같이 적는다 — 목 21:00 KST 는 미국에서 수요일이다 */}
         {other && (
           <p className='type-label-sm text-fg-muted'>
-            {STUDY_TZS.find((t) => t.key !== time.tz)?.label} 기준 <b className='font-semibold'>{other}</b>
+            {time.tz === 'Asia/Seoul' ? '뉴욕' : '서울'} 기준 <b className='font-semibold'>{other}</b>
           </p>
         )}
 

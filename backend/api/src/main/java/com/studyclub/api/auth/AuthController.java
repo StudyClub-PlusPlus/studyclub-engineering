@@ -2,9 +2,11 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
+import com.studyclub.api.auth.dto.AuthDtos.LogoutRequest;
 import com.studyclub.api.auth.dto.AuthDtos.RefreshRequest;
 import com.studyclub.api.auth.dto.AuthDtos.SocialLoginRequest;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,5 +33,12 @@ public class AuthController {
     @PostMapping("/refresh")
     public AccessTokenResponse refresh(@RequestBody RefreshRequest req) {
         return authService.refresh(req.refreshToken());
+    }
+
+    /** refresh token 을 무효화한다. 쿠키 삭제는 호출자(Next.js route)가 담당한다. */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestBody LogoutRequest req) {
+        authService.logout(req.refreshToken());
+        return ResponseEntity.noContent().build();
     }
 }

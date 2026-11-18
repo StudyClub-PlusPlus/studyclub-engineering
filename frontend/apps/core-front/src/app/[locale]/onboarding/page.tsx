@@ -11,7 +11,14 @@ import { AlertCircle, ArrowRight, Check } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
 
 import { TimeZonePicker } from '@/components/TimeZonePicker';
-import { getLoginMethod, getSuggestedNickname, getUser, logout, setSuggestedNickname, setUser } from '@/features/auth/auth';
+import {
+  getLoginMethod,
+  getSuggestedNickname,
+  getUser,
+  logout,
+  setSuggestedNickname,
+  setUser,
+} from '@/features/auth/auth';
 import {
   clearDraft,
   hasOnboardingFieldErrors,
@@ -30,6 +37,7 @@ import { completeOnboarding } from '@/features/onboarding/repository';
 import { makeOnboardingSchema, type OnboardingFormValues } from '@/features/onboarding/schema';
 import { checkNicknameAvailability } from '@/features/profile/nickname-repository';
 import { readGaClientId, track, trackSignUp } from '@/lib/analytics';
+import { afterAnalyticsReady } from '@/lib/analytics-privacy-state';
 import { ApiError } from '@/lib/http';
 
 export default function OnboardingPage() {
@@ -308,14 +316,19 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
       setSuggestedNickname(null);
       clearDraft(accountId);
       // 온보딩 최초 완료 = 가입 확정 (서버 user.registered 와 같은 지점)
-      trackSignUp(getLoginMethod());
-      track({
-        name: 'Onboarding Completed',
-        props: {
-          time_to_complete_sec: Math.round((Date.now() - startTime.current) / 1000),
-          marketing_agreed: draft.marketingAgreed,
+      afterAnalyticsReady(
+        () => getUser()?.id === account.id,
+        () => {
+          trackSignUp(getLoginMethod());
+          track({
+            name: 'Onboarding Completed',
+            props: {
+              time_to_complete_sec: Math.round((Date.now() - startTime.current) / 1000),
+              marketing_agreed: draft.marketingAgreed,
+            },
+          });
         },
-      });
+      );
       // 가입 완료와 디스코드 연결은 독립 — 연결 선택 단계로 보낸다 (DSC-03)
       router.replace(`/${locale}/onboarding?step=discord&next=${encodeURIComponent(next)}`);
     } catch (err) {

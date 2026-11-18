@@ -3,7 +3,7 @@
 import Link from 'next/link';
 
 import type { Locale, Study } from '@studyclub/types';
-import { categoryArtUrl, categoryMeta, categoryTint } from '@studyclub/ui';
+import { categoryArtUrl, categoryMeta, categoryTint, ButtonLink } from '@studyclub/ui';
 import { ArrowLeft, CalendarClock, Globe, Rocket, Users } from 'lucide-react';
 
 import { MarkdownLite } from '@/features/applications/ApplicationFormUi';
@@ -43,12 +43,9 @@ export function StudyDetailView({ id, locale, initial }: { id: number; locale: L
                 locale,
               )}
         </p>
-        <Link
-          href={`/${locale}/studies`}
-          className='mt-4 inline-flex items-center gap-1.5 rounded-pill border border-border px-4 py-2 type-label-lg text-fg transition-colors hover:border-border-interactive hover:text-brand'
-        >
-          <ArrowLeft size={15} /> {m('common.back_studies', locale)}
-        </Link>
+        <ButtonLink linkAs={Link} href={`/${locale}/studies`} variant='secondary' size='sm' leadingIcon={<ArrowLeft />} className='mt-4'>
+          {m('common.back_studies', locale)}
+        </ButtonLink>
       </div>
     );
   }
@@ -57,7 +54,7 @@ export function StudyDetailView({ id, locale, initial }: { id: number; locale: L
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(study.category);
   const deadline = toISODate(rec?.deadline);
   const { background, ink } = categoryTint(study.category);
-  const artUrl = categoryArtUrl(study.category);
+  const artUrl = study.image ?? categoryArtUrl(study.category);
   const badge = recruitBadge(study, locale);
   // 목록 카드와 같은 정보를 칸으로 — 같은 개념은 같은 모양(ui 스킬 §3 일관성)
   const facts = [
@@ -65,6 +62,7 @@ export function StudyDetailView({ id, locale, initial }: { id: number; locale: L
     { icon: Globe, label: t({ ko: '시간대', en: 'Time zone' }, locale), value: studyTimezoneLabel(study, locale) },
     { icon: Rocket, label: t({ ko: '시작 예정일', en: 'Starts' }, locale), value: studyStartValue(study, locale) },
     ...(rec?.capacity ? [{ icon: Users, label: t({ ko: '정원', en: 'Capacity' }, locale), value: `${rec.capacity}${t({ ko: '명', en: '' }, locale)}` }] : []),
+    ...(deadline ? [{ icon: CalendarClock, label: t({ ko: '모집 마감', en: 'Apply by' }, locale), value: deadline }] : []),
   ];
   const url = `${SITE_URL}/${locale}/studies/${id}`;
 
@@ -136,12 +134,7 @@ export function StudyDetailView({ id, locale, initial }: { id: number; locale: L
               </div>
             ))}
           </dl>
-          <div className='flex flex-col gap-3 border-t border-border bg-surface-1 px-6 py-5'>
-            {deadline && (
-              <span className='tnum type-label-lg text-fg-secondary'>
-                {t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale)}
-              </span>
-            )}
+          <div className='border-t border-border bg-surface-1 px-6 py-5'>
             <ApplyButton study={study} locale={locale} />
           </div>
         </aside>

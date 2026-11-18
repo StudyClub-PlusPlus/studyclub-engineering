@@ -43,9 +43,19 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 | 캡틴 (운영 콘솔) | `app/(proto)/proto/console/…/page.tsx` | `proto/console/` |
 | 네비게이터 · 캡틴 (사용자 사이트 스터디 관리) | `app/(proto)/proto/core/[locale]/my/joined/[id]/manage/…` | `proto/core/` |
 
-**부품은 `@studyclub/ui` 에서 가져온다.** 버튼·뱃지·입력칸·카드처럼 두 화면 이상에 보이는 부품의 모양을 바꾸려면
-`frontend/packages/ui` 를 고친다 — 그래야 프로토에서 본 모습이 실제 앱에도 들어간다. `proto/` 에 ui 와 같은 이름의
-부품을 새로 만들지 않고, 색은 Tailwind 기본 팔레트(`text-red-600` …)나 색 코드(`text-[#FCD34D]`) 대신 토큰(`text-danger-fg` …)을,
+**부품은 `@studyclub/ui` 에서 가져온다.** 화면을 짜기 전에 `frontend/packages/ui/src/index.ts` 의 export 목록부터 본다.
+
+- `<input>` → `Input` · `<input type="checkbox">` → `Checkbox` · `<input type="radio">` → `Radio` · `<select>` → `Select` · `<textarea>` → `Textarea`/`AutoTextarea` · `<button>` → `Button`/`IconButton` · 켜고 끄기 → `Switch`.
+  프로토에 HTML 폼 요소 · `<button>` 을 직접 쓰지 않는다. 알약 토글은 `FilterChip`, 탭 줄은 `Segmented`·`Tabs`, 표 칸 아이콘은 `IconButton size='xs'`, 버튼 모양 링크는 `ButtonLink`, 「?」 도움말은 `HelpPopover`.
+  카드 전체가 누르는 곳 같은 예외는 여는 태그 안에 `// ui-native: 이유` 를 단다
+  ([component-guide 예외 표](../../../docs/frontend-development-guide/component-guide.md#공용-ui--studyclubui-먼저))
+- 모양이 안 맞으면 `frontend/packages/ui` 부품에 variant·props 를 더한다 — 그래야 프로토에서 본 모습이 실제 앱에도 들어간다
+- 필요한 부품이 없으면 `proto/` 가 아니라 `packages/ui` 에 만든다 — `pnpm --filter @studyclub/ui new-component {Name}` 이 본체 · 스토리 · `index.ts` export · `/components` 카탈로그 칸을 함께 만든다
+- 부품을 만들거나 고치기 전에 [`frontend/packages/design/docs/design-system.md`](../../../frontend/packages/design/docs/design-system.md) §9(부품 스펙)와 §2~§7(토큰), `tokens.css` 를 읽고 그대로 따른다.
+  §9 에 없는 부품이면 같은 PR 에서 §9 에 스펙을 추가한다
+  ([component-guide §공용 UI](../../../docs/frontend-development-guide/component-guide.md#공용-ui--studyclubui-먼저))
+
+`proto/` 에 ui 와 같은 이름의 부품을 새로 만들지 않고, 색은 Tailwind 기본 팔레트(`text-red-600` …)나 색 코드(`text-[#FCD34D]`) 대신 토큰(`text-danger-fg` …)을,
 글자 크기는 `text-[13px]` 대신 타입 스케일(`text-xs` · `text-sm` …)을 쓴다. 맞는 토큰이 없으면 `tokens.css` 에 먼저 추가한다.
 
 1. 기존 화면이 이 Story 를 담을 수 있으면 그 화면을 고친다. 새 지면은 기존 지면에 자리가 없을 때만 만든다
@@ -60,7 +70,7 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
    - 페이지에서 `<ScreenSpecRegistrar spec={SPEC} />` 로 등록한다
 4. 주석 모드를 켜고 **번호 → 대상 요소 대조표**에서 대조 실패가 0 인지 확인한다
 5. `frontend/` 에서 `pnpm --filter playground run build` 가 통과해야 커밋한다 — playground 는 `beta` 에서 바로 배포된다
-   - 레포 루트에서 `node scripts/check-component-drift.mjs` 도 통과해야 한다 — ui 부품 사본·토큰 우회가 기준선보다 늘면 실패한다
+   - 레포 루트에서 `node scripts/check-component-drift.mjs` 도 통과해야 한다 — ui 부품 사본·날 HTML 폼 요소·날 `<button>`·토큰 우회가 기준선보다 늘거나 스토리가 없거나 카탈로그에 없는 ui 부품이 있으면 실패한다
 
 ## 2. 문서 갱신 (PR 올리기 전)
 

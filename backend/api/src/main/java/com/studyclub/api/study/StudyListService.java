@@ -2,7 +2,8 @@ package com.studyclub.api.study;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
-import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
@@ -25,17 +26,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class StudyListService {
 
     private final StudyListDao studyListDao;
-    private final StudyApplicationRepository studyApplicationRepository;
+    private final StudyParticipantRepository studyParticipantRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyProgramRepository studyProgramRepository;
 
     public StudyListService(
             StudyListDao studyListDao,
-            StudyApplicationRepository studyApplicationRepository,
+            StudyParticipantRepository studyParticipantRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyProgramRepository studyProgramRepository) {
         this.studyListDao = studyListDao;
-        this.studyApplicationRepository = studyApplicationRepository;
+        this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyProgramRepository = studyProgramRepository;
     }
@@ -52,21 +53,12 @@ public class StudyListService {
         List<StudyRecruitment> latestRecruitments =
                 studyRecruitmentRepository.findLatestByStudyIdIn(studyIds);
 
-        // 신청자 수는 최신 모집 회차의 STUDY_APPLICATION 수 — 스펙 study-recruit-status/spec.md:46
-        List<Long> recruitmentIds =
-                latestRecruitments.stream().map(StudyRecruitment::getId).toList();
-        Map<Long, Long> applicationsByRecruitmentId =
-                studyApplicationRepository.countByRecruitmentIdIn(recruitmentIds).stream()
+        // 정원을 차지하는 인원 — 명부 ACTIVE 중 정원 역할 (결정 D4-A, study-recruit-status/spec.md)
+        Map<Long, Long> crewCounts =
+                studyParticipantRepository
+                        .countCapacityHoldersByStudyIds(studyIds, ParticipantRole.CAPACITY_ROLES)
+                        .stream()
                         .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
-        // studyId → 신청자 수 (최신 모집 회차 기준)
-        Map<Long, Long> applicants =
-                latestRecruitments.stream()
-                        .collect(
-                                Collectors.toMap(
-                                        StudyRecruitment::getStudyId,
-                                        r ->
-                                                applicationsByRecruitmentId.getOrDefault(
-                                                        r.getId(), 0L)));
 
         Map<Long, Instant> deadlines =
                 latestRecruitments.stream()
@@ -107,7 +99,7 @@ public class StudyListService {
                                                                                         + study
                                                                                                 .getProgramId()))
                                                         .getStudyKind(),
-                                                applicants.getOrDefault(study.getId(), 0L),
+                                                crewCounts.getOrDefault(study.getId(), 0L),
                                                 deadlines.get(study.getId()),
                                                 capacities.get(study.getId())))
                         .toList();

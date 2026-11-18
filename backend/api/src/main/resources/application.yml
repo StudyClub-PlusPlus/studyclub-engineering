@@ -133,11 +133,24 @@ ops:
 # 환경 표시는 위 ops.env(APP_ENV) 를 같이 쓴다. 키는 레포에 적지 않고 env 로만 주입한다.
 amplitude:
   api-key: ${AMPLITUDE_API_KEY:}
+  deletion:
+    secret: ${AMPLITUDE_SECRET_KEY:}
+    endpoint: ${AMPLITUDE_DELETION_ENDPOINT:https://amplitude.com/api/2/deletions/users}
 
 # 같은 사실(가입·활성화)을 GA4 Measurement Protocol 로도 보낸다. 둘 중 하나라도 비면 보내지 않는다.
 ga4:
   measurement-id: ${GA4_MEASUREMENT_ID:}
   api-secret: ${GA4_API_SECRET:}
+  deletion:
+    property-id: ${GA4_PROPERTY_ID:}
+    service-account-email: ${GA4_DELETION_SERVICE_ACCOUNT_EMAIL:}
+    private-key: ${GA4_DELETION_PRIVATE_KEY:}
+
+analytics:
+  hmac-key: ${ANALYTICS_HMAC_KEY:}
+  hmac-key-version: ${ANALYTICS_HMAC_KEY_VERSION:v1}
+  deletion:
+    enabled: ${ANALYTICS_DELETION_ENABLED:true}
 
 # 세 env 가 다 비어 있으면 동작이 지금과 완전히 동일하다 (콘솔 텍스트, 파일 안 씀).
 #

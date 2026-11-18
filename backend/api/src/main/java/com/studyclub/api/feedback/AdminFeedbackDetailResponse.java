@@ -1,5 +1,6 @@
 package com.studyclub.api.feedback;
 
+import com.studyclub.api.analytics.AnalyticsPrivacyService;
 import com.studyclub.api.feedback.AdminFeedbackListResponse.Person;
 import com.studyclub.domain.feedback.FeedbackStatus;
 import com.studyclub.domain.feedback.FeedbackType;
@@ -28,7 +29,8 @@ public record AdminFeedbackDetailResponse(
         String browser,
         Viewport viewport,
         FeedbackReply reply,
-        String adminMemo) {
+        String adminMemo,
+        AnalyticsPrivacyService.AdminView analytics) {
 
     public record Viewport(int width, int height) {}
 }

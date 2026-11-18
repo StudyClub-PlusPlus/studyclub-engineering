@@ -158,7 +158,7 @@ class AccountTest {
     @DisplayName("권한 변경 가능 여부 — 본인이면 마지막 캡틴이어도 「본인」이 먼저다")
     void ownAccountComesFirst() {
         Account me = accountWithId(1L, SystemRole.ADMIN);
-        assertThat(me.roleChangeBlockedReason(1L, 1))
+        assertThat(me.roleChangeBlockedReason(1L, 1, false))
                 .isEqualTo(RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE);
     }
 
@@ -166,9 +166,18 @@ class AccountTest {
     @DisplayName("권한 변경 가능 여부 — 남의 계정이 마지막 캡틴이면 막고, 캡틴이 둘 이상이면 연다")
     void lastAdminIsBlocked() {
         Account other = accountWithId(2L, SystemRole.ADMIN);
-        assertThat(other.roleChangeBlockedReason(1L, 1))
+        assertThat(other.roleChangeBlockedReason(1L, 1, false))
                 .isEqualTo(RoleChangeBlockedReason.LAST_ADMIN_REQUIRED);
-        assertThat(other.roleChangeBlockedReason(1L, 2)).isNull();
+        assertThat(other.roleChangeBlockedReason(1L, 2, false)).isNull();
+    }
+
+    @Test
+    @DisplayName("권한 변경 가능 여부 — 진행 중 담당 스터디가 있는 캡틴은 OWNS_STUDY, 크루는 해당 없음")
+    void ownerOfOngoingStudyIsBlocked() {
+        assertThat(accountWithId(2L, SystemRole.ADMIN).roleChangeBlockedReason(1L, 2, true))
+                .isEqualTo(RoleChangeBlockedReason.OWNS_STUDY);
+        assertThat(accountWithId(3L, SystemRole.MEMBER).roleChangeBlockedReason(1L, 2, true))
+                .isNull();
     }
 
     @Test
@@ -176,13 +185,15 @@ class AccountTest {
     void memberIsNeverBlockedByAdminCount() {
         Account crew = accountWithId(3L, SystemRole.MEMBER);
         crew.linkDiscord("1327394882193880003", "crew");
-        assertThat(crew.roleChangeBlockedReason(1L, 1)).isNull();
+        assertThat(crew.roleChangeBlockedReason(1L, 1, false)).isNull();
     }
 
     @Test
     @DisplayName("권한 변경 가능 여부 — 디스코드 연동 여부와 상관없다 (2026-10-27, 캡틴에게 연동은 필수가 아니다)")
     void unlinkedAccountsAreNotBlocked() {
-        assertThat(accountWithId(3L, SystemRole.MEMBER).roleChangeBlockedReason(1L, 2)).isNull();
-        assertThat(accountWithId(4L, SystemRole.ADMIN).roleChangeBlockedReason(1L, 2)).isNull();
+        assertThat(accountWithId(3L, SystemRole.MEMBER).roleChangeBlockedReason(1L, 2, false))
+                .isNull();
+        assertThat(accountWithId(4L, SystemRole.ADMIN).roleChangeBlockedReason(1L, 2, false))
+                .isNull();
     }
 }

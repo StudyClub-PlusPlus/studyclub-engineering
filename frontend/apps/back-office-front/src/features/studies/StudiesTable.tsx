@@ -5,8 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type Study, type StudyLifecycleStatus } from '@studyclub/types';
-import { Badge, Pagination, Select, cx, type BadgeTone } from '@studyclub/ui';
+import { Badge, Input, Pagination, Select, cx, type BadgeTone } from '@studyclub/ui';
 import { applyFormUrl, publishState, toISODate } from '@studyclub/utils';
+import { Search } from 'lucide-react';
 
 import {
   CATEGORY_OPTIONS,
@@ -33,7 +34,9 @@ import { rememberStudiesListSearch } from '@/features/studies/list-return';
 import { PublishConfirmDialog, type PublishTarget } from '@/features/studies/PublishConfirmDialog';
 import { STATUS_LABEL, tx } from '@/lib/l10n';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 import { useUrlState } from '@/lib/use-url-state';
+import { zonedDate } from '@/lib/zoned-date';
 import './studies-table.css';
 
 /**
@@ -150,6 +153,7 @@ function PublishCell({
   return (
     <span className='inline-flex'>
       <button
+        // ui-native: 목록의 공개 상태 알약 — 상태 표시 겸 토글이고 막힌 이유 말풍선이 붙는다
         ref={ref}
         type='button'
         onClick={() => !blocked && onToggle(!live)}
@@ -194,6 +198,7 @@ function PublishCell({
 function SortLabel({ label, active, onClick }: { label: string; active: SortDir | null; onClick: () => void }) {
   return (
     <button
+      // ui-native: 표 머리 정렬 — 머리 글자 자체가 정렬 단추
       type='button'
       onClick={onClick}
       aria-label={`${label} ${active === 'asc' ? '내림차순으로' : '오름차순으로'} 정렬`}
@@ -331,8 +336,8 @@ function StatusTooltip({
   );
 }
 
-function displayDate(value?: string) {
-  return toISODate(value) ?? '—';
+function displayDate(value: string | undefined, tz: string) {
+  return zonedDate(value, tz) ?? toISODate(value) ?? '—';
 }
 
 export function StudiesTable({ list }: { list: StudyListData }) {
@@ -388,6 +393,7 @@ export function StudiesTable({ list }: { list: StudyListData }) {
     }
   };
 
+  const displayTz = useDisplayTimeZone();
   const rows = list.studies;
   const headerSort = headerSortOf(sort);
   /** 열 이름을 누른다 — 오름차순, 다시 누르면 내림차순 (PRD 9). 정렬을 바꾸면 1페이지로 */
@@ -414,12 +420,14 @@ export function StudiesTable({ list }: { list: StudyListData }) {
           가로 스크롤 상자는 위아래로 넘친 것도 자른다 — 칸 테두리 · 포커스 링(3px)이 잘리지 않게 사방에 여백을 두고
           좌우는 음수 여백으로 상쇄해 줄 위치는 그대로 둔다 */}
       <div className='-mx-1 mb-4 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 py-1'>
-        <input
+        <Input
           type='search'
+          size='sm'
+          leadingIcon={<Search size={15} />}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='제목 · 한 줄 소개 검색'
-          className='h-8 w-[188px] shrink-0 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
+          className='w-[188px]'
         />
         <FilterSelect
           value={category}
@@ -520,10 +528,10 @@ export function StudiesTable({ list }: { list: StudyListData }) {
                       {s.timezone ? TIMEZONE_LABEL[s.timezone] : <span className='text-fg-muted'>미정</span>}
                     </td>
                     <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
-                      {displayDate(s.recruitment?.start)}
+                      {displayDate(s.recruitment?.start, displayTz)}
                     </td>
                     <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
-                      {displayDate(s.recruitment?.deadline)}
+                      {displayDate(s.recruitment?.deadline, displayTz)}
                     </td>
                     <td>
                       <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
@@ -536,7 +544,7 @@ export function StudiesTable({ list }: { list: StudyListData }) {
                       <span className='text-fg-muted'>{capacity === undefined ? ' · 제한 없음' : `/${capacity}`}</span>
                     </td>
                     <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
-                      {toISODate(s.date) ?? '미정'}
+                      {zonedDate(s.startAt, displayTz) ?? toISODate(s.date) ?? '미정'}
                     </td>
                     <td
                       className='whitespace-nowrap text-center type-body-sm'

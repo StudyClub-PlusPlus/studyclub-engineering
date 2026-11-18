@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import { HeroCTADiscordLink, HeroCTAStudiesLink } from '@/components/HeroCTAButton';
 import { JoinCta } from '@/components/JoinCta';
 import { Marquee } from '@/components/Marquee';
-import { getOperatorMap, getSite } from '@/features/community/server';
+import { getSite } from '@/features/community/server';
 import { PAST_STUDIES, VOICES } from '@/features/community/voices';
 import { EventCard } from '@/features/events/EventCard';
 import { getEvents } from '@/features/events/server';
@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 
 export default async function Landing({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
-  const [studies, events, leads, site] = await Promise.all([getStudies(), getEvents(), getOperatorMap(), getSite()]);
+  const [studies, events, site] = await Promise.all([getStudies(), getEvents(), getSite()]);
   const upcoming = [...events].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
   const stats = [
@@ -101,7 +101,7 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
       </section>
 
       {/* Featured studies (MSW / API 반응형) */}
-      <FeaturedStudies locale={locale} leads={leads} />
+      <FeaturedStudies locale={locale} />
 
       {/* 함께한 사람들의 이야기 — 실제 후기(이름 대신 직군·도시) */}
       <section className='-mx-6 pb-14'>

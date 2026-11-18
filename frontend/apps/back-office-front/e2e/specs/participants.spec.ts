@@ -26,11 +26,16 @@ const study = studyDetailFixture({
   driveUrl: null,
 });
 
+// 표 맨 위 작업 바의 저장 — 고친 게 있으면 「변경 N명 저장」, 없으면 「저장」(#464)
+const SAVE = /^(변경 \d+명 )?저장$/;
+
 function participants() {
   return {
     studyId: 20,
     participantCount: 3,
     recruitmentCapacity: 10,
+    // 담당 캡틴(44faf092 에서 응답에 더해짐) — 이 시험은 반 편성만 보므로 지정 전으로 둔다
+    ownerCaptain: null,
     groups: [
       { groupId: 1, name: '기본반', isDefault: true, canDelete: false },
       { groupId: 2, name: '목요일반', isDefault: false, canDelete: false },
@@ -181,9 +186,9 @@ test('참여자 반 편성: 반 생성·수정·삭제와 일괄 이동을 저�
   await page.getByRole('checkbox', { name: '김크루 선택' }).check();
   await page.getByRole('checkbox', { name: '박캡틴 선택' }).check();
   await page.getByRole('combobox', { name: '바꿀 반' }).selectOption('3');
-  await expect(page.getByRole('button', { name: '저장', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: SAVE })).toBeEnabled();
   await page.screenshot({ path: 'test-results/participants-assignment.png', fullPage: true });
-  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await page.getByRole('button', { name: SAVE }).click();
   await expect(page.getByRole('status')).toHaveText('저장했습니다.');
 
   expect(writes).toContainEqual({
@@ -208,8 +213,8 @@ test('저장 중 이동을 막고 권한 회수 응답이면 명단을 숨긴다
   });
   await page.goto('/studies/20?tab=crew');
   await page.getByRole('combobox', { name: '김크루 반' }).selectOption('3');
-  await page.getByRole('button', { name: '저장', exact: true }).click();
-  await expect(page.getByRole('button', { name: '정보', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: SAVE }).click();
+  await expect(page.getByRole('tab', { name: '정보', exact: true })).toBeDisabled();
   await page.getByRole('link', { name: '스터디 관리', exact: true }).click();
   await expect(page).toHaveURL(/tab=crew/);
   await expect(page.getByRole('dialog', { name: '변경을 취소하고 이동' })).toBeVisible();
@@ -232,11 +237,12 @@ test('저장 응답이 유실되어도 변경을 보존하고 재시도한다', 
   });
   await page.goto('/studies/20?tab=crew');
   await page.getByRole('combobox', { name: '김크루 반' }).selectOption('3');
-  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await page.getByRole('button', { name: SAVE }).click();
   await expect(page.getByRole('alert').filter({ hasText: '저장하지 못했습니다' })).toBeVisible();
   await expect(page.getByRole('combobox', { name: '김크루 반' })).toHaveValue('3');
-  await page.getByRole('button', { name: '저장', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('저장했습니다.');
+  await page.getByRole('button', { name: SAVE }).click();
+  // 첫 시도의 실패 토스트가 아직 떠 있다 — 성공 토스트만 집는다
+  await expect(page.getByRole('status').filter({ hasText: '저장했습니다.' })).toBeVisible();
   expect(attempts).toBe(2);
 });
 
@@ -278,12 +284,12 @@ test('응답 유실 후 재조회로 저장이 확인되면 불필요한 변경�
   });
   await page.goto('/studies/20?tab=crew');
   await page.getByRole('combobox', { name: '김크루 반' }).selectOption('3');
-  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await page.getByRole('button', { name: SAVE }).click();
   await expect(page.getByRole('alert').filter({ hasText: '저장하지 못했습니다' })).toBeVisible();
   await page.clock.fastForward(61_000);
   await context.setOffline(true);
   await context.setOffline(false);
-  await expect(page.getByRole('button', { name: '저장', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: SAVE })).toBeDisabled();
   await expect(page.getByRole('combobox', { name: '김크루 반' })).toHaveValue('3');
   await expect(page.getByRole('button', { name: '변경 취소', exact: true })).toHaveCount(0);
 });

@@ -8,6 +8,7 @@ export const apiGroupMeetingsSchema = z.object({
     startTime: z.union([z.null(), z.string()]),
     navigatorName: z.union([z.null(), z.string()]),
     rules: z.union([z.null(), z.string()]),
+    daysOfWeek: z.union([z.null(), z.array(z.string())]),
   }),
   me: z.object({
     participantId: z.union([z.null(), z.number()]),
@@ -30,7 +31,7 @@ export const apiGroupMeetingsSchema = z.object({
         z.null(),
         z.object({
           participantId: z.number(),
-          name: z.string(),
+          name: z.string().nullable(),
           active: z.union([z.undefined(), z.boolean()]).optional(),
         }),
       ]),
@@ -38,13 +39,22 @@ export const apiGroupMeetingsSchema = z.object({
         z.null(),
         z.object({
           participantId: z.number(),
-          name: z.string(),
+          name: z.string().nullable(),
           active: z.union([z.undefined(), z.boolean()]).optional(),
         }),
       ]),
       started: z.boolean(),
     }),
   ),
+});
+
+/** 반 수정(`PATCH /api/admin/studies/{id}/groups/{groupId}`) 응답 — 200 과 수정한 반. 서버 `StudyGroupUpdateResponse`. */
+export const groupUpdateResponseSchema = z.object({
+  groupId: z.number(),
+  name: z.string(),
+  daysOfWeek: z.union([z.null(), z.array(z.string())]),
+  startTime: z.union([z.null(), z.string()]),
+  timezone: z.union([z.null(), z.string()]),
 });
 
 export const emptyResponseSchema = z.null();

@@ -280,6 +280,21 @@ public class StudyMeeting extends BaseEntity {
         this.startAt = at;
     }
 
+    /**
+     * 회차를 닫는다. 디스코드 출석 체크가 오래된 진행 중 회차를 자동으로 닫을 때 쓴다 (specs/discord-attendance/spec.md).
+     *
+     * @throws IllegalStateException 아직 시작하지 않았거나 이미 닫혔을 때
+     */
+    public void end(Instant at) {
+        if (startAt == null) {
+            throw new IllegalStateException("시작하지 않은 회차는 닫을 수 없습니다: " + id);
+        }
+        if (endAt != null) {
+            throw new IllegalStateException("이미 닫힌 회차입니다: " + id);
+        }
+        this.endAt = at;
+    }
+
     public Long getId() {
         return id;
     }

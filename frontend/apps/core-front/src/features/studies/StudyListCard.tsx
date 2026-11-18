@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-import type { Locale, Operator, Study } from '@studyclub/types';
+import type { Locale, Study } from '@studyclub/types';
 import { StudyCard } from '@studyclub/ui';
 import { CalendarClock, Globe, Rocket } from 'lucide-react';
 
@@ -28,7 +28,6 @@ export function StudyListCard({
 }: {
   study: Study;
   locale: Locale;
-  lead?: Operator;
   index?: number;
   source?: 'landing' | 'studies_list';
 }) {
@@ -51,6 +50,7 @@ export function StudyListCard({
       badge={{ label: badge.label, dotClassName: badge.dotClass }}
       summary={t(study.summary, locale)}
       details={details}
+      image={study.image}
       // 카드 전체를 덮는 링크의 클릭이 바깥 div 로 올라온다 — ui 부품을 고치지 않고 여기서 잡는다
       onClick={() =>
         track({
@@ -61,7 +61,7 @@ export function StudyListCard({
             study_category: study.category,
             study_status: study.status,
             source,
-            card_position: index ?? 0,
+            card_position: index ?? -1,
           },
         })
       }

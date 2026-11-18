@@ -60,7 +60,7 @@ public class AdminStudyParticipantQueryService {
     }
 
     /**
-     * 그 스터디의 명부. 정렬은 네비게이터 → 반 이름 → 닉네임.
+     * 그 스터디의 명부. 정렬은 캡틴 → 네비게이터 → 반 이름 → 닉네임.
      *
      * @throws BusinessException NOT_FOUND — 없는 스터디
      */
@@ -112,8 +112,9 @@ public class AdminStudyParticipantQueryService {
                         .sorted(
                                 Comparator.comparing(
                                                 (StudyParticipantsResponse.Participant p) ->
-                                                        p.participantRole()
-                                                                != ParticipantRole.LEADER)
+                                                        !p.captain())
+                                        .thenComparing(
+                                                p -> p.participantRole() != ParticipantRole.LEADER)
                                         .thenComparing(
                                                 p -> groupNames.get(p.groupId()),
                                                 Comparator.nullsLast(Comparator.naturalOrder()))
@@ -129,8 +130,25 @@ public class AdminStudyParticipantQueryService {
                         .map(StudyRecruitment::getRecruitmentCapacity)
                         .orElse(null);
 
+        // 담당 캡틴은 명부에 없을 수 있다 — 계정을 따로 읽는다. 탈퇴로 계정이 없으면 null
+        OwnerCaptainResponse.OwnerCaptain ownerCaptain =
+                study.getOwnerCaptainId() == null
+                        ? null
+                        : accountRepository
+                                .findById(study.getOwnerCaptainId())
+                                .map(
+                                        a ->
+                                                new OwnerCaptainResponse.OwnerCaptain(
+                                                        a.getId(), a.getNickname()))
+                                .orElse(null);
+
         return new StudyParticipantsResponse(
-                studyId, participantCount, recruitmentCapacity, groupResponses, participants);
+                studyId,
+                participantCount,
+                recruitmentCapacity,
+                ownerCaptain,
+                groupResponses,
+                participants);
     }
 
     private static StudyParticipantsResponse.Participant toParticipant(
@@ -145,7 +163,7 @@ public class AdminStudyParticipantQueryService {
                 p.getStudyGroupId(),
                 p.getParticipantRole(),
                 p.getStatus(),
-                p.getAccountId().equals(study.getCreatedBy()),
+                study.isOwnedBy(p.getAccountId()),
                 p.getJoinedAt());
     }
 }

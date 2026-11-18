@@ -56,6 +56,7 @@ export default function PolicyLibrary() {
           <div className='sticky top-6 flex flex-col gap-0.5'>
             {GROUPS.map((g) => (
               <button
+                // ui-native: playground 정책 문서 목차 — 서비스 화면이 아니라 문서 열람 도구
                 key={g.key}
                 type='button'
                 onClick={() => {

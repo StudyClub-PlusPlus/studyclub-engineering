@@ -55,15 +55,24 @@ describe('출석 명부 변환', () => {
     });
   });
 
-  it('지금 열에서 바뀐 칸만 보내고, 미체크로 되돌린 칸은 따로 센다 — 서버는 칸을 비우지 못한다', () => {
+  it('지금 열에서 바뀐 칸만 보내고, 미체크로 되돌린 칸은 status=null 로 보낸다', () => {
     const saved = { '1': { '11': 'absent' as const, '12': 'present' as const, '99': 'late' as const } };
     const next = { '1': { '11': 'late' as const, '99': 'present' as const }, '2': { '12': 'excused' as const } };
     expect(toUpdates(saved, next, ['11', '12'])).toEqual({
       updates: [
         { meetingId: 11, participantId: 1, status: 'LATE' },
+        { meetingId: 12, participantId: 1, status: null },
         { meetingId: 12, participantId: 2, status: 'EXCUSED' },
       ],
-      cleared: 1,
+    });
+  });
+
+  it('columnIds 밖의 회차는 변경됐어도 updates 에 포함하지 않는다', () => {
+    const saved = { '1': { '11': 'absent' as const, '99': 'late' as const } };
+    const next = { '1': { '11': 'present' as const, '99': 'excused' as const } };
+    // columnIds=['11'] — '99' 의 변경은 무시
+    expect(toUpdates(saved, next, ['11'])).toEqual({
+      updates: [{ meetingId: 11, participantId: 1, status: 'PRESENT' }],
     });
   });
 });

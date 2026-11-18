@@ -10,7 +10,8 @@ export function saveStudyAttendance(
   studyId: number,
   body: {
     studyGroupId: number;
-    updates: Array<{ meetingId: number; participantId: number; status: string }>;
+    /** status = null 은 미체크로 되돌리기(행 삭제). */
+    updates: Array<{ meetingId: number; participantId: number; status: string | null }>;
     withdrawals?: number[];
   },
 ) {

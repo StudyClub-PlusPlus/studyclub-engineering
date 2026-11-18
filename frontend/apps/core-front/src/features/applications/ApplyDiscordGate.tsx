@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { site } from '@studyclub/mock';
 import type { Locale } from '@studyclub/types';
@@ -68,6 +68,17 @@ export function ApplyDiscordGate({
   const [error, setError] = useState<string | null>(null);
   /** 403 DISCORD_NOT_IN_GUILD — 스터디클럽 디스코드 서버에 먼저 가입해야 한다 */
   const [notInGuild, setNotInGuild] = useState(false);
+  /** 가입 링크를 열고 창 포커스가 돌아온 뒤 — 연동 버튼을 눌러 달라는 안내로 바꾼다 */
+  const [returnedFromDiscord, setReturnedFromDiscord] = useState(false);
+
+  useEffect(() => {
+    if (!notInGuild) return;
+    function handleFocus() {
+      setReturnedFromDiscord(true);
+    }
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [notInGuild]);
 
   /** 세션이 끝났다 — 창에 남겨 두지 않고 신청하기와 같이 로그인으로 보낸다 */
   function goLogin() {
@@ -86,6 +97,7 @@ export function ApplyDiscordGate({
     setLinking(true);
     setError(null);
     setNotInGuild(false);
+    setReturnedFromDiscord(false);
     try {
       await linkDiscord(user.id, code, 'apply_gate');
       setLinking(false);
@@ -103,6 +115,7 @@ export function ApplyDiscordGate({
   function handleClose() {
     setError(null);
     setNotInGuild(false);
+    setReturnedFromDiscord(false);
     onClose();
   }
 
@@ -118,7 +131,9 @@ export function ApplyDiscordGate({
               {t({ ko: '취소', en: 'Cancel' }, locale)}
             </Button>
             <Button onClick={connect} loading={linking} leadingIcon={<MessageCircle size={16} />}>
-              {t({ ko: '디스코드 연동하기', en: 'Connect Discord' }, locale)}
+              {notInGuild
+                ? t({ ko: '서버에 가입했어요 — 다시 연동', en: 'Joined — connect again' }, locale)
+                : t({ ko: '디스코드 연동하기', en: 'Connect Discord' }, locale)}
             </Button>
           </>
         ) : (
@@ -143,17 +158,21 @@ export function ApplyDiscordGate({
         {notInGuild && (
           <div role='alert' className='flex flex-col gap-2 rounded-control bg-surface-2 p-3'>
             <p className='type-body-sm text-fg'>
-              {t({ ko: '스터디클럽 디스코드 서버에 아직 가입하지 않았습니다. 서버에 가입한 뒤 다시 연동해 주세요.', en: 'You have not joined the StudyClub Discord server yet. Join the server, then connect again.' }, locale)}
+              {returnedFromDiscord
+                ? t({ ko: '서버에 가입하셨나요? 아래 버튼을 눌러 연동을 완료하세요.', en: 'Joined the server? Click the button below to finish connecting.' }, locale)
+                : t({ ko: '스터디클럽 디스코드 서버에 아직 가입하지 않았습니다. 서버에 가입한 뒤 아래 버튼을 눌러 다시 연동해 주세요.', en: 'You have not joined the StudyClub Discord server yet. Join the server, then click the button below to connect again.' }, locale)}
             </p>
-            <a
-              href={site.discord_invite}
-              target='_blank'
-              rel='noreferrer'
-              className='inline-flex items-center gap-1 self-start type-label-lg text-brand hover:underline'
-            >
-              {t({ ko: '디스코드 서버 가입하기', en: 'Join the Discord server' }, locale)}
-              <ExternalLink size={14} aria-hidden />
-            </a>
+            {!returnedFromDiscord && (
+              <a
+                href={site.discord_invite}
+                target='_blank'
+                rel='noreferrer'
+                className='inline-flex items-center gap-1 self-start type-label-lg text-brand hover:underline'
+              >
+                {t({ ko: '디스코드 서버 가입하기', en: 'Join the Discord server' }, locale)}
+                <ExternalLink size={14} aria-hidden />
+              </a>
+            )}
           </div>
         )}
         {error && (

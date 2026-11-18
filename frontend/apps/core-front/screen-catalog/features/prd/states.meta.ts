@@ -44,7 +44,25 @@ export const prdScreenStates: ScreenStateDef[] = [
     recipe: { ...attendance.recipe, steps: [{ action: 'click', selector: 'button[aria-label="발표 표시 설명"]' }] },
     assertions: {
       visible: ['[role="dialog"][aria-label="발표 표시 설명"]'],
-      text: { '#presenter-help': '그 회차 발표자' },
+      withinViewport: ['[role="dialog"][aria-label="발표 표시 설명"]'],
+      // HelpPopover 가 말풍선 id 를 만든다 — 고정 id 대신 역할 · 이름으로 찾는다
+      text: { '[role="dialog"][aria-label="발표 표시 설명"]': '그 회차 발표자' },
+    },
+  },
+  {
+    ...attendance,
+    id: 'my-joined-attendance--time-help',
+    prdScenarios: [],
+    label: '출석 — 스터디 시간 기준 안내',
+    rationale: '오른쪽에 있는 시간 안내를 열어도 도움말 전체가 모바일 화면 안에 들어오는지 확인한다.',
+    recipe: {
+      ...attendance.recipe,
+      steps: [{ action: 'click', selector: 'button[aria-label="스터디 시간 기준 안내"]' }],
+    },
+    assertions: {
+      visible: ['[role="dialog"][aria-label="스터디 시간 기준 안내"]'],
+      withinViewport: ['[role="dialog"][aria-label="스터디 시간 기준 안내"]'],
+      text: { '[role="dialog"][aria-label="스터디 시간 기준 안내"]': '서머타임' },
     },
   },
   {

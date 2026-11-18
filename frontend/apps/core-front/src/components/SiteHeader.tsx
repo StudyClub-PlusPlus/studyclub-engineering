@@ -2,11 +2,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import type { Locale } from '@studyclub/types';
+import { ButtonLink } from '@studyclub/ui';
 
 import { MobileNav } from '@/components/MobileNav';
 import { MyStudiesLink } from '@/components/MyStudiesLink';
 import { NavAuth } from '@/components/NavAuth';
 import { NavLinks } from '@/components/NavLinks';
+import { FEATURES } from '@/lib/features';
 import { m } from '@/lib/i18n';
 
 export function SiteHeader({
@@ -21,7 +23,7 @@ export function SiteHeader({
   const other: Locale = locale === 'ko' ? 'en' : 'ko';
   const links = [
     { href: `/${locale}/studies`, label: m('nav.studies', locale) },
-    { href: `/${locale}/events`, label: m('nav.events', locale) },
+    ...(FEATURES.EVENTS ? [{ href: `/${locale}/events`, label: m('nav.events', locale) }] : []),
     { href: `/${locale}/guide`, label: m('nav.guide', locale) },
     { href: `/${locale}/notices`, label: m('nav.notices', locale) },
     { href: `/${locale}/about`, label: m('nav.about', locale) },
@@ -47,24 +49,23 @@ export function SiteHeader({
           >
             {other.toUpperCase()}
           </Link>
-          <a
+          <ButtonLink
+            variant='tertiary'
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='sc-button hidden type-label-lg sm:inline-flex'
-            data-variant='tertiary'
-            data-size='md'
+            className='hidden sm:inline-flex'
           >
             {m('nav.join', locale)}
-          </a>
+          </ButtonLink>
           <MyStudiesLink locale={locale} />
-          <NavAuth locale={locale} />
           <MobileNav
             locale={locale}
             links={links}
             mentoring={mentoring}
             join={{ href: discordUrl, label: m('nav.join', locale) }}
           />
+          <NavAuth locale={locale} />
         </div>
       </div>
     </header>

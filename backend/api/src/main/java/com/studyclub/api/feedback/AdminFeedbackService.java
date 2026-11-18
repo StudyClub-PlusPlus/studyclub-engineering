@@ -1,5 +1,6 @@
 package com.studyclub.api.feedback;
 
+import com.studyclub.api.analytics.AnalyticsPrivacyService;
 import com.studyclub.api.feedback.AdminFeedbackListResponse.FeedbackSummary;
 import com.studyclub.api.feedback.AdminFeedbackListResponse.Person;
 import com.studyclub.api.feedback.FeedbackQueryDao.AdminFilter;
@@ -44,6 +45,7 @@ public class AdminFeedbackService {
     static final String ADMIN_MEMO = "adminMemo";
     private static final List<String> PATCH_KEYS = List.of(STATUS, REPLY, ADMIN_MEMO);
 
+    private final AnalyticsPrivacyService analyticsPrivacy;
     private final FeedbackRepository feedbackRepository;
     private final FeedbackImageRepository feedbackImageRepository;
     private final FeedbackQueryDao feedbackQueryDao;
@@ -55,7 +57,9 @@ public class AdminFeedbackService {
             FeedbackImageRepository feedbackImageRepository,
             FeedbackQueryDao feedbackQueryDao,
             AccountRepository accountRepository,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            AnalyticsPrivacyService analyticsPrivacy) {
+        this.analyticsPrivacy = analyticsPrivacy;
         this.feedbackRepository = feedbackRepository;
         this.feedbackImageRepository = feedbackImageRepository;
         this.feedbackQueryDao = feedbackQueryDao;
@@ -169,7 +173,8 @@ public class AdminFeedbackService {
                 feedback.getBrowser(),
                 viewport,
                 FeedbackReply.of(feedback),
-                feedback.getAdminMemo());
+                feedback.getAdminMemo(),
+                analyticsPrivacy.adminView(feedback.getAccountId()));
     }
 
     /** 완료가 아니면 null. 완료 처리자가 탈퇴했으면 닉네임만 null — 「완료 아님」과 「탈퇴한 사용자」를 가른다. */

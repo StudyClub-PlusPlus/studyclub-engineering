@@ -57,7 +57,7 @@ describe('클럽 「다음 기수 만들기」 (정보 탭 명세 1-2)', () => {
       unlimited: true,
     });
     // 기존 클럽에 붙인다 — 종류는 보내지 않는다(서버가 둘을 함께 받으면 400)
-    const payload = formToCreatePayload({ ...form, deadline: '2026-12-01' });
+    const payload = formToCreatePayload({ ...form, deadline: '2026-12-01' }, 'Asia/Seoul');
     expect(payload).toMatchObject({ studyProgramId: 70 });
     expect(payload).not.toHaveProperty('studyKind');
   });

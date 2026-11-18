@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, cx, Input, Modal } from '@studyclub/ui';
+import { Button, Input, Modal, FilterChip } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import { meetingSchema, type MeetingValues } from '@/features/schedule/form-schemas';
@@ -13,7 +13,7 @@ import {
   maxUntil,
   planDraft,
   previewOf,
-  REPEAT_SPAN_DAYS,
+  REPEAT_SPAN_LABEL,
   TITLE_MAX,
   type Meeting,
   type MeetingDraft,
@@ -40,10 +40,6 @@ const REPEAT_OPTIONS: { key: Repeat; label: string }[] = [
 
 /** 월요일부터 — 주간 일정과 같은 순서. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
-
-const CHIP = 'h-9 rounded-control border type-label-lg transition-colors';
-const chipTone = (on: boolean) =>
-  on ? 'border-brand bg-brand text-white' : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2';
 
 /**
  * 회차 추가 창 — 한 번 또는 매일 · 매주 반복 (PRD §7). 회차를 만드는 곳은 여기 하나다.
@@ -153,31 +149,30 @@ export function AddMeetingDialog({
           <span className='type-label-lg text-neutral-800'>반복</span>
           <div role='group' aria-label='반복' className='flex flex-wrap gap-1.5'>
             {REPEAT_OPTIONS.map((o) => (
-              <button
+              <FilterChip
                 key={o.key}
-                type='button'
-                aria-pressed={draft.repeat === o.key}
+                selected={draft.repeat === o.key}
+                selectMode='single'
                 onClick={() => change({ repeat: o.key })}
-                className={cx(CHIP, 'px-3', chipTone(draft.repeat === o.key))}
               >
                 {o.label}
-              </button>
+              </FilterChip>
             ))}
           </div>
           {draft.repeat === 'weekly' && (
             <div className='mt-1 flex flex-col gap-1'>
               <div role='group' aria-label='반복 요일' className='flex flex-wrap gap-1'>
                 {WEEK_ORDER.map((d) => (
-                  <button
+                  <FilterChip
                     key={d}
-                    type='button'
-                    aria-pressed={draft.weekdays.includes(d)}
+                    selected={draft.weekdays.includes(d)}
+                    selectMode='single'
                     aria-label={`${DOW_LABEL[d]}요일`}
                     onClick={() => toggleWeekday(d)}
-                    className={cx(CHIP, 'w-9', chipTone(draft.weekdays.includes(d)))}
+                    className='w-9 justify-center px-0'
                   >
                     {DOW_LABEL[d]}
-                  </button>
+                  </FilterChip>
                 ))}
               </div>
               {errors.weekdays && <p className='type-label-sm text-error-700'>{errors.weekdays?.message}</p>}
@@ -190,7 +185,7 @@ export function AddMeetingDialog({
             <Input
               type='date'
               label='종료일'
-              labelHint={`이 날까지 · 시작부터 최대 ${REPEAT_SPAN_DAYS}일`}
+              labelHint={`이 날까지 · 시작부터 최대 ${REPEAT_SPAN_LABEL}`}
               required
               min={draft.date}
               max={maxUntil(draft.date)}
@@ -257,7 +252,7 @@ export function AddMeetingDialog({
             <p className='font-semibold text-error-700'>{errors.root?.message}</p>
           ) : (
             <p className='text-fg-muted'>
-              일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_DAYS}일까지.
+              일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_LABEL}까지.
             </p>
           )}
         </div>

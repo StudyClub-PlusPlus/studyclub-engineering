@@ -190,6 +190,7 @@ export function AnnotationLayer() {
                 const active = i === activeIndex;
                 return (
                   <button
+                    // ui-native: playground 주석 도구 — 서비스 화면이 아니라 화면 위에 뜨는 검토 도구
                     key={(s.story ?? s.chip ?? s.screen) + i}
                     type='button'
                     onClick={() => setActiveIndex(i)}

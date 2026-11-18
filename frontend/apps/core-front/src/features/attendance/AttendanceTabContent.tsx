@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { Study } from '@studyclub/types';
-import { Badge, Button, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
+import { Badge, Button, Checkbox, Modal, Select, SelectionCount, TableActionBar, HelpPopover } from '@studyclub/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { CircleHelp, Mic, Undo2 } from 'lucide-react';
+import { Mic, Undo2 } from 'lucide-react';
 
 import { BulkSelect } from '@/components/BulkSelect';
 import { STATUS_LABEL, STATUS_STYLE, type MyStatus } from '@/features/attendance/model';
@@ -88,9 +88,6 @@ function countChangedCells(
   return n;
 }
 
-const CHECKBOX =
-  'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
-
 /**
  * 열 너비 — 머리 줄과 본문 줄이 같은 값을 써야 열이 맞는다.
  * 닉네임 · 디스코드 닉네임 · 발표 횟수(왼쪽)와 출석률(오른쪽)은 고정, 회차 열만 가로로 스크롤한다 (10-18 D5).
@@ -118,57 +115,21 @@ const BULK_OPTIONS: { value: MyStatus | 'clear'; label: string }[] = [
  * 늘 펼쳐 두는 안내문은 두지 않는다 — 궁금한 사람만 연다. 휴대폰 폭에서 화면 밖으로 나가지 않게 폭 상한을 둔다.
  */
 function PresenterHelp() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
   return (
-    <span ref={ref} className='relative inline-flex align-middle'>
-      <button
-        type='button'
-        aria-label='발표 표시 설명'
-        aria-expanded={open}
-        aria-controls='presenter-help'
-        onClick={() => setOpen((v) => !v)}
-        className='grid h-6 w-6 place-items-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg'
-      >
-        <CircleHelp size={15} aria-hidden />
-      </button>
-      {open && (
-        <div
-          id='presenter-help'
-          role='dialog'
-          aria-label='발표 표시 설명'
-          className='absolute -left-24 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-2rem)] rounded-card border border-border bg-surface-raised p-3 text-left type-label-sm text-fg-secondary shadow-md sm:left-0'
-        >
-          <p className='flex items-center gap-1.5 font-semibold text-fg'>
-            <span className='relative grid h-8 w-14 shrink-0 place-items-center rounded-sm bg-success-100 type-label-sm text-success-700'>
-              <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
-              출석
-            </span>
-            칸 왼쪽 위 마이크 = 그 회차 발표자
-          </p>
-          <ul className='mt-2 list-disc space-y-1 pl-4'>
-            <li>일정 탭의 발표자1 · 발표자2에서 가져옵니다. 여기서 따로 입력하지 않습니다.</li>
-            <li>발표자를 바꾸면 마이크도 따라 바뀝니다.</li>
-            <li>「발표 횟수」는 발표자로 맡은 회차 수입니다. 아직 오지 않은 회차의 배정도 셉니다.</li>
-          </ul>
-        </div>
-      )}
-    </span>
+    <HelpPopover label='발표 표시 설명'>
+      <p className='flex items-center gap-1.5 font-semibold text-fg'>
+        <span className='relative grid h-8 w-14 shrink-0 place-items-center rounded-sm bg-success-100 type-label-sm text-success-700'>
+          <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
+          출석
+        </span>
+        칸 왼쪽 위 마이크 = 그 회차 발표자
+      </p>
+      <ul className='mt-2 list-disc space-y-1 pl-4'>
+        <li>일정 탭의 발표자1 · 발표자2에서 가져옵니다. 여기서 따로 입력하지 않습니다.</li>
+        <li>발표자를 바꾸면 마이크도 따라 바뀝니다.</li>
+        <li>「발표 횟수」는 발표자로 맡은 회차 수입니다. 아직 오지 않은 회차의 배정도 셉니다.</li>
+      </ul>
+    </HelpPopover>
   );
 }
 
@@ -182,6 +143,8 @@ type Person = {
   leftAt: string | null;
   manageable: boolean;
   withdrawable: boolean;
+  /** 서버가 계산한 출석률 (0–1 소수). 편집 중이 아닐 때 이 값을 그대로 보여 준다. */
+  attendanceRate: number | null;
 };
 
 type Meeting = {
@@ -255,6 +218,7 @@ export function AttendanceTabContent({
         leftAt: p.leftAt,
         manageable: p.participantStatus === 'ACTIVE',
         withdrawable: !me && !p.captain && p.participantRole?.toLowerCase() !== 'leader',
+        attendanceRate: p.attendanceRate,
       };
     })
     .sort((a, b) => {
@@ -399,18 +363,29 @@ export function AttendanceTabContent({
     setSaving(true);
     const withdrawals = Array.from(toWithdraw).map(Number);
     // 고친 칸만 보낸다 — 격자 전체를 보내면 그 사이 다른 경로(디스코드 출석 등)로 바뀐 칸을 덮어쓴다.
-    // 미체크로 되돌린 칸은 아직 보낼 수 없다(API 가 status 로 네 상태만 받는다). 다시 불러오면 서버 값으로 돌아온다
-    const updates = Object.entries(cells).flatMap(([participantId, entries]) =>
-      Object.entries(entries)
-        .filter(([meetingId, status]) => status && status !== savedCells[participantId]?.[meetingId])
-        .map(([meetingId, status]) => ({
-          participantId: Number(participantId),
-          meetingId: Number(meetingId),
-          status: (status as string).toUpperCase(),
-        })),
-    );
+    // status = null 은 미체크로 되돌리기 — 출석 행을 삭제한다.
+    // 화면에 보이는 회차(meetings)만 순회 — savedCells 에 남은 삭제된 회차 ID 가 오요청에 포함되지 않게.
+    const visibleMids = new Set(meetings.map((m) => m.id));
+    const allPids = new Set([...Object.keys(cells), ...Object.keys(savedCells)]);
+    const updates: Array<{ participantId: number; meetingId: number; status: string | null }> = [];
+    for (const pid of allPids) {
+      const savedRow = savedCells[pid] ?? {};
+      const currentRow = cells[pid] ?? {};
+      const allMids = new Set(
+        [...Object.keys(savedRow), ...Object.keys(currentRow)].filter((mid) => visibleMids.has(mid)),
+      );
+      for (const mid of allMids) {
+        const before = savedRow[mid];
+        const after = currentRow[mid];
+        if (before === after) continue;
+        updates.push({
+          participantId: Number(pid),
+          meetingId: Number(mid),
+          status: after ? (after as string).toUpperCase() : null,
+        });
+      }
+    }
     if (updates.length === 0 && withdrawals.length === 0) {
-      setAnnounce('미체크로 되돌린 칸은 아직 저장할 수 없습니다.');
       setSaving(false);
       return;
     }
@@ -556,18 +531,16 @@ export function AttendanceTabContent({
               >
                 <span className='flex items-center gap-1.5 sm:gap-3'>
                   {canEdit && (
-                    <input
-                      type='checkbox'
-                      aria-label='크루 전체 선택'
-                      className={CHECKBOX}
+                    <Checkbox
+                      label='크루 전체 선택'
+                      hideLabel
                       checked={allPicked}
-                      ref={(el) => {
-                        if (el) el.indeterminate = selected.length > 0 && !allPicked;
-                      }}
+                      indeterminate={selected.length > 0 && !allPicked}
                       onChange={() => setPicked(allPicked ? new Set() : new Set(selectable))}
                     />
                   )}
-                  닉네임
+                  {/* 열 이름은 따로 감싼다 — 전체 선택 체크박스의 스크린리더 라벨과 한 글자 덩어리가 되지 않게 */}
+                  <span>닉네임</span>
                 </span>
               </div>
               <div
@@ -617,7 +590,15 @@ export function AttendanceTabContent({
           const counted = row
             ? Object.fromEntries(Object.entries(row).filter(([id]) => !kickoffIds.has(id) && !goneIds.has(id)))
             : undefined;
-          const rate = calcRate(counted, new Set());
+          // 저장 상태(변경 없음)이면 서버 출석률을 그대로 쓴다 — 화면이 직접 계산하면 편입 전 회차·시작 전 출석·지각이
+          // 포함되어 백오피스 값과 어긋난다. 편집 중이면 미리보기를 위해 직접 계산하되, 아직 시작하지 않은 회차는 뺀다.
+          const upcomingIds = new Set(meetings.filter((m) => Date.parse(m.scheduledAt) > Date.now()).map((m) => m.id));
+          const rate =
+            pendingCount === 0
+              ? p.attendanceRate != null
+                ? Math.round(p.attendanceRate * 100)
+                : undefined
+              : calcRate(counted, upcomingIds);
           const pending = withdrawIds.includes(p.id);
 
           return (
@@ -638,10 +619,9 @@ export function AttendanceTabContent({
                     {canEdit && (
                       <span className='mr-1 flex w-4 shrink-0 sm:mr-1.5'>
                         {p.manageable && !p.leftAt && (
-                          <input
-                            type='checkbox'
-                            aria-label={`${p.name} 선택`}
-                            className={CHECKBOX}
+                          <Checkbox
+                            label={`${p.name} 선택`}
+                            hideLabel
                             checked={picked.has(p.id)}
                             disabled={saving}
                             onChange={() => pick(p.id)}
@@ -675,6 +655,7 @@ export function AttendanceTabContent({
                       // 저장 전이라 아직 중단이 아니다 — 칩 없이 되돌리기 아이콘만. 줄 색이 예정임을 말한다.
                       // 가리키면(키보드 포커스도) 오른쪽에 「중단 예정 취소」 말풍선 — 브라우저 title 은 늦게 떠서 쓰지 않는다
                       <button
+                        // ui-native: 출석부 줄의 되돌리기 아이콘 — 옆으로 뜨는 고유 말풍선이 붙어 IconButton 으로 담지 못한다
                         type='button'
                         aria-label={`${p.name} 중단 예정 취소`}
                         onClick={() => unmarkWithdraw(p.id)}
@@ -760,6 +741,7 @@ export function AttendanceTabContent({
                           }
                           return (
                             <button
+                              // ui-native: 출석부 칸 — 칸 전체가 누르는 곳이고 누를 때마다 상태가 돈다
                               type='button'
                               disabled={saving}
                               onClick={() => {

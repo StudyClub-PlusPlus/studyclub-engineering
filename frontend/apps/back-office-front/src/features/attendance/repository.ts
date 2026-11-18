@@ -1,4 +1,8 @@
-import { apiAttendanceSchema, emptyResponseSchema } from '@/features/attendance/response-schema';
+import {
+  apiAttendanceSchema,
+  apiAttendanceSummarySchema,
+  emptyResponseSchema,
+} from '@/features/attendance/response-schema';
 import { http, qs } from '@/lib/http';
 
 // 출석 탭의 서버 호출 — 백오피스 출석 명부 조회 · 저장 (specs/attendance/spec.md 「출석 명부 조회」 · 「출석 생성/수정 (upsert)」).
@@ -32,11 +36,12 @@ export type ApiAttendance = {
   }[];
 };
 
-export type AttendanceUpdate = { meetingId: number; participantId: number; status: ApiAttendanceStatus };
+/** status = null 은 미체크로 되돌리기 — 출석 행 삭제. */
+export type AttendanceUpdate = { meetingId: number; participantId: number; status: ApiAttendanceStatus | null };
 
 export type AttendanceSavePayload = {
   studyGroupId: number;
-  /** 바뀐 칸만. 같은 (회차, 참가자) 쌍이 두 번이면 400. 상태는 필수라 칸을 비우지는 못한다. */
+  /** 바뀐 칸만. 같은 (회차, 참가자) 쌍이 두 번이면 400. status = null 은 미체크 되돌리기(행 삭제). */
   updates: AttendanceUpdate[];
   /** 참여를 중단할 명부 행 ID. 둘 다 비면 400. */
   withdrawals: number[];
@@ -48,6 +53,10 @@ const attendanceRepository = {
   /** 반 출석 명부. `includeWithdrawn` 이면 참여를 중단한 사람(WITHDRAWN · DELETED)까지 — 출석부 맨 아래 흐린 줄. */
   fetchBook(studyId: number, studyGroupId: number, signal?: AbortSignal) {
     return http(`${BASE(studyId)}${qs({ studyGroupId, includeWithdrawn: 'true' })}`, apiAttendanceSchema, { signal });
+  },
+  /** 스터디 출석률 — 모든 반을 합친 가중평균. 상세 위 요약 카드 (specs/attendance 「스터디 출석률 요약」). */
+  fetchSummary(studyId: number, signal?: AbortSignal) {
+    return http(`${BASE(studyId)}/summary`, apiAttendanceSummarySchema, { signal });
   },
   /**
    * 출석과 참여 중단을 **한 요청 · 한 트랜잭션**으로. 204.

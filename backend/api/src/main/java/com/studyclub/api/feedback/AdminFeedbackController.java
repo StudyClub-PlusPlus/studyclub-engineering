@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -48,8 +50,10 @@ public class AdminFeedbackController {
             summary = "문의·오류 신고 상세",
             description = "제출 환경 · 회신 · 캡틴 전용 메모 · 지금 고를 수 있는 상태(selectableStatuses).")
     @GetMapping("/{feedbackId}")
-    public AdminFeedbackDetailResponse detail(@PathVariable Long feedbackId) {
-        return adminFeedbackService.detail(feedbackId);
+    public ResponseEntity<AdminFeedbackDetailResponse> detail(@PathVariable Long feedbackId) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(adminFeedbackService.detail(feedbackId));
     }
 
     @Operation(

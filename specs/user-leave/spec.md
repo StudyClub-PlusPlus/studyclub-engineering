@@ -69,6 +69,7 @@
 4. 아래를 **한 트랜잭션**으로 처리한다 — 하나만 지워지고 하나는 남는 중간 상태를 두지 않는다:
    - `ACCOUNT_LEAVE_REASON` 1행 insert (`reason`, `createdAt=now`). accountId 는 담지 않는다.
    - `ACCOUNT_IDENTITY` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 `UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID)` 에 걸려 [완료 기준 6](#완료-기준)이 깨진다).
+   - `REFRESH_TOKEN` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (발급된 refresh token 무효화 — 탈퇴 후 남은 token 으로 새 access token 을 발급받는 경로를 차단한다).
    - `STUDY_PARTICIPANT` WHERE `ACCOUNT_ID=accountId` 전부 `STATUS=DELETED` + `LEFT_AT=now` 로 전환 (물리 삭제 아님 — 지우면 `STUDY_ATTENDANCE` 가 갈 곳을 잃어 출석률 집계에서 전체 이력이 빠진다). 이 사람이 맡고 있던 네비게이터 자리가 사라진다. 공동 네비게이터가 없었다면 그 스터디는 네비게이터가 없는 상태가 되고, 있었다면 그 사람만 남는다 — 어느 쪽이든 시스템은 구분하지 않고 똑같이 처리한다.
    - `STUDY_BOOKMARK` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).
    - `STUDY_PROPOSAL_INTEREST` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).
@@ -460,6 +461,12 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 - 참여 중 스터디에 따른 디스코드 단독 연결 해제 제한과 회원 탈퇴는 별개. 탈퇴는 기존 계정 삭제 정책 적용.
 - Playground는 예시 회원 데이터·연동 상태·세션을 초기화하며 실제 `DELETE /api/me`를 호출하지 않음.
 
+
+## GA4·Amplitude·Clarity 개인정보 처리
+
+[분석 스펙](../analytics/spec.md#분석-개인정보-관리-2026-11-08)을 따른다. 문의 UI는 유지하고 ADMIN 전용 중단 API를 사용한다. 기존 관리자 문의 상세 응답에는 식별자 원문 없는 `analytics` 상태를 추가한다.
+탈퇴 트랜잭션에서 ACCOUNT_ANALYTICS에 중단을 저장하고 계정만 삭제한다. 외부 삭제는 커밋 뒤 시작하며 실패·진행 조회는 기존 일일 cleanup이 처리한다. GA4 전체 접수와 Amplitude 완료 후 탈퇴 회원의 분석 행을 제거한다. GA4 접수를 실제 삭제 완료로 표시하지 않는다.
+탈퇴 성공 뒤 브라우저에 저장하는 기존 중단 설정으로 Clarity도 신규 수집을 멈춘다. 로그아웃·새로고침 뒤에도 해당 브라우저는 중단 상태를 유지한다. Clarity의 기존 기록 삭제는 연동하지 않으며 별도 삭제 상태를 추가하지 않는다.
 
 ## 탈퇴에 따른 권한 말소 감사 기록 (2026-10-31)
 

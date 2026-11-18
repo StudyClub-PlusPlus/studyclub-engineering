@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // 도커 이미지 다이어트 — 실제 import 되는 의존성만 .next/standalone 에 번들한다.
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/*": ["./src/proto/mail/templates/event-announcement-email.html"],
+  },
   reactStrictMode: true,
   transpilePackages: ["@studyclub/mock", "@studyclub/ui", "@studyclub/types", "@studyclub/utils"],
 };

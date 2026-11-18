@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test:timezones": "node scripts/check-timezones.mjs",
     "test:user-dormancy": "node scripts/check-user-dormancy.mjs",
+    "test:events": "node scripts/check-events.mjs",
     "export-specs": "node scripts/export-specs.mjs"
   },
   "dependencies": {

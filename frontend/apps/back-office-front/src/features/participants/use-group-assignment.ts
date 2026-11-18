@@ -1,6 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { toast } from '@studyclub/ui';
 import { useIsMutating } from '@tanstack/react-query';
 
 import { participantKeys, useSaveGroupAssignments } from '@/features/participants/queries';
@@ -34,7 +35,6 @@ export function useGroupAssignment(
   // 재조회로 무의미해진 변경은 state 에서도 지운다. 남겨 두면 서버 반·역할이 다시 바뀔 때 되살아난다.
   // 렌더 중 갱신은 React 의 「props 에 맞춰 state 조정」 패턴이고, 칸 수가 같아지면 멈춘다.
   if (fieldCount(drafts) !== fieldCount(pendingChanges)) setDrafts(drafts);
-  const [notice, setNotice] = useState('');
   const mutation = useSaveGroupAssignments(studyId);
   const saving = useIsMutating({ mutationKey: participantKeys.assignments(studyId) }) > 0;
   const dirty = Object.keys(drafts).length > 0;
@@ -83,7 +83,6 @@ export function useGroupAssignment(
   // 원래 값으로 되돌린 칸은 위 drafts 계산이 빼 준다.
   function change(ids: number[], patch: Draft) {
     if (saving) return;
-    setNotice('');
     mutation.reset();
     setDrafts((current) => {
       const next = { ...current };
@@ -94,7 +93,6 @@ export function useGroupAssignment(
   function discard() {
     if (saving) return;
     setDrafts({});
-    setNotice('');
     mutation.reset();
   }
   function save() {
@@ -104,7 +102,10 @@ export function useGroupAssignment(
       {
         onSuccess: () => {
           setDrafts({});
-          setNotice('저장했습니다.');
+          toast.success('저장했습니다.');
+        },
+        onError: () => {
+          toast.error('저장에 실패했습니다. 다시 시도해 주세요.');
         },
       },
     );
@@ -127,7 +128,6 @@ export function useGroupAssignment(
     drafts,
     dirty,
     saving,
-    notice,
     mutation,
     change,
     discard,

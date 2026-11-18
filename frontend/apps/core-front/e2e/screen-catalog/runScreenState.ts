@@ -1,6 +1,7 @@
 import type { Page, TestInfo } from '@playwright/test';
 import { expect } from '@playwright/test';
 
+import { stubApiFixtures } from './adapters/apiFixtures';
 import { seedBrowserStorage } from './adapters/browserStorage';
 import { executeSteps } from './adapters/screenStep';
 import { waitForPageStable } from './waitForPageStable';
@@ -26,6 +27,11 @@ export async function runScreenState(
     await seedBrowserStorage(page, recipe.storage);
   }
 
+  // 2-1. API 고정 응답 (MSW 목에 없는 API 를 로컬 백엔드 상태와 상관없이 고정한다)
+  if (recipe.api && recipe.api.length > 0) {
+    await stubApiFixtures(page, recipe.api);
+  }
+
   // 3. 타겟 페이지 이동
   await page.goto(recipe.render.url, { waitUntil: 'domcontentloaded' });
   await expect(page).toHaveURL(new URL(recipe.render.url, testInfo.project.use.baseURL!).href);
@@ -40,6 +46,14 @@ export async function runScreenState(
 
   // 6. assertions
   if (assertions) {
+    for (const sel of assertions.withinViewport ?? []) {
+      const element = page.locator(sel).first();
+      await expect(element).toBeVisible();
+      const box = await element.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(16);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(VIEWPORTS[viewport].width - 16);
+    }
     for (const sel of assertions.visible ?? []) {
       await expect(page.locator(sel).first()).toBeVisible();
     }
@@ -52,6 +66,8 @@ export async function runScreenState(
   }
 
   // 7. 스크린샷 (visual regression)
+  // Next 개발 도구 말풍선(「N」 · 「1 Insight」)은 Next 판마다 글자가 바뀐다 — 화면 비교에서 뺀다
+  await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
   const snapshotName = `${state.id}--${viewport}.png`;
   await expect(page).toHaveScreenshot(snapshotName, {
     fullPage: screenshot?.fullPage ?? false,

@@ -1,6 +1,6 @@
 'use client';
 
-import { cx } from '@studyclub/ui';
+import { Select, cx } from '@studyclub/ui';
 
 /**
  * 거르는 칸 하나 (POL-0008). 고르기 전에는 축 이름만 보이고, 하나 고르면 첫 줄이 「전체」로 바뀌어 되돌아갈 길이 생긴다.
@@ -20,14 +20,12 @@ export function FilterSelect({
 }) {
   const all = value === 'ALL';
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={cx(
-        'h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand',
-        all ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
-      )}
+      className={cx('w-auto shrink-0', all ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg')}
     >
       <option value='ALL'>{all ? label : '전체'}</option>
       {options.map((o) => (
@@ -35,6 +33,6 @@ export function FilterSelect({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

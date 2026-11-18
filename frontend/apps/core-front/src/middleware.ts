@@ -15,7 +15,10 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // 0) 옛 도메인으로 들어오면 같은 경로의 studyclub.life 로 영구 이동 (@studyclub/utils)
-  const legacy = legacyRedirectUrl(req.headers.get('x-forwarded-host') ?? req.headers.get('host'), pathname + req.nextUrl.search);
+  const legacy = legacyRedirectUrl(
+    req.headers.get('x-forwarded-host') ?? req.headers.get('host'),
+    pathname + req.nextUrl.search,
+  );
   if (legacy) return NextResponse.redirect(legacy, 301);
   const first = pathname.split('/')[1] ?? '';
 
@@ -25,8 +28,17 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // /:locale/my · /:locale/onboarding 게이트
   const rest = pathname.slice(first.length + 1);
+
+  // 숨은 크레딧 페이지: /:locale/++ → /:locale/credits (폴더 이름에 + 를 못 쓴다). 주소창에는 /++ 가 남는다
+  const egg = rest.match(/^\/(?:\+\+|%2B%2B)(\/.*)?$/i);
+  if (egg) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/${first}/credits${egg[1] ?? ''}`;
+    return NextResponse.rewrite(url);
+  }
+
+  // /:locale/my · /:locale/onboarding 게이트
   const gated = rest === '/my' || rest.startsWith('/my/') || rest === '/onboarding' || rest.startsWith('/onboarding/');
   if (!gated) return NextResponse.next();
 

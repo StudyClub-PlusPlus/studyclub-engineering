@@ -96,6 +96,7 @@ export function TimeZonePicker({
         </label>
       )}
       <button
+        // ui-native: 시간대 고르기 열기 — 현재 시간대 · 시각을 보여 주는 고유 listbox 팝오버의 단추
         ref={trigger}
         id={`${id}-trigger`}
         type='button'
@@ -149,6 +150,7 @@ export function TimeZonePicker({
         >
           {ZONES.map((z, index) => (
             <button
+              // ui-native: 시간대 목록의 한 줄 — listbox 팝오버의 option
               type='button'
               role='option'
               aria-selected={value === z.zone}

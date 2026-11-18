@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.studyclub.api.analytics.AnalyticsDeletionCleanup;
 import com.studyclub.api.audit.AuditRetentionService;
 import com.studyclub.api.feedback.FeedbackRetentionService;
 import com.studyclub.api.upload.UploadService;
@@ -25,6 +26,7 @@ class CleanupSchedulerTest {
     private final FeedbackRetentionService feedback = mock(FeedbackRetentionService.class);
     private final UploadService storage = mock(UploadService.class);
     private final AuditRetentionService audit = mock(AuditRetentionService.class);
+    private final AnalyticsDeletionCleanup analytics = mock(AnalyticsDeletionCleanup.class);
     private final MeterRegistry registry = new SimpleMeterRegistry();
     private final ApplicationContextRunner context =
             new ApplicationContextRunner()
@@ -36,6 +38,7 @@ class CleanupSchedulerTest {
                     .withBean(FeedbackRetentionService.class, () -> feedback)
                     .withBean(UploadService.class, () -> storage)
                     .withBean(AuditRetentionService.class, () -> audit)
+                    .withBean(AnalyticsDeletionCleanup.class, () -> analytics)
                     .withBean(MeterRegistry.class, () -> registry);
 
     @Test
@@ -49,6 +52,7 @@ class CleanupSchedulerTest {
                             throw new IllegalStateException("test");
                         });
         when(storage.cleanUpWithResult(any())).thenReturn(CleanupResult.completed(0, 0));
+        when(analytics.cleanUp(any())).thenReturn(CleanupResult.completed(0, 0));
         when(audit.cleanUp(any())).thenReturn(new CleanupResult(1, 0, 2, false));
         context.withBean(DefaultTask.class)
                 .withPropertyValues("cleanup.initial-delay-ms=0")
@@ -66,6 +70,7 @@ class CleanupSchedulerTest {
                             verify(storage, timeout(3000).atLeastOnce())
                                     .cleanUpWithResult(any(Instant.class));
                             verify(audit, timeout(3000).atLeastOnce()).cleanUp(any(Instant.class));
+                            verify(analytics, timeout(3000).times(1)).cleanUp(any(Instant.class));
                             DefaultTask defaultTask = ctx.getBean(DefaultTask.class);
                             assertThat(defaultTask.ran.await(3, TimeUnit.SECONDS)).isTrue();
                             assertThat(defaultTask.thread).doesNotStartWith("data-cleanup-");
@@ -82,7 +87,7 @@ class CleanupSchedulerTest {
                 .run(
                         ctx -> {
                             assertThat(ctx).doesNotHaveBean(CleanupScheduler.class);
-                            verifyNoInteractions(feedback, storage, audit);
+                            verifyNoInteractions(feedback, storage, audit, analytics);
                         });
     }
 
@@ -94,7 +99,8 @@ class CleanupSchedulerTest {
                         "cleanup.initial-delay-ms=0",
                         "feedback.retention.enabled=false",
                         "upload.cleanup.enabled=false",
-                        "audit.retention.enabled=false")
+                        "audit.retention.enabled=false",
+                        "analytics.deletion.enabled=false")
                 .run(
                         ctx -> {
                             assertThat(
@@ -102,7 +108,7 @@ class CleanupSchedulerTest {
                                                     .ran
                                                     .await(3, TimeUnit.SECONDS))
                                     .isTrue();
-                            verifyNoInteractions(feedback, storage, audit);
+                            verifyNoInteractions(feedback, storage, audit, analytics);
                             assertThat(
                                             registry.get("cleanup.enabled")
                                                     .tag("task", "audit")

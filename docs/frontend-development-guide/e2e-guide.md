@@ -186,6 +186,17 @@ pnpm run test:e2e:catalog:update
 - 일반 비교 실행에서 허용 오차를 넘는 차이가 있으면 실패한다. CI에서도 실행하려면 워크플로에 카탈로그 명령과 브라우저 설치를 명시해야 한다.
 - 갱신 후에는 이미지를 열어 상태가 맞는지 확인하고, 업데이트 옵션 없이 다시 실행한다.
 - `waitForPageStable`의 대기는 네트워크 완료나 레이아웃 안정성을 보장하지 않는다. `main` 외에 그 상태만의 문구·컨트롤을 assertion으로 지정한다.
+- 스크린샷을 찍기 전에 Next 개발 도구 말풍선(`nextjs-portal`)을 숨긴다(`runScreenState.ts`). Next 판마다 「N」 · 「1 Insight」처럼 글자가 바뀌어 비교가 흔들리기 때문이다.
+- 기능 플래그로 숨긴 화면(`FEATURES.EVENTS` 등)은 `tags: ['excluded']` 로 빼 두고, 플래그를 켜면 다시 찍는다.
+- 화면이 새 API 를 부르기 시작하면 back-office 카탈로그는 「Every PRD catalog API request must have a fixture」로 실패한다 — `e2e/screen-catalog/stubPrd.ts` 의 `defaults` 에 그 경로의 고정 응답을 더한다.
+
+### 로컬에서 돌릴 때
+
+| 증상 | 원인 | 해결 |
+|---|---|---|
+| `Process from config.webServer was not able to start` — 로그에 Next 보안 업데이트 안내 | Next dev 서버가 첫 실행에 안내를 띄우고 멈춘다 | 같은 명령을 한 번 더 실행한다 |
+| back-office 에서 `Timed out waiting 30000ms from config.webServer` | 목 API 포트 4702 를 playground dev 서버가 쓰고 있다 | `APP_API_MOCK_PORT=4712 pnpm run test:e2e` |
+| back-office 스모크가 중간에 `/login` 으로 튕긴다 | 시험이 가로채지 않은 요청이 로컬 백엔드(Docker api, 28080)로 가서 401 을 받는다 — CI 에는 백엔드가 없다 | `NEXT_PUBLIC_API_BASE_URL=http://localhost:28999` 처럼 없는 주소를 주고 돌린다 |
 
 ---
 

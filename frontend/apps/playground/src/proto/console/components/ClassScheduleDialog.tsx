@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { classLabel, hasSchedule, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE, STUDY_TZS, WEEKDAY_LABELS, otherClock, tzAbbr, type ScheduleRule } from '@console/lib/schedule';
-import { Button, Input, Modal } from '@studyclub/ui';
+import { Button, Input, Modal, FilterChip } from '@studyclub/ui';
 
 /**
  * 반의 스터디 시간(요일 · 시각 · 시간대) — 일정 탭에서 연다.
@@ -80,19 +80,9 @@ export function ClassScheduleDialog({
               {WEEKDAY_LABELS.map((label, d) => {
                 const on = rule.weekdays.includes(d);
                 return (
-                  <button
-                    key={label}
-                    type='button'
-                    aria-pressed={on}
-                    onClick={() => toggleDay(d)}
-                    className={`h-9 w-9 rounded-control border type-label-lg transition-colors ${
-                      on
-                        ? 'border-brand bg-brand text-white'
-                        : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
-                    }`}
-                  >
+                  <FilterChip key={label} selected={on} selectMode='single' onClick={() => toggleDay(d)} className='w-9 justify-center px-0'>
                     {label}
-                  </button>
+                  </FilterChip>
                 );
               })}
             </div>
@@ -117,19 +107,9 @@ export function ClassScheduleDialog({
                 {STUDY_TZS.map((tz) => {
                   const on = rule.tz === tz.key;
                   return (
-                    <button
-                      key={tz.key}
-                      type='button'
-                      aria-pressed={on}
-                      onClick={() => setRule({ ...rule, tz: tz.key })}
-                      className={`h-10 rounded-control border px-3 type-label-lg transition-colors ${
-                        on
-                          ? 'border-brand bg-brand text-white'
-                          : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
-                      }`}
-                    >
+                    <FilterChip key={tz.key} selected={on} selectMode='single' onClick={() => setRule({ ...rule, tz: tz.key })}>
                       {tz.label} <span className='opacity-70'>{tzAbbr(tz.key, at)}</span>
-                    </button>
+                    </FilterChip>
                   );
                 })}
               </div>

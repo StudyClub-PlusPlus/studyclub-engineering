@@ -2,10 +2,14 @@ package com.studyclub.api.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.studyclub.domain.application.StudyApplication;
-import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.participant.StudyParticipant;
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
+import com.studyclub.domain.study.StudyGroup;
+import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
@@ -33,15 +37,17 @@ class StudyRecruitStatusIntegrationTest {
     @Autowired TestRestTemplate rest;
     @Autowired StudyProgramRepository studyProgramRepo;
     @Autowired StudyRepository studyRepo;
-    @Autowired StudyApplicationRepository applicationRepo;
     @Autowired StudyRecruitmentRepository recruitmentRepo;
+    @Autowired StudyGroupRepository studyGroupRepo;
+    @Autowired StudyParticipantRepository participantRepo;
 
     private final AtomicLong accountIdSeq = new AtomicLong(1);
 
     @BeforeEach
     void setUp() {
-        applicationRepo.deleteAll();
+        participantRepo.deleteAll();
         recruitmentRepo.deleteAll();
+        studyGroupRepo.deleteAll();
         studyRepo.deleteAll();
         studyProgramRepo.deleteAll();
         accountIdSeq.set(1);
@@ -166,16 +172,21 @@ class StudyRecruitStatusIntegrationTest {
                         .recruitDeadlineAt(recruitDeadline)
                         .recruitmentCapacity(capacity)
                         .build());
+        studyGroupRepo.save(new StudyGroup(study.getId(), "1반", Instant.now(), null, null));
         return study;
     }
 
+    /** 명부에 ACTIVE MEMBER 참여자를 추가한다 — 정원 판정은 명부 기준 (결정 D4-A). */
     private void enroll(Study study) {
-        var recruitment = recruitmentRepo.findByStudyId(study.getId()).get(0);
-        applicationRepo.save(
-                StudyApplication.builder()
+        var group = studyGroupRepo.findByStudyId(study.getId()).get(0);
+        participantRepo.save(
+                StudyParticipant.builder()
                         .accountId(accountIdSeq.getAndIncrement())
-                        .recruitmentId(recruitment.getId())
-                        .formAnswer("{}")
+                        .studyId(study.getId())
+                        .studyGroupId(group.getId())
+                        .status(ParticipantStatus.ACTIVE)
+                        .participantRole(ParticipantRole.MEMBER)
+                        .joinedAt(Instant.now())
                         .build());
     }
 
