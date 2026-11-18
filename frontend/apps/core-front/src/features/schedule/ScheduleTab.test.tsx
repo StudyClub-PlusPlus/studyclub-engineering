@@ -39,7 +39,6 @@ const data: ApiMeetingList = {
   })),
 };
 type Scope = Pick<typeof screen, 'getByRole'>;
-/** 시작 시각은 시 · 분 두 Select(TimeSelect). 묶음 이름으로 찾아 HH:mm 로 읽고 쓴다 */
 function timeSelects(name: string | RegExp, scope: Scope) {
   return within(scope.getByRole('group', { name })).getAllByRole('combobox') as HTMLSelectElement[];
 }

@@ -9,11 +9,7 @@ import type { SelectSize } from './Field';
 const pad = (n: number) => String(n).padStart(2, '0');
 const HOURS = Array.from({ length: 24 }, (_, h) => pad(h));
 
-/**
- * design-system.md §9-2 Time Select. 시(00~23) · 분 두 칸으로 고르는 시각 입력.
- * 브라우저 기본 `<input type="time">` 은 OS·언어마다 칸 모양이 달라(오전/오후 칸이 초처럼 보이는 등) 쓰지 않는다.
- * 값은 `HH:mm`(24시간) 문자열, 비었으면 `''`.
- */
+/** 시 · 분 두 Select 로 고르는 시각 입력 — design-system.md §9-2 Time Select. */
 export interface TimeSelectProps {
   /** `HH:mm` 또는 `''` */
   value: string;
@@ -22,10 +18,9 @@ export interface TimeSelectProps {
   helper?: string;
   error?: string;
   required?: boolean;
-  /** 보이는 라벨이 없을 때(표 칸) 묶음 이름. 두 칸은 「… 시」 · 「… 분」 으로 읽힌다 */
+  /** 보이는 라벨이 없을 때(표 칸) 묶음 이름 */
   'aria-label'?: string;
   size?: SelectSize;
-  /** 분 칸 간격. 기본 5분. 지금 값이 간격에 안 맞아도 그 분은 목록에 남긴다 */
   minuteStep?: number;
   disabled?: boolean;
   className?: string;
