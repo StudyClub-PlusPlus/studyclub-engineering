@@ -6,7 +6,7 @@
 > 결정: [share 10-24 디스코드 스쿼드 합의](../../docs/share/2026-10-24-discord-squad-agreement.md) 결정 7 · 8, 물어볼 것 1 · 5
 > 생성일: 2026-10-26
 > 상태: 구현완료
-> 작업: DSC-16 (봇 쪽 DSC-14 · DSC-15)
+> 작업: DSC-16 (봇 쪽 DSC-14 구현 · DSC-15 남음)
 
 ## 엔드포인트 목록
 
@@ -124,6 +124,14 @@
 
 ---
 
+## 봇이 보내는 쪽 (DSC-14)
+
+- 봇은 `on_member_update` 로 길드(`DISCORD_CONFIG_GUILD_ID`) 멤버의 role 변화를 본다. captain(`DISCORD_CONFIG_CAPTAIN_ROLE_ID`) · navigator(`DISCORD_CONFIG_NAVIGATOR_ROLE_ID`) 가 붙거나 떨어졌을 때만 `role-changes` 를 한 건씩 보낸다. 다른 role 변화는 보내지 않는다.
+- **봇이 자기 API(navigator · 스터디 role 창구)로 바꾼 것은 보내지 않는다.** 디스코드 이벤트에는 누가 바꿨는지가 없어서, 창구가 바꾸기 직전에 (멤버, role, 붙임/뗌) 을 적어 두고 그 이벤트 한 번을 건너뛴다. 적어 둔 것은 60초 뒤 버린다.
+- `API_BASE_URL` · `DISCORD_API_KEY` · `DISCORD_CONFIG_GUILD_ID` 중 하나라도 없으면 듣지 않고 시작할 때 경고 로그만 남긴다.
+- 보내기 실패(백엔드 응답 없음 · 204 아님)는 경고 로그만 남기고 다시 보내지 않는다. 하루 한 번 명단(DSC-15)이 메운다.
+- 구현: `discord/app/bot/role_watch.py` · `discord/app/backend_client.py` 의 `notify_role_change`
+
 ## 백엔드가 봇을 부를 때
 
 - `X-Discord-User-ID` 는 시스템 아이디(`DISCORD_CONFIG_BOT_ID`)다. 사람이 시킨 일이 아니다.
@@ -139,4 +147,5 @@
 ## 미확정
 
 - [NEEDS CLARIFICATION] captain 이 어긋날 때 alert 채널에 메시지까지 남길지 (준희 10-26: 「필요하면」). 지금은 로그만
+- 하루 한 번 명단(DSC-15, `role-members`)의 봇 쪽은 아직 없다. 그 전까지는 한 건 알림을 놓치면 메울 길이 없다
 - [NEEDS CLARIFICATION] `DISCORD_ROLE_SYNC_ENFORCE` 를 언제 켤지 — 지난 기수 네비게이터 role 을 어떻게 할지 운영과 정한 뒤

@@ -1,8 +1,8 @@
 """Calls the StudyClub backend.
 
 Everything else in this service answers calls *from* the backend; this is the
-one place that calls *out* to it. The contract is
-``specs/discord-attendance/spec.md``.
+one place that calls *out* to it. The contracts are
+``specs/discord-attendance/spec.md`` and ``specs/discord-role-sync/spec.md``.
 """
 
 from __future__ import annotations
@@ -92,6 +92,35 @@ async def mark_attendances(
         return _parse(response.json())
     except (ValueError, TypeError, KeyError, AttributeError) as exc:
         raise BackendError(response.status_code, f"unreadable 200 body: {exc}") from exc
+
+
+async def notify_role_change(
+    base_url: str,
+    api_key: str,
+    discord_user_id: str,
+    role: str,
+    change: str,
+    occurred_at: str,
+) -> None:
+    """Tell the backend a captain or navigator role was changed by hand.
+
+    ``role`` is ``CAPTAIN`` or ``NAVIGATOR``, ``change`` is ``ADDED`` or
+    ``REMOVED``. The backend answers 204 and reconciles on its own time.
+    """
+    url = f"{base_url.rstrip('/')}/api/discord/role-changes"
+    payload = {
+        "discordUserId": discord_user_id,
+        "role": role,
+        "change": change,
+        "occurredAt": occurred_at,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
+            response = await client.post(url, json=payload, headers={"X-API-Key": api_key})
+    except httpx.HTTPError as exc:
+        raise BackendUnreachable(str(exc)) from exc
+    if response.status_code != 204:
+        raise BackendError(response.status_code, _detail_of(response))
 
 
 def _detail_of(response: httpx.Response) -> str:
