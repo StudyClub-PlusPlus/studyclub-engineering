@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
@@ -72,7 +73,9 @@ public class StudyApplicationService {
         this.studyGroupRepository = studyGroupRepository;
     }
 
-    @Transactional
+    // READ_COMMITTED — 모집 회차 잠금 뒤의 정원 COUNT 가 먼저 들어온 신청의 커밋을 보게 한다.
+    // REPEATABLE READ 면 잠금 전 첫 일반 SELECT 에서 스냅샷이 고정돼, 마지막 한 자리에 둘이 들어온다 (bug-49)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Long submit(Long accountId, Long studyId, SubmitStudyApplicationRequest request) {
         Account account =
                 accountRepository
