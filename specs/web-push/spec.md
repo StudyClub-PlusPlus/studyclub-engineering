@@ -64,7 +64,7 @@ WebPushDispatcher: 템플릿 렌더 → JSON {title, body, url} → RFC 8291 암
 `WEB_PUSH_SUBSCRIPTION` — [ERD](../../docs/erd/WEB_PUSH_SUBSCRIPTION.md). `NOTIFICATION` 은 컬럼을 더하지 않았다:
 `RECIPIENT_TYPE` 에 `WEB_PUSH`, `EVENT_TYPE` 에 `ADMIN_PUSH` 값이 늘었을 뿐이다.
 
-템플릿 `ADMIN_PUSH`·`WEB_PUSH` 한 건을 V56 이 시딩한다 — 제목 `{{title}}`, 본문 `{{body}}`. **stage 는 Flyway off 라 V56 의 INSERT 를 한 번 손으로 적용한다.**
+템플릿 `ADMIN_PUSH`·`WEB_PUSH` 한 건을 V60 이 시딩한다 — 제목 `{{title}}`, 본문 `{{body}}`. **stage 는 Flyway off 라 V60 의 INSERT 를 한 번 손으로 적용한다.**
 템플릿이 없으면 보내기가 500 이다.
 
 발송 이력 응답의 `recipientValue` 는 웹 푸시면 「기기 #<구독 ID>」 — 기기 정보는 주지 않는다.

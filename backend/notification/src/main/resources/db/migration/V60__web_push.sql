@@ -1,4 +1,4 @@
--- V56: 웹 푸시 구독과 백오피스 직접 발송 템플릿 (specs/web-push/spec.md).
+-- V60: 웹 푸시 구독과 백오피스 직접 발송 템플릿 (specs/web-push/spec.md).
 -- stage 는 Flyway off(Hibernate update)라 표는 자동으로 생기지만 템플릿 INSERT 는 이 SQL 을 한 번 손으로 적용한다.
 CREATE TABLE WEB_PUSH_SUBSCRIPTION (
     ID            BIGINT        NOT NULL AUTO_INCREMENT,
