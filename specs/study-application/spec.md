@@ -1,6 +1,7 @@
 # 스터디 신청 API Spec
 
 > ERD: [STUDY](../../docs/erd/STUDY.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md) · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
+> 갱신: 2026-11-18 — 참여 중단(`WITHDRAWN`)된 사람은 같은 스터디에 다시 신청할 수 없다(`409 STUDY_WITHDRAWN`). 내 신청 여부는 스터디 전체 기준 `applied` 와 `withdrawn` 을 준다
 > 갱신: 2026-11-16 — 담당 캡틴 판정을 `STUDY.CREATED_BY` 에서 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md)). 처음 값은 만든 캡틴, 백오피스 신청자 탭에서 바꾼다
 > 생성일: 2026-09-19
 > 상태: 스펙작성중
@@ -324,8 +325,9 @@ GET 신청 폼 조회와 같은 shape.
 
 ### 처리
 
-1. 로그인 · `DISCORD_ID` 존재 · 같은 기수(모든 모집 회차)에 기존 신청이 없는지 · 기존 명부 · 열려 있는 모집 회차 · 정원 검사
+1. 로그인 · `DISCORD_ID` 존재 · 이 기수 명부에서 참여 중단(`WITHDRAWN`)되지 않았는지 · 같은 기수(모든 모집 회차)에 기존 신청이 없는지 · 기존 명부 · 열려 있는 모집 회차 · 정원 검사
 
+   **참여 중단된 사람은 같은 기수에 다시 신청할 수 없다** (2026-11-18). 명부 행이 `WITHDRAWN` 이면 신청서가 남아 있든 지워졌든 `409 STUDY_WITHDRAWN` 이다. 기존 신청 확인보다 먼저 본다. 다시 들이는 길은 [study-participant 미확정](../study-participant/spec.md#미확정)의 백오피스 복구다.
    기존 기수 신청 여부는 모집 기간과 답변 검사보다 먼저 확인한다. 저장 후 마감된 요청의 재시도도 `409` 이미 신청으로 응답하며 새 행을 만들지 않는다.
    이 기수 명부에 `ACTIVE`·`PAUSED`로 있으면 신청할 수 없다. 기존 신청 확인 다음, 모집 기간 검사 전에 확인한다.
    DB의 `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)`는 회차 안의 중복만 막는다. 기수 전체 중복을 막기 위해 계정 행을 잠근 상태에서 기존 신청 확인과 저장을 같은 트랜잭션으로 처리한다. **신청이 명부를 늘리므로** 정원 검사와 명부 insert 사이에 다른 신청이 끼지 않게 모집 회차 행도 잠근다 (마지막 한 자리에 두 명이 동시에 들어오지 않게).
@@ -335,7 +337,7 @@ GET 신청 폼 조회와 같은 shape.
    저장된 신청 폼이 없거나 `questions`가 배열이 아닌 손상된 폼은 서버 오류로 차단한다. 정상적인 `questions: []`는 기본 문항만 제출할 수 있다.
 4. `STUDY_PARTICIPANT` insert — `STATUS = ACTIVE` · `PARTICIPANT_ROLE = MEMBER` · `STUDY_GROUP_ID = 기본 반`(그 스터디에서 id 가 가장 작은 반) · `JOINED_AT = 지금`
 
-   기본 반이 없는 옛 스터디는 이때 「기본반」을 만든다 (모집 회차 행을 잠근 뒤라 둘이 생기지 않는다). 이 스터디 명부에 `WITHDRAWN`·`COMPLETED`·`DELETED` 로 남은 행이 있으면 새 행 대신 그 행을 되살린다 — `ACTIVE`·`MEMBER`, 반은 그대로, `JOINED_AT = 지금`, `LEFT_AT = NULL` (같은 반에 새 행을 만들면 `UNIQUE(ACCOUNT_ID, STUDY_GROUP_ID)` 에 걸린다)
+   기본 반이 없는 옛 스터디는 이때 「기본반」을 만든다 (모집 회차 행을 잠근 뒤라 둘이 생기지 않는다). 이 스터디 명부에 `COMPLETED`·`DELETED` 로 남은 행이 있으면(1단계를 지났으니 이 기수 신청서는 없다. 모집 회차를 지우면 신청서도 같이 지워진다) 새 행 대신 그 행을 되살린다 — `ACTIVE`·`MEMBER`, 반은 그대로, `JOINED_AT = 지금`, `LEFT_AT = NULL` (같은 반에 새 행을 만들면 `UNIQUE(ACCOUNT_ID, STUDY_GROUP_ID)` 에 걸린다)
 5. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
 6. 도메인 이벤트 `study_application.submitted` 와 `study_participant.joined` 를 발행한다 — 4단계에서 들어온 명부 행(새 행·되살린 행 모두)으로 낸다. 구독자는 커밋 뒤에 받는다 ([domain-events](../domain-events/spec.md)). 디스코드 스터디 role 부여(DSC-07)가 `joined` 를 듣는다
 7. 커밋. 이후 같은 기수 POST 는 `409`
@@ -356,12 +358,14 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 | 401 | UNAUTHORIZED | 미로그인 |
 | 403 | FORBIDDEN | `DISCORD_ID` 없음. 화면은 연동 팝업을 연다 |
 | 404 | NOT_FOUND | studyId 없음 또는 공개 상태가 아님(`STATUS != OPEN` 또는 숨김) |
+| 409 | STUDY_WITHDRAWN | 이 기수 명부에서 참여 중단됨. 화면은 버튼을 `참여 중단됨` 으로 바꾼다 |
 | 409 | CONFLICT | 이미 이 기수에 신청함 · 이미 참여 중 · 모집 마감 · 정원 초과. `errorMessage` 로 구분 |
 
 `errorMessage` (409):
 
 | 조건 | errorMessage |
 |------|----------------|
+| 참여 중단 (`STUDY_WITHDRAWN`) | `참여 중단된 스터디는 다시 신청할 수 없어요.` |
 | 이미 신청 | `이미 신청한 스터디입니다.` |
 | 이미 참여 중 | `이미 참여 중인 스터디입니다.` |
 | 모집 마감 | `모집이 마감되었습니다.` |
@@ -392,7 +396,9 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}/applications/me`
 - **인증**: 필요
-- **설명**: 이 기수의 **열려 있는 모집 회차**(없으면 가장 최근 회차)에 내 신청 행이 있는지 반환한다. 있으면 폼을 다시 열지 않는다.
+- **설명**: 이 기수(모든 모집 회차)에 내 신청 행이 있는지와 명부에서 참여 중단됐는지를 반환한다. 신청 제출의 중복 판정과 같은 범위다. 신청 행은 **열려 있는 모집 회차**(없으면 가장 최근 회차) 것을 먼저 보고, 없으면 다른 회차 중 가장 최근 행을 준다.
+
+화면: `withdrawn=true` 면 `참여 중단됨`(비활성), 아니고 `applied=true` 면 `신청 완료`(비활성). 둘 다 폼을 다시 열지 않는다.
 
 ### Response — 200
 
@@ -400,15 +406,17 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 {
   "applied": true,
   "applicationId": 42,
-  "submittedAt": "2026-09-19T12:00:00Z"
+  "submittedAt": "2026-09-19T12:00:00Z",
+  "withdrawn": false
 }
 ```
 
 | 필드 | 타입 | NULL | 설명 | 소스 |
 |------|------|------|------|------|
-| applied | Boolean | N | | 계산: 해당 회차에 내 `STUDY_APPLICATION` 존재 |
+| applied | Boolean | N | | 계산: 이 기수 모집 회차 어디든 내 `STUDY_APPLICATION` 존재 |
 | applicationId | Long | Y | `applied=false` 이면 null | STUDY_APPLICATION.ID |
 | submittedAt | String | Y | 행 생성 시각. `applied=false` 이면 null | STUDY_APPLICATION.CREATED_AT (`BaseEntity`) |
+| withdrawn | Boolean | N | 참이면 다시 신청할 수 없다 (신청 제출 `409 STUDY_WITHDRAWN`) | 계산: 이 기수 내 `STUDY_PARTICIPANT.STATUS = WITHDRAWN` |
 
 ### Error Responses
 
