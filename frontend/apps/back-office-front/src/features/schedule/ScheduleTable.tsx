@@ -2,7 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { Button, Checkbox, cx, Input, Modal, Segmented, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
+import {
+  Button,
+  Checkbox,
+  cx,
+  Input,
+  Modal,
+  Segmented,
+  Select,
+  SelectionCount,
+  TableActionBar,
+  TimeSelect,
+} from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
 import { AddMeetingDialog } from '@/features/schedule/AddMeetingDialog';
@@ -325,7 +336,7 @@ export function ScheduleTable({
                   </th>
                   <th className='w-24 px-4 py-3 text-center'>회차</th>
                   <th className='w-40 px-2 py-3'>일자</th>
-                  <th className='w-28 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
+                  <th className='w-44 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
                   <th className='w-60 px-2 py-3'>제목</th>
                   <th className='w-32 px-2 py-3 text-center'>발표자1</th>
                   <th className='w-32 px-2 py-3 text-center'>발표자2</th>
@@ -400,9 +411,9 @@ export function ScheduleTable({
                       </td>
                       <td className={cx(cell, 'tnum')}>
                         {editable ? (
-                          <CellInput
-                            type='time'
-                            label={`${meetingLabel(m)} 시작 시각 (${zoneLabel(zone)})`}
+                          <TimeSelect
+                            size='sm'
+                            aria-label={`${meetingLabel(m)} 시작 시각 (${zoneLabel(zone)})`}
                             value={wall.time}
                             error={errors.time}
                             onChange={(time) => changeWall(m, { time })}
@@ -489,7 +500,7 @@ function CellInput({
   error,
   onChange,
 }: {
-  type: 'date' | 'time';
+  type: 'date';
   label: string;
   value: string;
   error?: string;
