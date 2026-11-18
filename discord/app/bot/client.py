@@ -5,7 +5,7 @@ from __future__ import annotations
 import discord
 from discord.ext import commands
 
-from app.bot import bulletin, voice_monitor
+from app.bot import bulletin, role_watch, voice_monitor
 from app.bot.commands import (
     attendance_cmd,
     bulletin_cmd,
@@ -49,4 +49,6 @@ def create_bot(settings: Settings) -> commands.Bot:
     voice_monitor_cmd.register(bot, settings)
     attendance_cmd.register(bot, settings)
     config_cmd.register(bot, settings)
+    # Reports hand changes to captain/navigator to the backend (DSC-14).
+    role_watch.register(bot, settings)
     return bot

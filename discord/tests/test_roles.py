@@ -611,3 +611,17 @@ def test_the_fixed_navigator_path_wins_over_the_dynamic_one(method, tmp_path):
     attr = "add_roles" if method == "POST" else "remove_roles"
     for member in guild.targets.values():
         getattr(member, attr).assert_awaited_once_with(guild.navigator)
+
+
+
+@both
+def test_role_endpoints_mark_their_own_changes_for_the_role_watcher(tmp_path, method):
+    """So the role watcher does not report the bot's change back to the backend."""
+    from app.bot import role_watch
+
+    role_watch._own_changes.clear()
+    response = _call(_client(_bot(FakeGuild()), tmp_path), method)
+
+    assert response.status_code == 200
+    for uid in TARGET_IDS:
+        assert role_watch.consume_own_change(int(uid), NAVIGATOR_ROLE_ID, method == "POST")
