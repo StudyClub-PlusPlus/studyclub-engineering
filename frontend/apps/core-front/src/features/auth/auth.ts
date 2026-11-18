@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { sessionUserSchema } from './response-schema';
+import { BOOKMARK_KEY } from '@/features/bookmarks/storage';
 import { optOutAnalyticsLocally, suspendAnalytics } from '@/lib/analytics-privacy-state';
 import { API_BASE } from '@/lib/http';
 
@@ -114,6 +115,8 @@ export function clearSession(): void {
   suspendAnalytics();
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(USER_KEY);
+  // 로그인 전에 이 브라우저에 담은 하트 — 다음에 이 브라우저를 쓰는 사람에게 남기지 않는다
+  window.localStorage.removeItem(BOOKMARK_KEY);
   setSuggestedNickname(null);
   window.dispatchEvent(new Event(USER_CHANGED_EVENT));
 }
