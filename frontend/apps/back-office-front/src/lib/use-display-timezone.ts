@@ -1,31 +1,28 @@
 import { useSyncExternalStore } from 'react';
 
-/**
- * 유효한 IANA 시간대 ID를 반환하거나 판별 불가이면 `'Asia/Seoul'`.
- * 에러가 나거나 브라우저가 값을 주지 않으면 'Asia/Seoul'.
- */
-function detectZone(): string {
+import { getUser } from '@/features/auth/auth';
+
+export const FALLBACK_TIME_ZONE = 'Asia/Seoul';
+
+function profileZone(): string {
+  const zone = getUser()?.timeZone;
+  if (!zone) return FALLBACK_TIME_ZONE;
   try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (!tz) return 'Asia/Seoul';
-    new Intl.DateTimeFormat('en-US', { timeZone: tz }); // 유효성 검사
-    return tz;
+    new Intl.DateTimeFormat('en-US', { timeZone: zone });
+    return zone;
   } catch {
-    return 'Asia/Seoul';
+    return FALLBACK_TIME_ZONE;
   }
 }
 
 const noSubscription = () => () => {};
 
 /**
- * 화면에 날짜·시각을 표시할 때 쓸 시간대 (IANA ID).
- *
- * POL-0006: 프로필 시간대 → 브라우저 시간대 → 서울 순서.
- * 이 훅은 **브라우저 시간대 → 서울** 까지만 담당한다.
- * 프로필 시간대가 필요한 화면(대시보드 등)은 서버 응답의 `timeZone` 필드를 사용한다.
- *
- * SSR 에서는 하이드레이션 불일치를 막기 위해 'Asia/Seoul' 을 반환한다.
+ * 백오피스가 시각을 읽고 쓰는 기준 시간대 (IANA ID) — 로그인 때 받은 운영자 프로필 시간대(세션 user 의 `timeZone`), 없으면 서울.
+ * 브라우저 시간대는 쓰지 않는다: 같은 운영자가 다른 곳에서 열어도 화면마다 기준이 같아야 한다.
+ * 반 시간대가 본질인 일정 표·출석은 이 값 대신 반 시간대를 쓴다.
+ * 프로필을 바꾸면 다시 로그인한 뒤부터 반영된다. 서버 렌더에서는 세션을 모르므로 서울로 그린다.
  */
 export function useDisplayTimeZone(): string {
-  return useSyncExternalStore(noSubscription, detectZone, () => 'Asia/Seoul');
+  return useSyncExternalStore(noSubscription, profileZone, () => FALLBACK_TIME_ZONE);
 }

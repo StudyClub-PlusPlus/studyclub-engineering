@@ -6,6 +6,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NotificationHistoryPage from '@/app/notifications/page';
+import { USER_KEY } from '@/features/auth/auth';
 import { formatStamp } from '@/features/notifications/labels';
 import { RESEND_GIVE_UP_MS, RESEND_POLL_MS, RESEND_REQUEST_TIMEOUT_MS } from '@/features/notifications/queries';
 import type { ApiNotification, ApiNotificationPage, ApiNotificationResend } from '@/features/notifications/types';
@@ -220,7 +221,16 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  localStorage.removeItem(USER_KEY);
 });
+
+/** 로그인 때 받은 세션 user 에 프로필 시간대를 둔다. */
+function loginAs(timeZone: string) {
+  localStorage.setItem(
+    USER_KEY,
+    JSON.stringify({ id: 1, email: 'captain@example.com', nickname: '캡틴', picture: null, role: 'ADMIN', timeZone }),
+  );
+}
 
 describe('발송 이력 조회', () => {
   it('상태·조건·채널을 문구로 적고 수신 주소는 서버가 가린 값 그대로 적는다', async () => {
@@ -839,13 +849,22 @@ describe('시각은 줄마다 약칭 없이 시각만, 기준은 표 위에 한 
     renderPage();
     await screen.findAllByText('h***@example.com');
 
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    await waitFor(() => expect(screen.getByTestId('timezone-note')).toHaveTextContent(zone));
-    expect(screen.getAllByText(/내 시간대 기준/)).toHaveLength(1);
+    expect(screen.getByTestId('timezone-note')).toHaveTextContent('한국 · 서울 · KST');
+    expect(screen.getAllByText(/내 프로필 시간대 기준/)).toHaveLength(1);
+  });
+
+  it('프로필 시간대가 밴쿠버면 표의 시각과 기준 안내가 밴쿠버 기준이다', async () => {
+    loginAs('America/Vancouver');
+    fakeServer([row({ id: 1, createdAt: '2026-07-15T09:00:00Z', sentAt: null })]);
+    renderPage();
+    await screen.findByText('h***@example.com');
+    expect(screen.getByTestId('timezone-note')).toHaveTextContent('북미 서부 · 밴쿠버 · PCT');
+    const cells = within(table().getAllByRole('row')[1]!).getAllByRole('cell');
+    expect(cells[0]!.textContent).toBe('26. 07. 15. 02:00');
   });
 
   it('읽을 수 없는 값은 원문 그대로 둔다', () => {
-    expect(formatStamp('not-a-date')).toBe('not-a-date');
-    expect(formatStamp('2026-10-15T09:00:00Z')).toMatch(/^\d{2}\. \d{2}\. \d{2}\. \d{2}:\d{2}$/);
+    expect(formatStamp('not-a-date', 'Asia/Seoul')).toBe('not-a-date');
+    expect(formatStamp('2026-10-15T09:00:00Z', 'Asia/Seoul')).toBe('26. 10. 15. 18:00');
   });
 });

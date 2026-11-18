@@ -20,6 +20,8 @@ export const sessionUserSchema = z.object({
   nickname: z.string().nullable(),
   picture: z.string().nullable(),
   role: z.string(),
+  /** 운영자 프로필 시간대 (`ACCOUNT.TIME_ZONE`). 이 필드가 생기기 전에 로그인한 세션에는 없다. */
+  timeZone: z.string().nullable().optional(),
 });
 export type SessionUser = z.infer<typeof sessionUserSchema>;
 
