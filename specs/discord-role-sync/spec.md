@@ -31,7 +31,7 @@
 
 | role | 가져야 하는 사람 | 어긋나면 |
 |---|---|---|
-| navigator | 디스코드를 연동했고, 진행 중 스터디(`STUDY.STATUS` `OPEN` · `ONGOING`) 어디서든 명부가 `LEADER` · (`ACTIVE` · `PAUSED`) 인 계정 | 봇 navigator 창구로 붙이거나 뗀다 |
+| navigator | 디스코드를 연동했고, 안 끝난 스터디(`STUDY.STATUS` `OPEN` · `ONGOING` 이고 `Study.isEnded` 가 아님 — `END_AT` 이 지나면 빠진다, 2026-11-18 bug-37) 어디서든 명부가 `LEADER` · (`ACTIVE` · `PAUSED`) 인 계정 | 봇 navigator 창구로 붙이거나 뗀다 |
 | captain | 디스코드를 연동한 `SYSTEM_ROLE = ADMIN` 계정 | **경고 로그만** 남긴다. 봇에 captain role 창구가 없다 (준희 10-26) |
 
 - navigator 판정은 DSC-08 의 회수 조건(「다른 진행 중 스터디 어디에서도 활성 `LEADER` 가 아닐 때만 뗀다」)과 같은 식이다. 같은 조회(`StudyParticipantRepository.findNavigatorDiscordIds`)를 쓴다.

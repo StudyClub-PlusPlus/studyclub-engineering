@@ -205,7 +205,7 @@ public class Study extends BaseEntity {
             return null;
         }
         Instant now = Instant.now();
-        if (status == StudyStatus.CLOSED || (endAt != null && !now.isBefore(endAt))) {
+        if (isEnded(now)) {
             return StudyPhase.CLOSED;
         }
         if (startAt != null && !now.isBefore(startAt)) {
@@ -254,11 +254,38 @@ public class Study extends BaseEntity {
     }
 
     /**
-     * 운영자가 끝낸 스터디({@code ENDED} · {@code CLOSED}) — 명부를 더 바꾸지 않는다
-     * (specs/study-participant/spec.md).
+     * 날짜까지 읽은 지금 상태. 저장된 {@code STATUS} 는 {@code OPEN → ONGOING → ENDED} 로 넘어가지 않아(study-meeting 결정
+     * 5) 진행 중 · 종료는 {@code START_AT} · {@code END_AT} 경과로 판정한다. 쿼리판은 {@link StudyLifecycleQuery} —
+     * 한쪽만 고치면 어긋난다.
      */
+    public StudyStatus statusAsOf(Instant asOf) {
+        if (status == StudyStatus.DRAFT || status == StudyStatus.CLOSED) {
+            return status;
+        }
+        if (status == StudyStatus.ENDED || (endAt != null && !asOf.isBefore(endAt))) {
+            return StudyStatus.ENDED;
+        }
+        if (startAt != null && !asOf.isBefore(startAt)) {
+            return StudyStatus.ONGOING;
+        }
+        return status;
+    }
+
+    public boolean isOngoing(Instant asOf) {
+        return statusAsOf(asOf) == StudyStatus.ONGOING;
+    }
+
+    /**
+     * 끝난 스터디 — 운영자가 끝냈거나({@code ENDED} · {@code CLOSED}) {@code END_AT} 이 지났다. 명부 · 공지를 더 바꾸지 않는다
+     * (specs/study-participant/spec.md · specs/study-notice/spec.md).
+     */
+    public boolean isEnded(Instant asOf) {
+        StudyStatus current = statusAsOf(asOf);
+        return current == StudyStatus.ENDED || current == StudyStatus.CLOSED;
+    }
+
     public boolean isEnded() {
-        return status == StudyStatus.ENDED || status == StudyStatus.CLOSED;
+        return isEnded(Instant.now());
     }
 
     public void replaceApplicationForm(String applicationForm) {

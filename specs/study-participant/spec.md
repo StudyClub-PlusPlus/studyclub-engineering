@@ -109,7 +109,7 @@
 | 네비게이터 행 (`LEADER`) | 사용자 사이트: 403 `FORBIDDEN` — 운영진의 참여는 백오피스에서 담당 캡틴이 중단한다. 백오피스: 중단한다 (2026-10-23) |
 | 담당 캡틴의 명부 행 (`ACCOUNT_ID = STUDY.OWNER_CAPTAIN_ID`) | 403 `FORBIDDEN` — 같은 이유. `OWNER_CAPTAIN_ID` 가 NULL 이면 해당 없음 |
 | `DELETED` (회원 탈퇴) · `COMPLETED` | 409 `PARTICIPANT_NOT_ACTIVE` |
-| 끝난 스터디 (`STUDY.STATUS ∈ {ENDED, CLOSED}`) | 409 `STUDY_ENDED` |
+| 끝난 스터디 (`Study.isEnded` — `STUDY.STATUS ∈ {ENDED, CLOSED}` 이거나 `END_AT` 경과, 2026-11-18 bug-37) | 409 `STUDY_ENDED` |
 | 이미 `WITHDRAWN` | 그대로 둔다(멱등). `LEFT_AT` 을 덮어쓰지 않는다 |
 
 ### 서버 동작
@@ -144,7 +144,7 @@
 | 400 | CANNOT_WITHDRAW_SELF | 호출자 자신의 행 |
 | 403 | FORBIDDEN | 권한 없음(백오피스는 담당 캡틴이 아님) · 다른 분반 · 대상이 네비게이터(사용자 사이트만) · 담당 캡틴 |
 | 409 | PARTICIPANT_NOT_ACTIVE | 대상이 `DELETED` · `COMPLETED` |
-| 409 | STUDY_ENDED | 스터디가 `ENDED` · `CLOSED` |
+| 409 | STUDY_ENDED | 스터디가 `ENDED` · `CLOSED` 이거나 `END_AT` 이 지났다 (`Study.isEnded`) |
 
 ### 테스트 (통합)
 
