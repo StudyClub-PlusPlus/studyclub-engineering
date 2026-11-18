@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { apiStudyApplicationFormSchema } from './response-schema';
+import { apiMyApplicationSchema, apiStudyApplicationFormSchema } from './response-schema';
 
 const form = {
   studyId: 190,
@@ -40,5 +40,22 @@ describe('application form response contract', () => {
       questions: [{ id: 'q2', label: '고르기', type: 'RADIO', required: false, options: ['A', 'B'], allowOther: true }],
     });
     expect(parsed.questions[0]).toMatchObject({ options: ['A', 'B'], allowOther: true });
+  });
+});
+
+describe('my application response contract', () => {
+  it('참여 중단된 신청은 withdrawn=true 로 읽는다', () => {
+    const parsed = apiMyApplicationSchema.parse({
+      applied: true,
+      applicationId: 42,
+      submittedAt: '2026-09-19T12:00:00Z',
+      withdrawn: true,
+    });
+    expect(parsed.withdrawn).toBe(true);
+  });
+
+  it('withdrawn 칸이 없는 옛 응답은 참여 중단이 아닌 것으로 읽는다', () => {
+    const parsed = apiMyApplicationSchema.parse({ applied: false, applicationId: null, submittedAt: null });
+    expect(parsed.withdrawn).toBe(false);
   });
 });

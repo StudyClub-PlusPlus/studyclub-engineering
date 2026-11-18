@@ -40,6 +40,8 @@ public enum ErrorCode {
     OWNER_CAPTAIN_NOT_ADMIN(409, "캡틴만 담당 캡틴이 될 수 있습니다."),
     /** 참여 중인 스터디가 있는데 디스코드 연결을 해제하려 함. 마이페이지가 「내 스터디 확인하기」 안내로 분기 (specs/profile-edit/spec.md) */
     DISCORD_UNLINK_BLOCKED(409, "참여 중인 스터디가 있어 디스코드 연결을 해제할 수 없습니다."),
+    /** 이 스터디에서 참여 중단(WITHDRAWN)된 사람이 다시 신청함. 화면은 신청 버튼을 「참여 중단됨」으로 바꾼다 (specs/study-application) */
+    STUDY_WITHDRAWN(409, "참여 중단된 스터디는 다시 신청할 수 없어요."),
     /** 신청 폼이 없거나 질문이 0개 — publish 차단. FE 가 별도 안내 화면으로 분기 */
     APPLICATION_FORM_REQUIRED(409, "신청 폼을 먼저 연결하세요."),
     /** 처음 보는 (issuer, sub) 인데 같은 이메일 계정이 이미 있음 → 새 계정 안 만들고 연결 유도. 프론트가 별도 안내 화면으로 분기 */

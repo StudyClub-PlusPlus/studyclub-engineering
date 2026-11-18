@@ -2,6 +2,7 @@ export type ApiMyApplication = {
   applied: boolean;
   applicationId: number | null;
   submittedAt: string | null;
+  withdrawn: boolean;
 };
 
 export type SubmitApplicationPayload = {
