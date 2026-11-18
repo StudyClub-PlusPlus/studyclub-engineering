@@ -48,7 +48,8 @@ class StudyListJpqlDao implements StudyListDao {
     /** 단계 등수 — 0 모집 중 · 1 진행 중 · 2 종료. {@link StudyPhase} 선언 순서와 같다. */
     private static final String PHASE_RANK =
             "CASE"
-                    + " WHEN s.status = com.studyclub.domain.study.StudyStatus.CLOSED"
+                    + " WHEN s.status IN (com.studyclub.domain.study.StudyStatus.ENDED,"
+                    + " com.studyclub.domain.study.StudyStatus.CLOSED)"
                     + "   OR (s.endAt IS NOT NULL AND s.endAt <= :now) THEN 2"
                     + " WHEN s.startAt IS NOT NULL AND s.startAt <= :now THEN 1"
                     + " WHEN ("
