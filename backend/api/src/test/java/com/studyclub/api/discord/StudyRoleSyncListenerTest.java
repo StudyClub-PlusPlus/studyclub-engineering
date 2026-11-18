@@ -377,6 +377,51 @@ class StudyRoleSyncListenerTest {
     }
 
     @Test
+    void LEADER_회수가_늦어_그사이_옛_ID_를_네비게이터인_다른_계정이_이어받았으면_navigator_role_을_둔다() {
+        linkedAccount(null);
+        isNavigatorElsewhere(false);
+        Account other = mock(Account.class);
+        when(other.getId()).thenReturn(99L);
+        when(accounts.findByDiscordId(DISCORD_USER_ID)).thenReturn(Optional.of(other));
+        when(participants.existsActiveNavigatorInAnyActiveStudy(99L)).thenReturn(true);
+        when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onWithdrawn(
+                new StudyParticipantWithdrawn(
+                        EventMeta.now(1L),
+                        STUDY_ID,
+                        100L,
+                        ACCOUNT_ID,
+                        ParticipantRole.LEADER,
+                        DISCORD_USER_ID));
+
+        verify(bot, never()).removeNavigatorRole(any(), any(), any());
+    }
+
+    @Test
+    void 옛_ID_를_이어받은_다른_계정이_네비게이터가_아니면_navigator_role_을_뗀다() {
+        linkedAccount(null);
+        isNavigatorElsewhere(false);
+        Account other = mock(Account.class);
+        when(other.getId()).thenReturn(99L);
+        when(accounts.findByDiscordId(DISCORD_USER_ID)).thenReturn(Optional.of(other));
+        when(participants.existsActiveNavigatorInAnyActiveStudy(99L)).thenReturn(false);
+        when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
+        when(bot.removeNavigatorRole(anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onWithdrawn(
+                new StudyParticipantWithdrawn(
+                        EventMeta.now(1L),
+                        STUDY_ID,
+                        100L,
+                        ACCOUNT_ID,
+                        ParticipantRole.LEADER,
+                        DISCORD_USER_ID));
+
+        verify(bot).removeNavigatorRole(SYSTEM_ID, GUILD_ID, List.of(DISCORD_USER_ID));
+    }
+
+    @Test
     void MEMBER가_중단되면_navigator_role_을_건드리지_않는다() {
         when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
 

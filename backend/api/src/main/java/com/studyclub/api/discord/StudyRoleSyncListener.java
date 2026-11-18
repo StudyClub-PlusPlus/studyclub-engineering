@@ -253,6 +253,14 @@ public class StudyRoleSyncListener {
                     accountId);
             return;
         }
+        if (!holds && navigatorHeldByAnotherAccount(discordUserId.get(), accountId)) {
+            log.info(
+                    "{} {}: 계정 {} 의 디스코드 ID 는 네비게이터인 다른 계정으로 옮겨 가 navigator role 을 둔다",
+                    eventName,
+                    meta.eventId(),
+                    accountId);
+            return;
+        }
         String requesterId = discordBotClient.systemUserId();
         List<String> users = List.of(discordUserId.get());
         // navigator role 은 길드에 하나라 스터디가 없다 — discordStudyId 는 봇이 로그에만 쓰므로 길드 ID 를 싣는다
@@ -283,6 +291,18 @@ public class StudyRoleSyncListener {
                         owner ->
                                 studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(
                                         studyId, owner.getId(), HOLDS_ROLE))
+                .isPresent();
+    }
+
+    // 회수가 늦게 돌아 그사이 같은 디스코드 ID 를 다른 계정이 이어받았고 그 계정이 네비게이터면, 옛 계정의 회수로 role 을 떼지 않는다 (bug-52)
+    private boolean navigatorHeldByAnotherAccount(String discordUserId, Long accountId) {
+        return accountRepository
+                .findByDiscordId(discordUserId)
+                .filter(owner -> !owner.getId().equals(accountId))
+                .filter(
+                        owner ->
+                                studyParticipantRepository.existsActiveNavigatorInAnyActiveStudy(
+                                        owner.getId()))
                 .isPresent();
     }
 
