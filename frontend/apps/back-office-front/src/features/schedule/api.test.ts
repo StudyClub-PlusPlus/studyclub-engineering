@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { toMeetings, toPeople } from '@/features/schedule/api';
+import { toMeetings, toPeople, toUpdateBody } from '@/features/schedule/api';
 import type { ApiGroupMeetings } from '@/features/schedule/repository';
 
 const res: ApiGroupMeetings = {
@@ -66,5 +66,28 @@ describe('반 회차 목록 응답', () => {
       { id: '78', name: '건우' },
       { id: '90', name: '떠난크루' },
     ]);
+  });
+});
+
+describe('회차 수정 본문', () => {
+  // 밴쿠버 2026-11-01 은 서머타임이 끝나는 날 — 01:30 이 PDT(08:30Z) · PST(09:30Z) 두 번 온다.
+  const tz = 'America/Vancouver';
+
+  it('겹치는 시각의 두 번째 회차에서 제목만 고치면 예정 시각을 그대로 보낸다', () => {
+    const body = toUpdateBody(
+      { date: '2026-11-01', time: '01:30', title: '2장', scheduledAt: '2026-11-01T09:30:00.000Z' },
+      tz,
+    );
+    expect(body.scheduledAt).toBe('2026-11-01T09:30:00.000Z');
+    expect(body.title).toBe('2장');
+  });
+
+  it('일자 · 시각을 고쳤으면 반 시간대로 다시 계산한다', () => {
+    const body = toUpdateBody(
+      { date: '2026-11-08', time: '01:30', title: '', scheduledAt: '2026-11-01T09:30:00.000Z' },
+      tz,
+    );
+    expect(body.scheduledAt).toBe('2026-11-08T09:30:00.000Z');
+    expect(body.title).toBeNull();
   });
 });

@@ -90,8 +90,12 @@ export function useAddMeetings(studyId: number, groupId: number, tz: string) {
 /** 표의 고친 줄 → 수정 본문. 발표자 칸은 넘긴 것만 싣는다 — 그 사이 크루가 신청한 칸을 덮지 않는다. */
 export function toUpdateBody(patch: MeetingPatch, tz: string): MeetingUpdatePayload {
   const presenter = (v: string | null) => (v ? Number(v) : null);
+  // 일자 · 시각을 안 고쳤으면 원래 순간을 그대로 — 서머타임이 끝나는 날 01:30 처럼 두 번 오는 벽시계는
+  // 다시 계산하면 첫 번째 순간이 골라져, 제목만 고쳐도 1시간 당겨진다.
+  const original = patch.scheduledAt ? wallParts(new Date(patch.scheduledAt), tz) : undefined;
+  const unchanged = original?.date === patch.date && original.time === patch.time;
   return {
-    scheduledAt: zonedInstant(patch.date, patch.time, tz).toISOString(),
+    scheduledAt: unchanged ? patch.scheduledAt! : zonedInstant(patch.date, patch.time, tz).toISOString(),
     title: patch.title.trim() || null,
     ...(patch.presenter1 !== undefined && { presenter1ParticipantId: presenter(patch.presenter1) }),
     ...(patch.presenter2 !== undefined && { presenter2ParticipantId: presenter(patch.presenter2) }),
