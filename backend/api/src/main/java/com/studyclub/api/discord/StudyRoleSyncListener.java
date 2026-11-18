@@ -294,7 +294,7 @@ public class StudyRoleSyncListener {
                 .isPresent();
     }
 
-    // 회수가 늦게 돌아 그사이 같은 디스코드 ID 를 다른 계정이 이어받았고 그 계정이 네비게이터면, 옛 계정의 회수로 role 을 떼지 않는다 (bug-52)
+    // 회수가 늦게 도는 사이 같은 디스코드 ID 를 이어받은 계정이 네비게이터면 옛 계정의 회수로 role 을 떼지 않는다
     private boolean navigatorHeldByAnotherAccount(String discordUserId, Long accountId) {
         return accountRepository
                 .findByDiscordId(discordUserId)
