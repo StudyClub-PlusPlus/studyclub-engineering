@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { sessionUserSchema } from './response-schema';
+import { BOOKMARK_KEY } from '@/features/bookmarks/storage';
 import { optOutAnalyticsLocally, suspendAnalytics } from '@/lib/analytics-privacy-state';
 import { API_BASE } from '@/lib/http';
 
@@ -114,6 +115,7 @@ export function clearSession(): void {
   suspendAnalytics();
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(USER_KEY);
+  window.localStorage.removeItem(BOOKMARK_KEY);
   setSuggestedNickname(null);
   window.dispatchEvent(new Event(USER_CHANGED_EVENT));
 }
