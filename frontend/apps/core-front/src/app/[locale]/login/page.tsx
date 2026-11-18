@@ -43,7 +43,6 @@ function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const locale = (params?.locale as string) ?? 'ko';
-  // 보던 화면으로 돌아간다. 바깥 주소·로그인 화면 자체는 /my 로 (open redirect 방지)
   const next = returnPath(search.get('next'), locale as Locale);
 
   const [loading, setLoading] = useState(false);
