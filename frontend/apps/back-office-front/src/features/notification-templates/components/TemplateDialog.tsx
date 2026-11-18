@@ -178,8 +178,10 @@ function TemplateEditor({
       footer={
         confirmDelete ? (
           <>
-            {/* 결정을 묻는 단계 — 안전한 쪽이 기본 포커스 (POL-0008) */}
+            {/* 결정을 묻는 단계 — 안전한 쪽이 기본 포커스 (POL-0008).
+                key 로 새로 붙인다 — 앞 단계의 「템플릿 삭제」 Button 자리를 물려받으면 autoFocus 가 돌지 않는다 */}
             <Button
+              key='confirm-cancel'
               variant='secondary'
               autoFocus
               data-autofocus
@@ -196,14 +198,15 @@ function TemplateEditor({
           <>
             {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}
             {editing && (
-              <button
+              <Button
                 type='button'
+                variant='danger'
                 onClick={() => setConfirmDelete(true)}
                 disabled={busy || gone}
-                className='mr-auto h-10 type-label-lg text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
+                className='mr-auto'
               >
                 템플릿 삭제
-              </button>
+              </Button>
             )}
             <Button onClick={save} disabled={blocked || gone} loading={create.isPending || update.isPending}>
               {editing ? '저장' : '추가'}
@@ -242,7 +245,7 @@ function TemplateEditor({
             ))}
           </Select>
           {moveWarning && (
-            <p role='status' className='-mt-2 type-body-sm text-danger-fg'>
+            <p role='alert' className='-mt-2 type-body-sm text-danger-fg'>
               {moveWarning}
             </p>
           )}

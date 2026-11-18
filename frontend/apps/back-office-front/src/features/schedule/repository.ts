@@ -36,6 +36,7 @@ export type ApiGroupMeetings = {
     startTime: string | null;
     navigatorName: string | null;
     rules: string | null;
+    daysOfWeek: string[] | null;
   };
   me: { participantId: number | null; canEdit: boolean };
   /** 발표자 후보 — 그 반 활성 참여자, 이름순. */

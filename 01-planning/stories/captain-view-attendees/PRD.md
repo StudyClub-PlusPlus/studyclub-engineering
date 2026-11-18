@@ -2,7 +2,7 @@
 
 기준 프로토타입: 스터디 운영 — 신청자 탭 참여 크루 명단 (playground 운영 콘솔 · 스터디 운영)
 
-관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md) · [10-18 일정·출석 화면 피드백](../../../docs/share/2026-10-18-schedule-attendance-feedback.md)
+관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md) · [10-18 일정·출석 화면 피드백](../../../docs/share/2026-10-18-schedule-attendance-feedback.md) · [11-16 담당 캡틴 지정](../../../docs/share/2026-11-16-owner-captain-assignable.md)
 
 ## 1. 기본설명
 
@@ -12,6 +12,7 @@
 flowchart LR
   A["스터디 관리 목록"] --> B["스터디 운영"]
   B --> C["신청자 탭"]
+  C --> G["담당 캡틴 고르기 — 즉시 저장"]
   C --> D["참여 크루 명단"]
   D --> E{"역할 변경?"}
   E -->|예| F["네비게이터 지정 반영"] --> D
@@ -27,6 +28,7 @@ flowchart LR
 6. 반 · 지역 드롭다운 필터 — 제목 아래 줄. 둘 다 고르면 둘 다 맞는 크루만
 7. 체크박스로 여러 명을 골라 반 · 역할 일괄 변경. 표 맨 위 작업 바 「n명 선택」 · 「반 변경」 · 「역할 변경」 (마우스로 고르는 순간(키보드는 화살표로 옮긴 뒤 Enter 를 누르거나 칸을 떠날 때) 적용, 「적용」 버튼 없음), 저장으로 반영. 고르기 전에는 드롭다운이 옅은 회색
 8. 머리 아래 요약 카드(진행 일정 · 참석자 · 출석률)가 어느 탭에서나 보인다. 출석률은 모든 반을 합친 서버 값
+9. 담당 캡틴 확인 및 변경 — 캡틴 계정 중 하나, 고르는 즉시 저장. 저장 중 드롭다운 잠김
 
 ## 2. 화면명세
 
@@ -91,12 +93,29 @@ flowchart LR
 - **데이터**: `STUDY_PARTICIPANT.PARTICIPANT_ROLE` (쓰기)
 - **조건**: 신청자 탭을 보고 있을 때
 
+### 4. 담당 캡틴
+
+- **내용**: 신청자 탭 맨 위 카드 — 「담당 캡틴」 · 지금 담당 캡틴 드롭다운 · 「신청 폼 수정 · 참여 중단 · 사이트 일정 관리를 맡습니다. 참여하지 않아도 됩니다.」
+- **동작**
+  - 고르면 바로 저장한다. 저장하는 동안 드롭다운이 잠기고 옆에서 하나가 돈다
+  - 저장된 뒤 칸이 바뀌고 「담당 캡틴을 바꿨습니다.」. 같은 사람을 고르면 아무 일도 일어나지 않는다
+- **정책**
+  - 스터디당 한 명. 스터디를 만들면 만든 캡틴이 담당 캡틴이다
+  - 명부와 따로 선다 — 참여하지 않는 캡틴도 담당 캡틴이다
+  - 바꾸는 사람은 캡틴이면 누구나. 고를 수 있는 사람은 캡틴 계정뿐 ([POL-0001](../../_registry/policies/POL-0001-roles.md))
+  - 저장되기 전에는 지금 값 그대로 둔다
+- **데이터**: `STUDY.OWNER_CAPTAIN_ID` (쓰기) · 후보 `ACCOUNT.SYSTEM_ROLE = ADMIN`
+- **조건**: 신청자 탭을 보고 있을 때
+
 ### 상태별 화면
 
 | 상태 | 화면 | 카피 |
 | --- | --- | --- |
 | 기본 | 머리 · 명단 · 인원 | `참여 크루 N/M` |
 | 공개 전 | 머리 | `미공개` · 「사이트 공개」 스위치 꺼짐 |
+| 담당 캡틴 없음 | 담당 캡틴 칸 | `없음 · 캡틴 누구나` |
+| 담당 캡틴 저장 중 | 담당 캡틴 칸 | 드롭다운 잠김 · 옆에 스피너 |
+| 담당 캡틴 저장 실패 | 담당 캡틴 칸 · 토스트 | 지금 값 그대로. 서버 문구(예: `캡틴만 담당 캡틴이 될 수 있습니다.`) |
 
 ### 데이터 관계
 
@@ -119,7 +138,6 @@ erDiagram
 ### 비고
 
 - 범위 밖: 반 편성 — [captain-assign-classes](../captain-assign-classes/PRD.md), 회차별 출석 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md), 제명
-- 미구현: 역할 지정은 화면에서만 처리한다. 저장 API 가 없다
 
 <!-- spec:start attendee -->
 
@@ -266,6 +284,37 @@ erDiagram
 - **정책**: 운영자가 디스코드에서 그 사람을 찾을 때 쓴다. 신청할 때 받은 값으로 계정에 저장된다
 - **데이터**: ACCOUNT.DISCORD_NICKNAME
 
+### 4 — 담당 캡틴
+
+- **조건**: 신청자 탭을 보고 있을 때
+- **내용**: 신청자 탭 맨 위 카드 — 「담당 캡틴」과 지금 담당 캡틴 이름
+- **정책**
+  - **스터디당 한 명이다.** 스터디를 만들면 만든 캡틴이 담당 캡틴이 된다
+  - **명부와 따로 선다** — 참여하지 않는 캡틴도 담당 캡틴이다. 참여하려면 크루처럼 신청하고, 그러면 참여 크루 명단에 같은 줄로 나온다
+  - 담당 캡틴만 하는 일: 신청 폼 수정 · 출석부에서 참여 중단 · 사용자 사이트 일정 관리 ([POL-0001](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0001-roles.md))
+  - 담당 캡틴이 비어 있는 스터디(탈퇴 · 끝난 스터디에서 권한 해제)는 담당 캡틴의 일을 캡틴 누구나 한다
+- **데이터**: STUDY.OWNER_CAPTAIN_ID → ACCOUNT.NICKNAME
+
+#### 4-1 — 담당 캡틴 고르기
+
+- **조건**: 신청자 탭을 보고 있을 때
+- **내용**: 드롭다운 — 캡틴 계정 전체. 저장하는 동안 드롭다운이 잠기고 옆에서 하나가 돈다
+- **동작**
+  - 고르면 바로 저장한다 — 명단의 반 · 역할처럼 모았다가 「저장」하지 않는다
+  - 저장된 뒤에 칸이 바뀌고 「담당 캡틴을 바꿨습니다.」를 알린다. 지금과 같은 사람을 고르면 아무 일도 일어나지 않는다
+- **정책**
+  - 바꾸는 사람은 캡틴이면 누구나다 — 지금 담당 캡틴이 아니어도 된다
+  - 고를 수 있는 사람은 캡틴 계정뿐이다. 크루는 목록에 나오지 않는다
+  - 저장되기 전에는 지금 값 그대로 둔다 — 실패해도 바뀐 것처럼 남지 않게
+- **데이터**
+  - PATCH /api/admin/studies/{studyId}/owner-captain { accountId }
+  - 후보: GET /api/admin/users?role=CAPTAIN&limit=100
+
+#### 4-2 — 담당 캡틴 안내
+
+- **조건**: 신청자 탭을 보고 있을 때
+- **내용**: 「신청 폼 수정 · 참여 중단 · 사이트 일정 관리를 맡습니다. 참여하지 않아도 됩니다.」
+
 <!-- spec:end attendee -->
 
 
@@ -277,14 +326,17 @@ erDiagram
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
 > 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
+> 2026-11-16 갱신 — 담당 캡틴 칸 줄 추가.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | FE | back-office-front 신청자 탭 | 있음 (#302 · 역할 2026-10-31) — `ParticipantsTab`: 참여 크루 명단 · 행 반 · 역할 드롭다운 · 체크박스 반 · 역할 일괄 변경 · 저장 바. #302 는 반만 붙였고 역할(3-2 드롭다운 · 3-7 「역할 변경」)은 같은 저장 흐름에 2026-10-31 붙였다. `ApplicationsTab` 은 지웠다. `CrewTab` 은 mock 이고 쓰지 않는다 | 없음 — 명단 `GET` 은 구현됐다(#324). 10-18 변경 표는 모두 반영 |
 | BE | `GET /api/admin/studies/{studyId}/applications` 의 `completionRate` | 구현완료 | 신청자 탭에서 쓰지 않는다. 다른 화면이 쓰지 않으면 응답에서 뺄지 정한다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
-| BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 구현완료 (#324) · 구현완료 (#303) | 없음 |
+| BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 구현완료 (#324) · 구현완료 (#303) · `ownerCaptain` 구현완료 (2026-11-16) | 없음 |
 | FE | back-office-front 요약 카드 출석률 (1-4) | 있음 (2026-11-16) — `StudyConsole` 의 `Stat` 이 `useStudyAttendanceRate` 값을 그린다. 전에는 「-」 고정 | 없음 |
 | BE | `GET /api/admin/studies/{studyId}/attendances/summary` | 구현완료 (2026-11-16) | 없음 |
+| BE | `PATCH /api/admin/studies/{studyId}/owner-captain` · V58 `STUDY.OWNER_CAPTAIN_ID` | 구현완료 (2026-11-16) | 없음 |
+| FE | back-office-front 신청자 탭 담당 캡틴 칸 | 있음 — `OwnerCaptainSection`: 캡틴 목록 드롭다운 · 즉시 저장 (2026-11-16) | 없음 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업
 
@@ -303,6 +355,7 @@ erDiagram
 ### 처리
 
 - 네비게이터 지정: `PARTICIPANT_ROLE = LEADER`, 해제: `MEMBER`
+- 담당 캡틴 변경: `STUDY.OWNER_CAPTAIN_ID = 고른 캡틴`. 대상 계정을 잠그고 `ADMIN` 인지 확인한 뒤 바꾼다. 감사 로그 `OWNER_CAPTAIN`
 
 ### 계산 규칙 (단일 정의)
 
@@ -316,6 +369,8 @@ erDiagram
 | GET | `/api/admin/studies/{studyId}/participants` | 캡틴 |
 | PATCH | `/api/admin/studies/{studyId}/participants` — 반 · 역할 한 번에 | 캡틴 |
 | GET | `/api/admin/studies/{studyId}/attendances/summary` — 요약 카드 출석률 | 캡틴 |
+| PATCH | `/api/admin/studies/{studyId}/owner-captain` — 담당 캡틴 바꾸기 | 캡틴 |
+| GET | `/api/admin/users?role=CAPTAIN` — 담당 캡틴 후보 | 캡틴 |
 
 계약은 [study-group/spec.md](../../../specs/study-group/spec.md) · 출석률 요약은 [attendance/spec.md](../../../specs/attendance/spec.md).
 
@@ -323,6 +378,7 @@ erDiagram
 
 - 명단 열람: 캡틴, 그 스터디의 네비게이터
 - 역할 지정: 캡틴만. 서버에서 검증한다
+- 담당 캡틴 변경: 캡틴이면 누구나. 대상은 캡틴 계정만. 서버에서 검증한다
 
 ### 개인정보
 

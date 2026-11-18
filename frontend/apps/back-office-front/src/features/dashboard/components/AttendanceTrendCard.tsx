@@ -128,6 +128,7 @@ function TrendChart({ trend }: { trend: ApiAttendanceTrend }) {
           {points.map((p, i) =>
             p.rate === null ? null : (
               <button
+                // ui-native: 추세 그래프의 점 — 좌표에 놓인 차트 표식
                 key={p.weekStart}
                 type='button'
                 aria-label={trendPointText(p, timeZone)}

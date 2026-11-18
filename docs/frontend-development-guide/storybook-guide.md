@@ -18,7 +18,9 @@
 ## 개요
 
 `@studyclub/ui` 패키지에 Storybook 9 (react-vite) 이 세팅되어 있다.
-모든 UI 컴포넌트는 스토리 파일을 가져야 한다.
+모든 UI 컴포넌트는 스토리 파일을 가져야 한다 — 없으면 `scripts/check-component-drift.mjs`(PR 의 `design-drift` CI)가 막는다.
+새 부품은 `frontend/` 에서 `pnpm --filter @studyclub/ui new-component {Name}` 으로 만든다. 부품 · 스토리 · `index.ts` export · playground `/components` 카탈로그 칸이 함께 생긴다.
+PR 마다 `frontend-PR-CI` 가 Storybook 을 빌드한다 — 스토리가 부품 props 와 어긋나면 거기서 깨진다.
 
 ```
 packages/ui/

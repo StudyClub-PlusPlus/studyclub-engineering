@@ -4,7 +4,8 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
-import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +26,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 백오피스 스터디 목록 조립. DRAFT 포함 전 상태를 반환하고, 모집 상태는 최신 모집 회차의 <b>신청서 수</b>로 판정한다 — 공개 목록({@link
- * StudyListService})·대시보드와 같다 (specs/dashboard/spec.md · study-recruit-status).
+ * 백오피스 스터디 목록 조립. DRAFT 포함 전 상태를 반환하고, 모집 상태는 최신 모집 회차의 <b>명부 ACTIVE 인원(CAPACITY_ROLES)</b>으로 판정한다
+ * — 공개 목록({@link StudyListService})·대시보드와 같다 (specs/dashboard/spec.md · study-recruit-status · 결정
+ * D4-A).
  */
 @Service
 @Transactional(readOnly = true)
@@ -34,7 +37,7 @@ public class BackofficeStudyListService {
     private static final Logger log = LoggerFactory.getLogger(BackofficeStudyListService.class);
 
     private final BackofficeStudyDao backofficeStudyDao;
-    private final StudyApplicationRepository studyApplicationRepository;
+    private final StudyParticipantRepository studyParticipantRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyProgramRepository studyProgramRepository;
     private final AccountRepository accountRepository;
@@ -42,13 +45,13 @@ public class BackofficeStudyListService {
 
     public BackofficeStudyListService(
             BackofficeStudyDao backofficeStudyDao,
-            StudyApplicationRepository studyApplicationRepository,
+            StudyParticipantRepository studyParticipantRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyProgramRepository studyProgramRepository,
             AccountRepository accountRepository,
             ObjectMapper objectMapper) {
         this.backofficeStudyDao = backofficeStudyDao;
-        this.studyApplicationRepository = studyApplicationRepository;
+        this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyProgramRepository = studyProgramRepository;
         this.accountRepository = accountRepository;
@@ -106,15 +109,12 @@ public class BackofficeStudyListService {
                                 Collectors.toMap(
                                         StudyRecruitment::getStudyId, r -> r, (a, b) -> a));
 
-        List<Long> recruitmentIds =
-                latestRecruitments.values().stream().map(StudyRecruitment::getId).toList();
-        Map<Long, Long> applicationsByRecruitmentId =
-                recruitmentIds.isEmpty()
-                        ? Map.of()
-                        : studyApplicationRepository.countByRecruitmentIdIn(recruitmentIds).stream()
-                                .collect(
-                                        Collectors.toMap(
-                                                row -> (Long) row[0], row -> (Long) row[1]));
+        // 정원을 차지하는 인원 — 명부 ACTIVE 중 정원 역할 (결정 D4-A, study-recruit-status/spec.md)
+        Map<Long, Long> crewCounts =
+                studyParticipantRepository
+                        .countCapacityHoldersByStudyIds(studyIds, ParticipantRole.CAPACITY_ROLES)
+                        .stream()
+                        .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
 
         Map<Long, StudyProgram> programs =
                 studyProgramRepository
@@ -147,21 +147,26 @@ public class BackofficeStudyListService {
                                             : null;
                             Instant deadline =
                                     recruitment != null ? recruitment.getRecruitDeadlineAt() : null;
-                            long applicants =
-                                    recruitment == null
-                                            ? 0L
-                                            : applicationsByRecruitmentId.getOrDefault(
-                                                    recruitment.getId(), 0L);
+                            long crewCount = crewCounts.getOrDefault(study.getId(), 0L);
+                            StudyProgram program =
+                                    Optional.ofNullable(programs.get(study.getProgramId()))
+                                            .orElseThrow(
+                                                    () ->
+                                                            new BusinessException(
+                                                                    ErrorCode.NOT_FOUND,
+                                                                    "스터디 프로그램을 찾을 수 없습니다: "
+                                                                            + study
+                                                                                    .getProgramId()));
                             return new BackofficeStudyListResponse.StudySummary(
                                     study.getId(),
                                     study.getProgramId(),
                                     study.getTitle(),
                                     study.getStatus(),
                                     study.getCategory(),
-                                    programs.get(study.getProgramId()).getStudyKind(),
+                                    program.getStudyKind(),
                                     capacity,
-                                    applicants,
-                                    study.recruitStatus(applicants, deadline, capacity, asOf),
+                                    crewCount,
+                                    study.recruitStatus(crewCount, deadline, capacity, asOf),
                                     recruitment != null ? recruitment.getStartAt() : null,
                                     deadline,
                                     study.getStartAt(),

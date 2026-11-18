@@ -14,10 +14,10 @@ export const metadata: Metadata = { title: '만든 사람들', robots: { index: 
 export default function CreditsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`credits-root ${pixel.variable} ${dot.variable} min-h-screen`}>
-      <div className='border-b-[3px] border-[#282A43] bg-white'>
+      <div className='border-b-[3px] border-[var(--color-ink)] bg-white'>
         <div className='mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4 px-6 py-3.5'>
           <span className='font-pixel text-sm'>
-            STUDYCLUB<span className='text-[#3A4BB0]'>++</span>
+            STUDYCLUB<span className='text-[var(--arcade-blue-deep)]'>++</span>
           </span>
           <Bgm />
         </div>

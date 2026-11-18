@@ -6,6 +6,7 @@ export const participantsResponseSchema = z.union([
     studyId: z.number(),
     participantCount: z.number(),
     recruitmentCapacity: z.union([z.null(), z.number()]),
+    ownerCaptain: z.union([z.null(), z.object({ accountId: z.number(), nickname: z.string() })]),
     groups: z.array(
       z.object({
         groupId: z.number(),
@@ -40,6 +41,11 @@ export const groupAssignmentsResponseSchema = z.object({
       participantRole: z.union([z.literal('LEADER'), z.literal('MEMBER')]),
     }),
   ),
+});
+
+export const ownerCaptainResponseSchema = z.object({
+  studyId: z.number(),
+  ownerCaptain: z.object({ accountId: z.number(), nickname: z.string() }),
 });
 
 export const groupSchema = z.object({

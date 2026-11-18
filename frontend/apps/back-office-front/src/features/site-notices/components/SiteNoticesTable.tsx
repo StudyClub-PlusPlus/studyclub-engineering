@@ -27,6 +27,7 @@ function SortLabel({
   if (active) tone = 'text-brand';
   return (
     <button
+      // ui-native: 표 머리 정렬 — 머리 글자 자체가 정렬 단추
       type='button'
       onClick={() => onChange(next)}
       aria-label={`${label} ${nextLabel} 정렬`}
@@ -82,6 +83,7 @@ export function SiteNoticesTable({
             <td className='min-w-[22rem] max-w-[34rem]'>
               {/* 제목을 누르면 편집 팝업 — 행에 삭제 버튼을 두지 않는다 */}
               <button
+                // ui-native: 표의 제목 칸 — 누르면 그 공지를 여는 글자 링크
                 type='button'
                 onClick={() => onOpen(n.noticeId)}
                 className='flex max-w-full items-center gap-1.5 text-left font-semibold underline-offset-4 hover:text-brand hover:underline'

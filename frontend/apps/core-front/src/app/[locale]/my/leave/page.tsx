@@ -139,13 +139,16 @@ export default function LeavePage() {
 
   return (
     <div className='mx-auto w-full max-w-[640px] px-6 py-10'>
-      <button
+      <Button
         type='button'
+        variant='tertiary'
+        size='sm'
+        leadingIcon={<ArrowLeft size={15} />}
         onClick={() => router.push(`/${locale}/my`)}
-        className='mb-6 inline-flex items-center gap-1.5 type-label-lg text-fg-muted hover:text-fg'
+        className='mb-6'
       >
-        <ArrowLeft size={15} /> 마이페이지
-      </button>
+        마이페이지
+      </Button>
 
       <header>
         <h1 className='type-headline-lg'>회원 탈퇴</h1>

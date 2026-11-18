@@ -19,10 +19,17 @@ export interface Participant {
   joinedAt: string;
 }
 
+/** 담당 캡틴 — 스터디당 한 명. 명부와 상관없다. */
+export interface OwnerCaptain {
+  accountId: number;
+  nickname: string;
+}
+
 export interface ParticipantsResponse {
   studyId: number;
   participantCount: number;
   recruitmentCapacity: number | null;
+  ownerCaptain: OwnerCaptain | null;
   groups: StudyGroup[];
   participants: Participant[];
 }

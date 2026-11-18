@@ -1,20 +1,61 @@
 name: frontend-PR-CI
 
-# core-front·back-office-front 의 push CI 는 develop/main 에서만 돈다.
-# beta 로 가는 PR 에서 타입 에러와 테스트 회귀를 잡으려고 PR 단계에서 한 번 더 돌린다.
+# 프론트 PR 게이트 — core-front · back-office-front · playground · packages(ui · mock · types · utils · design).
+# core-front·back-office-front 의 push CI 는 develop/main 에서만 돌고, playground 는 beta 에서 바로 배포된다.
+# 그래서 beta 로 가는 PR 에서 타입 에러 · 테스트 회귀 · 빌드 실패 · 깨진 스토리를 한 번에 잡는다.
+# 디자인 시스템 이탈(ui 부품 사본 · 날 폼 요소 · 토큰 우회 · 스토리 없는 부품)은 design-drift 워크플로가 따로 본다.
 on:
   pull_request:
     paths:
-      - 'frontend/apps/core-front/**'
-      - 'frontend/apps/back-office-front/**'
+      - 'frontend/apps/**'
       - 'frontend/packages/**'
-      # turbo.json·tsconfig.base.json·lockfile 같은 루트 설정
+      # turbo.json·tsconfig.base.json·pnpm-lock.yaml 같은 루트 설정
       - 'frontend/*'
+      # PRD 의 spec 마커는 playground spec.ts 에서 채운다 — PRD 만 바뀐 PR 도 export-specs 로 본다
+      - '01-planning/stories/**'
+      # 이 워크플로 자신. 없으면 트리거 목록을 고치는 PR 이 그 결과를 한 번도 확인하지 않는다.
       - '.github/workflows/frontend-pr.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 같은 PR 에 다시 푸시하면 앞 회차를 끊는다 — 어차피 낡은 커밋을 재고 있다.
+concurrency:
+  group: frontend-pr-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  frontend-check:
+  # 모든 워크스페이스의 lint · typecheck. 빌드 없이 빨리 끝나는 검사라 따로 둔다.
+  static:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      # setup-node 의 cache: pnpm 이 pnpm 실행 파일을 찾으므로 먼저 설치한다.
+      # 버전은 frontend/package.json 의 packageManager 를 따른다 (루트엔 package.json 이 없다).
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Lint · typecheck (all workspaces)
+        run: npx turbo run lint typecheck
+
+  # 단위 시험 — core-front · back-office-front · utils 의 vitest 와 playground 의 규칙 검사 스크립트.
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -26,6 +67,70 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Vitest (core-front · back-office-front · utils)
+        run: npx turbo run test
+      - name: Playground rule checks (timezones · user dormancy · events)
+        run: |
+          pnpm --filter playground run test:timezones
+          pnpm --filter playground run test:user-dormancy
+          pnpm --filter playground run test:events
+
+  # playground 는 beta 에서 다른 게이트 없이 바로 배포된다 — 빌드가 깨지면 프로토 사이트가 내려간다.
+  playground:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
         working-directory: frontend
-      - run: npx turbo run lint typecheck test --filter=core-front --filter=back-office-front
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # 설명 보기(spec.ts)와 PRD 가 갈리면 막는다 — 손으로 두 벌 맞추지 않는다
+      - name: PRD spec markers match spec.ts
+        run: pnpm --filter playground export-specs -- --check
+      - name: Build playground
+        run: pnpm --filter playground run build
+
+  # 스토리가 import 하는 부품 · props 가 바뀌면 Storybook 빌드에서 깨진다. 배포(storybook-beta)는 push 에서만 돈다.
+  storybook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
         working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Build Storybook (@studyclub/ui)
+        run: pnpm --filter @studyclub/ui run build-storybook
+
+  # 검사 이름 `frontend-check` 를 지킨다. 브랜치 보호가 이 이름을 가리킬 수 있어, 앞 잡이 모두 성공해야 성공한다.
+  frontend-check:
+    needs: [static, test, playground, storybook]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 앞 잡 결과
+        run: |
+          echo "static=${{ needs.static.result }} test=${{ needs.test.result }} playground=${{ needs.playground.result }} storybook=${{ needs.storybook.result }}"
+          test "${{ needs.static.result }}" = "success" \
+            && test "${{ needs.test.result }}" = "success" \
+            && test "${{ needs.playground.result }}" = "success" \
+            && test "${{ needs.storybook.result }}" = "success"

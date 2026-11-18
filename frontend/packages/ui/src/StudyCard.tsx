@@ -98,8 +98,8 @@ export function StudyCard({
             <CategoryIcon size={12} strokeWidth={1.75} className='shrink-0' />
             {categoryLabel}
           </span>
-          {/* 최대 2줄 — 넘치면 말줄임. 카드 높이를 균일하게 유지한다. */}
-          <h3 className='mt-1 line-clamp-2 break-keep type-title-lg'>{title}</h3>
+          {/* 모바일 2열에서는 1줄, sm 이상에서는 2줄 — 넘치면 말줄임. 카드 높이를 균일하게 유지한다. */}
+          <h3 className='mt-1 line-clamp-1 break-keep type-title-lg sm:line-clamp-2'>{title}</h3>
         </div>
       </div>
 

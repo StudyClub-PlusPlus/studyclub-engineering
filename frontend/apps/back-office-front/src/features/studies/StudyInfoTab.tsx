@@ -11,6 +11,7 @@ import { useDeleteStudy, useUpdateStudy } from '@/features/studies/queries';
 import { StudyDiscordLinkDialog } from '@/features/studies/StudyDiscordLinkDialog';
 import { StudyForm, useStudyForm } from '@/features/studies/StudyForm';
 import type { ApiStudyDetail } from '@/features/studies/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /**
  * 정보 탭.
@@ -27,7 +28,8 @@ export function StudyInfoTab({
   onSavingChange?: (saving: boolean) => void;
 }) {
   const router = useRouter();
-  const initial = useMemo(() => detailToForm(detail), [detail]);
+  const displayTz = useDisplayTimeZone();
+  const initial = useMemo(() => detailToForm(detail, displayTz), [detail, displayTz]);
   const {
     value: form,
     errors,
@@ -72,7 +74,7 @@ export function StudyInfoTab({
     if (busy || !dirty) return;
     setSaveError(null);
 
-    update.mutate(formToPayload(form, initial), {
+    update.mutate(formToPayload(form, initial, displayTz), {
       onSuccess: () => {
         setSaved(true);
         // 상세는 React Query, 목록은 서버 컴포넌트이므로 양쪽 캐시를 갱신한다.
@@ -122,14 +124,9 @@ export function StudyInfoTab({
 
       <div className='mt-6 flex items-center gap-3 border-t border-border pt-4'>
         {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}
-        <button
-          type='button'
-          onClick={() => setConfirmDelete(true)}
-          disabled={busy}
-          className='h-10 type-label-lg text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
-        >
+        <Button type='button' variant='danger' onClick={() => setConfirmDelete(true)} disabled={busy}>
           스터디 삭제
-        </button>
+        </Button>
         <div className='ml-auto flex items-center gap-3'>
           {uploading && (
             <span role='status' className='type-body-sm text-fg-muted'>

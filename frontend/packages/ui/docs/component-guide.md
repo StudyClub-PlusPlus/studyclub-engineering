@@ -3,6 +3,8 @@
 > `design-system.md` §9의 구현 규칙 요약. 새 컴포넌트를 만들기 전 전체 스펙은
 > `packages/design/docs/design-system.md` 를 먼저 읽을 것.
 > 시각 레퍼런스: `packages/design/docs/styleguide.html` (브라우저에서 열기).
+> 기존 부품을 고칠 때도 그 부품의 §9 스펙부터 확인한다. §9 에 없는 새 부품은 같은 PR 에서 §9 에 스펙을 추가하고,
+> 필요한 토큰이 없으면 `tokens.css` 와 design-system.md §2~§7 에 먼저 추가한다 — 문서에 없는 값을 부품에서 지어내지 않는다.
 
 ---
 
@@ -14,6 +16,9 @@ packages/ui/src/
   MyComponent.stories.tsx  # Storybook (stories-guide.md 참고)
   index.ts                 # 추가 후 여기에 export 등록 필수
 ```
+
+- 새 부품은 `frontend/` 에서 `pnpm --filter @studyclub/ui new-component {Name}` 으로 만든다 — 위 세 곳과 playground `/components` 카탈로그 칸이 한 번에 생긴다.
+- `.stories.tsx` 가 없거나 카탈로그(`apps/playground/src/app/(site)/components/page.tsx`)에 `<Name …>` 으로 안 보이는 부품은 `scripts/check-component-drift.mjs` (PR 의 `design-drift` CI)가 막는다.
 
 - 파일명과 컴포넌트명은 **PascalCase** 일치.
 - 단일 파일에 관련 타입·헬퍼를 함께 두어도 된다(파일이 300줄 미만일 때).
@@ -285,6 +290,9 @@ Esc 닫기 · body scroll lock · 포커스 트랩 구현 필수
 
 ### 7-9. AttendanceTable (§9-6)
 
+> ui 가 export 하는 부품이 아니다 — 앱의 출석부(core-front `AttendanceTabContent` · back-office `AttendanceBook` · playground `AttendanceTab`)가 이 스펙을 따른다.
+> 누를 때마다 상태가 도는 칸은 `ui-native` 예외(칸 전체가 누르는 곳)로 표시돼 있다.
+
 ```
 좌측 멤버 열 고정(sticky left-0) + 상단 세션 행 고정
 셀 = 출석 chip: 출석(present) → 지각(late) → 결석(absent) → 휴가(excused) → 미체크 순환
@@ -315,6 +323,29 @@ Segmented: track bg-cloud, active bg-surface-raised shadow-xs, rounded/pill 형�
 Pagination: 7칸 창(gap …), active bg-surface-2 font-bold text-fg
 ```
 
+### 7-13. Radio · Switch · Checkbox hideLabel (§9-2)
+
+```
+Radio: 16px accent brand. 같은 name 묶음, 묶음 제목은 fieldset+legend. description 은 라벨 아래 type-label-sm text-muted
+Switch: 트랙 36×20 · 꺼짐 surface-3 · 켜짐 brand(기본) / success. 막힘은 aria-disabled + 이유를 aria-describedby
+Checkbox hideLabel: 표의 행 선택처럼 라벨이 안 보이는 자리 — 라벨은 sr-only 로 남긴다
+```
+
+### 7-14. IconButton xs · FilterChip radio (§9-1 · §9-8)
+
+```
+IconButton size="xs": 24px — 표 칸 · 글줄 안. 텍스트 Button 에는 xs 가 없다
+FilterChip role="radio": 폼 값으로 하나만 고르는 묶음(카테고리 · 진행 방식). 묶음에 role="radiogroup", 상태는 aria-checked
+```
+
+### 7-15. ButtonLink · HelpPopover (§9-1 · §9-8)
+
+```
+ButtonLink: Button 과 같은 모양의 링크. 앱 안 이동 linkAs={Link}, 바깥 사이트 external(새 탭). 'use client' 를 달지 않는다
+           — 서버 컴포넌트가 linkAs 로 함수를 넘기기 때문. 링크에 sc-button 클래스를 손으로 붙이지 않는다
+HelpPopover: 「?」(IconButton xs)를 누르면 아래에 짧은 설명. 바깥 클릭 · 포커스 이동 · Esc 로 닫힌다. span 으로만 짜서 글줄 안에도 놓인다
+```
+
 ---
 
 ## 8. index.ts 등록
@@ -337,5 +368,7 @@ export type { MyComponentProps } from './MyComponent';
 - [ ] 포커스 링(`focus-visible:shadow-(--ring)`) 적용
 - [ ] disabled 상태 처리 (`disabled:bg-disabled-bg disabled:text-disabled-fg`)
 - [ ] 상태 전달에 색+텍스트 병행 (색맹 대응)
-- [ ] `index.ts` export 추가
+- [ ] `index.ts` export 추가 (`new-component` 로 만들면 자동)
+- [ ] playground `/components` 카탈로그 칸의 note 와 실물을 채움 — 비어 있거나 칸이 없으면 drift 검사가 막는다
+- [ ] design-system.md §9 에 스펙이 있음 (없던 부품이면 같은 PR 에서 추가)
 - [ ] `*.stories.tsx` 파일 생성 (stories-guide.md 참고)

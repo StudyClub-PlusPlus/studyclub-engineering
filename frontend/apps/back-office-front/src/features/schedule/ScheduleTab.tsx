@@ -24,9 +24,9 @@ import { useScheduleGroups, withServerTz } from '@/features/schedule/groups';
 import { GroupTimeDialog } from '@/features/schedule/GroupTimeDialog';
 import { groupTimeLabel, hasTime } from '@/features/schedule/meetings';
 import { ScheduleTable } from '@/features/schedule/ScheduleTable';
-import { saveGroupWeekdays } from '@/features/schedule/store';
 import { zonedInstant } from '@/features/schedule/time';
 import type { ApiStudyDetail } from '@/features/studies/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /**
  * 일정 탭 — 반마다 회차를 만들고 고친다. 명세: playground `console/studies/[id]/spec.ts` 의 `SCHEDULE_SPEC`.
@@ -59,11 +59,8 @@ export function ScheduleTab({
   onStartedAdding?: () => void;
 }) {
   const studyId = detail.id;
-  /** 스터디 시간은 localStorage 라 렌더 트리거가 없다 — 바꿀 때마다 올려 다시 읽는다. */
-  const [rev, setRev] = useState(0);
-
   // 신청자 탭에서 만든 서버 반 — 둘 이상이면 반 칩이 선다
-  const { groups, error: groupsError } = useScheduleGroups(studyId, rev);
+  const { groups, error: groupsError } = useScheduleGroups(studyId);
   const picked = groups.find((g) => g.id === groupId) ?? groups[0];
   const serverGroupId = picked ? Number(picked.id) : undefined;
   const query = useGroupMeetings(studyId, serverGroupId);
@@ -102,7 +99,8 @@ export function ScheduleTab({
   const onTableDirty = useCallback((d: boolean) => setTableDirty(d), []);
   const onRulesDirty = useCallback((d: boolean) => setRulesDirty(d), []);
 
-  const tz = group?.time.tz ?? 'Asia/Seoul';
+  const displayTz = useDisplayTimeZone();
+  const tz = group?.time.tz ?? displayTz;
   const writeGroupId = serverGroupId ?? 0;
   const addMeetings = useAddMeetings(studyId, writeGroupId, tz);
   const updateMeetings = useUpdateMeetings(studyId, writeGroupId, tz);
@@ -193,9 +191,6 @@ export function ScheduleTab({
           group={group}
           onClose={() => setTimeOpen(false)}
           onSave={(time) => {
-            // weekdays 는 참여 명단 GET 응답에 없어 localStorage 에 남긴다 (store.ts TODO)
-            saveGroupWeekdays(studyId, group.id, time.weekdays);
-            setRev((n) => n + 1);
             setTimeOpen(false);
             updateGroupTime.mutate(
               { weekdays: time.weekdays, time: time.time, tz: time.tz },

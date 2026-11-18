@@ -92,6 +92,9 @@ public class NotificationCreationService {
      * 탈퇴와 직렬화한다(탈퇴는 반을 잠그고 명부를 {@code DELETED} 로 바꾼 뒤에야 끝나고, 보내기는 반을 잠근 뒤 명부를 읽는다). 이미 없는 계정은 그 사람
      * 몫을 만들지 않는다.
      *
+     * <p>행은 받는 사람 × 템플릿 수만큼 만들고, ID 가 {@code IDENTITY} 라 JDBC 배치 없이 행마다 INSERT 한다 — 받는 사람이 많고 템플릿이
+     * 늘면 이 요청의 트랜잭션이 그만큼 길어진다(받는 사람은 최대 500명).
+     *
      * @return 만든 메일 행 수
      */
     @Transactional(propagation = Propagation.REQUIRED)

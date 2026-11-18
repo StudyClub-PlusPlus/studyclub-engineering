@@ -9,13 +9,21 @@
 | `USER_REGISTERED` · `EMAIL` | 회원가입 직후 즉시 | `[StudyClub] 회원가입을 환영합니다` | `{{nickname}}` | [user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html) |
 | `STUDY_NOTICE` · `EMAIL` | 네비게이터가 반 공지를 보낼 때 | `[StudyClub] {{studyTitle}} 공지` | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | [study-notice-email.html](../../frontend/apps/playground/src/proto/mail/templates/study-notice-email.html) |
 | `FEEDBACK_REPLIED` · `EMAIL` | 문의에 첫 답변을 등록할 때 (수정은 제외) | `[StudyClub] 문의에 답변이 등록됐어요` | `{{nickname}}` `{{feedbackUrl}}` | [feedback-replied-email.html](../../frontend/apps/playground/src/proto/mail/templates/feedback-replied-email.html) |
+| `EVENT_ANNOUNCEMENT` · `EMAIL` (시안 전용) | 운영진이 행사 참가 확정자에게 안내할 때 | `[StudyClub] {{eventTitle}} 안내` | `{{nickname}}` `{{eventTitle}}` `{{eventSchedule}}` `{{participation}}` `{{notice}}` | [event-announcement-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-announcement-email.html) |
 
 - 시안 원본은 `{{nickname}}` 이 그대로 있는 **DB 에 들어갈 본문**이다. 제목·치환 변수는 위 표를 참고한다
 - 추가·수정 팝업의 **본문 편집 → 미리보기**로 HTML 을 확인한다. 치환 변수는 예시 값으로 바꾸지 않고 원문 그대로 표시한다. 회원가입·문의 회신 시안은 기본 예시로 불러오며, 다른 시안은 본문 편집 칸에 붙여 넣어 확인할 수 있다
-- 프로토에서 추가·저장한 내용은 현재 화면에서만 유지되고 새로고침하면 사라진다. 반영할 HTML 은 본문 편집 칸에서 복사해 시안 파일에 붙여 PR 을 낸다
+- 프로토에서 추가·저장한 템플릿은 브라우저에 보존된다. 실제 서비스에 반영할 HTML은 본문 편집 칸에서 복사해 시안 파일에 옮긴다. 브라우저 저장은 DB 반영이 아니다
+- 삭제한 기본 템플릿도 삭제 상태를 보존하며, 새로고침 때 자동으로 복구하지 않는다. 같은 조건의 템플릿을 직접 추가하면 다시 사용할 수 있다
 - playground 는 DB 를 읽지 않는다. DB 에 지금 무엇이 있는지는 백오피스 「알림 템플릿」에서 본다
 
+행사 안내는 알림 템플릿에 공통 HTML 프레임 하나를 등록하고, 행사 상세의 **안내 메일 보내기**에서 운영진이 내용만 입력한다. `{{notice}}`에 그 내용이 들어가며 참여 안내보다 먼저 표시한다. 행사 작성창은 등록된 첫 행사 안내 템플릿을 자동 사용한다. 작성창·이력의 미리보기에는 행사명·작성 내용·일정·대상별 참여 안내를 채우고 `{{nickname}}`만 원문으로 표시하며 참가자를 선택하지 않는다. 알림 템플릿 관리 자체의 미리보기는 모든 변수를 원문으로 유지한다. 워드마크·인사말·푸터는 공통 틀에 두고, 보내기를 누를 때 행사명·일정·참여 안내·닉네임을 채운 이력을 생성한다. 이 조건은 현재 Playground 전용이며 실제 API·DB 등록·발송은 구현하지 않았다.
+
 문의 회신 시안은 가입메일의 카드·버튼 디자인을 사용한다. 답변 본문·첨부 이미지·캡틴 메모는 메일에 넣지 않고, 로그인 후 해당 문의의 답변을 확인하도록 안내한다. `{{feedbackUrl}}` 은 `NOTIFICATION_SITE_BASE_URL` 과 `/ko/my/feedbacks/{id}` 로 만든 전체 URL 이다. `V52__feedback_replied_email.sql` 이 같은 HTML을 등록하고, 첫 회신 트랜잭션에서 알림을 예약한다.
+
+행사 취소 시에는 취소 직전 확인 대기·참가 확정 신청자를 저장한다. 취소 안내 작성창을 닫거나 새로고침해도 빨간색 **취소 안내 메일 보내기** 버튼으로 같은 대상에게 다시 안내할 수 있다. 기존 개별 취소·참가 불가 신청자는 포함하지 않는다.
+
+개별 자동 알림과 운영진 안내의 개인별 본문은 신청자 프로필 시간대로 일정을 표시한다. 시간대가 없는 이전 신청은 행사 기준 시간대를 사용한다. 운영진의 공통 미리보기는 운영자 프로필 시간대를 사용하며, 개인별 본문은 생성 당시 값을 보존한다.
 
 ## 제목 규칙
 

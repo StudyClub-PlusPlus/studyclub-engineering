@@ -12,7 +12,6 @@ export const loadAnalyticsSettings = () =>
     '/api/me/analytics',
     analyticsSettingsSchema,
     { signal: AbortSignal.timeout(10_000) },
-    { refreshOnUnauthorized: true },
   );
 export const registerAnalyticsBrowser = (clientId: string) =>
   http('/api/me/analytics/browser', analyticsSettingsSchema, {
@@ -20,4 +19,4 @@ export const registerAnalyticsBrowser = (clientId: string) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ clientId }),
     signal: AbortSignal.timeout(10_000),
-  }, { refreshOnUnauthorized: true });
+  });

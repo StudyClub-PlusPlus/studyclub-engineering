@@ -8,6 +8,7 @@ import { useIsMutating } from '@tanstack/react-query';
 import { TableCard } from '@/components/ui';
 import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupChangesDialog';
 import { GroupsSection } from '@/features/participants/GroupsSection';
+import { OwnerCaptainSection } from '@/features/participants/OwnerCaptainSection';
 import { participantKeys, useParticipants } from '@/features/participants/queries';
 import type { Participant, ParticipantsResponse } from '@/features/participants/types';
 import { useGroupAssignment } from '@/features/participants/use-group-assignment';
@@ -68,7 +69,6 @@ function ParticipantAssignment({
     drafts,
     dirty,
     saving,
-    notice,
     mutation,
     change,
     discard,
@@ -99,6 +99,7 @@ function ParticipantAssignment({
         onClose={cancelNavigation}
         onConfirm={confirmNavigation}
       />
+      <OwnerCaptainSection studyId={studyId} owner={data.ownerCaptain} />
       <GroupsSection studyId={studyId} data={data} disabled={busy || dirty} />
       <section aria-label='참여 크루' className='space-y-3'>
         <div className='space-y-2'>
@@ -196,16 +197,13 @@ function ParticipantAssignment({
               }
               save={
                 <>
-                  <span role='status' className='type-body-sm text-fg-muted'>
-                    {notice}
-                  </span>
                   {dirty && (
                     <Button variant='tertiary' size='sm' disabled={busy} onClick={discard}>
                       변경 취소
                     </Button>
                   )}
                   <Button size='sm' disabled={busy || !dirty} onClick={save}>
-                    저장
+                    {dirty ? `변경 ${Object.keys(drafts).length}명 저장` : '저장'}
                   </Button>
                 </>
               }

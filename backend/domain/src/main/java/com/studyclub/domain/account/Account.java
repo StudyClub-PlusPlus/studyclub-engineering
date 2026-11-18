@@ -224,14 +224,18 @@ public class Account extends BaseEntity {
      *
      * <p><b>판정은 여기 하나다</b> — 백오피스 목록의 배지 잠금과 권한 변경 API 의 거절이 모두 이 메서드를 부른다 (endpoint-convention
      * 「판정은 서버가 내려준다」). 캡틴 수는 계정 하나로 알 수 없어 호출자가 세어 넘긴다 ({@code SYSTEM_ROLE = ADMIN} 행 수 — 목록은 그냥
-     * 세고, 변경은 잠그고 센다).
+     * 세고, 변경은 잠그고 센다). 진행 중 담당 스터디가 있는지도 STUDY 를 봐야 알 수 있어 호출자가 넘긴다.
      */
-    public RoleChangeBlockedReason roleChangeBlockedReason(Long actorId, long adminCount) {
+    public RoleChangeBlockedReason roleChangeBlockedReason(
+            Long actorId, long adminCount, boolean ownsOngoingStudy) {
         if (id.equals(actorId)) {
             return RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE;
         }
         if (systemRole == SystemRole.ADMIN && adminCount <= 1) {
             return RoleChangeBlockedReason.LAST_ADMIN_REQUIRED;
+        }
+        if (systemRole == SystemRole.ADMIN && ownsOngoingStudy) {
+            return RoleChangeBlockedReason.OWNS_STUDY;
         }
         return null;
     }

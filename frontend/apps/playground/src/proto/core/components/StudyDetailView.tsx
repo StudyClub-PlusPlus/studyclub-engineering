@@ -17,7 +17,7 @@ import {
 } from '@core/lib/recruit';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew, recruitCapacity, studies as mockStudies } from '@studyclub/mock';
-import { categoryArtUrl, categoryMeta, categoryTint } from '@studyclub/ui';
+import { categoryArtUrl, categoryMeta, categoryTint, ButtonLink } from '@studyclub/ui';
 import { ArrowLeft, CalendarClock, Globe, Rocket } from 'lucide-react';
 
 import { SPECS } from '@/app/(proto)/proto/core/[locale]/studies/[id]/spec';
@@ -82,12 +82,9 @@ export function StudyDetailView({
         <p className='type-title-md text-fg-secondary'>
           {t({ ko: '스터디를 찾을 수 없어요.', en: 'Study not found.' }, locale)}
         </p>
-        <Link
-          href={`/proto/core/${locale}/studies`}
-          className='mt-4 inline-flex items-center gap-1.5 rounded-pill border border-border-strong px-4 py-2 type-label-lg text-fg transition-colors hover:border-brand hover:text-brand'
-        >
-          <ArrowLeft size={15} /> {m('common.back_studies', locale)}
-        </Link>
+        <ButtonLink linkAs={Link} href={`/proto/core/${locale}/studies`} variant='secondary' size='sm' leadingIcon={<ArrowLeft />} className='mt-4'>
+          {m('common.back_studies', locale)}
+        </ButtonLink>
       </div>
     );
   }
@@ -104,12 +101,9 @@ export function StudyDetailView({
             locale,
           )}
         </p>
-        <Link
-          href={`/proto/core/${locale}/studies`}
-          className='mt-4 inline-flex items-center gap-1.5 rounded-pill border border-border-strong px-4 py-2 type-label-lg text-fg transition-colors hover:border-brand hover:text-brand'
-        >
-          <ArrowLeft size={15} /> {m('common.back_studies', locale)}
-        </Link>
+        <ButtonLink linkAs={Link} href={`/proto/core/${locale}/studies`} variant='secondary' size='sm' leadingIcon={<ArrowLeft />} className='mt-4'>
+          {m('common.back_studies', locale)}
+        </ButtonLink>
       </div>
     );
   }

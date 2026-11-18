@@ -8,6 +8,7 @@ import { Marquee } from '@core/components/Marquee';
 import { PAST_STUDIES, VOICES } from '@core/lib/community-voices';
 import { getStudies, getEvents, getOperatorMap, getMembers, getSite, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
+import { ButtonLink } from '@studyclub/ui';
 import { ArrowRight } from 'lucide-react';
 
 export default async function Landing({ params }: { params: Promise<{ locale: Locale }> }) {
@@ -44,25 +45,23 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
           {m('hero.subtitle', locale)}
         </p>
         <div className='mt-8 flex flex-wrap items-center gap-3'>
-          <a
+          <ButtonLink
+            size='lg'
             href={site.discord_invite}
             target='_blank'
             rel='noreferrer'
-            className='sc-button type-label-lg gap-2'
-            data-variant='primary'
-            data-size='lg'
           >
             {m('hero.cta', locale)}
             <ArrowRight size={20} aria-hidden='true' />
-          </a>
-          <Link
+          </ButtonLink>
+          <ButtonLink
+            linkAs={Link}
+            variant='secondary'
+            size='lg'
             href={`/proto/core/${locale}/studies`}
-            className='sc-button type-label-lg'
-            data-variant='secondary'
-            data-size='lg'
           >
             {m('hero.cta_studies', locale)}
-          </Link>
+          </ButtonLink>
         </div>
 
         {/* Stats */}
@@ -162,9 +161,9 @@ function SectionHead({
         {subtitle && <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>{subtitle}</p>}
       </div>
       {href && (
-        <Link href={href} className='sc-button shrink-0 type-label-lg' data-variant='tertiary' data-size='md'>
+        <ButtonLink linkAs={Link} variant='tertiary' href={href} className='shrink-0'>
           {more} →
-        </Link>
+        </ButtonLink>
       )}
     </div>
   );

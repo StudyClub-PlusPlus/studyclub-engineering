@@ -100,7 +100,9 @@ class AdminStudyQueryIntegrationTest {
                 for (Integer capacity : new Integer[] {null, 1, 2}) {
                     study(id, "상태 " + id, "", status, null);
                     recruitment(id, id, deadline, capacity);
-                    application(id, id);
+                    // 정원 판정은 명부 기준 (결정 D4-A) — 1명 ACTIVE 참여자 삽입
+                    group(id, id);
+                    participant(id, id, id, "ACTIVE");
                     RecruitStatus expected =
                             Study.builder()
                                     .status(status)
@@ -140,19 +142,23 @@ class AdminStudyQueryIntegrationTest {
     }
 
     @Test
-    @DisplayName("최신 모집 회차만 보고 탈퇴 계정의 신청서도 현재 공통 기준대로 센다")
-    void latestRecruitmentAndMissingAccount() {
-        study(1, "최신 회차", "", StudyStatus.OPEN, null);
+    @DisplayName("명부 ACTIVE 가 정원에 닿으면 RECRUIT_CLOSED — 하차(WITHDRAWN)는 자리를 비운다 (결정 D4-A)")
+    void rosterBasedCapacity() {
+        study(1, "명부 정원", "", StudyStatus.OPEN, null);
         recruitment(10, 1, AS_OF.plusSeconds(100), 1);
-        application(10, 10); // 이전 회차는 정원이 차 있다
-        recruitment(11, 1, AS_OF.plusSeconds(100), 1);
+        group(10, 1);
+
+        // WITHDRAWN 참여자는 정원을 차지하지 않는다 — 모집중으로 보인다
+        participant(10, 1, 10, "WITHDRAWN");
         assertThat(ids(page(null, AdminStudyRecruitFilter.RECRUITING, null, null, null)))
                 .containsExactly(1L);
-        application(11, 11); // ACCOUNT 행이 없는 신청서도 포함
+
+        // ACTIVE 참여자가 정원(1)에 닿으면 모집 마감
+        participant(11, 1, 10, "ACTIVE");
         assertThat(ids(page(null, AdminStudyRecruitFilter.NOT_RECRUITING, null, null, null)))
                 .containsExactly(1L);
         var item = page(null, null, null, null, null).items().getFirst();
-        assertThat(item.currentApplicants()).isEqualTo(1);
+        assertThat(item.currentApplicants()).isEqualTo(1); // ACTIVE 1명만
         assertThat(item.recruitStatus()).isEqualTo(RecruitStatus.RECRUIT_CLOSED);
     }
 
@@ -259,13 +265,12 @@ class AdminStudyQueryIntegrationTest {
         recruitment(1, 1, AS_OF.plusSeconds(200), null);
         recruitment(2, 2, null, null);
         recruitment(3, 3, AS_OF.plusSeconds(100), null);
-        application(1, 1);
-        application(2, 3);
-        jdbc.update(
-                "INSERT INTO STUDY_APPLICATION (ID,ACCOUNT_ID,RECRUITMENT_ID,FORM_ANSWER,CREATED_AT,UPDATED_AT)"
-                        + " VALUES (3,999998,1,CAST('{}' AS JSON),?,?)",
-                Timestamp.from(AS_OF),
-                Timestamp.from(AS_OF));
+        // APPLICANTS 정렬은 명부 기준 (결정 D4-A) — 스터디 1: 2명, 스터디 2: 0명, 스터디 3: 1명
+        group(1, 1);
+        group(3, 3);
+        participant(1, 1, 1, "ACTIVE");
+        participant(2, 1, 1, "ACTIVE");
+        participant(3, 3, 3, "ACTIVE");
         Map<BackofficeStudySort, List<Long>> expected =
                 Map.ofEntries(
                         Map.entry(BackofficeStudySort.TITLE_ASC, List.of(2L, 3L, 1L)),
@@ -355,7 +360,17 @@ class AdminStudyQueryIntegrationTest {
             BackofficeStudySort sort,
             StudyStatus status) {
         return new BackofficeStudyListFilter(
-                StudyCategory.OTHER, null, status, null, null, null, sort, keyword, form, recruit);
+                StudyCategory.OTHER,
+                null,
+                status,
+                null,
+                null,
+                null,
+                sort,
+                keyword,
+                form,
+                recruit,
+                null);
     }
 
     private List<Long> ids(BackofficeStudyListResponse response) {
@@ -396,6 +411,31 @@ class AdminStudyQueryIntegrationTest {
                         + " VALUES (?,999999,?,CAST('{}' AS JSON),?,?)",
                 id,
                 recruitmentId,
+                Timestamp.from(AS_OF),
+                Timestamp.from(AS_OF));
+    }
+
+    private void group(long id, long studyId) {
+        jdbc.update(
+                "INSERT INTO STUDY_GROUP (ID,STUDY_ID,NAME,CREATED_AT,UPDATED_AT) VALUES (?,?,'1반',?,?)",
+                id,
+                studyId,
+                Timestamp.from(AS_OF),
+                Timestamp.from(AS_OF));
+    }
+
+    /** status: ACTIVE | WITHDRAWN | PAUSED — ACCOUNT_ID 는 id 를 그대로 써서 같은 그룹 내 충돌 방지 */
+    private void participant(long id, long studyId, long groupId, String status) {
+        jdbc.update(
+                "INSERT INTO STUDY_PARTICIPANT"
+                        + " (ID,ACCOUNT_ID,STUDY_GROUP_ID,STUDY_ID,STATUS,PARTICIPANT_ROLE,JOINED_AT,CREATED_AT,UPDATED_AT)"
+                        + " VALUES (?,?,?,?,?,'MEMBER',?,?,?)",
+                id,
+                id,
+                groupId,
+                studyId,
+                status,
+                Timestamp.from(AS_OF),
                 Timestamp.from(AS_OF),
                 Timestamp.from(AS_OF));
     }

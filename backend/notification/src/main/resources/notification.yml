@@ -42,12 +42,8 @@ mail:
     reply-to-address: ${MAIL_CS_REPLY_TO_ADDRESS:}
 
 notification:
-  # 명시한 주소가 우선한다. 없으면 기존 APP_ENV 에 맞는 공개 사이트로 연결한다.
-  site-base-url: ${NOTIFICATION_SITE_BASE_URL:${notification.site-origins.${APP_ENV:local}}}
-  site-origins:
-    local: http://localhost:4700
-    stage: https://stage.studyclub.life
-    production: https://studyclub.life
+  # 필수값 — 로컬은 docker-compose 가 주입(http://localhost:4700), 그 외 환경은 배포 환경변수에 명시한다.
+  site-base-url: ${NOTIFICATION_SITE_BASE_URL}
   # 웹 푸시 VAPID 키 (specs/web-push/spec.md). 비어 있으면 웹 푸시가 꺼진다 — 구독 버튼도 안 보인다.
   # 키 만들기: npx web-push generate-vapid-keys. 값은 시크릿 저장소에만 둔다(PUBLIC 레포).
   web-push:

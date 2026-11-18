@@ -19,6 +19,11 @@ public enum AdminAuditAction {
      * ID. 역할은 {@code LEADER} · {@code MEMBER} 둘뿐이라 변경 후 값은 BEFORE 의 반대다.
      */
     PARTICIPANT_ROLE,
+    /**
+     * 백오피스 신청자 탭에서 스터디의 담당 캡틴(STUDY.OWNER_CAPTAIN_ID)을 바꿨다 (specs/study-group/spec.md). TARGET 은 새
+     * 담당 캡틴, BEFORE 에 옛 담당 캡틴 계정 ID(없었으면 null), AFTER 에 스터디 ID.
+     */
+    OWNER_CAPTAIN,
     /** 캡틴 계정 탈퇴에 따른 시스템 권한 말소. */
     ACCOUNT_ROLE_REVOKE,
     /** 활동 중인 네비게이터의 계정 탈퇴에 따른 참여 권한 말소. */

@@ -1,6 +1,7 @@
 # 스터디 신청 API Spec
 
 > ERD: [STUDY](../../docs/erd/STUDY.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md) · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
+> 갱신: 2026-11-16 — 담당 캡틴 판정을 `STUDY.CREATED_BY` 에서 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md)). 처음 값은 만든 캡틴, 백오피스 신청자 탭에서 바꾼다
 > 생성일: 2026-09-19
 > 상태: 스펙작성중
 >
@@ -40,7 +41,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 - **accountId**: JWT `authentication.getPrincipal()`. 바디로 받지 않는다.
 - **캡틴**: `ACCOUNT.SYSTEM_ROLE=ADMIN`. 스터디와 상관없는 계정 권한이다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)).
-- **담당 캡틴**: 이 기수를 생성한 캡틴. 판정은 `STUDY.CREATED_BY = accountId`. 저절로 참여하지 않는다. 참여하려면 크루처럼 신청하고, 신청하면 명부·정원 모두 크루와 같다 (2026-10-14, [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)). `CREATED_BY` 가 NULL 인 옛 기수는 담당 캡틴이 없으므로 캡틴 누구나 담당으로 본다.
+- **담당 캡틴**: 처음엔 이 기수를 생성한 캡틴, 백오피스 신청자 탭에서 바꾼다. 판정은 `STUDY.OWNER_CAPTAIN_ID = accountId` (2026-11-16). 저절로 참여하지 않는다. 참여하려면 크루처럼 신청하고, 신청하면 명부·정원 모두 크루와 같다 (2026-10-14, [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)). `OWNER_CAPTAIN_ID` 가 NULL 인 기수는 담당 캡틴이 없으므로 캡틴 누구나 담당으로 본다.
 - **네비게이터**: 이 기수 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER` 인 크루. 신청 폼 수정·신청 결과 조회 권한이 없다 (백오피스 접근 불가).
 - **날짜**: UTC ISO 8601.
 - **에러 바디**: `{ "errorCode", "errorMessage" }`. `fields` 객체는 추가하지 않는다. 별명·폼 답·`DISCORD_ID`·`DISCORD_HANDLE` 원문은 넣지 않는다.
@@ -254,13 +255,13 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 
 | Method | Path | 누가 | 판정 |
 |---|---|---|---|
-| PUT | `/api/admin/studies/{studyId}/application-form` | **담당 캡틴만** (백오피스) | `@RequireAdmin` + 서비스에서 `STUDY.CREATED_BY = accountId` (NULL 이면 통과) |
+| PUT | `/api/admin/studies/{studyId}/application-form` | **담당 캡틴만** (백오피스) | `@RequireAdmin` + 서비스에서 `STUDY.OWNER_CAPTAIN_ID = accountId` (NULL 이면 통과) |
 | GET | `/api/admin/studies/{studyId}/application-form` | **캡틴 누구나** (백오피스 편집 화면 · 담당이 아니면 읽기 전용) | `@RequireAdmin` |
 | PUT | `/api/studies/{studyId}/application-form` | **폐기** — 컨트롤러 메서드를 지운다 | — |
 
 - **설명**: 기수 신청 폼을 통째로 교체한다. 질문 설명은 여러 줄·마크다운 원문을 그대로 저장한다.
 - 백오피스는 캡틴만 들어간다(POL-0001). **네비게이터는 신청 폼을 고치지 않는다** (2026-10-04 확정). 그래서 네비게이터용으로 열었던 사용자 사이트 경로 `PUT /api/studies/{studyId}/application-form` 은 **지운다** — `StudyApplicationFormController.replaceForm`·`StudyApplicationFormService.replaceFormFromSite` 와 그 테스트. 부르는 화면은 없다(core-front·back-office-front 호출 0건). 남겨 두면 네비게이터가 이 경로로 폼을 고칠 수 있다. 같은 경로의 `GET`(공개 조회)은 남긴다.
-- 담당 캡틴 판정: `@RequireAdmin` 을 통과한 뒤, 서비스가 `STUDY.CREATED_BY` 를 요청 계정과 비교한다. 다르면 `403`. `CREATED_BY` 가 NULL(V29 이전 등록)이면 통과한다. 판정은 잠금(`409`) 검사보다 먼저 한다 — 담당이 아닌 캡틴에게 잠금 여부를 알려 줄 이유가 없다.
+- 담당 캡틴 판정: `@RequireAdmin` 을 통과한 뒤, 서비스가 `STUDY.OWNER_CAPTAIN_ID` 를 요청 계정과 비교한다. 다르면 `403`. `OWNER_CAPTAIN_ID` 가 NULL 이면 통과한다. 판정은 잠금(`409`) 검사보다 먼저 한다 — 담당이 아닌 캡틴에게 잠금 여부를 알려 줄 이유가 없다.
   - 지금 서버는 이 판정 없이 캡틴이면 누구나 통과시킨다. 고칠 곳: `StudyApplicationFormService.replaceFormFromBackOffice`.
   이전 결정 기록: [`docs/share/2026-09-24-admin-api-path.md`](../../docs/share/2026-09-24-admin-api-path.md)
 

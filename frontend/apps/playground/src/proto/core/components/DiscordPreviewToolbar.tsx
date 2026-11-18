@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { getUser, setUser } from '@core/lib/auth';
 import { getDiscordOutcome, setDiscordFixture, setDiscordOutcome, type DiscordOutcome } from '@core/lib/discord-preview';
+import { Select } from '@studyclub/ui';
 
 /** Reviewer controls live in the playground shell, outside the product UI. */
 export function DiscordPreviewToolbar() {
@@ -31,22 +32,22 @@ export function DiscordPreviewToolbar() {
         <span className='font-semibold text-fg-muted'>{ko ? '디스코드 미리보기' : 'Discord preview'}</span>
         <label className='flex items-center gap-2'>
           {ko ? '예시 회원 (선택 시 예시 데이터 초기화)' : 'Example member (resets example data)'}
-          <select value='' onChange={(event) => fixture(event.target.value)} className='min-h-9 max-w-full rounded-control border border-border-strong bg-bg px-2'>
+          <Select size='sm' value='' onChange={(event) => fixture(event.target.value)} className='max-w-full'>
             <option value=''>{ko ? '상태 선택' : 'Select state'}</option>
             <option value='signup'>{ko ? '가입 완료 후 안내' : 'After sign-up'}</option>
             <option value='unlinked'>{ko ? '미연결' : 'Not connected'}</option>
             <option value='linked'>{ko ? '연결됨 · 참여 없음' : 'Connected · no studies'}</option>
             <option value='participating'>{ko ? '연결됨 · 참여 중' : 'Connected · participating'}</option>
             <option value='ended'>{ko ? '연결됨 · 종료만 있음' : 'Connected · ended studies only'}</option>
-          </select>
+          </Select>
         </label>
         <label className='flex items-center gap-2'>
           {ko ? '연결 시뮬레이션' : 'Connection simulation'}
-          <select value={outcome} onChange={(event) => { const value = event.target.value as DiscordOutcome; setOutcome(value); setDiscordOutcome(value); }} className='min-h-9 rounded-control border border-border-strong bg-bg px-2'>
+          <Select size='sm' value={outcome} onChange={(event) => { const value = event.target.value as DiscordOutcome; setOutcome(value); setDiscordOutcome(value); }}>
             <option value='success'>{ko ? '성공' : 'Success'}</option>
             <option value='error'>{ko ? '실패' : 'Failure'}</option>
             <option value='cancelled'>{ko ? '인증 취소' : 'Cancelled'}</option>
-          </select>
+          </Select>
         </label>
       </div>
     </aside>

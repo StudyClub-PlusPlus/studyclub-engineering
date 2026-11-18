@@ -61,7 +61,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @AutoConfigureTestRestTemplate
 class AdminAttendanceIntegrationTest {
 
-    private static final Long OWNER_ID = 3201L; // 담당 캡틴 (STUDY.CREATED_BY)
+    private static final Long OWNER_ID = 3201L; // 담당 캡틴 (STUDY.OWNER_CAPTAIN_ID)
     private static final Long OTHER_CAPTAIN_ID = 3202L; // 담당이 아닌 캡틴
     private static final Long NAV_A_ID = 3203L;
     private static final Long CREW_1_ID = 3204L;
@@ -303,9 +303,9 @@ class AdminAttendanceIntegrationTest {
     }
 
     @Test
-    @DisplayName("STUDY.CREATED_BY 가 NULL 이면 캡틴 누구나 담당 — 네비게이터를 중단한다")
+    @DisplayName("STUDY.OWNER_CAPTAIN_ID 가 NULL 이면 캡틴 누구나 담당 — 네비게이터를 중단한다")
     void anyCaptainWhenCreatedByNull() {
-        jdbcTemplate.update("UPDATE STUDY SET CREATED_BY = NULL WHERE ID = ?", study.getId());
+        jdbcTemplate.update("UPDATE STUDY SET OWNER_CAPTAIN_ID = NULL WHERE ID = ?", study.getId());
 
         var response = post(body(groupA, List.of(), List.of(navA.getId())), OTHER_CAPTAIN_ID);
 
@@ -496,6 +496,7 @@ class AdminAttendanceIntegrationTest {
                         .status(StudyStatus.ONGOING)
                         .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                         .createdBy(OWNER_ID)
+                        .ownerCaptainId(OWNER_ID)
                         .build());
     }
 

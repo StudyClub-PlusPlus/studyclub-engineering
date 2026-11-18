@@ -510,10 +510,10 @@ describe('알림 템플릿 화면', () => {
     const dialog = screen.getByRole('dialog');
 
     // 열었을 때는 조건을 바꾸지 않았으니 안내가 없다
-    expect(within(dialog).queryByRole('status')).toBeNull();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
 
     fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
-    const warning = within(dialog).getByRole('status');
+    const warning = within(dialog).getByRole('alert');
     expect(warning.textContent).toContain('‘스터디 공지’ 조건의 마지막입니다');
     expect(warning.textContent).toContain('조건을 바꿔 저장하면 메일을 포함한 스터디 공지를 보낼 수 없습니다');
     expect(warning.className).toContain('text-danger-fg');
@@ -521,7 +521,7 @@ describe('알림 템플릿 화면', () => {
     expect((within(dialog).getByRole('button', { name: '저장' }) as HTMLButtonElement).disabled).toBe(false);
 
     fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'STUDY_NOTICE' } });
-    expect(within(dialog).queryByRole('status')).toBeNull();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
   });
 
   it('같은 조건에 다른 템플릿이 남아 있으면 조건을 바꿔도 안내하지 않는다', async () => {
@@ -536,7 +536,7 @@ describe('알림 템플릿 화면', () => {
 
     fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
 
-    expect(within(dialog).queryByRole('status')).toBeNull();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
   });
 
   it('템플릿을 새로 추가할 때는 조건을 골라도 안내하지 않는다 — 떠나는 조건이 없다', async () => {
@@ -550,7 +550,7 @@ describe('알림 템플릿 화면', () => {
     fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'STUDY_NOTICE' } });
     fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
 
-    expect(within(dialog).queryByRole('status')).toBeNull();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
   });
 
   it('문의 회신은 링크 변수를 안내하고 마지막 템플릿 삭제가 첫 답변을 막는다고 알린다', async () => {

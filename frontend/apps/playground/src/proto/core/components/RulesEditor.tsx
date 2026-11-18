@@ -93,14 +93,9 @@ export function RulesEditor({
             {rules}
           </p>
           {long && (
-            <button
-              type='button'
-              aria-expanded={open}
-              onClick={() => setOpen((o) => !o)}
-              className='mt-1 type-label-lg text-brand underline-offset-2 hover:underline'
-            >
+            <Button type='button' variant='tertiary' size='sm' aria-expanded={open} onClick={() => setOpen((o) => !o)} className='mt-1'>
               {open ? '접기' : '모두 보기'}
-            </button>
+            </Button>
           )}
         </>
       ) : (
