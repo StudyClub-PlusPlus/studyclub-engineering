@@ -186,7 +186,6 @@ async def assign_role(
             failed.append({"discordUserId": uid, "reason": DISCORD_REJECTED})
             continue
         try:
-            # So the role watcher does not report the bot's own change back.
             expect_own_change(member.id, role.id, True)
             await member.add_roles(role)
         except discord.HTTPException as exc:
@@ -230,7 +229,6 @@ async def remove_role(
             continue
         try:
             member = guild.get_member(int(uid)) or await guild.fetch_member(int(uid))
-            # So the role watcher does not report the bot's own change back.
             expect_own_change(member.id, role.id, False)
             await member.remove_roles(role)
         except discord.HTTPException as exc:

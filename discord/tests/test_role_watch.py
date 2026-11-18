@@ -39,7 +39,6 @@ def _clear_own_changes():
 
 @pytest.fixture
 def sent(monkeypatch):
-    """Capture every report instead of calling the backend."""
     calls = []
 
     async def fake(base_url, api_key, uid, role, change, occurred_at):
@@ -73,7 +72,6 @@ async def test_ignores_other_guilds(sent):
 
 
 async def test_skips_the_bots_own_change_once(sent):
-    """The bot's own change is dropped; the next hand change is still reported."""
     role_watch.expect_own_change(MEMBER_ID, NAVIGATOR, True)
     await role_watch.report_role_changes(SETTINGS, _member(), _member(NAVIGATOR))
     assert sent == []

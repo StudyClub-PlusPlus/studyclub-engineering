@@ -616,7 +616,6 @@ def test_the_fixed_navigator_path_wins_over_the_dynamic_one(method, tmp_path):
 
 @both
 def test_role_endpoints_mark_their_own_changes_for_the_role_watcher(tmp_path, method):
-    """So the role watcher does not report the bot's change back to the backend."""
     from app.bot import role_watch
 
     role_watch._own_changes.clear()

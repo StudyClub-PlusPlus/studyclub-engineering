@@ -49,6 +49,5 @@ def create_bot(settings: Settings) -> commands.Bot:
     voice_monitor_cmd.register(bot, settings)
     attendance_cmd.register(bot, settings)
     config_cmd.register(bot, settings)
-    # Reports hand changes to captain/navigator to the backend (DSC-14).
     role_watch.register(bot, settings)
     return bot

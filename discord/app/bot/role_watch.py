@@ -1,17 +1,9 @@
-"""Tells the backend when someone changes a captain or navigator role by hand (DSC-14).
+"""Tells the backend when someone changes a captain or navigator role by hand.
 
-The web is the source of truth for both roles, but a moderator can still add or
-remove them in Discord. Every such change is reported, one member at a time, to
-``POST /api/discord/role-changes``; the backend decides whether to put it back
-(``DISCORD_ROLE_SYNC_ENFORCE``, off by default). Contract:
+Discord does not say who changed a role, so the role endpoints note each change
+just before making it and the listener drops the matching event -- otherwise the
+backend's own corrections would be reported back. Contract:
 ``specs/discord-role-sync/spec.md``.
-
-Changes the bot made itself through the role endpoints are not reported -- that
-is how the backend's own corrections stay out of a ping-pong. Discord does not
-say who changed a role, so the role endpoints write down each change just
-before making it, and the listener drops the matching event.
-
-Nothing here raises: a failed report is logged and left to the daily snapshot.
 """
 
 from __future__ import annotations
@@ -28,10 +20,7 @@ from app.config import Settings
 
 logger = logging.getLogger(__name__)
 
-# How long a change the bot is about to make waits for its own event. Discord
-# delivers it within a second or two; an entry that never matches (the event
-# was lost) only hides a hand change to the same member, role, and direction
-# inside this window.
+# Discord delivers the bot's own event within seconds; a lost one hides a matching hand change only this long.
 OWN_CHANGE_TTL_SECONDS = 60.0
 
 # (member ID, role ID, added?) -> when the entry expires
@@ -39,7 +28,6 @@ _own_changes: dict[tuple[int, int, bool], float] = {}
 
 
 def expect_own_change(member_id: int, role_id: int, added: bool) -> None:
-    """Note that the bot is about to add or remove ``role_id`` on ``member_id``."""
     now = time.monotonic()
     for key in [k for k, expires in _own_changes.items() if expires <= now]:
         del _own_changes[key]
@@ -61,7 +49,6 @@ def watched_roles(settings: Settings) -> list[tuple[str, int]]:
 async def report_role_changes(
     settings: Settings, before: discord.Member, after: discord.Member
 ) -> None:
-    """Report every hand change to captain or navigator between ``before`` and ``after``."""
     if after.guild.id != settings.guild_id:
         return
     before_ids = {role.id for role in before.roles}
