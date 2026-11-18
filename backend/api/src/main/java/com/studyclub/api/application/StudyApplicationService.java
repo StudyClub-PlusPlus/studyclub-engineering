@@ -73,8 +73,7 @@ public class StudyApplicationService {
         this.studyGroupRepository = studyGroupRepository;
     }
 
-    // READ_COMMITTED — 모집 회차 잠금 뒤의 정원 COUNT 가 먼저 들어온 신청의 커밋을 보게 한다.
-    // REPEATABLE READ 면 잠금 전 첫 일반 SELECT 에서 스냅샷이 고정돼, 마지막 한 자리에 둘이 들어온다 (bug-49)
+    // REPEATABLE READ 면 잠금 전 첫 SELECT 에서 스냅샷이 고정돼 잠금 뒤 정원 COUNT 가 앞 신청의 커밋을 못 본다
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Long submit(Long accountId, Long studyId, SubmitStudyApplicationRequest request) {
         Account account =
