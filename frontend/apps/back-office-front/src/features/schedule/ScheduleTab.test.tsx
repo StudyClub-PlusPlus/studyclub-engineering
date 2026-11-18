@@ -137,9 +137,7 @@ describe('일정 탭', () => {
     await setTimeAndAddMeetings();
 
     await userEvent.click(screen.getByRole('button', { name: '스터디 시간 수정' }));
-    const clock = within(screen.getByRole('dialog')).getByLabelText('스터디 시간');
-    await userEvent.clear(clock);
-    await userEvent.type(clock, '21:00');
+    await setTime('스터디 시간', '21:00', within(screen.getByRole('dialog')));
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '저장' }));
 
     const ask = screen.getByRole('dialog');
