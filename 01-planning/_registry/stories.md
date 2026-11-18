@@ -69,4 +69,4 @@
 | ST-035 | 크루는 캡틴에게 문의/오류신고를 제출할 수 있다. | 크루 | [PRD](../stories/crew-submit-feedback/PRD.md) | [사이트 › 내 문의](https://playground.studyclub.life/proto/core/ko/my/feedbacks) | | | 로그인 필수. 스펙 없음 — API·테이블부터 |
 | ST-036 | 캡틴은 유저가 제출한 문의/오류신고를 조회할 수 있다. | 캡틴 | [PRD](../stories/captain-view-feedbacks/PRD.md) | [콘솔 › 문의·오류 신고](https://playground.studyclub.life/proto/console/feedbacks) | | | 상태 · 회신 · 캡틴 전용 메모. 회신 알림은 알림 조건 「문의 회신」 |
 | ST-037 | 캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다. | 캡틴 | [PRD](../stories/captain-manage-events/PRD.md) | 행사 목록·운영 시안 | [event](../../specs/event/spec.md) | | 플레이그라운드 검토 단계. 스펙은 백오피스 등록·수정·목록·상세만 다룬다. 신청 처리·메일·상태 전환은 미작성 |
-| ST-038 | 크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다. | 크루 | [PRD](../stories/crew-apply-event/PRD.md) | 행사 목록·신청 시안 | | | 플레이그라운드 검토 단계 |
+| ST-038 | 크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다. | 크루 | [PRD](../stories/crew-apply-event/PRD.md) | 행사 목록·신청 시안 | [event-registration](../../specs/event-registration/spec.md) | | 플레이그라운드 검토 단계. 스펙은 사이트 목록·상세·신청·본인 취소·내 행사(스펙작성중, 미확정 R1~R6) |
