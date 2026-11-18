@@ -99,7 +99,6 @@ class BackofficeStudyQueryDao implements BackofficeStudyDao {
             params.put("kind", filter.studyKind().name());
         }
         if (filter.status() != null) {
-            // 저장값이 아니라 날짜까지 읽은 지금 상태 (Study#statusAsOf) — 진행 중 · 종료는 START_AT · END_AT 경과로 정해진다
             conditions.add(StudyLifecycleQuery.STATUS_SQL + " = :status");
             params.put("status", filter.status().name());
             params.put("asOf", Timestamp.from(asOf));

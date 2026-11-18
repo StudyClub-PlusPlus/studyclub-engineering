@@ -245,7 +245,6 @@ public class AdminStatsService {
     }
 
     private StudyBoardResponse ongoingBoard(Instant asOf, ZoneId zone, int limit) {
-        // 진행 중 = Study#isOngoing (START_AT 경과 · END_AT 전). 「전체 보기」 목록(status=ONGOING)과 같은 조건이다
         BackofficeStudyListResponse page =
                 backofficeStudyListService.getStudies(
                         new BackofficeStudyListFilter(

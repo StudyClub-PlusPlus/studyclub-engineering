@@ -214,12 +214,11 @@ class StudyTest {
                 .isEqualTo(StudyStatus.ENDED);
         assertThat(phased(StudyStatus.OPEN, null, null).statusAsOf(now))
                 .isEqualTo(StudyStatus.OPEN);
-        // 경계 — 정확히 그 시각이면 지난 것으로 본다 (phase 와 같음)
+        // 경계 — 정확히 그 시각이면 지난 것으로 본다
         assertThat(phased(StudyStatus.OPEN, now, null).statusAsOf(now))
                 .isEqualTo(StudyStatus.ONGOING);
         assertThat(phased(StudyStatus.OPEN, days(-1), now).statusAsOf(now))
                 .isEqualTo(StudyStatus.ENDED);
-        // 작성 중 · 운영 종료는 날짜와 무관
         assertThat(phased(StudyStatus.DRAFT, days(-30), days(-1)).statusAsOf(now))
                 .isEqualTo(StudyStatus.DRAFT);
         assertThat(phased(StudyStatus.CLOSED, days(-1), days(30)).statusAsOf(now))

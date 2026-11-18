@@ -254,14 +254,9 @@ public class Study extends BaseEntity {
     }
 
     /**
-     * 날짜까지 읽은 지금 상태. 저장된 {@code STATUS} 는 공개({@code DRAFT → OPEN})와 운영 종료({@code CLOSED})만 사람이 바꾸고
-     * {@code OPEN → ONGOING → ENDED} 전환은 일으키지 않는다 (study-meeting 결정 5). 그래서 진행 중 · 종료는 {@code
-     * START_AT} · {@code END_AT} 경과로 판정한다 — {@link #phase} 와 같은 날짜 규칙.
-     *
-     * <p>{@code DRAFT} · {@code CLOSED} 는 그대로, {@code ENDED} 이거나 {@code END_AT} 이 지났으면 {@code
-     * ENDED}, {@code START_AT} 이 지났으면 {@code ONGOING}, 나머지는 저장된 값이다.
-     *
-     * <p>쿼리판은 {@link StudyLifecycleQuery} — 한쪽만 고치면 목록 필터와 판정이 어긋난다.
+     * 날짜까지 읽은 지금 상태. 저장된 {@code STATUS} 는 {@code OPEN → ONGOING → ENDED} 로 넘어가지 않아(study-meeting 결정
+     * 5) 진행 중 · 종료는 {@code START_AT} · {@code END_AT} 경과로 판정한다. 쿼리판은 {@link StudyLifecycleQuery} —
+     * 한쪽만 고치면 어긋난다.
      */
     public StudyStatus statusAsOf(Instant asOf) {
         if (status == StudyStatus.DRAFT || status == StudyStatus.CLOSED) {
@@ -276,7 +271,6 @@ public class Study extends BaseEntity {
         return status;
     }
 
-    /** 진행 중 — {@link #statusAsOf} 가 {@code ONGOING}. */
     public boolean isOngoing(Instant asOf) {
         return statusAsOf(asOf) == StudyStatus.ONGOING;
     }

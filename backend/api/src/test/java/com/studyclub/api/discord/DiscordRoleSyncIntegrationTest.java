@@ -167,7 +167,7 @@ class DiscordRoleSyncIntegrationTest {
         Account unlinked = account(SystemRole.MEMBER);
         Study ongoing = study(StudyStatus.ONGOING);
         Study ended = study(StudyStatus.ENDED);
-        // STATUS 는 OPEN 에 머물러 있지만 END_AT 이 지났다 — 끝난 스터디다 (bug-37)
+        // STATUS 는 OPEN 에 머물러 있지만 END_AT 이 지났다 — 끝난 스터디다
         Study openButOver = study(StudyStatus.OPEN, Instant.now().minusSeconds(60));
         participant(active, ongoing, ParticipantRole.LEADER, ParticipantStatus.ACTIVE);
         participant(paused, ongoing, ParticipantRole.LEADER, ParticipantStatus.PAUSED);

@@ -1,11 +1,6 @@
 package com.studyclub.domain.study;
 
-/**
- * {@link Study#statusAsOf} 의 쿼리판 — 목록 필터 · 집계 · role 판정이 같은 날짜 규칙을 쓰게 한 곳에 둔다. 스터디 별칭은 {@code s},
- * 기준 시각 파라미터는 {@code :asOf} 다. 엔티티 판정과 같은 결과인지는 {@code AdminStudyQueryIntegrationTest}(STATUS_SQL)
- * · {@code AdminStatsIntegrationTest}(ONGOING_JPQL) · {@code
- * DiscordRoleSyncIntegrationTest}(ENDED_JPQL) 가 본다.
- */
+/** {@link Study#statusAsOf} 의 쿼리판. 스터디 별칭은 {@code s}, 기준 시각 파라미터는 {@code :asOf} 다. */
 public final class StudyLifecycleQuery {
 
     private StudyLifecycleQuery() {}
