@@ -305,7 +305,7 @@ public class StudyRoleSyncListener {
                 .filter(
                         owner ->
                                 studyParticipantRepository.existsActiveNavigatorInAnyActiveStudy(
-                                        owner.getId()))
+                                        owner.getId(), Instant.now()))
                 .isPresent();
     }
 

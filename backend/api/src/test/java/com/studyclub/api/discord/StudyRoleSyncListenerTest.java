@@ -383,7 +383,7 @@ class StudyRoleSyncListenerTest {
         Account other = mock(Account.class);
         when(other.getId()).thenReturn(99L);
         when(accounts.findByDiscordId(DISCORD_USER_ID)).thenReturn(Optional.of(other));
-        when(participants.existsActiveNavigatorInAnyActiveStudy(99L)).thenReturn(true);
+        when(participants.existsActiveNavigatorInAnyActiveStudy(eq(99L), any())).thenReturn(true);
         when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
 
         listener.onWithdrawn(
@@ -405,7 +405,7 @@ class StudyRoleSyncListenerTest {
         Account other = mock(Account.class);
         when(other.getId()).thenReturn(99L);
         when(accounts.findByDiscordId(DISCORD_USER_ID)).thenReturn(Optional.of(other));
-        when(participants.existsActiveNavigatorInAnyActiveStudy(99L)).thenReturn(false);
+        when(participants.existsActiveNavigatorInAnyActiveStudy(eq(99L), any())).thenReturn(false);
         when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
         when(bot.removeNavigatorRole(anyString(), anyString(), anyList())).thenReturn(OK);
 
