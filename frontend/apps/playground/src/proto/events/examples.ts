@@ -9,7 +9,7 @@ import {
   seatInfo,
 } from './model';
 
-const REVISION = 13;
+const REVISION = 14;
 const REAPPLIED_SAMPLE_ID = 'sample-preview-event-finished-1';
 const CANCELLED_SAMPLE_ID = `${REAPPLIED_SAMPLE_ID}-before-reapply`;
 const LEGACY_EVENT_COPY: Record<string, { title?: string; summary?: string; description?: string }> = {
@@ -286,6 +286,13 @@ export function populateEventExamples(
     return event ? fillLegacyEventMailPreview(mail, event) : mail;
   });
   state.mails.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  // 이미 취소된 행사에서 탈퇴 회원도 이력에는 남고, 새 메일 대상에서는 빠지는 예시.
+  const deleted = state.registrations.find((row) => row.id === 'sample-preview-event-cancelled-10');
+  if (deleted) {
+    deleted.accountDeleted = true;
+    deleted.name = '탈퇴한 회원';
+    deleted.email = '';
+  }
   state.exampleRevision = REVISION;
   return state;
 }
