@@ -278,6 +278,7 @@ test.describe('크루 스터디 신청 E2E 플로우 (PRD: crew-submit-applicati
     await expect(completeDialog).toBeVisible();
     await expect(completeDialog.getByRole('heading', { name: /스터디 신청/i })).toBeVisible();
     await expect(completeDialog.getByText(/스터디 신청이 완료되었습니다/i)).toBeVisible();
+    await expect(completeDialog.getByText(/수정할 수 없습니다/)).toHaveCount(0);
 
     // "내 스터디룸 보러 가기" 버튼 확인
     const myStudiesBtn = completeDialog.getByRole('button', { name: /내 스터디룸 보러 가기/i });

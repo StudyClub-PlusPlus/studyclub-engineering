@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { Study } from '@studyclub/types';
 import {
   Button,
+  ButtonLink,
   Checkbox,
   Input,
   Modal,
@@ -16,12 +17,13 @@ import {
   cx,
   FilterChip,
 } from '@studyclub/ui';
-import { Mic, Plus, X } from 'lucide-react';
+import { CalendarPlus, Mic, Plus, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import { type ApiAttendance } from '@/features/attendance/types';
 import { useDisplayTimeZone } from '@/features/profile/use-display-timezone';
 import { meetingFormSchema, type MeetingFormValues } from '@/features/schedule/form-schema';
+import { googleCalendarUrl } from '@/features/schedule/google-calendar';
 import {
   dateWithDow,
   dayLabel,
@@ -532,6 +534,8 @@ export function ScheduleTab({
         zonedInstant(m.date, m.time ?? group.startAt, group.timeZone).toISOString(),
     );
 
+  const nextMeeting = meetings.find((m) => m.scheduledAt && !pendingIds.has(m.id) && !startedOf(m));
+
   const value = (m: ProtoMeeting) =>
     drafts[m.id] ?? {
       date: m.date,
@@ -765,6 +769,23 @@ export function ScheduleTab({
         </h2>
 
         <div className='ml-auto flex items-center gap-2'>
+          {nextMeeting && (
+            <ButtonLink
+              external
+              variant='secondary'
+              size='sm'
+              leadingIcon={<CalendarPlus size={15} />}
+              href={googleCalendarUrl({
+                title: [meetingData?.study.title ?? study.title.ko, meetingLabel(nextMeeting), nextMeeting.title]
+                  .filter((part, i, all) => part && all.indexOf(part) === i)
+                  .join(' '),
+                start: new Date(nextMeeting.scheduledAt!),
+                details: meetingData?.study.discordChannelUrl,
+              })}
+            >
+              다음 회차 구글 캘린더에 추가
+            </ButtonLink>
+          )}
           {canEdit ? (
             <label className='flex items-center gap-2 type-label-sm text-fg-muted'>
               시간대
