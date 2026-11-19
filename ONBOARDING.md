@@ -124,6 +124,7 @@ docker compose exec -T mysql mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_D
 ```
 
 그다음 http://localhost:4701 에서 같은 구글 계정으로 로그인한다.
+**core-front(4700)도 같이 떠 있어야 한다** — 구글에 등록된 콜백은 `localhost:4700/api/auth/callback` 하나라, 운영 콘솔의 로그인 팝업도 core-front 의 콜백 화면을 거쳐 돌아온다. `pnpm run dev` 는 둘을 같이 띄운다. 앱 하나씩 띄웠다면 `pnpm --filter core-front run dev` 도 켠다.
 
 > 로컬 DB 에서만 한다. 운영·stage 의 권한은 담당자가 준다.
 
@@ -138,6 +139,8 @@ docker compose exec -T mysql mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_D
 | api 가 계속 재시작되고 로그에 `Migration checksum mismatch` | 내 로컬 DB 를 만든 뒤 마이그레이션 파일(`V*.sql`)이 바뀌었다 | 로컬이면 DB 를 비운다: `docker compose down -v && docker compose up -d --build` |
 | `pnpm run dev` 가 `Turbopack ... Read-only file system` 으로 죽는다 | 예전 compose 가 남긴 `.next` 캐시 (컨테이너 경로가 박혀 있다) | `rm -rf frontend/apps/*/.next` 후 다시 실행. 지금 compose 는 `.next` 를 컨테이너 전용 볼륨에 둬서 다시 생기지 않는다 |
 | `port is already allocated` · `EADDRINUSE :4700` | A 의 frontend 컨테이너와 로컬 `pnpm run dev` 를 동시에 띄웠다 | 한쪽만 쓴다 — `docker compose stop frontend` 또는 로컬 dev 종료 |
+| 운영 콘솔 로그인 팝업이 `localhost:4700/api/auth/callback` 에서 「연결할 수 없음」(`ERR_CONNECTION_REFUSED`) | core-front(4700)가 꺼져 있다 — 콘솔 로그인도 그 콜백을 쓴다 | `pnpm --filter core-front run dev` 를 같이 켜고 다시 로그인 |
+| `pnpm test` 에서 `localStorage.clear is not a function` 등으로 시험이 수십 개 깨진다 | 로컬 Node 가 25 이상이라 Node 내장 `localStorage` 가 jsdom 을 가린다 | CI 와 같은 Node 22 를 쓰거나 `NODE_OPTIONS=--no-experimental-webstorage pnpm test` |
 | 운영 콘솔 로그인이 거절된다 | 계정이 ADMIN 이 아니거나, core-front 로 가입한 적이 없다 | [3. 로그인 확인](#운영-콘솔4701에-들어가려면--admin-이-필요하다) |
 | 화면에 스터디가 하나도 없다 | 새 로컬 DB 는 비어 있다 | 운영 콘솔(ADMIN)에서 스터디를 등록하거나 D 로 운영 데이터를 본다 |
 

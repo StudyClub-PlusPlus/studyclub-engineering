@@ -7,7 +7,7 @@ import type { EventChannel, PreviewEvent } from '@studyclub/types';
 import { Button, Modal, Select, Tabs, Textarea } from '@studyclub/ui';
 
 import { useEventWorkspace } from './EventWorkspace';
-import { CHANNEL_LABEL, channels, renderEventNoticePreview } from './model';
+import { CHANNEL_LABEL, channels, firstEventTemplate, eventMailRecipients, renderEventNoticePreview } from './model';
 import { toPreviewDocument } from '@/proto/mail/render';
 
 export function EventMailComposer({
@@ -24,7 +24,6 @@ export function EventMailComposer({
   const { state, dispatch } = useEventWorkspace();
   const displayTimeZone = useDisplayTimeZone();
   const isCancellation = mode === 'CANCELLATION';
-  const recipientIds = event.cancellationRecipientIds ?? [];
   const [channel, setChannel] = useState<EventChannel | 'ALL'>('ALL');
   const [notice, setNotice] = useState(
     isCancellation
@@ -35,13 +34,8 @@ export function EventMailComposer({
   const [error, setError] = useState('');
   const templateLabel = isCancellation ? '행사 취소 안내' : '행사 안내';
   const trigger = isCancellation ? 'EVENT_CANCELLATION' : 'EVENT_ANNOUNCEMENT';
-  const template = state?.eventTemplates.find((item) => item.trigger === trigger);
-  const recipients =
-    state?.registrations.filter((r) =>
-      isCancellation
-        ? r.eventId === event.id && recipientIds.includes(r.id)
-        : r.eventId === event.id && r.status === 'CONFIRMED' && (channel === 'ALL' || r.channel === channel),
-    ) ?? [];
+  const template = firstEventTemplate(state?.eventTemplates ?? [], trigger);
+  const recipients = state ? eventMailRecipients(state, event, isCancellation ? 'CANCELLED_ACTIVE' : channel) : [];
   const rendered = template ? renderEventNoticePreview(template, event, channel, notice, displayTimeZone) : null;
   return (
     <Modal

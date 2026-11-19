@@ -8,7 +8,7 @@ import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@core/lib/layout';
 import { getDisplayName } from '@core/lib/me';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { EventChannel, EventQuestion, EventRegistration, Locale } from '@studyclub/types';
-import { Badge, Button, Checkbox, Input, Modal, Select, Textarea } from '@studyclub/ui';
+import { Badge, Button, Checkbox, Input, Modal, Radio, Select, Textarea } from '@studyclub/ui';
 import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, MapPin, Video } from 'lucide-react';
 
 import { useEventWorkspace } from './EventWorkspace';
@@ -345,6 +345,7 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
                   className={`flex items-center gap-3 rounded-control border p-3 ${channel === mode ? 'border-brand bg-brand-subtle' : 'border-border'} ${!info.remaining ? 'text-fg-muted' : ''}`}
                 >
                   <input
+                    // ui-native: 참여 방식 카드 — 남은 자리 수를 품은 카드 전체가 고르는 곳
                     type='radio'
                     name='attendance-channel'
                     className='accent-(--color-brand)'
@@ -416,17 +417,15 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
                       />
                     </div>
                   ) : (
-                    <label key={option} className='flex items-center gap-2 type-body-sm'>
-                      <input
-                        type='radio'
-                        name={q.id}
-                        required={q.required}
-                        className='accent-(--color-brand)'
-                        checked={answers[q.id] === option}
-                        onChange={() => answerChange(q.id, option)}
-                      />
-                      {option}
-                    </label>
+                    <Radio
+                      key={option}
+                      name={q.id}
+                      label={option}
+                      required={q.required}
+                      checked={answers[q.id] === option}
+                      onChange={() => answerChange(q.id, option)}
+                      className='flex'
+                    />
                   ),
                 )}
               </fieldset>

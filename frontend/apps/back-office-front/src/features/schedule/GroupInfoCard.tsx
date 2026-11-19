@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, DiscordGlyph, Textarea, cx } from '@studyclub/ui';
+import { Button, DiscordGlyph, Textarea, cx, IconButton, ButtonLink } from '@studyclub/ui';
 import { ChevronDown, FolderOpen } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
@@ -11,21 +11,6 @@ import { groupRulesSchema, type GroupRulesValues } from '@/features/schedule/for
 import { RULES_MAX } from '@/features/schedule/meetings';
 
 /** 정보 카드의 바로가기 — 아이콘과 이름만 보이고 새 창으로 연다. 주소는 가리키면 보인다. */
-function LinkButton({ label, href, icon }: { label: string; href: string; icon: ReactNode }) {
-  return (
-    <a
-      href={href}
-      target='_blank'
-      rel='noopener noreferrer'
-      title={href}
-      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 type-label-lg text-fg-secondary hover:bg-surface-2 hover:text-fg'
-    >
-      {icon}
-      {label}
-    </a>
-  );
-}
-
 /**
  * 반 정보 카드 — 스터디 시간 · 네비게이터 · 디스코드 · 자료실과 스터디 규칙. 사용자 사이트 스터디 정보 카드와 같은 카드다.
  *
@@ -76,46 +61,56 @@ export function GroupInfoCard({
   return (
     <section className='card mb-5 px-5 py-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <dl className='flex flex-wrap gap-x-6 gap-y-1 type-body-sm'>
-          <div className='flex gap-2'>
+        <dl className='flex flex-wrap items-center gap-x-6 gap-y-1 type-body-sm'>
+          <div className='flex items-center gap-2'>
             <dt className='text-fg-muted'>스터디 시간</dt>
             <dd className='tnum font-semibold text-fg'>{time}</dd>
             <dd>
-              <button
-                type='button'
-                aria-label='스터디 시간 수정'
-                onClick={onEditTime}
-                className='type-label-lg text-brand underline-offset-2 hover:underline'
-              >
+              <Button type='button' variant='tertiary' size='sm' aria-label='스터디 시간 수정' onClick={onEditTime}>
                 수정
-              </button>
+              </Button>
             </dd>
           </div>
-          <div className='flex gap-2'>
+          <div className='flex items-center gap-2'>
             <dt className='text-fg-muted'>네비게이터</dt>
             <dd className='font-semibold text-fg'>{navigator}</dd>
           </div>
         </dl>
         <div className='flex flex-wrap gap-1.5'>
-          {discordHref && <LinkButton label='디스코드' href={discordHref} icon={<DiscordGlyph size={15} />} />}
-          {driveHref && (
-            <LinkButton
-              label='자료실'
-              href={driveHref}
-              icon={<FolderOpen size={15} strokeWidth={1.75} aria-hidden />}
-            />
+          {discordHref && (
+            <ButtonLink
+              href={discordHref}
+              external
+              variant='secondary'
+              size='sm'
+              title={discordHref}
+              leadingIcon={<DiscordGlyph />}
+            >
+              디스코드
+            </ButtonLink>
           )}
-          <button
-            type='button'
+          {driveHref && (
+            <ButtonLink
+              href={driveHref}
+              external
+              variant='secondary'
+              size='sm'
+              title={driveHref}
+              leadingIcon={<FolderOpen strokeWidth={1.75} aria-hidden />}
+            >
+              자료실
+            </ButtonLink>
+          )}
+          <IconButton
+            variant='tertiary'
+            size='sm'
             aria-expanded={expanded}
             aria-controls={bodyId}
             aria-label='스터디 규칙'
             title={expanded ? '접기' : '펼치기'}
             onClick={() => setExpanded((v) => !v)}
-            className='grid h-8 w-8 place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-fg'
-          >
-            <ChevronDown size={16} aria-hidden className={cx('transition-transform', expanded && 'rotate-180')} />
-          </button>
+            icon={<ChevronDown className={cx('transition-transform', expanded && 'rotate-180')} />}
+          />
         </div>
       </div>
 

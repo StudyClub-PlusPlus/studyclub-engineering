@@ -7,6 +7,7 @@ import { getEvent, getEvents, type Locale } from '@core/lib/content';
 import { EVENT_DETAILS } from '@core/lib/event-details';
 import { m, t } from '@core/lib/i18n';
 import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@core/lib/layout';
+import { ButtonLink } from '@studyclub/ui';
 import { ArrowLeft, CalendarDays, MapPin, Tag, ArrowUpRight } from 'lucide-react';
 
 import { EventGuestDetail } from '@/proto/events/EventGuestDetail';
@@ -112,16 +113,15 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           ))}
         </dl>
       {event.link && (
-        <a
+        <ButtonLink
+          size='lg'
           href={event.link}
           target='_blank'
           rel='noreferrer'
-          className='sc-button m-6 mt-2 gap-2 type-label-lg'
-          data-variant='primary'
-          data-size='lg'
+          className='m-6 mt-2'
         >
           {m('common.rsvp', locale)} <ArrowUpRight size={20} aria-hidden='true' />
-        </a>
+        </ButtonLink>
       )}
         </aside>
       </div>

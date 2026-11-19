@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Study } from '@studyclub/types';
-import { Button, DiscordGlyph, Textarea } from '@studyclub/ui';
+import { Button, DiscordGlyph, Textarea, IconButton, ButtonLink } from '@studyclub/ui';
 import { ChevronDown, FolderOpen } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
@@ -25,32 +25,6 @@ import { regularScheduleDisplay } from '@/features/schedule/regular-schedule';
 import { RegularTime } from '@/features/schedule/RegularTime';
 import { saveStudyRules } from '@/features/schedule/repository';
 import { track } from '@/lib/analytics';
-
-function LinkButton({
-  label,
-  href,
-  icon,
-  onClick,
-}: {
-  label: string;
-  href: string;
-  icon: React.ReactNode;
-  onClick?: () => void;
-}) {
-  return (
-    <a
-      href={href}
-      target='_blank'
-      rel='noopener noreferrer'
-      title={href}
-      onClick={onClick}
-      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 type-label-lg text-fg-secondary hover:bg-surface-2 hover:text-fg'
-    >
-      {icon}
-      {label}
-    </a>
-  );
-}
 
 export function StudyInfoCard({
   study,
@@ -116,6 +90,9 @@ export function StudyInfoCard({
   const discordHref = discordChannelUrl ?? discordUrl(study);
   const hasDrive = driveUrlOverride != null ? !!driveUrlOverride : canOpenDrive(study);
   const driveHref = driveUrlOverride ?? driveUrl(study);
+  const showDiscord = hasDiscord && !!discordHref;
+  const showDrive = hasDrive && !!driveHref;
+  const pendingLinks = [!showDiscord && '디스코드', !showDrive && '자료실'].filter(Boolean).join(' · ');
 
   return (
     <section className='card px-5 py-4'>
@@ -133,32 +110,45 @@ export function StudyInfoCard({
         <div className='flex w-full items-center justify-between gap-1.5 sm:w-auto sm:justify-start'>
           <div className='flex flex-wrap items-center gap-1.5'>
             {leadingAction}
-            {hasDiscord && discordHref && (
-              <LinkButton
-                label='디스코드'
+            {showDiscord && (
+              <ButtonLink
                 href={discordHref}
-                icon={<DiscordGlyph size={15} />}
+                external
+                variant='secondary'
+                size='sm'
+                title={discordHref}
+                leadingIcon={<DiscordGlyph />}
                 onClick={() => track({ name: 'Study Discord Opened', props: { study_id: String(study.id) } })}
-              />
+              >
+                디스코드
+              </ButtonLink>
             )}
-            {hasDrive && driveHref && (
-              <LinkButton
-                label='자료실'
+            {showDrive && (
+              <ButtonLink
                 href={driveHref}
-                icon={<FolderOpen size={15} strokeWidth={1.75} aria-hidden />}
-              />
+                external
+                variant='secondary'
+                size='sm'
+                title={driveHref}
+                leadingIcon={<FolderOpen strokeWidth={1.75} aria-hidden />}
+              >
+                자료실
+              </ButtonLink>
+            )}
+            {pendingLinks && (
+              <span className='type-label-sm text-fg-muted'>{pendingLinks} 링크는 아직 준비 중이에요</span>
             )}
           </div>
-          <button
-            type='button'
+          <IconButton
+            variant='tertiary'
+            size='sm'
             aria-label='스터디 규칙'
             aria-expanded={open}
             title={open ? '접기' : '펼치기'}
             onClick={() => setOpen((v) => !v)}
-            className='ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-fg sm:ml-0'
-          >
-            <ChevronDown size={16} aria-hidden className={`transition-transform${open ? ' rotate-180' : ''}`} />
-          </button>
+            icon={<ChevronDown className={`transition-transform${open ? ' rotate-180' : ''}`} />}
+            className='ml-auto sm:ml-0'
+          />
         </div>
       </div>
 
@@ -188,13 +178,15 @@ export function StudyInfoCard({
               {rules || '아직 규칙이 없습니다.'}
             </p>
             {rules && (rulesExpanded || rulesOverflows) && (
-              <button
+              <Button
                 type='button'
+                variant='tertiary'
+                size='sm'
                 onClick={() => setRulesExpanded((v) => !v)}
-                className='mt-1 type-label-lg text-brand underline-offset-2 hover:underline'
+                className='mt-1'
               >
                 {rulesExpanded ? '접기' : '모두 보기'}
-              </button>
+              </Button>
             )}
           </div>
         )}

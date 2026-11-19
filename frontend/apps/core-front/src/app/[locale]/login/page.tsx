@@ -3,6 +3,8 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
+
 import {
   appleRedirectUri,
   buildAppleAuthUrl,
@@ -20,6 +22,7 @@ import {
   loginErrorFromOAuthPopup,
 } from '@/features/auth/login-errors';
 import { exchangeSocialLogin } from '@/features/auth/repository';
+import { returnPath } from '@/features/onboarding/model';
 import { track } from '@/lib/analytics';
 import { afterAnalyticsReady } from '@/lib/analytics-privacy-state';
 
@@ -40,7 +43,7 @@ function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const locale = (params?.locale as string) ?? 'ko';
-  const next = search.get('next') ?? `/${locale}/my`;
+  const next = returnPath(search.get('next'), locale as Locale);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +148,7 @@ function LoginForm() {
       <p className='mt-2 type-body-sm text-fg-muted'>로그인하면 내 스터디룸에서 참여한 스터디를 볼 수 있어요.</p>
 
       <button
+        // ui-native: 구글 로그인 — 구글 브랜드 표시 규정(흰 바탕 · 로고)을 따른다
         type='button'
         onClick={startLogin}
         disabled={loading}
@@ -169,6 +173,7 @@ function LoginForm() {
       </button>
 
       <button
+        // ui-native: 애플 로그인 — 애플 브랜드 표시 규정(검은 바탕 · 로고)을 따른다
         type='button'
         onClick={startAppleLogin}
         disabled={loading}

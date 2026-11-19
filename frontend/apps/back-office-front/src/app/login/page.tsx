@@ -106,6 +106,7 @@ function BackOfficeLoginForm() {
         <p className='mt-2 type-label-sm text-neutral-500'>허용된 운영자 계정만 접근할 수 있습니다.</p>
 
         <button
+          // ui-native: 구글 로그인 — 구글 브랜드 표시 규정(흰 바탕 · 로고)을 따른다
           type='button'
           onClick={startLogin}
           disabled={loading}

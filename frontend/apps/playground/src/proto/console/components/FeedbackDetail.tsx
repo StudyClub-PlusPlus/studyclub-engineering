@@ -137,6 +137,7 @@ export function FeedbackDetail({ id }: { id: string }) {
             <div className='flex flex-wrap gap-2'>
               {f.images.map((src, i) => (
                 <button
+                  // ui-native: 첨부 썸네일 — 이미지 전체가 누르는 곳
                   key={i}
                   type='button'
                   onClick={() => setZoom(i)}
@@ -269,6 +270,7 @@ function StatusPicker({ value, onChange }: { value: FeedbackStatus; onChange: (n
   return (
     <div ref={ref} className='relative'>
       <button
+        // ui-native: 처리 상태 고르기 열기 — 상태 색 알약 모양의 고유 listbox 팝오버 단추
         type='button'
         aria-haspopup='listbox'
         aria-expanded={open}
@@ -288,6 +290,7 @@ function StatusPicker({ value, onChange }: { value: FeedbackStatus; onChange: (n
           {FEEDBACK_STATUSES.map((s) => (
             <li key={s.value}>
               <button
+                // ui-native: 처리 상태 목록의 한 줄 — listbox 팝오버의 option
                 type='button'
                 role='option'
                 aria-selected={s.value === value}

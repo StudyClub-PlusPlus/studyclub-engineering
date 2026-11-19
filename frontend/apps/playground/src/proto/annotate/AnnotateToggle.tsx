@@ -13,6 +13,7 @@ export function AnnotateToggle() {
 
   return (
     <button
+      // ui-native: playground 주석 도구 — 서비스 화면이 아니라 화면 위에 뜨는 검토 도구
       type='button'
       onClick={toggle}
       disabled={!has}

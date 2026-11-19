@@ -17,7 +17,7 @@ import {
   queryNotifications,
   type NotificationStatus,
 } from '@console/lib/notifications';
-import { Badge, Button, Modal, Pagination, toast } from '@studyclub/ui';
+import { Badge, Button, Modal, Pagination, Select, cx, toast, IconButton } from '@studyclub/ui';
 import { Loader2, RotateCw } from 'lucide-react';
 
 type Filter = 'all' | NotificationStatus;
@@ -96,16 +96,17 @@ export function NotificationsTable() {
         (t) => (
           <span className='flex items-center gap-3'>
             재발송을 요청하지 못했습니다. 다시 시도해 주세요.
-            <button
+            <Button
               type='button'
-              className='shrink-0 font-semibold text-primary-600 underline-offset-2 hover:underline'
+              variant='tertiary'
+              size='sm'
               onClick={() => {
                 toast.dismiss(t.id);
                 void run(ids);
               }}
             >
               다시 시도
-            </button>
+            </Button>
           </span>
         ),
         { duration: 8000 },
@@ -249,17 +250,16 @@ export function NotificationsTable() {
                       대부분 비어 있을 칼럼 하나를 표 끝에 두지 않아도 된다.
                     */}
                     {(row.status === 'FAILED' || busy.has(row.id)) && (
-                      <button
-                        type='button'
+                      // 보내는 중에는 loading 으로 막는다 — design-system §9-1 은 버튼 안 스피너를 쓰지 않는다
+                      <IconButton
+                        variant='tertiary'
+                        size='xs'
                         onClick={() => void run([row.id])}
-                        disabled={busy.has(row.id)}
+                        loading={busy.has(row.id)}
                         aria-label='재발송'
-                        aria-busy={busy.has(row.id) || undefined}
                         title='재발송'
-                        className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:hover:bg-transparent'
-                      >
-                        {busy.has(row.id) ? <Loader2 size={13} className='animate-spin' /> : <RotateCw size={13} />}
-                      </button>
+                        icon={<RotateCw />}
+                      />
                     )}
                   </span>
                 </td>
@@ -366,12 +366,16 @@ function FilterSelect<T extends string>({
   onChange: (next: 'all' | T) => void;
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as 'all' | T)}
-      className='h-9 rounded-control border border-border-strong bg-bg px-3 type-body-sm disabled:bg-surface-2'
+      className={cx(
+        'w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? label : '전체'}</option>
       {options.map((o) => (
@@ -379,7 +383,7 @@ function FilterSelect<T extends string>({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 

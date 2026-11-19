@@ -11,13 +11,7 @@ on:
       # pnpm-lock.yaml·package.json·turbo.json·tsconfig.base.json 같은 루트 설정
       - 'frontend/*'
       - '.github/workflows/playground-beta.yaml'
-  pull_request:
-    paths:
-      - 'frontend/apps/playground/**'
-      - 'frontend/packages/**'
-      - '01-planning/stories/**'
-      - 'frontend/*'
-      - '.github/workflows/playground-beta.yaml'
+  # PR 검사(lint · typecheck · export-specs · 빌드)는 frontend-pr.yaml 이 한다
   workflow_dispatch:
 
 jobs:

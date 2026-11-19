@@ -54,6 +54,9 @@ erDiagram
   ACCOUNT |o..o{ SITE_NOTICE : "작성한 캡틴 (FK 없음)"
   ACCOUNT |o..o{ FEEDBACK : "제출자·완료 처리자 (FK 없음)"
   FEEDBACK ||--o{ FEEDBACK_IMAGE : "첨부"
+  ACCOUNT |o..o{ CLUB_EVENT : "등록한 캡틴 (FK 없음)"
+  CLUB_EVENT ||--|{ CLUB_EVENT_CHANNEL : "참여 방식"
+  CLUB_EVENT ||--o{ CLUB_EVENT_QUESTION : "신청 질문"
   STUDY_PROGRAM ||--o{ STUDY : "기수"
   STUDY ||--o{ STUDY_GROUP : "분반"
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
@@ -91,6 +94,9 @@ erDiagram
   ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
   ACCOUNT |o..o{ FEEDBACK : "제출자·완료 처리자 (FK 없음)"
   FEEDBACK ||--o{ FEEDBACK_IMAGE : "첨부"
+  ACCOUNT |o..o{ CLUB_EVENT : "등록한 캡틴 (FK 없음)"
+  CLUB_EVENT ||--|{ CLUB_EVENT_CHANNEL : "참여 방식"
+  CLUB_EVENT ||--o{ CLUB_EVENT_QUESTION : "신청 질문"
   NOTIFICATION {
     bigint ID PK
     varchar EVENT_TYPE
@@ -254,6 +260,49 @@ erDiagram
     bigint   STORAGE_OBJECT_ID    "업로드 행 (FK 없음)"
     varchar  IMAGE_URL
     int      DISPLAY_ORDER
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  CLUB_EVENT {
+    bigint   ID                     PK
+    varchar  TITLE
+    varchar  SUMMARY
+    text     DESCRIPTION              "평문 5000자"
+    varchar  TIME_ZONE                "행사 기준 IANA 시간대"
+    datetime STARTS_AT
+    datetime ENDS_AT                  "NULL = 시작일 다음 날 00:00"
+    datetime DEADLINE_AT
+    varchar  CONFIRMATION             "AUTO / REVIEW"
+    varchar  STATUS                   "PUBLISHED / CLOSED / CANCELLED"
+    datetime PUBLISHED_AT
+    bigint   VERSION                  "저장마다 +1"
+    bigint   CREATED_BY               "등록한 캡틴 (FK 없음)"
+    varchar  CREATE_IDEMPOTENCY_KEY   "UK (CREATED_BY, KEY)"
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  CLUB_EVENT_CHANNEL {
+    bigint   ID                PK
+    bigint   CLUB_EVENT_ID        FK
+    varchar  CHANNEL              "ONLINE / OFFLINE"
+    int      CAPACITY
+    varchar  LOCATION             "오프라인 장소"
+    varchar  ONLINE_URL           "온라인 링크 (로그 금지)"
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  CLUB_EVENT_QUESTION {
+    bigint   ID                PK
+    bigint   CLUB_EVENT_ID        FK
+    varchar  QUESTION_KEY         "questionId, 행사 안 유일"
+    varchar  LABEL
+    varchar  TYPE                 "TEXT / TEXTAREA / RADIO / CHECKBOX"
+    boolean  REQUIRED
+    json     OPTIONS
+    int      SORT_ORDER
     datetime CREATED_AT
     datetime UPDATED_AT
   }
@@ -443,6 +492,9 @@ erDiagram
 | 공지 | [SITE_NOTICE](./SITE_NOTICE.md) | 사이트 전체 공지 — 콘솔이 쓰고 사이트가 읽는다 | `REMOVED_AT` (소프트 삭제) |
 | 문의 | [FEEDBACK](./FEEDBACK.md) | 문의·오류 신고 — 크루가 보내고 콘솔이 처리 · 회신 | `STATUS` |
 | 문의 | [FEEDBACK_IMAGE](./FEEDBACK_IMAGE.md) | 문의 첨부 이미지 (최대 3장) | — |
+| 행사 | [CLUB_EVENT](./CLUB_EVENT.md) | 캡틴이 등록하는 크루 행사 — 등록 즉시 공개 | `STATUS` (표시 상태는 계산) |
+| 행사 | [CLUB_EVENT_CHANNEL](./CLUB_EVENT_CHANNEL.md) | 행사 참여 방식(온라인·오프라인)별 정원·장소·링크 | — |
+| 행사 | [CLUB_EVENT_QUESTION](./CLUB_EVENT_QUESTION.md) | 행사 신청 질문 (현재 질문, 신청은 사본을 따로 둔다) | — |
 
 
 ## ERD 추가·변경 절차

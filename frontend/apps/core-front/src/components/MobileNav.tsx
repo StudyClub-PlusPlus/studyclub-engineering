@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import type { Locale } from '@studyclub/types';
+import { IconButton, ButtonLink } from '@studyclub/ui';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 
 import { getUser } from '@/features/auth/auth';
@@ -65,9 +66,9 @@ export function MobileNav({
 
   return (
     <div className='md:hidden'>
-      <button
+      <IconButton
         ref={buttonRef}
-        type='button'
+        variant='tertiary'
         onClick={() => setOpen((v) => {
           if (!v) announceMenuOpen('mobile-nav');
           return !v;
@@ -75,10 +76,8 @@ export function MobileNav({
         aria-label={open ? t({ ko: '메뉴 닫기', en: 'Close menu' }, locale) : t({ ko: '메뉴 열기', en: 'Open menu' }, locale)}
         aria-expanded={open}
         aria-controls='mobile-nav'
-        className={`grid h-9 w-9 place-items-center rounded-full text-fg transition-colors hover:bg-surface-2 ${focusRing}`}
-      >
-        {open ? <X size={20} /> : <Menu size={20} />}
-      </button>
+        icon={open ? <X /> : <Menu />}
+      />
 
       {open && (
         <div className='fixed inset-x-0 bottom-0 top-16 z-40'>
@@ -111,14 +110,9 @@ export function MobileNav({
                 <ArrowUpRight size={14} />
               </a>
             )}
-            <a
-              href={join.href}
-              target='_blank'
-              rel='noreferrer'
-              className={`mt-2 rounded-full bg-brand px-4 py-2.5 text-center type-label-lg text-on-brand ${focusRing}`}
-            >
+            <ButtonLink href={join.href} external className='mt-2 w-full rounded-pill'>
               {join.label}
-            </a>
+            </ButtonLink>
           </nav>
         </div>
       )}

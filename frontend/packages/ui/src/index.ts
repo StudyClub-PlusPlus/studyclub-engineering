@@ -8,7 +8,7 @@
 export { cx } from './cx';
 
 export { Button, IconButton } from './Button';
-export type { ButtonProps, ButtonSize, ButtonVariant, ButtonState, IconButtonProps } from './Button';
+export type { ButtonProps, ButtonSize, ButtonVariant, ButtonState, IconButtonProps, IconButtonSize } from './Button';
 
 export { Badge } from './Badge';
 export type { BadgeProps, BadgeTone } from './Badge';
@@ -17,7 +17,14 @@ export { Card } from './Card';
 export type { CardProps } from './Card';
 
 export { FieldShell, Input, Select, Textarea } from './Field';
-export type { FieldShellProps, InputProps, InputSize, SelectProps, SelectSize, TextareaProps } from './Field';
+export type {
+  FieldShellProps,
+  InputProps,
+  InputSize,
+  SelectProps,
+  SelectSize,
+  TextareaProps,
+} from './Field';
 
 export { FilterChip } from './Chip';
 export type { FilterChipProps } from './Chip';
@@ -33,6 +40,12 @@ export type { CapacityBarProps } from './CapacityBar';
 
 export { Checkbox } from './Checkbox';
 export type { CheckboxProps } from './Checkbox';
+
+export { Radio } from './Radio';
+export type { RadioProps } from './Radio';
+
+export { Switch } from './Switch';
+export type { SwitchProps, SwitchTone } from './Switch';
 
 export { Modal } from './Modal';
 export { SelectionCount, TableActionBar } from './TableActionBar';
@@ -82,3 +95,12 @@ export {
   useImageUpload,
 } from './useImageUpload';
 export type { ImagePurpose, UploadedImage, UseImageUploadOptions } from './useImageUpload';
+
+export { ButtonLink } from './ButtonLink';
+export type { ButtonLinkProps } from './ButtonLink';
+
+export { HelpPopover } from './HelpPopover';
+export type { HelpPopoverProps } from './HelpPopover';
+
+export { TimeSelect } from './TimeSelect';
+export type { TimeSelectProps } from './TimeSelect';

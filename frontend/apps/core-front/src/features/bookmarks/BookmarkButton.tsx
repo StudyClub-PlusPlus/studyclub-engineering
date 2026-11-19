@@ -50,6 +50,7 @@ export function BookmarkButton({
 
   return (
     <button
+      // ui-native: 찜 하트 — 누르면 튀는 하트 애니메이션이 붙은 고유 단추
       type='button'
       onClick={toggle}
       aria-pressed={marked}

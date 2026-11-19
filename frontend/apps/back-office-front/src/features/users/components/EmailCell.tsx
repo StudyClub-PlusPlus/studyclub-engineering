@@ -1,6 +1,7 @@
 'use client';
 
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { IconButton } from '@studyclub/ui';
+import { Eye, EyeOff } from 'lucide-react';
 
 import { useRevealEmail } from '@/features/users/queries';
 
@@ -50,28 +51,19 @@ export function EmailCell({
       <span className='truncate' title={revealedEmail}>
         {revealedEmail ?? maskedEmail}
       </span>
-      <button
-        type='button'
+      <IconButton
+        variant='tertiary'
+        size='xs'
         onClick={handleToggle}
-        disabled={reveal.isPending}
-        aria-busy={reveal.isPending}
+        loading={reveal.isPending}
         aria-label={`${displayName} 이메일 ${shown ? '가리기' : '보기'}`}
         title={reveal.isPending ? '확인 중…' : shown ? '가리기' : '전체 주소 보기'}
-        className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60'
-      >
-        {reveal.isPending ? (
-          <Loader2 size={14} className='animate-spin' aria-hidden='true' />
-        ) : shown ? (
-          <EyeOff size={14} aria-hidden='true' />
-        ) : (
-          <Eye size={14} aria-hidden='true' />
-        )}
-        {reveal.isPending && (
-          <span className='sr-only' role='status'>
-            확인 중…
-          </span>
-        )}
-      </button>
+        icon={shown ? <EyeOff /> : <Eye />}
+      />
+      {/* 처리 중 안내는 버튼 밖 role=status 로 — design-system §9-1 은 버튼 안 스피너 · 글자를 쓰지 않는다 */}
+      <span className='sr-only' role='status'>
+        {reveal.isPending ? '확인 중…' : ''}
+      </span>
     </div>
   );
 }
