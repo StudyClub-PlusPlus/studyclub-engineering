@@ -13,6 +13,7 @@ import {
   Select,
   SelectionCount,
   TableActionBar,
+  TimeSelect,
   cx,
   FilterChip,
 } from '@studyclub/ui';
@@ -216,7 +217,7 @@ function AddMeetingForm({
       }
     >
       <div className='flex flex-col gap-4 py-2'>
-        <div className='grid gap-3 sm:grid-cols-[10rem_8rem]'>
+        <div className='grid gap-3 sm:grid-cols-[10rem_12rem]'>
           <Input
             type='date'
             label={draft.repeat === 'none' ? '일자' : '시작 일자'}
@@ -225,13 +226,12 @@ function AddMeetingForm({
             error={errors.date}
             onChange={(ev) => change({ date: ev.target.value })}
           />
-          <Input
-            type='time'
+          <TimeSelect
             label={`시작 시각 (${zoneLabel(inputZone, firstInstant)})`}
             required
             value={draft.time}
             error={errors.time}
-            onChange={(ev) => change({ time: ev.target.value })}
+            onChange={(time) => change({ time })}
           />
         </div>
 
@@ -1030,14 +1030,13 @@ export function ScheduleTab({
                       <td className='px-2 py-3 text-center'>
                         <div className='flex items-center justify-center gap-1.5'>
                           {editable ? (
-                            <Input
-                              type='time'
+                            <TimeSelect
                               aria-label={`${meetingLabel(m)} 시작 시각 (${abbreviation})`}
                               size='sm'
                               value={shown.time}
                               error={errors.time}
-                              onChange={(e) => changeWall(m, { time: e.target.value })}
-                              className='w-full max-w-none px-2 py-1'
+                              onChange={(time) => changeWall(m, { time })}
+                              className='w-full'
                             />
                           ) : (
                             shown.time
