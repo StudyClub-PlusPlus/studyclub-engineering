@@ -105,7 +105,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].captain | Boolean | N | 내가 이 스터디의 **담당 캡틴**(처음엔 스터디를 생성한 캡틴, 백오피스에서 바뀔 수 있다)이면 true — 「캡틴」 배지. 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다. 다른 캡틴(ADMIN)이 신청해 참여한 스터디는 false(크루) | 계산: `STUDY.OWNER_CAPTAIN_ID = 나` |
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |
-| items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김 | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |
+| items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김. 반을 옮겼으면 있었던 반 모두 합산 ([share 11-19](../../docs/share/2026-11-19-group-move-log.md)) | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |
 | items[].meetings | Array | N | 내 반 회차. `scheduledAt` 오름차순. 없으면 `[]` | STUDY_MEETING (`STUDY_GROUP_ID` = 내 명부의 반) |
 | items[].meetings[].meetingId | Long | N | | STUDY_MEETING.ID |
 | items[].meetings[].sequence | Integer | N | 회차 번호. 1부터 | 계산: 반 안에서 `scheduledAt` 순번 |
@@ -141,7 +141,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 - 다음 회차: `ONGOING` 은 **회차 종료 기준 > now** 인 첫 회차 — 진행 중인 회차가 끝날 때까지 다음 회차로 남아 참석 버튼이 유지된다. `UPCOMING` 은 `sequence = 1`
 - 주간 일정: `relation ∈ {UPCOMING, ONGOING}` 인 스터디의 `meetings[].scheduledAt`
 - 스터디 기간(PRD §4-5): 첫·마지막 회차의 `scheduledAt`
-- 완주 점수판 `n/m`: `countedInRate = true` 인 회차 중 `attendanceStatus ∈ {PRESENT, LATE}` 개수 / `EXCUSED` 가 아닌 개수. 출석률과 같은 회차 집합을 본다
+- 완주 점수판 `n/m`: `countedInRate = true` 인 회차 중 `attendanceStatus ∈ {PRESENT, LATE}` 개수 / `EXCUSED` 가 아닌 개수. 출석률과 같은 회차 집합을 본다. 반을 옮겼으면 옛 반 구간의 회차도 더한다 — 출석률과 같은 합산 (share 11-19). [NEEDS CLARIFICATION] 회차 격자(`meetings[]`)에 옛 반 회차를 함께 그릴지는 미정 — 지금은 지금 반 회차만
 - 참석 버튼 활성: `scheduledAt − 30분` ≤ now ≤ 회차 종료 기준
 - 디스코드 아이콘: `COMPLETED` 면 채널 URL 과 무관하게 클럽 초대 링크(완주 뒤 채널은 닫힌다 — 프로토 `joined.ts` `discordUrl`). `UPCOMING`·`ONGOING` 은 `discordChannelUrl`, null 이면 클럽 초대 링크
 
