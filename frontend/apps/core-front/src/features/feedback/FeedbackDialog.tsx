@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Modal, Textarea, toast } from '@studyclub/ui';
+import { Button, Input, Modal, Radio, Textarea, toast } from '@studyclub/ui';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
@@ -197,15 +197,16 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
         ) : (
           <span className='flex items-center gap-3'>
             {message}
-            <button
+            <Button
               type='button'
-              className='shrink-0 font-semibold text-primary-600 underline-offset-2 hover:underline'
+              variant='tertiary'
+              size='sm'
               // 이 알림은 실패한 그때 그려졌다. 지금 화면의 첨부·상태로 보내도록 가장 최근의 send 를 부른다.
               // 올리는 중이면 send 가 보내지 않고, 알림은 남아 있어 다 올라간 뒤 다시 누를 수 있다
               onClick={() => void latestSend.current()}
             >
               다시 시도
-            </button>
+            </Button>
           </span>
         ),
         { id: ERROR_TOAST_ID, duration: 8000 },
@@ -251,10 +252,7 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
             className='flex flex-wrap gap-x-5 gap-y-2'
           >
             {FEEDBACK_TYPES.map((t) => (
-              <label key={t.value} className='inline-flex cursor-pointer items-center gap-2 text-sm text-fg'>
-                <input type='radio' value={t.value} {...register('type')} className='h-4 w-4 accent-(--color-brand)' />
-                {t.label}
-              </label>
+              <Radio key={t.value} value={t.value} label={t.label} {...register('type')} />
             ))}
           </div>
           {errors.type?.message && <p className='text-xs text-error-700'>{errors.type.message}</p>}
@@ -304,6 +302,7 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
                   </span>
                 )}
                 <button
+                  // ui-native: 첨부 썸네일 위에 겹친 빼기 표시 — 썸네일의 일부
                   type='button'
                   onClick={() => drop(a.key)}
                   aria-label={`첨부 이미지 ${i + 1} 빼기`}
@@ -315,6 +314,7 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
             ))}
             {attachments.length < IMAGE_MAX_COUNT && (
               <button
+                // ui-native: 이미지를 끌어 놓는 업로드 영역 — 영역 전체가 누르는 곳
                 type='button'
                 onClick={() => fileRef.current?.click()}
                 onDragOver={(e) => {

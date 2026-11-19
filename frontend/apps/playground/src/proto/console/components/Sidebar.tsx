@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { getUser, logout, type SessionUser } from '@console/lib/auth';
+import { IconButton } from '@studyclub/ui';
 import { LayoutDashboard, BookOpen, CalendarDays, Users, Megaphone, MessagesSquare, Mail, LogOut } from 'lucide-react';
 
 // 프로토는 playground 안에서 /proto/console 아래 매달린다. 링크는 이 접두를 붙여야 한다.
@@ -90,14 +91,7 @@ export function Sidebar() {
               <div className='truncate type-label-lg'>{user.nickname ?? '운영자'}</div>
               <div className='truncate type-label-sm text-[var(--color-fg-muted)]'>{user.email}</div>
             </div>
-            <button
-              type='button'
-              onClick={handleLogout}
-              title='로그아웃'
-              className='grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--color-fg-muted)] transition-colors hover:bg-[var(--color-surface-subtle)] hover:text-danger-fg'
-            >
-              <LogOut size={15} />
-            </button>
+            <IconButton variant='tertiary' size='sm' onClick={handleLogout} title='로그아웃' aria-label='로그아웃' icon={<LogOut />} />
           </div>
         ) : (
           <div className='px-1 py-2 type-label-sm text-[var(--color-fg-muted)]'>로그인 필요</div>

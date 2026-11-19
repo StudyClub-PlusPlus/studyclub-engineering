@@ -7,13 +7,15 @@ import { TableCard } from '@console/components/ui';
 import { maskEmail } from '@console/lib/mask';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { EventMailPreview, EventRegistration } from '@studyclub/types';
-import { Badge, Button, IconButton, Modal, Tabs } from '@studyclub/ui';
+import { Badge, Button, IconButton, Modal, Pagination, Tabs } from '@studyclub/ui';
 import { ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react';
 
 import { EventEditor } from './EventEditor';
 import { EventMailComposer } from './EventMailComposer';
 import { useEventWorkspace } from './EventWorkspace';
 import {
+  eventRegistrationPage,
+  eventMailRecipients,
   CHANNEL_LABEL,
   CONFIRM_LABEL,
   FORMAT_LABEL,
@@ -54,6 +56,7 @@ export function EventAdminDetail({ id }: { id: string }) {
   const { state, now, dispatch } = useEventWorkspace();
   const displayTimeZone = useDisplayTimeZone();
   const [tab, setTab] = useState('attendees');
+  const [registrationPage, setRegistrationPage] = useState({ eventId: id, page: 1 });
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState<{
@@ -85,14 +88,15 @@ export function EventAdminDetail({ id }: { id: string }) {
       </div>
     );
   const registrations = state.registrations.filter((r) => r.eventId === id);
+  const page = eventRegistrationPage(registrations, registrationPage.eventId === id ? registrationPage.page : 1);
   const pending = registrations.filter((r) => r.status === 'PENDING');
   const status = eventStatus(state, event, now);
   const finished = status === '종료';
   const cancelled = event.status === 'CANCELLED';
   const canManageRegistrations = canManageEventRegistrations(event, now);
   const hasCancellationRecipients = cancelled
-    ? Boolean(event.cancellationRecipientIds?.length)
-    : registrations.some(occupiesSeat);
+    ? eventMailRecipients(state, event, 'CANCELLED_ACTIVE').length > 0
+    : registrations.some((row) => !row.accountDeleted && occupiesSeat(row));
   const mails = state.mails.filter((mail) => mail.eventId === id && mail.kind === 'OPERATOR');
   const run = (action: EventAction, message: string) => {
     const failure = dispatch(action);
@@ -276,13 +280,13 @@ export function EventAdminDetail({ id }: { id: string }) {
                 </tr>
               </thead>
               <tbody>
-                {registrations.map((r) => (
+                {page.items.map((r) => (
                   <tr key={r.id}>
                     <td className='whitespace-nowrap'>
-                      <span className='font-semibold'>{r.name}</span>
+                      <span className='font-semibold'>{r.accountDeleted ? '탈퇴한 회원' : r.name}</span>
                     </td>
                     <td>
-                      <EventEmail key={r.email} email={r.email} name={r.name} />
+                      {r.accountDeleted ? <span className='text-fg-muted'>—</span> : <EventEmail key={r.email} email={r.email} name={r.name} />}
                     </td>
                     <td className='whitespace-nowrap'>{CHANNEL_LABEL[r.channel]}</td>
                     <td>
@@ -367,6 +371,7 @@ export function EventAdminDetail({ id }: { id: string }) {
                 )}
               </tbody>
             </TableCard>
+            <Pagination page={page.page} total={page.total} onChange={(value) => setRegistrationPage({ eventId: id, page: value })} />
           </section>
         )}
         {tab === 'mails' && (
@@ -377,6 +382,8 @@ export function EventAdminDetail({ id }: { id: string }) {
             ) : (
               mails.map((mail) => (
                 <button
+                  // ui-native: 발송 메일 카드 — 카드 전체가 누르는 곳
+                  type='button'
                   key={mail.id}
                   onClick={() => setMailPreview(mail)}
                   className='card flex w-full items-center justify-between gap-4 p-4 text-left hover:border-brand'

@@ -1,6 +1,8 @@
 'use client';
 
-/** 알약 모양 구간 탭 — 내 스터디룸의 필터·KST/PDT, 스터디 관리 일정의 시간대가 같이 쓴다. */
+import { Segmented } from '@studyclub/ui';
+
+/** 알약 모양 구간 탭 — 내 스터디룸의 필터·KST/PDT, 스터디 관리 일정의 시간대가 같이 쓴다. 모양은 @studyclub/ui Segmented(pill). */
 export function SegmentTabs<T extends string>({
   value,
   options,
@@ -16,29 +18,15 @@ export function SegmentTabs<T extends string>({
   label?: string;
 }) {
   return (
-    <div
-      role='tablist'
-      aria-label={label}
-      data-anno={anno}
-      className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'
-    >
-      {options.map((o) => {
-        const on = value === o.key;
-        return (
-          <button
-            key={o.key}
-            type='button'
-            role='tab'
-            aria-selected={on}
-            onClick={() => onChange(o.key)}
-            className={`whitespace-nowrap rounded-pill px-4 py-1.5 type-label-lg transition-colors ${
-              on ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
-            }`}
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
+    // data-anno 는 주석 모드가 짚는 자리 — Segmented 가 data 속성을 받지 않아 바깥에 단다
+    <span data-anno={anno} className='inline-flex shrink-0'>
+      <Segmented
+        shape='pill'
+        aria-label={label}
+        value={value}
+        options={options.map((o) => ({ value: o.key, label: o.label }))}
+        onChange={onChange}
+      />
+    </span>
   );
 }

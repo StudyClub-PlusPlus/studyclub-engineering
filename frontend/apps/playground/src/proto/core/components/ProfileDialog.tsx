@@ -6,7 +6,7 @@ import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { DISCORD_NICKNAME_EXAMPLE } from '@core/lib/me';
 import { type MemberRegion } from '@studyclub/types';
-import { Button, Input, Modal } from '@studyclub/ui';
+import { Button, Input, Modal, FilterChip } from '@studyclub/ui';
 import { MEMBER_REGIONS } from '@studyclub/utils';
 
 /**
@@ -102,18 +102,15 @@ export function ProfileDialog({
           <p className='type-label-lg text-neutral-800'>거주 지역</p>
           <div className='mt-2 flex flex-wrap gap-1.5'>
             {MEMBER_REGIONS.map((r) => (
-              <button
+              <FilterChip
                 key={r.key}
-                type='button'
+                selected={draftRegion === r.key}
+                selectMode='single'
                 onClick={() => setDraftRegion(r.key)}
-                aria-pressed={draftRegion === r.key}
-                className={`rounded-pill px-4 py-1.5 type-label-lg transition-colors ${
-                  draftRegion === r.key ? 'bg-brand text-on-brand' : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'
-                }`}
               >
                 {t(r.label, locale)}
-                <span className='ml-1.5 type-label-sm opacity-70'>{r.tzLabel}</span>
-              </button>
+                <span className='type-label-sm opacity-70'>{r.tzLabel}</span>
+              </FilterChip>
             ))}
           </div>
         </div>

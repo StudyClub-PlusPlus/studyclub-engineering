@@ -268,3 +268,4 @@ export const RealData: Story = {
 - [ ] 도메인 컴포넌트(Badge, CapacityBar 등)는 전체 tone/state 나열 Story 포함
 - [ ] 폭 의존 컴포넌트에 `decorator` 로 컨테이너 고정
 - [ ] raw HEX / raw rgba 없음 (컴포넌트 규칙 동일 적용)
+- [ ] `new-component` 가 만든 `Default` 스토리를 지우지 않고 상태별 스토리를 더했다 — 스토리 파일이 없으면 drift 검사가 막는다

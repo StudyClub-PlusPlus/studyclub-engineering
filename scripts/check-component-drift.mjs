@@ -13,6 +13,20 @@
  *    - hex     : 색 코드를 직접 쓴 것(text-[#FCD34D], style 의 '#2D2F35' …).
  *    - fontPx  : 글자 크기를 직접 쓴 것(text-[13px] …). 콘텐츠 역할(type-body-sm · type-label-lg …)을 쓴다.
  *    레이아웃 폭·높이(w-[320px] …)는 정당한 경우가 많아 세지 않는다.
+ * 3. 날 폼 요소 — @studyclub/ui 에 부품이 있는데 HTML 요소를 직접 쓴 횟수. 앱·프로토만 센다.
+ *    <input>(글자 입력) → Input, <input type="checkbox"> → Checkbox, <input type="radio"> → Radio,
+ *    <select> → Select, <textarea> → Textarea. file·hidden·range·color 는 ui 부품이 없어 세지 않는다.
+ * 4. 날 버튼 — <button> 을 직접 쓴 횟수. 앱·프로토만 센다. 행동은 Button/IconButton, 켜고 끄기는 Switch,
+ *    고르기는 FilterChip · Segmented · Tabs 로 짠다.
+ *    3·4 의 예외(카드 전체가 누르는 곳, 고유 위젯 안 등)는 여는 태그 안에 `// ui-native: 이유` 주석을 단다 — 세지 않는다.
+ *    `--list` 로 주석 없는 것을 파일:줄로 모두 본다.
+ * 4-1. 버튼 흉내 링크 — <a> · <Link> 에 sc-button 을 손으로 붙였거나, 둥근 모서리 + 테두리(또는 brand 채움) + 좌우 여백으로
+ *    버튼처럼 꾸민 것. ButtonLink 를 쓴다. 표 행 · 메뉴 줄처럼 테두리 없는 링크는 세지 않는다.
+ * 4-2. 손으로 짠 말풍선 — 앱 안의 role="dialog", 떠 있는(absolute) role="note". 도움말은 HelpPopover, 확인 창은 Modal 을 쓴다.
+ * 5. 스토리 없는 부품 — packages/ui/src 의 부품(.tsx)마다 {Name}.stories.tsx 가 있어야 한다. 기준선 없이 하나라도 없으면 실패.
+ *    새 부품은 `pnpm --filter @studyclub/ui new-component {Name}` 으로 만들면 스토리까지 함께 생긴다.
+ * 6. 카탈로그에 없는 부품 — @studyclub/ui 가 export 하는 부품은 playground /components 카탈로그에 <Name …> 으로 보여야 한다.
+ *    기준선 없이 하나라도 없으면 실패. new-component 가 칸을 함께 만든다.
  *
  * 기존 것은 기준선(scripts/component-drift-baseline.json)에 적어 두고 **늘어날 때만** 실패한다.
  * 줄였으면 --update 로 기준선을 낮춘다.
@@ -43,6 +57,7 @@ const AREAS = {
   'core-front': path.join(FE, 'apps/core-front/src'),
   'back-office-front': path.join(FE, 'apps/back-office-front/src'),
   'playground/proto': path.join(FE, 'apps/playground/src/proto'),
+  'playground/pages': path.join(FE, 'apps/playground/src/app/(proto)'),
   'packages/ui': path.join(FE, 'packages/ui/src'),
 };
 const isSource = (n) => n.endsWith('.tsx') && !n.endsWith('.stories.tsx') && !n.endsWith('.test.tsx');
@@ -114,6 +129,120 @@ for (const [area, dir] of Object.entries(AREAS)) {
   }
 }
 
+/**
+ * 일부러 둔 예외는 여는 태그 안에 이유를 단다 — `<button // ui-native: 카드 전체가 누르는 곳` (한 줄 태그는 블록 주석으로).
+ * JSX 의 태그 안 주석은 어느 자리(`(` · `&&` 바로 뒤)에서도 문법을 깨지 않는다. 이유가 빈 표시는 인정하지 않는다.
+ */
+function isMarkedNative(source, index) {
+  const tag = source.slice(index).match(/^<\w+\b[\s\S]*?(?<!=)>/)?.[0] ?? '';
+  return /ui-native:\s*[^\s*/]/.test(tag);
+}
+const lineOf = (source, index) => source.slice(0, index).split('\n').length;
+
+// ── 3. 날 폼 요소
+const NATIVE_SKIP_TYPES = new Set(['file', 'hidden', 'range', 'color']);
+const NATIVE_FIX = {
+  input: 'Input',
+  checkbox: 'Checkbox',
+  radio: 'Radio',
+  select: 'Select',
+  textarea: 'Textarea',
+};
+// 태그 끝은 `=>`(화살표 함수) 의 > 를 건너뛴다 — onChange 뒤에 오는 type 을 놓치지 않게
+const nativeRe = /<(input|select|textarea)\b([\s\S]*?)(?<!=)(\/?>)/g;
+counts.native = {};
+hits.native = {};
+for (const [area, dir] of Object.entries(AREAS)) {
+  if (area === 'packages/ui') continue;
+  counts.native[area] = 0;
+  hits.native[area] = [];
+  for (const f of walk(dir, isSource)) {
+    const source = read(f);
+    for (const m of source.matchAll(nativeRe)) {
+      if (isMarkedNative(source, m.index)) continue;
+      let kind = m[1];
+      if (kind === 'input') {
+        const type = m[2].match(/\btype=\{?['"`](\w+)['"`]/)?.[1];
+        if (type && NATIVE_SKIP_TYPES.has(type)) continue;
+        if (type === 'checkbox' || type === 'radio') kind = type;
+      }
+      counts.native[area]++;
+      hits.native[area].push(`${rel(f)}:${lineOf(source, m.index)}  <${m[1]}>→${NATIVE_FIX[kind]}`);
+    }
+  }
+}
+KINDS.native = {
+  fix: '@studyclub/ui 의 Input · Checkbox · Radio · Select · Textarea 를 쓴다. 모양이 안 맞으면 packages/ui 부품에 변형(props)을 추가한다',
+};
+
+// ── 4. 날 버튼
+counts.button = {};
+hits.button = {};
+for (const [area, dir] of Object.entries(AREAS)) {
+  if (area === 'packages/ui') continue;
+  counts.button[area] = 0;
+  hits.button[area] = [];
+  for (const f of walk(dir, isSource)) {
+    const source = read(f);
+    for (const m of source.matchAll(/<button\b/g)) {
+      if (isMarkedNative(source, m.index)) continue;
+      counts.button[area]++;
+      hits.button[area].push(`${rel(f)}:${lineOf(source, m.index)}  <button>`);
+    }
+  }
+}
+KINDS.button = {
+  fix: 'Button · IconButton(행동), Switch(켜고 끄기), FilterChip · Segmented · Tabs(고르기)를 쓴다. 맞는 부품이 없으면 packages/ui 에 만든다',
+};
+
+// ── 4-1. 버튼 흉내 링크 · 4-2. 손으로 짠 말풍선
+const linkTagRe = /<(a|Link)\b([\s\S]*?)(?<!=)>/g;
+const looksLikeButton = (cls) =>
+  /\bsc-button\b/.test(cls) ||
+  (/\brounded-(pill|full|control|xl|lg)\b/.test(cls) && /\b(border|bg-brand)\b/.test(cls) && /\bpx-\d/.test(cls));
+const popoverRe = /<\w+\b[^>]*?\brole=['"](dialog|note)['"]/g;
+for (const kind of ['linkButton', 'popover']) {
+  counts[kind] = {};
+  hits[kind] = {};
+}
+for (const [area, dir] of Object.entries(AREAS)) {
+  if (area === 'packages/ui') continue;
+  counts.linkButton[area] = 0;
+  hits.linkButton[area] = [];
+  counts.popover[area] = 0;
+  hits.popover[area] = [];
+  for (const f of walk(dir, isSource)) {
+    const source = read(f);
+    for (const m of source.matchAll(linkTagRe)) {
+      const cls = m[2].match(/className=\{?['"`]([^'"`]*)['"`]/)?.[1] ?? '';
+      if (!looksLikeButton(cls) || isMarkedNative(source, m.index)) continue;
+      counts.linkButton[area]++;
+      hits.linkButton[area].push(`${rel(f)}:${lineOf(source, m.index)}  <${m[1]}>`);
+    }
+    for (const m of source.matchAll(popoverRe)) {
+      if (isMarkedNative(source, m.index)) continue;
+      // role=note 는 떠 있는(absolute) 것만 말풍선이다 — 늘 보이는 안내 상자는 세지 않는다
+      const tag = source.slice(m.index).match(/^<\w+\b[\s\S]*?(?<!=)>/)?.[0] ?? '';
+      if (m[1] === 'note' && !/\babsolute\b/.test(tag)) continue;
+      counts.popover[area]++;
+      hits.popover[area].push(`${rel(f)}:${lineOf(source, m.index)}  role=${m[1]}`);
+    }
+  }
+}
+KINDS.linkButton = { fix: 'ButtonLink 를 쓴다 — 바깥 사이트는 external, 앱 안 이동은 linkAs={Link}' };
+KINDS.popover = { fix: '도움말은 HelpPopover, 확인 · 입력 창은 Modal 을 쓴다' };
+
+// ── 5. 스토리 없는 부품
+const missingStories = walk(AREAS['packages/ui'], isSource)
+  .filter((f) => !existsSync(f.replace(/\.tsx$/, '.stories.tsx')))
+  .map(rel)
+  .sort();
+
+// ── 6. 카탈로그에 없는 부품
+const CATALOG = path.join(FE, 'apps/playground/src/app/(site)/components/page.tsx');
+const catalogSource = read(CATALOG);
+const missingCatalog = [...uiParts].filter((n) => /^[A-Z][a-z]/.test(n) && !new RegExp(`<${n}\\b`).test(catalogSource)).sort();
+
 // ── --update
 if (args.has('--update')) {
   writeFileSync(BASELINE, `${JSON.stringify({ shadows, ...counts }, null, 2)}\n`);
@@ -126,6 +255,12 @@ const problems = [];
 const notes = [];
 
 const known = new Set(base.shadows);
+for (const n of missingCatalog)
+  problems.push(`카탈로그에 없음: ${n} — ${rel(CATALOG)} 에 <Case title='${n}'> 칸을 추가한다 (new-component 로 만들면 함께 생긴다)`);
+for (const f of missingStories)
+  problems.push(
+    `스토리 없음: ${f} — 같은 폴더에 ${path.basename(f, '.tsx')}.stories.tsx 를 만든다 (pnpm --filter @studyclub/ui new-component 로 만들면 함께 생긴다)`,
+  );
 for (const s of shadows) if (!known.has(s)) problems.push(`그림자 부품 추가됨: ${s} — @studyclub/ui 의 같은 부품을 import 한다`);
 for (const s of base.shadows) if (!shadows.includes(s)) notes.push(`그림자 부품 사라짐: ${s} — --update 로 기준선에서 뺀다`);
 
@@ -183,6 +318,12 @@ if (args.has('--report')) {
   rows.sort((r, s) => s[0] - r[0]);
   console.log('프로토 ↔ 앱 같은 이름 파일 — 바뀐 줄 수 (import·주석·빈 줄 제외, 참고용)');
   for (const [n, name] of rows) console.log(`  ${String(n).padStart(5)}  ${name}`);
+  console.log('');
+}
+
+if (args.has('--list')) {
+  for (const kind of ['native', 'button', 'linkButton', 'popover'])
+    for (const [area, list] of Object.entries(hits[kind])) for (const h of list) console.log(`${kind.padEnd(6)} ${area.padEnd(18)} ${h}`);
   console.log('');
 }
 

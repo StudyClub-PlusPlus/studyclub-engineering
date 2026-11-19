@@ -9,6 +9,7 @@ import { withoutApplyIntent } from '@core/lib/discord-preview';
 import { t } from '@core/lib/i18n';
 import { getApplication, getDiscord } from '@core/lib/me';
 import { recruitLabel, recruitState } from '@core/lib/recruit';
+import { Button } from '@studyclub/ui';
 import { createPortal } from 'react-dom';
 
 import { ApplyCompleteDialog } from './ApplyCompleteDialog';
@@ -51,10 +52,6 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     else setDiscordOpen(true);
   }, [pathname, router, state, study.id]);
 
-  const card = 'inline-flex items-center rounded-pill px-8 py-3 type-label-lg';
-  const live =
-    'bg-brand text-on-brand shadow-sm transition-[background-color,transform] hover:bg-brand-hover hover:scale-[1.02] focus-visible:outline-none focus-visible:shadow-(--ring)';
-  const idle = 'bg-surface-2 text-fg-placeholder';
 
   function requestApply(ev: MouseEvent<HTMLButtonElement>) {
     ev.preventDefault();
@@ -87,19 +84,20 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
 
   const isClosed = state === 'closed' || Boolean(deadlineLabel);
 
+  // 스터디 상세의 신청 버튼만 예외로 알약 모양 · 카드 너비 100% 를 쓴다 — 마감 · 신청 완료 · 신청하기가 같은 자리 같은 크기로 바뀐다
   const trigger =
     isClosed ? (
-      <span data-anno='view:1' className={`${card} ${idle}`}>
+      <Button type='button' size='lg' className='w-full rounded-pill' data-anno='view:1' disabled>
         {applyLabel}
-      </span>
+      </Button>
     ) : ready && alreadyApplied ? (
-      <span data-anno='view:2' className={`${card} ${idle}`}>
+      <Button type='button' size='lg' className='w-full rounded-pill' data-anno='view:2' disabled>
         {doneLabel}
-      </span>
+      </Button>
     ) : (
-      <button type='button' data-anno='view:2' onClick={requestApply} className={`${card} ${live}`}>
+      <Button type='button' size='lg' className='w-full rounded-pill' data-anno='view:2' onClick={requestApply}>
         {applyLabel}
-      </button>
+      </Button>
     );
 
   if (isClosed) return trigger;

@@ -10,4 +10,6 @@ export const pages: PageDef[] = [
   { id: 'notifications', label: '알림 발송 이력', path: '/notifications' },
   { id: 'notification-templates', label: '알림 템플릿', path: '/notification-templates' },
   { id: 'notices', label: '공지 관리', path: '/notices' },
+  { id: 'feedbacks', label: '문의·오류 신고', path: '/feedbacks' },
+  { id: 'feedback-detail', label: '문의·오류 신고 상세', path: '/feedbacks/:id' },
 ];

@@ -5,8 +5,8 @@
 // 서버 상태는 features/site-notices/queries.ts, 이 페이지는 검색 입력과 열려 있는 팝업만 들고 있다.
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
-import { Button, Pagination } from '@studyclub/ui';
-import { Plus } from 'lucide-react';
+import { Button, Input, Pagination } from '@studyclub/ui';
+import { Plus, Search } from 'lucide-react';
 
 import { PageHeader } from '@/components/ui';
 import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
@@ -110,14 +110,16 @@ function NoticesAdminContent() {
       />
 
       <div className='mb-3 flex flex-wrap items-center gap-2'>
-        <input
+        <Input
           type='search'
+          size='sm'
+          leadingIcon={<Search size={15} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder='제목 검색'
           aria-label='제목 검색'
           maxLength={100}
-          className='h-9 w-44 shrink-0 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='w-44'
         />
         {/* 검색으로 걸러진 뒤의 수다 — 표 위에 두어야 무엇을 세고 있는지가 분명하다 */}
         <span className='tnum ml-auto text-sm text-fg-muted'>{data && `총 ${data.total}개`}</span>

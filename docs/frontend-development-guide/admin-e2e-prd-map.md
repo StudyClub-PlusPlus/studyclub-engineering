@@ -16,7 +16,7 @@
 
 ## PRD 연결 실행 카탈로그 (2026-10-31)
 
-신규 **45개 상태 · 48장**을 연결했다. 기존 8개 상태 · 10장과 합치면 **53개 상태 · 58장**이다. 신규 연결은 145개 명세 중 45개 시나리오에 표시 상태 근거를 제공하며, 나머지 100개에는 이번 신규 연결이 없다. 기존 부분 근거는 아래 표를 별도로 참고한다. 이 숫자는 완료 기준 통과율이 아니다.
+신규 **45개 상태 · 48장**을 연결했다. 2026-11-18 에 문의·오류 신고(ST-036) **8개 상태 · 8장**을 더했고, 상세 머리 출석률 요약 API 의 고정 응답을 `stubPrd.ts` 기본값에 넣었다. 기존 8개 상태 · 10장과 합치면 **53개 상태 · 58장**이다. 신규 연결은 145개 명세 중 45개 시나리오에 표시 상태 근거를 제공하며, 나머지 100개에는 이번 신규 연결이 없다. 기존 부분 근거는 아래 표를 별도로 참고한다. 이 숫자는 완료 기준 통과율이 아니다.
 
 고정 시각 `2026-10-31T03:00:00Z`, 로컬 가상 데이터, 상태별 API 응답으로 재현한다. API 주소를 테스트 설정에서 고정해 로컬 `.env`에 따라 MSW 응답이 달라지지 않게 한다. 정의하지 않은 브라우저 API 호출은 테스트 실패로 처리한다. 로딩·처리중은 응답을 보류하고, 오류는 HTTP 오류 응답으로 만든다.
 
@@ -67,6 +67,14 @@
 | `notices--edit` | BO-ST-033-S02 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/notices--edit--desktop.png) |
 | `notices--delete` | BO-ST-033-S03 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/notices--delete--desktop.png) |
 | `dashboard--empty` | BO-ST-002-V01 / BO-ST-002-V02 / BO-ST-002-V03 / BO-ST-002-V04 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/dashboard--empty--desktop.png), [mobile](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/dashboard--empty--mobile.png) |
+| `feedbacks--default` | BO-ST-036-S01 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/feedbacks--default--desktop.png) |
+| `feedbacks--empty` | BO-ST-036-V02 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/feedbacks--empty--desktop.png) |
+| `feedbacks--filter-empty` | BO-ST-036-V03 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/feedbacks--filter-empty--desktop.png) |
+| `feedbacks--error` | BO-ST-036-V04 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/feedbacks--error--desktop.png) |
+| `feedback-detail--default` | BO-ST-036-S01 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/feedback-detail--default--desktop.png) |
+| `feedback-detail--status-menu` | BO-ST-036-S02 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/feedback-detail--status-menu--desktop.png) |
+| `feedback-detail--replied` | BO-ST-036-S03 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/feedback-detail--replied--desktop.png) |
+| `feedback-detail--not-found` | BO-ST-036-V08 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/feedback-detail--not-found--desktop.png) |
 
 파일명 통일 후 검증: `pnpm run test:e2e:catalog` 일반 비교 **58 passed (46.6s)**. TypeScript·변경 파일 ESLint 통과. 신규 48개 이미지와 연결 명세 ID·문서 링크 확인.
 
@@ -158,7 +166,7 @@
 
 **현재 추가된 실행 근거:** [study-detail--unpublished](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/study-detail--unpublished--desktop.png), [study-detail--closed](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/study-detail--closed--desktop.png). PC·모바일 전체 목록은 위 실행 카탈로그 표를 참고한다.
 
-**현재 코드 확인:** 현재 코드 기준: 정보·신청 폼·신청 결과·신청자·일정·출석 6개 탭. 탭 옆 저장 전 문구 없이 출석 칸 테두리와 aria-label로 변경을 표시하고 이탈 전에 묻는다. 근거: src/features/studies/StudyConsole.tsx, src/features/attendance/AttendanceBook.tsx.
+**현재 코드 확인:** 현재 코드 기준: 정보·신청 폼·신청 결과·신청자·일정·출석 6개 탭(ui `Tabs` — 역할은 tab, E2E 도 `getByRole('tab')` 로 찾는다). 탭 옆 저장 전 문구 없이 출석 칸 테두리와 aria-label로 변경을 표시하고 이탈 전에 묻는다. 근거: src/features/studies/StudyConsole.tsx, src/features/attendance/AttendanceBook.tsx.
 
 | 완료 기준 | PRD 원문 | 연결 시나리오 |
 |---|---|---|
@@ -388,6 +396,8 @@
 
 **자동화 상태: 예정.** 추가 전 부분 근거: study-detail--applicants; e2e/specs/participants.spec.ts (배정 저장·이탈·오류 일부)
 
+**현재 코드 확인:** 작업 바 저장 버튼은 고친 게 있으면 「변경 N명 저장」, 없으면 「저장」이다(#464). 응답에는 담당 캡틴 `ownerCaptain` 이 있다(44faf092). participants.spec.ts 는 두 이름을 함께 받고, 목 응답에 `ownerCaptain: null` 을 둔다(2026-11-18).
+
 | 완료 기준 | PRD 원문 | 연결 시나리오 |
 |---|---|---|
 | 1 | 스터디명과 모집 상태 확인 | `BO-ST-026-S01` |
@@ -559,7 +569,7 @@
 
 [PRD](../../01-planning/stories/captain-view-feedbacks/PRD.md) · [시나리오](../../frontend/apps/back-office-front/screen-catalog/features/prd/captain-view-feedbacks.feature)
 
-**자동화 상태: 예정.** 추가 전 부분 근거: 없음 (관리자 카탈로그·행동 E2E 기준).
+**자동화 상태: 표시 상태 일부 실행 연결(2026-11-18). 행동 전체는 예정.** 목록 · 빈 · 걸러서 없음 · 오류 · 상세 · 회신 후 · 상태 메뉴 · 없음 8개 상태를 고정 응답으로 찍는다(위 실행 카탈로그 표). 상태 저장 · 회신 전송 · 메모 저장의 성공·실패 알림(V05~V07)과 불러오는 중(V01)은 아직 없다.
 
 | 완료 기준 | PRD 원문 | 연결 시나리오 |
 |---|---|---|

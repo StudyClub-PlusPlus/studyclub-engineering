@@ -137,6 +137,7 @@ export function Bgm() {
         </div>
       </div>
       <button
+        // ui-native: 크레딧 화면 BGM 재생 — 아케이드 테마(픽셀 그림자) 전용 단추
         type='button'
         onClick={toggle}
         aria-label={playing ? 'BGM 일시정지' : 'BGM 재생'}

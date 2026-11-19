@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react';
 
-import { cx } from '@studyclub/ui';
+import { Switch } from '@studyclub/ui';
 
 import { useApplicationForm } from '@/features/application-form/queries';
 import { PublishConfirmDialog, type PublishTarget } from '@/features/studies/PublishConfirmDialog';
@@ -36,33 +36,14 @@ export function PublishSwitch({ detail }: { detail: ApiStudyDetail }) {
 
   return (
     <div className='flex flex-col items-end gap-1'>
-      <button
-        type='button'
-        role='switch'
-        aria-checked={live}
+      <Switch
+        label='사이트 공개'
+        tone='success'
+        checked={live}
         aria-disabled={blocked || undefined}
         aria-describedby={reason ? reasonId : undefined}
-        onClick={() => !blocked && setConfirm({ studyId: detail.id, title: detail.title, next: !live })}
-        className={cx(
-          'inline-flex items-center gap-2 rounded-control px-1 py-0.5 type-label-lg text-fg-secondary outline-none focus-visible:shadow-[var(--ring)]',
-          blocked && 'opacity-60',
-        )}
-      >
-        사이트 공개
-        <span
-          className={cx(
-            'relative h-5 w-9 rounded-full transition-colors duration-300 ease-in-out',
-            live ? 'bg-success-600' : 'bg-surface-3',
-          )}
-        >
-          <span
-            className={cx(
-              'absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-              live && 'translate-x-4 shadow',
-            )}
-          />
-        </span>
-      </button>
+        onCheckedChange={(next) => setConfirm({ studyId: detail.id, title: detail.title, next })}
+      />
       {reason && (
         <p id={reasonId} className='type-label-sm text-fg-muted'>
           {reason}

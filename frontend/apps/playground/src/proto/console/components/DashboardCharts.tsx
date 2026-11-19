@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import type { TrendPoint } from '@console/lib/dashboard';
 import { type MemberRegion } from '@studyclub/types';
+import { Segmented } from '@studyclub/ui';
 import { MEMBER_REGIONS } from '@studyclub/utils';
 
 /**
@@ -124,26 +125,18 @@ export function CategoryStudyCard({ data }: { data: CategoryCount[] }) {
       title='카테고리별 스터디 수'
       anno='6'
       action={
-        <div data-anno='6-1' className='flex gap-1'>
-          {(
-            [
-              ['running', '진행중'],
-              ['total', '누적'],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type='button'
-              aria-pressed={scope === key}
-              onClick={() => setScope(key)}
-              className={`rounded-pill px-2.5 py-1 type-label-lg transition-colors ${
-                scope === key ? 'bg-surface-2 text-fg' : 'text-fg-muted hover:text-fg-secondary'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <span data-anno='6-1'>
+          <Segmented
+            size='sm'
+            shape='pill'
+            options={[
+              { value: 'running', label: '진행중' },
+              { value: 'total', label: '누적' },
+            ]}
+            value={scope}
+            onChange={setScope}
+          />
+        </span>
       }
     >
       {rows.length === 0 ? (
