@@ -25,26 +25,27 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * 같은 DB 를 다른 테스트 클래스와 같이 쓴다 — 목록은 닉네임 접두사({@value #PREFIX})로 좁혀서 본다. 그러면 전체 수·순서가 이 픽스처만으로 정해진다.
  *
- * <p>픽스처 (정렬 순서대로, 가입일은 {@code base} 기준 며칠 전):
+ * <p>픽스처 (정렬 순서 = 가입일 최신순, 가입일은 {@code base} 기준 며칠 전):
  *
  * <ul>
+ *   <li>9908 MEMBER · 0일 전 · 9951·9952·9953 MEMBER ACTIVE → 참여 3, 담당 아님
+ *   <li>9910 MEMBER · 1시간 전 · 같은 스터디 9951 의 두 반(그룹 99510·99511)에서 LEADER → 담당 스터디 1개
+ *   <li>9902 MEMBER · 1일 전 · 참여 0 (403 요청자)
+ *   <li>9904 MEMBER · 2일 전 · 9951 MEMBER ACTIVE → 참여 1
+ *   <li>9905 MEMBER · 3일 전 · 하차한 LEADER 행 + 완주한 MEMBER 행뿐 → 참여 0
+ *   <li>9903 MEMBER · 4일 전 · 담당 2곳(9951 LEADER, 9953 LEADER)
+ *   <li>9909 MEMBER · 6일 전 · 9952 LEADER PAUSED → 담당
+ *   <li>9914·9915 MEMBER · 7일 전(같은 시각) · 참여 0 → 가입일이 같아 id 가 큰 쪽(9915)이 먼저
+ *   <li>9901 ADMIN · 10일 전 · 요청자 · 참여 0
  *   <li>9916 ADMIN · 15일 전 · 9953 LEADER → 캡틴이면서 담당 (role=NAVIGATOR 에도 나온다)
  *   <li>9907 ADMIN · 20일 전 · 담당 캡틴처럼 MEMBER 역할 ACTIVE 행 1개(스터디 9952) → 참여 1, 담당 아님
- *   <li>9901 ADMIN · 10일 전 · 요청자 · 참여 0
- *   <li>9903 MEMBER · 4일 전 · 담당 2곳(9951 LEADER, 9953 LEADER) → 담당, 참여 2
- *   <li>9910 MEMBER · 1시간 전 · 같은 스터디 9951 의 두 반(그룹 99510·99511)에서 LEADER → 참여 1, 담당 스터디 1개
- *   <li>9909 MEMBER · 6일 전 · 9952 LEADER PAUSED → 담당, 참여 1
- *   <li>9908 MEMBER · 0일 전 · 9951·9952·9953 MEMBER ACTIVE → 참여 3, 담당 아님
- *   <li>9904 MEMBER · 2일 전 · 9951 MEMBER ACTIVE → 참여 1
- *   <li>9902 MEMBER · 1일 전 · 참여 0 (403 요청자)
- *   <li>9905 MEMBER · 3일 전 · 하차한 LEADER 행 + 완주한 MEMBER 행뿐 → 참여 0
- *   <li>9914·9915 MEMBER · 7일 전(같은 시각) · 참여 0 → 정렬 규칙 1~4 가 같아 id 가 큰 쪽(9915)이 먼저
  *   <li>9906 MEMBER · 온보딩 전 — 닉네임이 접두사와 같아도 이름으로 찾히지 않는다
  * </ul>
  */
@@ -90,18 +91,18 @@ class AdminAccountListIntegrationTest {
     /** 접두사로 거른 이 픽스처의 정렬된 ID — 온보딩 전 계정(9906)은 이름으로 안 찾힌다. */
     private static final List<Long> SORTED_IDS =
             List.of(
-                    CAPTAIN_NAVIGATOR_ID,
-                    CAPTAIN_PARTICIPANT_ID,
-                    ADMIN_ID,
-                    NAVIGATOR_ID,
-                    SAME_STUDY_LEADER_ID,
-                    PAUSED_NAVIGATOR_ID,
                     BUSY_CREW_ID,
-                    CREW_ID,
+                    SAME_STUDY_LEADER_ID,
                     MEMBER_ID,
+                    CREW_ID,
                     RECENT_INACTIVE_ID,
+                    NAVIGATOR_ID,
+                    PAUSED_NAVIGATOR_ID,
                     TIE_HIGH_ID,
-                    TIE_LOW_ID);
+                    TIE_LOW_ID,
+                    ADMIN_ID,
+                    CAPTAIN_NAVIGATOR_ID,
+                    CAPTAIN_PARTICIPANT_ID);
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
@@ -217,13 +218,25 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 정렬: 캡틴 먼저 → 담당 스터디 있는 사람 → 참여 중인 스터디 수 → 가입일 최신순")
-    void sortsByRoleThenNavigatorThenParticipationThenJoinedAt() {
+    @DisplayName("성공 - 정렬: 권한·담당·참여 수와 상관없이 가입일 최신순")
+    void sortsByJoinedAtDescending() {
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(ids(response.getBody())).containsExactlyElementsOf(SORTED_IDS);
         assertThat(total(response.getBody())).isEqualTo(SORTED_IDS.size());
+    }
+
+    @Test
+    @DisplayName("성공 - 회원의 권한을 바꿔도 목록에서 그 회원의 자리가 그대로다")
+    void roleChangeKeepsPosition() {
+        List<Long> before = ids(get("/api/admin/users?q=" + PREFIX, ADMIN_ID).getBody());
+
+        var patched = patchSystemRole(MEMBER_ID, "ADMIN");
+        assertThat(patched.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        List<Long> after = ids(get("/api/admin/users?q=" + PREFIX, ADMIN_ID).getBody());
+        assertThat(after).containsExactlyElementsOf(before);
     }
 
     @Test
@@ -279,9 +292,6 @@ class AdminAccountListIntegrationTest {
         Map<String, Object> captain = itemById(response.getBody(), CAPTAIN_PARTICIPANT_ID);
         assertThat(captain).containsEntry("dormant", false).containsEntry("systemRole", "ADMIN");
         assertThat(navigatorOf(captain)).isEmpty();
-        // 참여가 있어서 담당이 아닌 캡틴 안에서는 참여 0 인 요청자보다 앞선다 (가입일은 더 오래됐다)
-        List<Long> ids = ids(response.getBody());
-        assertThat(ids.indexOf(CAPTAIN_PARTICIPANT_ID)).isLessThan(ids.indexOf(ADMIN_ID));
     }
 
     @Test
@@ -291,10 +301,10 @@ class AdminAccountListIntegrationTest {
 
         assertThat(ids(response.getBody()))
                 .containsExactly(
-                        CAPTAIN_NAVIGATOR_ID,
-                        NAVIGATOR_ID,
                         SAME_STUDY_LEADER_ID,
-                        PAUSED_NAVIGATOR_ID);
+                        NAVIGATOR_ID,
+                        PAUSED_NAVIGATOR_ID,
+                        CAPTAIN_NAVIGATOR_ID);
         assertThat(navigatorOf(itemById(response.getBody(), PAUSED_NAVIGATOR_ID)))
                 .containsExactly(Map.of("studyId", (int) STUDY_B, "title", "AI 논문 리딩"));
     }
@@ -305,7 +315,7 @@ class AdminAccountListIntegrationTest {
         var response = get("/api/admin/users?role=CAPTAIN&q=" + PREFIX, ADMIN_ID);
 
         assertThat(ids(response.getBody()))
-                .containsExactly(CAPTAIN_NAVIGATOR_ID, CAPTAIN_PARTICIPANT_ID, ADMIN_ID);
+                .containsExactly(ADMIN_ID, CAPTAIN_NAVIGATOR_ID, CAPTAIN_PARTICIPANT_ID);
         assertThat(total(response.getBody())).isEqualTo(3);
     }
 
@@ -316,13 +326,13 @@ class AdminAccountListIntegrationTest {
 
         assertThat(ids(response.getBody()))
                 .containsExactly(
-                        NAVIGATOR_ID,
-                        SAME_STUDY_LEADER_ID,
-                        PAUSED_NAVIGATOR_ID,
                         BUSY_CREW_ID,
-                        CREW_ID,
+                        SAME_STUDY_LEADER_ID,
                         MEMBER_ID,
+                        CREW_ID,
                         RECENT_INACTIVE_ID,
+                        NAVIGATOR_ID,
+                        PAUSED_NAVIGATOR_ID,
                         TIE_HIGH_ID,
                         TIE_LOW_ID);
         assertThat(itemById(response.getBody(), NAVIGATOR_ID))
@@ -345,7 +355,7 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 같은 스터디의 두 반을 맡아도 담당 스터디는 한 번, 참여 중인 스터디 수도 한 번만 센다")
+    @DisplayName("성공 - 같은 스터디의 두 반을 맡아도 담당 스터디는 한 번만 나온다")
     void sameStudyInTwoGroupsIsCountedOnce() {
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
 
@@ -353,15 +363,10 @@ class AdminAccountListIntegrationTest {
         assertThat(navigatorOf(leader))
                 .containsExactly(Map.of("studyId", (int) STUDY_A, "title", "알고리즘 스터디"));
         assertThat(leader).containsEntry("dormant", false);
-        // 참여 1 이므로 참여 2 인 9903 뒤, 참여 1 이고 가입일이 더 오래된 9909 앞이다. 두 번 세면 9903 과 같은 2 가 돼 가입일이 최신인 이
-        // 계정이 9903 앞에 선다
-        List<Long> ids = ids(response.getBody());
-        assertThat(ids.indexOf(NAVIGATOR_ID)).isLessThan(ids.indexOf(SAME_STUDY_LEADER_ID));
-        assertThat(ids.indexOf(SAME_STUDY_LEADER_ID)).isLessThan(ids.indexOf(PAUSED_NAVIGATOR_ID));
     }
 
     @Test
-    @DisplayName("성공 - 정렬 규칙 1~4 가 모두 같으면(가입일까지) id 가 큰 쪽이 먼저 — 페이지를 넘겨도 순서가 흔들리지 않는다")
+    @DisplayName("성공 - 가입일이 같으면 id 가 큰 쪽이 먼저 — 페이지를 넘겨도 순서가 흔들리지 않는다")
     void tieBreaksByIdDescending() {
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
 
@@ -708,6 +713,18 @@ class AdminAccountListIntegrationTest {
                 path, HttpMethod.GET, authenticatedRequest(requesterId), Map.class, uriVariables);
     }
 
+    private ResponseEntity<Map> patchSystemRole(long targetId, String systemRole) {
+        HttpHeaders headers = authenticatedRequest(ADMIN_ID).getHeaders();
+        HttpHeaders json = new HttpHeaders();
+        json.putAll(headers);
+        json.setContentType(MediaType.APPLICATION_JSON);
+        return rest.exchange(
+                "/api/admin/users/" + targetId + "/system-role",
+                HttpMethod.PATCH,
+                new HttpEntity<>("{\"systemRole\":\"" + systemRole + "\"}", json),
+                Map.class);
+    }
+
     private HttpEntity<Void> authenticatedRequest(long accountId) {
         String email = accountRepository.findById(accountId).orElseThrow().getEmail();
         HttpHeaders headers = new HttpHeaders();
@@ -743,6 +760,9 @@ class AdminAccountListIntegrationTest {
 
     private void cleanSeedRows() {
         String accountIn = inClause(ACCOUNT_IDS.size());
+        jdbcTemplate.update(
+                "DELETE FROM ADMIN_AUDIT_LOG WHERE TARGET_ACCOUNT_ID IN (" + accountIn + ")",
+                ACCOUNT_IDS.toArray());
         jdbcTemplate.update(
                 "DELETE FROM ACCOUNT_IDENTITY WHERE ACCOUNT_ID IN (" + accountIn + ")",
                 ACCOUNT_IDS.toArray());
