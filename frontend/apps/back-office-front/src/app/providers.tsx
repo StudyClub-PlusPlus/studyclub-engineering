@@ -9,12 +9,22 @@ import { QueryClientProvider } from '@tanstack/react-query';
 
 import { USER_KEY } from '@/features/auth/auth';
 import { trackHistoryNavigation } from '@/lib/history-guard';
+import { ProfileTimeZoneSync } from '@/lib/use-display-timezone';
 import { isMockApiEnabled } from '@/lib/mock-api';
 import { getQueryClient } from '@/lib/query-client';
 
 const MSWProvider = dynamic(() => import('@studyclub/mock/msw').then((m) => m.MSWProvider), { ssr: false });
 
 const loadWorker = () => import('msw/browser').then(({ setupWorker }) => setupWorker());
+
+// 다른 탭이 시간대만 고친 것은 같은 세션이다 — 사람이 바뀌었을 때만 다시 접속을 묻는다
+function sessionIdOf(raw: string | null): number | null {
+  try {
+    return raw ? (JSON.parse(raw)?.id ?? null) : null;
+  } catch {
+    return null;
+  }
+}
 
 function MswQueryInvalidator() {
   useEffect(() => {
@@ -36,7 +46,7 @@ export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     function handleStorage(event: StorageEvent) {
       if (event.storageArea !== window.localStorage || (event.key !== USER_KEY && event.key !== null)) return;
-      if (event.key !== null && event.oldValue === event.newValue) return;
+      if (event.key !== null && sessionIdOf(event.oldValue) === sessionIdOf(event.newValue)) return;
       setSessionChanged(true);
       queryClient.clear();
     }
@@ -61,6 +71,7 @@ export function Providers({ children }: { children: ReactNode }) {
   const content = (
     <QueryClientProvider client={queryClient}>
       {mockEnabled && <MswQueryInvalidator />}
+      <ProfileTimeZoneSync />
       {children}
       <Toaster position='bottom-center' />
     </QueryClientProvider>
