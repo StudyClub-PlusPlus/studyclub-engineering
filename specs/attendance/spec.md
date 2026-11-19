@@ -4,6 +4,7 @@
 > Story PRD: [출석명부](../../01-planning/stories/captain-view-attendance-roster/PRD.md) · [네비게이터 출석 수정](../../01-planning/stories/navigator-edit-attendance/PRD.md) · [크루 출석 기록](../../01-planning/stories/crew-view-attendance-record/PRD.md) · [대시보드 출석률](../../01-planning/stories/console-dashboard/PRD.md)
 > 갱신: 2026-11-16 — 담당 캡틴 판정을 `STUDY.CREATED_BY` 에서 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md)). 처음 값은 만든 캡틴, 백오피스 신청자 탭에서 바꾼다
 > 생성일: 2026-09-15
+> 갱신: 2026-11-19 — 반 이동을 반영했다. 출석률은 **반별 구간**(그 반에 있던 동안)으로 센다. 명부 조회에 `groupMoves` · `movedOut` 을 더하고, 옛 반 출석부에 옮겨 간 사람 줄을 참여 중단처럼 남긴다. 네비게이터 · 캡틴에게만 준다 ([share 11-19](../../docs/share/2026-11-19-group-move-log.md)). 상태: 이 부분은 구현 전
 > 상태: 스펙확정
 > 갱신: 2026-10-23 — 백오피스 경로 조회에 통합 테스트를 붙여 구현완료. 백오피스 저장도 `withdrawals[]` 를 받는다 — 담당 캡틴이 크루 · 네비게이터를 중단 (2026-10-23 기획 결정)
 > 갱신: 2026-11-16 — 스터디 출석률 요약(`GET /api/admin/studies/{studyId}/attendances/summary`) 추가. 백오피스 스터디 상세 위 요약 카드의 「출석률」이 이 값을 그린다 — 운영자가 매일 보는 숫자라 탭을 열지 않아도 보이게 둔다
@@ -104,6 +105,14 @@ STUDY_ATTENDANCE {
                              → 해당 그룹 참가자 목록. joined_at / status 포함
                              participantCount 는 필터 무관하게 항상 전체 수(모든 상태)
 
+3-1. STUDY_PARTICIPANT_GROUP_MOVE  (보는 사람이 그 반 네비게이터 · 캡틴일 때만 — 크루면 건너뛴다)
+                             WHERE participant_id IN (3의 id 목록)        → 줄마다 groupMoves[]
+                             includeWithdrawn=true 이면 추가로
+                             WHERE from_group_id = studyGroupId           → 옮겨 간 사람 줄 (movedOut)
+                               - 지금 이 반에 있는 사람(3에 이미 있음)은 더하지 않는다 — 한 사람은 한 줄
+                               - 여러 번 나갔으면 가장 늦은 이동 하나만
+                               - participantCount 에는 세지 않는다 — 지금 이 반 명부가 아니다
+
 4. STUDY_MEETING             WHERE study_group_id = studyGroupId ORDER BY scheduled_at
                              → 해당 그룹 미팅 목록
 
@@ -115,6 +124,7 @@ STUDY_ATTENDANCE {
 7. 서비스 레이어:
    - 3 × 4 매트릭스 생성, 6의 값으로 셀 채움 (없으면 status=null)
    - 참가자별 attendanceRate 계산 (출석률 산식 절 참고) — meetingId 필터 여부와 무관하게 항상 그룹 전체 기준
+     구간은 이 반에 있던 동안이다: 지금 줄은 「이 반에 들어온 시각 ~ 상한」, 옮겨 간 줄은 「그 전 들어온 시각 ~ 이동 시각」
    - 그룹 평균(가중평균) 계산 — 역시 그룹 전체 기준
 
 8. meetingId 쿼리 파라미터가 있으면, 7까지 다 계산한 뒤 마지막에
@@ -169,6 +179,13 @@ STUDY_ATTENDANCE {
 | participants[].captain | Boolean | N | 그 스터디의 담당 캡틴이면 true — 이름 옆 「캡틴」 칩. 다른 캡틴(ADMIN)이 참여했으면 false(크루) | 계산: `Study.isOwnedBy(ACCOUNT_ID)` — `STUDY.OWNER_CAPTAIN_ID = ACCOUNT_ID` |
 | participants[].participantStatus | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` · `COMPLETED` · `DELETED`. `WITHDRAWN`·`DELETED` 행은 `includeWithdrawn=true`일 때만 응답에 포함된다. 화면은 흐린 이름 + 칩, 맨 아래 줄 | STUDY_PARTICIPANT.STATUS |
 | participants[].leftAt | String | Y | 떠난 시각(UTC). 이 뒤 회차 칸은 「—」. 화면은 하차·제명을 가르지 않고 「참여 중단」 칩 | STUDY_PARTICIPANT.LEFT_AT |
+| participants[].groupMoves | Array | Y | 이 사람의 반 이동 기록, 오래된 순. 이동이 없으면 `[]`. **보는 사람이 크루면 null** — 네비게이터 · 캡틴만 본다 (share 11-19). 화면은 이름 옆 「A반에서 이동 · 11/10」 (가장 늦은 이동), 누르면 전체 | STUDY_PARTICIPANT_GROUP_MOVE |
+| participants[].groupMoves[].fromGroupName | String | Y | 옛 반 이름 — 옮긴 그때 값이다. 반을 지웠거나 이름을 바꿔도 그대로. 반이 없던(미배정) 사람이면 null | FROM_GROUP_NAME |
+| participants[].groupMoves[].toGroupName | String | Y | 새 반 이름 (그때 값) | TO_GROUP_NAME |
+| participants[].groupMoves[].movedAt | String | N | 옮긴 시각(UTC) | MOVED_AT |
+| participants[].movedOut | Object | Y | 이 반에서 **다른 반으로 옮겨 간** 사람 줄이면 값이 있다. 지금 이 반 사람이면 null. `includeWithdrawn=true` 이고 보는 사람이 네비게이터 · 캡틴일 때만 이런 줄이 온다. 화면은 참여 중단 줄처럼 흐린 이름 + 「B반으로 이동」 칩, 맨 아래 줄. 이동 뒤 회차 칸은 「—」 | STUDY_PARTICIPANT_GROUP_MOVE |
+| participants[].movedOut.toGroupName | String | Y | 옮겨 간 반 이름 (그때 값) | TO_GROUP_NAME |
+| participants[].movedOut.movedAt | String | N | 옮긴 시각(UTC). 이 반 출석률의 상한 | MOVED_AT |
 | participants[].attendances[].meetingId | Long | N | | STUDY_MEETING.ID |
 | participants[].attendances[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED \| null`. null = 미입력 | STUDY_ATTENDANCE.STATUS |
 | participants[].attendanceRate | Double | Y | 개인 누적 출석률. 분모 0이면 null → 화면은 "–" 표시 | 계산: 출석률 산식 참고 |
@@ -185,11 +202,18 @@ STUDY_ATTENDANCE {
 가중치: PRESENT=1.0, LATE=0.5, ABSENT=0
 checked_meetings = countable_meetings 중 출석 행이 PRESENT · LATE · ABSENT 인 회차
                    // 휴가(EXCUSED)는 분모에서 뺀다 · 출석 행이 없는 회차(미체크)도 세지 않는다
-upper_bound = participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED') ? now() : participant.left_at
-countable_meetings = 스터디의 미팅 중
+// 반별 구간 — 그 반(G)에 있던 동안 (2026-11-19, STUDY_PARTICIPANT_GROUP_MOVE)
+지금 반의 줄:
+  lower_bound = max(participant.joined_at, G 로 들어온 가장 늦은 이동의 moved_at)   // 이동 기록이 없으면 joined_at
+  upper_bound = participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED') ? now() : participant.left_at
+옮겨 간 줄 (G 에서 나간 이동 하나):
+  lower_bound = 그 이동 직전에 G 로 들어온 이동의 moved_at, 없으면 participant.joined_at
+                (joined_at 이 이동보다 늦으면 — 재신청이 옮겼다 — 하한 없음)
+  upper_bound = min(그 이동의 moved_at, 명부 행 상한)                           // 참여 중단처럼 이동 시각에 끊는다
+countable_meetings = G 의 미팅 중
   meeting_type = 'REGULAR'            // 킥오프는 출석만 남기고 출석률에서 뺀다 (study-meeting 스펙 결정 11)
   AND scheduled_at <= upper_bound
-  AND scheduled_at >= participant.joined_at
+  AND scheduled_at >= lower_bound
 
 스터디 평균 = 분모 0인 참가자는 제외하고 Σ(개인 분자) / Σ(개인 분모)   // 가중평균
 ```
@@ -200,6 +224,10 @@ countable_meetings = 스터디의 미팅 중
 DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차·회원 탈퇴 이전 회차의 출석·결석은 그대로 집계에 남고, 이후 회차는 결석(0점)이 아니라
 분모에서 아예 제외된다** — 하차 이후까지 결석으로 깔면 "하차"와 "결석"이라는 서로 다른 사실이 같은
 숫자로 섞인다(2026-10-01, 회원 탈퇴 구현 중 수정).
+
+반 이동 (2026-11-19): 옛 반에서는 **참여 중단처럼** 이동 시각에 끊고, 새 반에서는 **들어온 시각부터** 센다. 한 회차를 두 반에서 두 번 세지 않는다.
+같은 계산기를 쓰는 곳은 모두 이 구간을 쓴다 — 명부 조회 · [스터디 출석률 요약](#스터디-출석률-요약) · [내 스터디](../my-studies/spec.md)(지금 반 구간만, share 11-19 해석 1) · [대시보드](../dashboard/spec.md).
+이동 기록이 생기기 전에 옮긴 사람은 기록이 없어 지금처럼 `joined_at` 부터 지금 반에서 센다.
 
 검증: 수아(출석·지각) = (1+0.5)/2 = 75%, 시우(출석만) = 1/1 = 100%, 하린(출석·휴가·결석) = 1/2 = 50%, 휴가만 = null(「–」).
 
@@ -244,8 +272,9 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 3. STUDY_MEETING     WHERE study_group_id IN (2)         → 반별 회차
 4. STUDY_PARTICIPANT WHERE study_id = studyId           → 모든 상태 (하차·탈퇴도 떠나기 전 기록은 센다)
 5. STUDY_ATTENDANCE  WHERE study_meeting_id IN (3)
-6. 참가자마다 **지금 소속 반의 회차만** 넘겨 AttendanceRateCalculator.components() → 분자·분모
-   반이 없는 참가자(미배정)는 건너뛴다
+6. 참가자마다 **반별 구간**마다 그 반의 회차를 넘겨 AttendanceRateCalculator.components() → 분자·분모
+   - 지금 반 구간 + 옮겨 나간 반 구간 (STUDY_PARTICIPANT_GROUP_MOVE WHERE study_id = studyId) — 지운 반의 구간은 회차가 없어 0
+   - 반이 없는 구간(미배정)은 건너뛴다
 7. attendanceRate = Σ분자 / Σ분모 (분모 0인 참가자 제외 · 가중평균). Σ분모 = 0 이면 null
 ```
 
