@@ -21,7 +21,7 @@ import java.util.Set;
 import org.springframework.stereotype.Repository;
 
 /**
- * 백오피스 회원 목록 — 필터·검색·서버 정렬·페이지 (specs/admin-users/spec.md).
+ * 백오피스 회원 목록 — 필터·검색·서버 정렬(가입일 최신순)·페이지 (specs/admin-users/spec.md).
  *
  * <p>「참여 중」·「담당」 조건은 아래 상수 한 곳에서만 정한다. 기획이 「반 편성 전 담당 캡틴」을 참여로 세기로 하면 {@link #PARTICIPATING} 에
  * {@code STUDY.OWNER_CAPTAIN_ID} 조건을 더하는 것으로 끝난다 (plan.md 「바꾸기 쉬운 자리」).
@@ -47,10 +47,6 @@ class AdminAccountJpqlDao implements AdminAccountDao {
 
     private static final String HAS_NAVIGATING =
             "EXISTS (SELECT 1 FROM StudyParticipant p WHERE " + NAVIGATING + ")";
-    private static final String PARTICIPATING_COUNT =
-            "(SELECT COUNT(DISTINCT p.studyId) FROM StudyParticipant p WHERE "
-                    + PARTICIPATING
-                    + ")";
 
     /** LIKE 이스케이프 문자. 백슬래시는 MySQL 문자열 리터럴에서 또 이스케이프라 방언마다 다르게 해석돼 피한다. */
     private static final char LIKE_ESCAPE = '!';
@@ -60,35 +56,18 @@ class AdminAccountJpqlDao implements AdminAccountDao {
     @Override
     public List<AccountRow> getAccounts(AdminAccountListFilter filter, int offset, int limit) {
         Assembled where = assemble(filter);
-        // 정렬이 서버라 집계가 쿼리 안에 있어야 한다 (spec 「정렬」). 회원 수백 명 규모라 상관 서브쿼리로 충분하다
+        // 정렬 키는 권한·담당처럼 운영자가 바꾸는 값을 쓰지 않는다 — 바꾸면 그 회원이 다른 자리·페이지로 옮겨 간다
         String jpql =
-                "SELECT a, "
-                        + PARTICIPATING_COUNT
-                        + ", (SELECT MAX(i.lastLoginAt) FROM AccountIdentity i WHERE i.accountId = a.id)"
+                "SELECT a, (SELECT MAX(i.lastLoginAt) FROM AccountIdentity i WHERE i.accountId = a.id)"
                         + " FROM Account a"
                         + where.jpql()
-                        + " ORDER BY CASE WHEN a.systemRole = :adminRole THEN 0 ELSE 1 END,"
-                        + " CASE WHEN "
-                        + HAS_NAVIGATING
-                        + " THEN 0 ELSE 1 END,"
-                        + " "
-                        + PARTICIPATING_COUNT
-                        + " DESC, a.createdAt DESC, a.id DESC";
+                        + " ORDER BY a.createdAt DESC, a.id DESC";
         TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
-        Map<String, Object> params = new LinkedHashMap<>(where.params());
-        params.put("adminRole", SystemRole.ADMIN);
-        params.put("activeStatuses", ACTIVE_STATUSES);
-        params.put("navigatorRoles", NAVIGATOR_ROLES);
-        params.forEach(query::setParameter);
+        where.params().forEach(query::setParameter);
         query.setFirstResult(Math.max(offset, 0));
         query.setMaxResults(limit);
         return query.getResultList().stream()
-                .map(
-                        row ->
-                                new AccountRow(
-                                        (Account) row[0],
-                                        ((Number) row[1]).longValue(),
-                                        (Instant) row[2]))
+                .map(row -> new AccountRow((Account) row[0], (Instant) row[1]))
                 .toList();
     }
 

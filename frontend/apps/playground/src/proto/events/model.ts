@@ -13,6 +13,21 @@ import type {
 } from '@studyclub/types';
 
 export const SELF = EVENT_PREVIEW_MEMBER;
+export function firstEventTemplate<T extends { id: number; trigger: string; channel: string }>(templates: T[], trigger: string): T | undefined {
+  return templates.filter((item) => item.trigger === trigger && item.channel === 'EMAIL').sort((a, b) => a.id - b.id)[0];
+}
+export function eventMailRecipients(state: EventPreviewState, event: PreviewEvent, audience: EventChannel | 'ALL' | 'CANCELLED_ACTIVE') {
+  return state.registrations.filter((row) => !row.accountDeleted && row.eventId === event.id && (
+    audience === 'CANCELLED_ACTIVE' ? event.cancellationRecipientIds?.includes(row.id)
+      : row.status === 'CONFIRMED' && (audience === 'ALL' || row.channel === audience)
+  ));
+}
+export function eventRegistrationPage(rows: EventRegistration[], page: number) {
+  const sorted = [...rows].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id.localeCompare(a.id));
+  const total = Math.max(1, Math.ceil(sorted.length / 20));
+  const current = Math.max(1, Math.min(page, total));
+  return { items: sorted.slice((current - 1) * 20, current * 20), page: current, total };
+}
 export const EVENT_LIMITS = {
   title: 60,
   summary: 120,
@@ -373,7 +388,7 @@ export function renderEventNotice(
   event: PreviewEvent,
   recipient: EventRegistration,
   notice: string,
-  displayTimeZone = recipient.timeZone ?? event.timeZone,
+  displayTimeZone = recipient.profileTimeZone ?? recipient.timeZone ?? event.timeZone,
 ) {
   const values = template.trigger === 'EVENT_CANCELLATION'
     ? { eventTitle: event.title }
@@ -398,7 +413,7 @@ function renderAutomaticEventMail(
   event: PreviewEvent,
   registration: EventRegistration,
 ) {
-  const values = eventNoticeValues(event, registration.channel, registration.timeZone ?? event.timeZone);
+  const values = eventNoticeValues(event, registration.channel, registration.profileTimeZone ?? registration.timeZone ?? event.timeZone);
   return renderNoticeValues(template, {
     ...values,
     participation: registration.status === 'CONFIRMED' ? values.participation : '',
@@ -467,8 +482,8 @@ function appendAutomaticEventMail(
   now: number,
   mailId?: string,
 ) {
-  const template = state.notificationTemplates?.find((item) => item.trigger === trigger);
-  if (!template) return;
+  const template = firstEventTemplate(state.notificationTemplates ?? [], trigger);
+  if (!template || registration.accountDeleted) return;
   const { subject, body, format } = renderAutomaticEventMail(template, event, registration);
   state.mails.unshift({
     id: mailId ?? crypto.randomUUID(),
@@ -589,6 +604,7 @@ export function transition(current: EventPreviewState, action: EventAction, now 
       fail('지원하지 않는 행사 상태입니다.');
     if (event.status === 'CANCELLED') fail('취소된 행사는 모집 상태를 변경할 수 없습니다.');
     if (eventStatus(state, event, now) === '종료') fail('종료된 행사는 취소하거나 모집 상태를 변경할 수 없습니다.');
+    if (event.status === action.status) return current;
     if (action.status === 'PUBLISHED') {
       if (Date.parse(event.deadlineAt) <= now) fail('신청 마감시간을 현재보다 늦게 설정해 주세요.');
       const error = validateEvent({ ...event, status: 'PUBLISHED' }, state, now);
@@ -650,18 +666,12 @@ export function transition(current: EventPreviewState, action: EventAction, now 
     if (isCancellationMail && event.status !== 'CANCELLED') fail('취소된 행사에만 취소 안내 메일을 보낼 수 있습니다.');
     if (!action.notice.trim()) fail('안내 내용을 입력해 주세요.');
     const trigger = isCancellationMail ? 'EVENT_CANCELLATION' : 'EVENT_ANNOUNCEMENT';
-    const template = state.eventTemplates.find((item) => item.id === action.templateId && item.trigger === trigger)
+    const template = firstEventTemplate(state.eventTemplates, trigger)
       ?? fail(isCancellationMail ? '등록된 행사 취소 안내 템플릿이 없습니다.' : '등록된 행사 안내 템플릿이 없습니다.');
+    if (template.id !== action.templateId) fail('메일 템플릿이 바뀌었습니다. 미리보기를 다시 확인해 주세요.');
     const templateError = validateEventTemplate(template);
     if (templateError) fail(templateError);
-    const recipients = isCancellationMail
-      ? state.registrations.filter((r) => r.eventId === event.id && event.cancellationRecipientIds?.includes(r.id))
-      : state.registrations.filter(
-          (r) =>
-            r.eventId === event.id &&
-            r.status === 'CONFIRMED' &&
-            (action.channel === 'ALL' || r.channel === action.channel),
-        );
+    const recipients = eventMailRecipients(state, event, isCancellationMail ? 'CANCELLED_ACTIVE' : action.channel);
     if (!recipients.length) fail(isCancellationMail ? '취소 안내 메일을 받을 신청자가 없습니다.' : '선택한 대상에 참가 확정자가 없습니다.');
     state.mails.unshift(
       createEventNoticeMail(

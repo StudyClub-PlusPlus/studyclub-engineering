@@ -1,4 +1,8 @@
+import { FEATURES } from '../../../src/lib/features';
 import type { ScreenStateDef } from '../../types';
+
+/** 행사는 기능 플래그로 숨겨 둔다(#463) — 꺼져 있는 동안 두 화면은 404 라 찍지 않고, 켜면 다시 찍는다. */
+const EVENT_TAGS: ScreenStateDef['tags'] = FEATURES.EVENTS ? [] : ['excluded'];
 
 /** 로그인 없이 보는 안내 화면. 행사는 예시 데이터(@studyclub/mock events), 공지는 백엔드 API 라 로컬 DB 에 따라 달라진다. */
 export const siteScreenStates: ScreenStateDef[] = [
@@ -32,6 +36,7 @@ export const siteScreenStates: ScreenStateDef[] = [
     viewports: ['desktop', 'mobile'],
     assertions: { visible: ['main', 'a[href^="/ko/events/"]'] },
     screenshot: { fullPage: true },
+    tags: EVENT_TAGS,
   },
   {
     id: 'event-detail--default',
@@ -42,6 +47,7 @@ export const siteScreenStates: ScreenStateDef[] = [
     viewports: ['desktop', 'mobile'],
     assertions: { visible: ['h1'] },
     screenshot: { fullPage: true },
+    tags: EVENT_TAGS,
   },
   {
     id: 'notice-list--empty',

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 import type { Locale } from '@studyclub/types';
+import { ButtonLink } from '@studyclub/ui';
 
 /** 로그인·온보딩에서는 로고와 언어 전환만 표시한다. */
 export function RegistrationNavigation({ children, locale }: { children: React.ReactNode; locale: Locale }) {
@@ -27,14 +28,9 @@ export function RegistrationNavigation({ children, locale }: { children: React.R
             Study<span className='text-logo-accent'>Club</span>
           </span>
         </Link>
-        <Link
-          href={switchUrl}
-          hrefLang={other}
-          lang={other}
-          className='rounded-full border border-border px-3.5 py-2 type-label-sm text-fg-muted transition hover:border-border-interactive hover:bg-surface-1 focus-visible:outline-none focus-visible:shadow-(--ring)'
-        >
+        <ButtonLink linkAs={Link} href={switchUrl} hrefLang={other} lang={other} variant='secondary' size='sm' className='rounded-pill'>
           {other === 'en' ? 'English' : '한국어'}
-        </Link>
+        </ButtonLink>
       </div>
     </header>
   );

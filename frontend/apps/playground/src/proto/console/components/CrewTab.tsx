@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 
-import { BulkSelect, CHECKBOX, SelectAll } from '@console/components/AttendanceTab';
+import { BulkSelect, SelectAll } from '@console/components/AttendanceTab';
 import { DiscordCell } from '@console/components/DiscordCell';
 import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
 import { captainOptions } from '@console/lib/users';
 import { type Crew } from '@studyclub/types';
-import { Badge, Button, Select, SelectionCount, TableActionBar, cx, toast } from '@studyclub/ui';
+import { Badge, Button, Checkbox, Input, Select, SelectionCount, TableActionBar, cx, toast } from '@studyclub/ui';
 import { MEMBER_REGIONS } from '@studyclub/utils';
 import { Loader2, Plus } from 'lucide-react';
 
@@ -91,7 +91,6 @@ export function CrewTab({
   /** 카드 안 입력 — 입력칸은 줄의 절반, 취소 · 저장은 오른쪽(읽기 상태의 수정 · 삭제 자리). */
   function editor(cls: StudyClass | undefined) {
     if (!renaming) return null;
-    const errId = `class-title-${renaming.id}`;
     const empty = renaming.touched && !renaming.title.trim();
     return (
       <form
@@ -104,16 +103,17 @@ export function CrewTab({
         onKeyDown={(ev) => ev.key === 'Escape' && setRenaming(null)}
       >
         <div className='flex items-center gap-3'>
-          <input
-            aria-label='반 제목'
-            value={renaming.title}
-            maxLength={CLASS_TITLE_MAX}
-            placeholder={cls ? undefined : '예: A반 · 미국 금요일반'}
-            aria-invalid={empty || undefined}
-            aria-describedby={errId}
-            onChange={(ev) => setRenaming({ ...renaming, title: ev.target.value })}
-            className='h-9 w-1/2 min-w-0 rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
-          />
+          <div className='w-1/2 min-w-0'>
+            <Input
+              size='sm'
+              aria-label='반 제목'
+              value={renaming.title}
+              maxLength={CLASS_TITLE_MAX}
+              placeholder={cls ? undefined : '예: A반 · 미국 금요일반'}
+              error={empty ? '반 제목을 입력해 주세요.' : undefined}
+              onChange={(ev) => setRenaming({ ...renaming, title: ev.target.value })}
+            />
+          </div>
           <div className='ml-auto flex shrink-0 gap-1.5'>
             <Button type='button' size='sm' variant='tertiary' onClick={() => setRenaming(null)}>
               취소
@@ -123,9 +123,6 @@ export function CrewTab({
             </Button>
           </div>
         </div>
-        <p id={errId} role='status' className='type-label-sm text-error-600'>
-          {empty ? '반 제목을 입력해 주세요.' : ''}
-        </p>
       </form>
     );
   }
@@ -369,10 +366,9 @@ export function CrewTab({
                 // 고친 줄은 옅게 칠한다 — 저장 전인 것이 한눈에 보인다
                 <tr key={c.id} className={changedIds.has(c.id) ? 'bg-brand-subtle/40' : undefined}>
                   <td className='w-8'>
-                    <input
-                      type='checkbox'
-                      aria-label={`${c.name} 선택`}
-                      className={CHECKBOX}
+                    <Checkbox
+                      label={`${c.name} 선택`}
+                      hideLabel
                       checked={checkedIds.has(c.id)}
                       onChange={() => pick(c.id)}
                     />

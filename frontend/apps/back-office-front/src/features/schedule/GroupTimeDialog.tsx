@@ -1,16 +1,12 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Modal, Select } from '@studyclub/ui';
+import { Button, Modal, Select, FilterChip, TimeSelect } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import { groupTimeSchema, type GroupTimeValues } from '@/features/schedule/form-schemas';
 import { hasTime, type GroupTime, type ScheduleGroup } from '@/features/schedule/meetings';
 import { DOW_LABEL, otherClock, STUDY_TZS, type StudyTz } from '@/features/schedule/time';
-
-const CHIP = 'h-10 rounded-control border type-label-lg transition-colors';
-const chipTone = (on: boolean) =>
-  on ? 'border-brand bg-brand text-white' : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2';
 
 /**
  * 반의 스터디 시간(요일 · 시각 · 시간대) — 「스터디 시간 정하기」(처음) · 「스터디 시간 수정」(있을 때) (일정 탭 14-1).
@@ -77,33 +73,29 @@ export function GroupTimeDialog({
             className='flex gap-1'
           >
             {DOW_LABEL.map((label, d) => (
-              <button
+              <FilterChip
                 key={label}
-                type='button'
-                aria-pressed={time.weekdays.includes(d)}
+                selected={time.weekdays.includes(d)}
+                selectMode='single'
                 onClick={() => toggleDay(d)}
-                className={`${CHIP} w-9 ${chipTone(time.weekdays.includes(d))}`}
+                className='w-9 justify-center px-0'
               >
                 {label}
-              </button>
+              </FilterChip>
             ))}
           </div>
         </div>
 
         <div className='flex flex-col gap-2'>
-          <label htmlFor='group-time-clock' className='type-label-lg text-neutral-800'>
-            스터디 시간
-          </label>
+          <div className='w-48'>
+            <TimeSelect
+              size='sm'
+              label='스터디 시간'
+              value={time.time}
+              onChange={(value) => setValue('time', value, { shouldDirty: true, shouldValidate: touched })}
+            />
+          </div>
           <div className='flex flex-col gap-2'>
-            <div className='w-48'>
-              <Input
-                size='sm'
-                type='time'
-                id='group-time-clock'
-                value={time.time}
-                onChange={(ev) => setValue('time', ev.target.value, { shouldDirty: true, shouldValidate: touched })}
-              />
-            </div>
             <Select
               size='sm'
               aria-label='시간대'

@@ -11,9 +11,9 @@ import { rememberStudiesListSearch } from '@console/lib/list-return';
 import { studyAuthor } from '@console/lib/users';
 import { getStudyCrew, recruitCapacity } from '@studyclub/mock';
 import { type LifecycleState, type Study } from '@studyclub/types';
-import { Badge, Button, Modal, Pagination, Select, cx } from '@studyclub/ui';
+import { Badge, Button, Input, Modal, Pagination, Select, cx } from '@studyclub/ui';
 import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, recruitState, toISODate, todayISO } from '@studyclub/utils';
-import { Check, Minus } from 'lucide-react';
+import { Check, Minus, Search } from 'lucide-react';
 
 /**
  * 스터디 관리 목록.
@@ -313,6 +313,7 @@ function SortLabel({
 }) {
   return (
     <button
+      // ui-native: 표 머리 정렬 — 머리 글자 자체가 정렬 단추
       type='button'
       data-anno={anno}
       onClick={() => onChange(active === 'asc' ? 'desc' : 'asc')}
@@ -456,15 +457,18 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
       {/* 가로 스크롤 상자는 위아래로 넘친 것도 자른다 — 칸 테두리 · 포커스 링(3px)이 잘리지 않게 사방에 여백을 두고
           좌우는 음수 여백으로 상쇄해 줄 위치는 그대로 둔다 */}
       <div data-anno='list:4' className='-mx-1 mb-2 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 py-1'>
-        <input
+        <Input
           type='search'
+          size='sm'
+          aria-label='스터디 검색'
+          leadingIcon={<Search size={15} />}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
             setPage(1);
           }}
           placeholder='제목 검색'
-          className='h-8 w-44 shrink-0 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
+          className='w-44'
         />
         <CategorySelect
           value={category}
@@ -654,6 +658,7 @@ function PublishCell({
   const blocked = !live && !hasForm;
   return (
     <button
+      // ui-native: 목록의 공개 상태 알약 — 상태 표시 겸 토글
       type='button'
       onClick={() => !blocked && onToggle(!live)}
       disabled={blocked}

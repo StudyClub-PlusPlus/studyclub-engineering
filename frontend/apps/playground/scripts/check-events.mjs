@@ -22,7 +22,7 @@ try {
     outExtension: { '.js': '.mjs' },
     logLevel: 'silent',
   });
-  const { transition: applyTransition, answersForUnchangedQuestions, eventQuestionVersion, seatInfo, wallTime, resolveEventInput, eventAdminPage, EVENT_LIMITS, isEventPublic, latestRegistrationsByEvent, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates, settleEndedRegistrations } = await import(
+  const { firstEventTemplate, eventMailRecipients, eventRegistrationPage, transition: applyTransition, answersForUnchangedQuestions, eventQuestionVersion, seatInfo, wallTime, resolveEventInput, eventAdminPage, EVENT_LIMITS, isEventPublic, latestRegistrationsByEvent, eventStatus, formatDate, SELF, renderEventNotice, renderEventNoticePreview, fillLegacyEventMailPreview, mergeNotificationTemplates, settleEndedRegistrations } = await import(
     pathToFileURL(path.join(temp, 'model.mjs'))
   );
   const { toPreviewDocument } = await import(pathToFileURL(path.join(temp, 'render.mjs')));
@@ -50,9 +50,21 @@ try {
   assert.ok(noticeBody.indexOf('{{notice}}') < noticeBody.indexOf('참여 안내'));
   assert.ok(noticeBody.indexOf('참여 안내') < noticeBody.indexOf('일정: {{eventSchedule}}'));
   const populated = populateEventExamples(fullSeed, fullSeed, now);
+  const communityRows = populated.registrations.filter((row) => row.eventId === 'preview-event-community');
+  assert.equal(eventRegistrationPage(communityRows, 1).items.length, 20);
+  assert.equal(eventRegistrationPage(communityRows, 2).items.length, communityRows.length - 20);
+  assert.equal(eventRegistrationPage(communityRows, 999).page, 2);
+  assert.equal(firstEventTemplate([{ id: 9, trigger: 'EVENT_CANCELLATION', channel: 'EMAIL' }, { id: 2, trigger: 'EVENT_CANCELLATION', channel: 'EMAIL' }], 'EVENT_CANCELLATION').id, 2);
+  const cancelledSample = populated.events.find((row) => row.id === 'preview-event-cancelled');
+  const cancellationRecipients = eventMailRecipients(populated, cancelledSample, 'CANCELLED_ACTIVE');
+  assert.ok(cancellationRecipients.every((row) => !row.accountDeleted));
+  const gone = structuredClone(populated);
+  gone.registrations.forEach((row) => { row.accountDeleted = true; });
+  assert.equal(eventMailRecipients(gone, cancelledSample, 'CANCELLED_ACTIVE').length, 0);
+
   assert.equal(populated.events.length, 8);
   assert.ok(!fullSeed.events.some((event) => event.id === 'preview-event-draft'));
-  assert.equal(populated.registrations.length, 99);
+  assert.equal(populated.registrations.length, 105);
   const previewMemberRows = populated.registrations.filter(({ memberId }) => memberId === SELF.memberId);
   assert.ok(previewMemberRows.length > 0);
   assert.ok(previewMemberRows.every(({ name, email }) => name === SELF.name && email === SELF.email));
@@ -75,13 +87,13 @@ try {
     const rows = populated.registrations.filter((row) => row.eventId === sampleEvent.id);
     assert.ok(isEventPublic(sampleEvent));
     assert.ok(rows.length >= 8);
-    assert.ok(rows.every((row) => /^[a-z]+\d+@(gmail\.com|naver\.com|kakao\.com|daum\.net|outlook\.com)$/.test(row.email)));
+    assert.ok(rows.every((row) => row.accountDeleted ? row.email === '' : /^[a-z]+\d+@(gmail\.com|naver\.com|kakao\.com|daum\.net|outlook\.com)$/.test(row.email)));
     assert.ok(rows.every((row) => row.questions.length && Object.keys(row.answers).length));
     const mailRows = populated.mails.filter((mail) => mail.eventId === sampleEvent.id);
     assert.ok(mailRows.length >= 3);
     if (sampleEvent.status !== 'CANCELLED') assert.ok(mailRows.some((mail) => mail.format === 'HTML'));
     assert.ok(mailRows.every((mail) => (mail.deliveries ? mail.deliveries.every((delivery) => !delivery.body.includes('{{')) : !mail.body.includes('{{')) && Date.parse(mail.createdAt) <= now));
-    assert.ok(mailRows.every((mail) => mail.recipients.every((email) => rows.some((row) => row.email === email))));
+    assert.ok(mailRows.every((mail) => mail.recipients.every((email) => fullSeed.registrations.some((row) => row.eventId === sampleEvent.id && row.email === email))));
     assert.ok(mailRows.every((mail) => mail.kind === 'OPERATOR' || mail.kind === 'AUTOMATIC'));
   }
   for (const [id, status] of Object.entries({
@@ -473,7 +485,7 @@ try {
   state.events[0].onlineUrl = 'https://example.com/other-participation';
   assert.throws(() => transition(state, {
     type: 'CANCELLATION_MAIL', eventId: event.id, templateId: custom.id, notice: '취소 안내 테스트',
-  }, now), /행사 취소 안내 템플릿이 없습니다/);
+  }, now), /메일 템플릿이 바뀌었습니다/);
   state = transition(
     state,
     {
@@ -519,8 +531,10 @@ try {
     afterDeadline,
   );
   assert.equal(state.events[0].onlineUrl, 'https://example.com/updated');
+  assert.strictEqual(transition(state, { type: 'STATUS', eventId: event.id, status: 'PUBLISHED' }, afterDeadline), state);
+  const manuallyClosed = transition(state, { type: 'STATUS', eventId: event.id, status: 'CLOSED' }, afterDeadline);
   assert.throws(
-    () => transition(state, { type: 'STATUS', eventId: event.id, status: 'PUBLISHED' }, afterDeadline),
+    () => transition(manuallyClosed, { type: 'STATUS', eventId: event.id, status: 'PUBLISHED' }, afterDeadline),
     /현재보다 늦게/,
   );
   const seatsBeforeCancel = seatInfo(state, state.events[0], 'OFFLINE').remaining;

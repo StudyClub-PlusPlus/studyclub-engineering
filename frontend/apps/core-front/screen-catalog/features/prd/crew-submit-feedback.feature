@@ -11,23 +11,26 @@ Feature: ST-035 크루는 캡틴에게 문의/오류신고를 제출할 수 있�
     When 프로필 드롭다운에서 문의·오류 신고를 누른다
     Then 프로필 드롭다운 「찜한 스터디」 아래, 구분선 위에 「문의·오류 신고」 — 누르면 내 문의 목록
 
-  @CORE-ST-035-S02
+  @CORE-ST-035-S02 @catalog-partial
   Scenario: CORE-ST-035-S02 완료 기준 2
     Given PRD의 권한·데이터·응답 조건과 해당 완료 기준의 경계 조건이 준비되어 있다
     When 21건 이상 내 문의 목록을 열어 페이지를 바꾸고 상세를 누른다
     Then 내 문의 목록 — 유형 · 제목 · 접수일 · 상태. 접수일 내림차순 고정, 20건씩. 줄을 누르면 상세
+    # 부분 실행 근거: my-feedbacks--default
 
-  @CORE-ST-035-S03
+  @CORE-ST-035-S03 @catalog-partial
   Scenario: CORE-ST-035-S03 완료 기준 3
     Given PRD의 권한·데이터·응답 조건과 해당 완료 기준의 경계 조건이 준비되어 있다
     When 관리자 처리 상태가 다른 문의의 사용자 상태를 확인한다
     Then 상태는 둘 — 접수 · 답변 완료 (콘솔의 미확인·확인 = 접수, 완료 = 답변 완료)
+    # 부분 실행 근거: my-feedbacks--default
 
-  @CORE-ST-035-S04
+  @CORE-ST-035-S04 @catalog-partial
   Scenario: CORE-ST-035-S04 완료 기준 4
     Given PRD의 권한·데이터·응답 조건과 해당 완료 기준의 경계 조건이 준비되어 있다
     When 문의하기를 누르고 필수 입력·길이 경계·선택 첨부를 조합해 전송한다
     Then [문의하기] → 팝업 — 유형(필수, 기본 선택 없음) · 제목(2~100자) · 내용(10~2000자, 평문) · 이미지 첨부(선택)
+    # 부분 실행 근거: my-feedbacks--compose
 
   @CORE-ST-035-S05
   Scenario: CORE-ST-035-S05 완료 기준 5
@@ -41,17 +44,19 @@ Feature: ST-035 크루는 캡틴에게 문의/오류신고를 제출할 수 있�
     When 유효한 문의를 전송한다
     Then 전송하면 팝업이 닫히고 목록 맨 위에 「접수」로 선다. 「의견을 보내주셔서 감사합니다.」
 
-  @CORE-ST-035-S07
+  @CORE-ST-035-S07 @catalog-partial
   Scenario: CORE-ST-035-S07 완료 기준 7
     Given PRD의 권한·데이터·응답 조건과 해당 완료 기준의 경계 조건이 준비되어 있다
     When 답변 있는 문의와 없는 문의의 상세를 연다
     Then 상세 — 유형 · 제목 · 접수 시각 · 상태 · 내가 쓴 내용 · 첨부 이미지 · 답변(없으면 「답변을 준비하고 있어요」)
+    # 부분 실행 근거: my-feedback-detail--received, my-feedback-detail--answered
 
-  @CORE-ST-035-S08
+  @CORE-ST-035-S08 @catalog-partial
   Scenario: CORE-ST-035-S08 완료 기준 8
     Given PRD의 권한·데이터·응답 조건과 해당 완료 기준의 경계 조건이 준비되어 있다
     When 다른 사람 문의와 없는 번호의 상세에 접근한다
     Then 본인 것만 보인다. 남의 문의 · 없는 번호는 찾을 수 없음
+    # 부분 실행 근거: my-feedback-detail--not-found
 
   @CORE-ST-035-V01
   Scenario: CORE-ST-035-V01 불러오는 중
@@ -59,17 +64,19 @@ Feature: ST-035 크루는 캡틴에게 문의/오류신고를 제출할 수 있�
     When 대상 화면에 진입하거나 해당 상태로 전환하는 동작을 수행한다
     Then 표 자리 스켈레톤 / —
 
-  @CORE-ST-035-V02
+  @CORE-ST-035-V02 @catalog-partial
   Scenario: CORE-ST-035-V02 문의 없음
     Given 대상 화면이 PRD의 「문의 없음」 상태가 되도록 데이터·권한·응답을 준비한다
     When 대상 화면에 진입하거나 해당 상태로 전환하는 동작을 수행한다
     Then 빈 표와 문의하기 / `접수한 문의가 없습니다.` · `문의하기`
+    # 부분 실행 근거: my-feedbacks--empty
 
-  @CORE-ST-035-V03
+  @CORE-ST-035-V03 @catalog-partial
   Scenario: CORE-ST-035-V03 목록 오류
     Given 대상 화면이 PRD의 「목록 오류」 상태가 되도록 데이터·권한·응답을 준비한다
     When 대상 화면에 진입하거나 해당 상태로 전환하는 동작을 수행한다
     Then 안내와 다시 시도 / `불러오지 못했습니다. 다시 시도해 주세요.`
+    # 부분 실행 근거: my-feedbacks--error
 
   @CORE-ST-035-V04
   Scenario: CORE-ST-035-V04 전송 성공
@@ -89,9 +96,10 @@ Feature: ST-035 크루는 캡틴에게 문의/오류신고를 제출할 수 있�
     When 대상 화면에 진입하거나 해당 상태로 전환하는 동작을 수행한다
     Then 빨간 알림 / `잠시 후 다시 시도해 주세요.`
 
-  @CORE-ST-035-V07
+  @CORE-ST-035-V07 @catalog-partial
   Scenario: CORE-ST-035-V07 상세 없음
     Given 대상 화면이 PRD의 「상세 없음」 상태가 되도록 데이터·권한·응답을 준비한다
     When 대상 화면에 진입하거나 해당 상태로 전환하는 동작을 수행한다
     Then 남의 것 · 없는 번호 / `찾을 수 없는 문의입니다.`
+    # 부분 실행 근거: my-feedback-detail--not-found
 

@@ -5,8 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type Study, type StudyLifecycleStatus } from '@studyclub/types';
-import { Badge, Pagination, Select, cx, type BadgeTone } from '@studyclub/ui';
+import { Badge, Input, Pagination, Select, cx, type BadgeTone } from '@studyclub/ui';
 import { applyFormUrl, publishState, toISODate } from '@studyclub/utils';
+import { Search } from 'lucide-react';
 
 import {
   CATEGORY_OPTIONS,
@@ -152,6 +153,7 @@ function PublishCell({
   return (
     <span className='inline-flex'>
       <button
+        // ui-native: 목록의 공개 상태 알약 — 상태 표시 겸 토글이고 막힌 이유 말풍선이 붙는다
         ref={ref}
         type='button'
         onClick={() => !blocked && onToggle(!live)}
@@ -196,6 +198,7 @@ function PublishCell({
 function SortLabel({ label, active, onClick }: { label: string; active: SortDir | null; onClick: () => void }) {
   return (
     <button
+      // ui-native: 표 머리 정렬 — 머리 글자 자체가 정렬 단추
       type='button'
       onClick={onClick}
       aria-label={`${label} ${active === 'asc' ? '내림차순으로' : '오름차순으로'} 정렬`}
@@ -417,12 +420,14 @@ export function StudiesTable({ list }: { list: StudyListData }) {
           가로 스크롤 상자는 위아래로 넘친 것도 자른다 — 칸 테두리 · 포커스 링(3px)이 잘리지 않게 사방에 여백을 두고
           좌우는 음수 여백으로 상쇄해 줄 위치는 그대로 둔다 */}
       <div className='-mx-1 mb-4 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 py-1'>
-        <input
+        <Input
           type='search'
+          size='sm'
+          leadingIcon={<Search size={15} />}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='제목 · 한 줄 소개 검색'
-          className='h-8 w-[188px] shrink-0 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
+          className='w-[188px]'
         />
         <FilterSelect
           value={category}

@@ -176,15 +176,16 @@ export function OnboardingConsent({
               )}
             </div>
             {item.doc && (
-              <button
+              <Button
                 type='button'
+                variant='tertiary'
+                size='sm'
                 data-anno='4-3'
+                trailingIcon={<ChevronRight />}
                 onClick={() => setReading(item.doc)}
-                className='-mr-1 flex shrink-0 items-center gap-0.5 rounded-control px-2 py-1 type-label-lg text-fg-muted transition-colors hover:bg-surface-1 hover:text-fg'
               >
                 {ko ? '보기' : 'Read'}
-                <ChevronRight size={13} aria-hidden='true' />
-              </button>
+              </Button>
             )}
           </div>
         ))}

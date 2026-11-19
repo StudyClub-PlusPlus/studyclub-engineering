@@ -120,3 +120,14 @@ export const AllSizes: Story = {
     </div>
   ),
 };
+
+export const IconButtonSizes: Story = {
+  name: 'IconButton / 크기 (xs는 표 칸 전용)',
+  render: () => (
+    <div className='flex items-center gap-2'>
+      {(['xs', 'sm', 'md', 'lg'] as const).map((size) => (
+        <IconButton key={size} size={size} variant='tertiary' aria-label={`검색 ${size}`} icon={<Search />} />
+      ))}
+    </div>
+  ),
+};

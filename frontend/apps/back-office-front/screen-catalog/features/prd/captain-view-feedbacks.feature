@@ -8,20 +8,23 @@ Feature: ST-036 캡틴은 유저가 제출한 문의/오류신고를 조회할 �
     Given 캡틴으로 인증되어 있고 해당 PRD의 대상 화면에 접근할 수 있다
     And 시각과 API 응답은 시나리오 조건에 맞는 테스트 데이터로 고정되어 있다
 
-  @BO-ST-036-S01 @AC-1 @AC-2 @AC-3
+# 실행 카탈로그(표시 상태 일부): feedbacks--default, feedback-detail--default
+  @BO-ST-036-S01 @AC-1 @AC-2 @AC-3 @catalog-partial
   Scenario: BO-ST-036-S01 문의 목록과 상세
     When 검색·유형·상태·페이지를 바꾸고 문의 상세를 연다
     Then 목록 — 접수 시각 · 유형 · 제목 · 제출자 · 상태 · 완료 처리자. 접수 시각 내림차순 고정, 20건씩
     And 제목·내용 검색(400ms 뒤) · 유형 · 상태로 거른다. 무엇이든 바꾸면 1페이지
     And 줄을 누르면 상세 — 유형 · 제목 · 제출자 · 접수 시각 · 내용 · 첨부 이미지 · 브라우저 · 화면 크기
 
-  @BO-ST-036-S02 @AC-4 @AC-7
+# 실행 카탈로그(표시 상태 일부): feedback-detail--status-menu
+  @BO-ST-036-S02 @AC-4 @AC-7 @catalog-partial
   Scenario: BO-ST-036-S02 문의 처리 상태
     When 상태를 미확인·확인·완료로 바꾸고 완료 처리자를 확인한다
     Then 상태 — 상세의 상태 뱃지가 곧 드롭다운. 미확인 · 확인 · 완료, 고르면 바로 저장
     And 완료 처리자 — 「완료」로 바꾼 캡틴. 완료가 아니면 비어 있음
 
-  @BO-ST-036-S03 @AC-5 @AC-8
+# 실행 카탈로그(표시 상태 일부): feedback-detail--replied
+  @BO-ST-036-S03 @AC-5 @AC-8 @catalog-partial
   Scenario: BO-ST-036-S03 문의 회신과 알림
     When 회신 길이 경계값을 검증하고 전송한 뒤 수정과 알림 연결을 확인한다
     Then 회신 — 10~2000자, 「전송」하면 저장 + 상태 「완료」. 회신 뒤에는 읽기 전용과 「수정」
@@ -38,19 +41,22 @@ Feature: ST-036 캡틴은 유저가 제출한 문의/오류신고를 조회할 �
     When 해당 화면을 열거나 그 상태를 만드는 사용자 동작을 수행한다
     Then 표 자리 20줄 스켈레톤 / —
 
-  @BO-ST-036-V02
+# 실행 카탈로그(표시 상태 일부): feedbacks--empty
+  @BO-ST-036-V02 @catalog-partial
   Scenario: BO-ST-036-V02 접수 없음
     Given 대상 화면이 PRD의 "접수 없음" 상태가 되도록 데이터와 응답을 준비한다
     When 해당 화면을 열거나 그 상태를 만드는 사용자 동작을 수행한다
     Then 빈 표 / `접수된 문의·오류 신고가 없습니다.`
 
-  @BO-ST-036-V03
+# 실행 카탈로그(표시 상태 일부): feedbacks--filter-empty
+  @BO-ST-036-V03 @catalog-partial
   Scenario: BO-ST-036-V03 걸러서 없음
     Given 대상 화면이 PRD의 "걸러서 없음" 상태가 되도록 데이터와 응답을 준비한다
     When 해당 화면을 열거나 그 상태를 만드는 사용자 동작을 수행한다
     Then 빈 표와 전체 보기 / `조건에 맞는 문의·오류 신고가 없습니다.` · `전체 보기`
 
-  @BO-ST-036-V04
+# 실행 카탈로그(표시 상태 일부): feedbacks--error
+  @BO-ST-036-V04 @catalog-partial
   Scenario: BO-ST-036-V04 목록 오류
     Given 대상 화면이 PRD의 "목록 오류" 상태가 되도록 데이터와 응답을 준비한다
     When 해당 화면을 열거나 그 상태를 만드는 사용자 동작을 수행한다
@@ -74,7 +80,8 @@ Feature: ST-036 캡틴은 유저가 제출한 문의/오류신고를 조회할 �
     When 해당 화면을 열거나 그 상태를 만드는 사용자 동작을 수행한다
     Then 초록 알림 / 실패 / `저장했습니다.` / `저장하지 못했습니다. 다시 시도해 주세요.`
 
-  @BO-ST-036-V08
+# 실행 카탈로그(표시 상태 일부): feedback-detail--not-found
+  @BO-ST-036-V08 @catalog-partial
   Scenario: BO-ST-036-V08 상세 없음
     Given 대상 화면이 PRD의 "상세 없음" 상태가 되도록 데이터와 응답을 준비한다
     When 해당 화면을 열거나 그 상태를 만드는 사용자 동작을 수행한다

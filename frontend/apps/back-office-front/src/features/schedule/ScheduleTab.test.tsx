@@ -68,6 +68,21 @@ function memoryStorage(): Storage {
   };
 }
 
+type Scope = Pick<typeof screen, 'getByRole'>;
+/** 시각 칸은 시 · 분 두 Select(TimeSelect). 묶음 이름으로 찾아 HH:mm 로 읽고 쓴다 */
+function timeSelects(name: string | RegExp, scope: Scope = screen) {
+  return within(scope.getByRole('group', { name })).getAllByRole('combobox') as HTMLSelectElement[];
+}
+function timeValue(name: string | RegExp, scope: Scope = screen) {
+  const [hour, minute] = timeSelects(name, scope);
+  return hour.value ? `${hour.value}:${minute.value}` : '';
+}
+async function setTime(name: string | RegExp, value: string, scope: Scope = screen) {
+  const [hour, minute] = value.split(':');
+  await userEvent.selectOptions(timeSelects(name, scope)[0], hour);
+  await userEvent.selectOptions(timeSelects(name, scope)[1], minute);
+}
+
 let server: ReturnType<typeof fakeServer>;
 
 beforeEach(() => {
@@ -81,7 +96,7 @@ async function setTimeAndAddMeetings() {
   await userEvent.click(await screen.findByRole('button', { name: '스터디 시간 정하기' }));
   const timeDialog = screen.getByRole('dialog');
   await userEvent.click(within(timeDialog).getByRole('button', { name: '수' }));
-  await userEvent.type(within(timeDialog).getByLabelText('스터디 시간'), '20:30');
+  await setTime('스터디 시간', '20:30', within(timeDialog));
   await userEvent.click(within(timeDialog).getByRole('button', { name: '저장' }));
 
   await userEvent.click(screen.getByRole('button', { name: '회차 추가' }));
@@ -104,10 +119,13 @@ describe('일정 탭', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     expect(within(dialog).getByText('요일을 하나 이상 골라 주세요.')).toBeVisible();
     await userEvent.click(within(dialog).getByRole('button', { name: '금' }));
-    await userEvent.type(within(dialog).getByLabelText('스터디 시간'), '19:00');
+    await setTime('스터디 시간', '19:05', within(dialog));
     await userEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
-    expect(screen.getByText('매주 금요일 19:00 KST')).toBeVisible();
+    expect(screen.getByText('매주 금요일 19:05 KST')).toBeVisible();
+    expect(server.calls.find((c) => c.method === 'PATCH')?.body).toMatchObject({
+      startTime: expect.stringMatching(/^19:05/),
+    });
     expect(screen.getByText('미지정')).toBeVisible();
     expect(screen.getByRole('link', { name: '디스코드' })).toHaveAttribute('href', detail.discordChannelUrl);
     expect(screen.queryByRole('link', { name: '자료실' })).not.toBeInTheDocument();
@@ -132,6 +150,38 @@ describe('일정 탭', () => {
     expect(screen.getByRole('button', { name: '킥오프 정하기' })).toBeVisible();
   });
 
+  it('회차 추가 창에서 시 · 분을 고르면 그 시각(HH:mm)으로 회차를 만든다', async () => {
+    mount();
+    await userEvent.click(await screen.findByRole('button', { name: '스터디 시간 정하기' }));
+    let dialog = screen.getByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: '수' }));
+    await setTime('스터디 시간', '20:30', within(dialog));
+    await userEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await userEvent.click(screen.getByRole('button', { name: '회차 추가' }));
+    dialog = screen.getByRole('dialog');
+    await setTime(/시작 시각/, '21:15', within(dialog));
+    await userEvent.click(within(dialog).getByRole('button', { name: '회차 5개 추가' }));
+    await screen.findByText('전체 5 · 예정 5');
+
+    // 21:15 KST = 12:15 UTC
+    const ats = (server.calls.find((c) => c.method === 'POST')?.body as { scheduledAts: string[] }).scheduledAts;
+    expect(ats.every((at) => at.endsWith('T12:15:00.000Z'))).toBe(true);
+  });
+
+  it('일정 표에서 회차 시각을 시 · 분으로 고치면 그 시각으로 저장한다', async () => {
+    mount();
+    await setTimeAndAddMeetings();
+
+    expect(timeValue('1회차 시작 시각 (KST)')).toBe('20:30');
+    await setTime('1회차 시작 시각 (KST)', '21:45');
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => expect(server.calls.filter((c) => c.method === 'PUT')).toHaveLength(1));
+    const put = server.calls.find((c) => c.method === 'PUT');
+    expect((put?.body as { scheduledAt: string }).scheduledAt).toMatch(/T12:45:00(\.000)?Z$/);
+  });
+
   it('킥오프는 「킥오프 정하기」로만 정한다 — 1회차보다 앞이어야 하고, 표에서는 고치지 않는다', async () => {
     mount();
     await setTimeAndAddMeetings();
@@ -141,7 +191,7 @@ describe('일정 탭', () => {
     let dialog = screen.getByRole('dialog', { name: '킥오프 정하기' });
     // 처음 값은 1회차 한 주 전 · 반의 스터디 시각
     expect(within(dialog).getByLabelText(/일자/)).not.toHaveValue(first);
-    expect(within(dialog).getByLabelText(/시작 시각/)).toHaveValue('20:30');
+    expect(timeValue(/시작 시각/, within(dialog))).toBe('20:30');
 
     const date = within(dialog).getByLabelText(/일자/);
     await userEvent.clear(date);
@@ -151,12 +201,13 @@ describe('일정 탭', () => {
 
     await userEvent.clear(date);
     await userEvent.type(date, '2020-01-01');
+    await setTime(/시작 시각/, '08:05', within(dialog));
     await userEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(server.calls.find((c) => c.path.endsWith('/kickoff'))).toMatchObject({
       method: 'PUT',
       path: '/api/admin/studies/107/groups/1/kickoff',
-      body: { scheduledAt: '2020-01-01T11:30:00.000Z' },
+      body: { scheduledAt: '2019-12-31T23:05:00.000Z' },
     });
 
     // 지난 날도 받는다. 킥오프는 맨 위 0회차 — 지울 수 없고, 칸을 고치지 않고, 발표자가 없다

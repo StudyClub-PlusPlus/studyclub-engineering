@@ -15,13 +15,19 @@ export interface FilterChipProps extends ButtonHTMLAttributes<HTMLButtonElement>
   selectMode?: 'single' | 'multi';
 }
 
+/**
+ * 하나만 고르는 묶음이 폼 값이면(카테고리 · 진행 방식 등) `role='radio'` 를 주고 묶음에 `role='radiogroup'` 을 단다.
+ * 그때는 aria-pressed 대신 aria-checked 로 상태를 알린다.
+ */
 export function FilterChip({ selected = false, selectMode = 'multi', className, children, ...rest }: FilterChipProps) {
   const solid = selected && selectMode === 'single';
+  const radio = rest.role === 'radio';
   return (
     <button
       {...rest}
       type='button'
-      aria-pressed={selected}
+      aria-pressed={radio ? undefined : selected}
+      aria-checked={radio ? selected : undefined}
       className={cx(
         'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill px-3 type-label-lg',
         'transition-[background-color,border-color,color] duration-fast ease-out',

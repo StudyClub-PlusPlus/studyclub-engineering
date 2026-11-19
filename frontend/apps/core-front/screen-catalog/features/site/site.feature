@@ -10,6 +10,8 @@ Feature: 안내 화면 (로그인 없이)
     Given 사용자가 이용 가이드에 접속한다
     Then 가입부터 참여까지의 흐름이 보인다
 
+  # 행사는 기능 플래그(FEATURES.EVENTS=false, #463)로 숨겨 둔다 — 그동안 두 화면은 404 라 카탈로그에서 뺀다(site.meta.ts 의 excluded).
+  # 플래그를 켜면 다시 실행한다
   Scenario: 행사 목록과 상세
     Given 사용자가 행사 목록에 접속한다
     Then 행사가 최신순 행으로 보인다

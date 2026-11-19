@@ -1,5 +1,6 @@
 import type { Locale } from '@core/lib/content';
 import { m } from '@core/lib/i18n';
+import { ButtonLink } from '@studyclub/ui';
 import { MessageCircle } from 'lucide-react';
 
 export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: string }) {
@@ -17,16 +18,16 @@ export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: st
         <div className='text-center sm:text-left'>
           <h2 className='type-headline-sm text-white sm:type-headline-md'>{m('common.join_cta_title', locale)}</h2>
           <p className='mt-3 max-w-xl type-body-sm text-white/85'>{m('common.join_cta_body', locale)}</p>
-          <a
+          <ButtonLink
+            variant='secondary'
+            size='lg'
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='sc-button mt-6 gap-2 type-label-lg'
-            data-variant='secondary'
-            data-size='lg'
+            className='mt-6'
           >
             <MessageCircle size={20} aria-hidden='true' /> {m('nav.join', locale)}
-          </a>
+          </ButtonLink>
         </div>
 
         {/* 우: 합류 QR */}

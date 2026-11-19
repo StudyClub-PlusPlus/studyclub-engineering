@@ -285,7 +285,7 @@ function createExampleRegistrations(events: PreviewEvent[], now: Date): EventReg
   return events.flatMap((event, eventIndex) => {
     // 없어진 초안의 번호를 비워 기존에 저장된 가상 참가자와 예시 ID를 유지한다.
     const group = eventIndex < 6 ? eventIndex : eventIndex + 1;
-    const count = [18, 14, 12, 10, 16, 10, 0, 8, 10][group]!;
+    const count = [24, 14, 12, 10, 16, 10, 0, 8, 10][group]!;
     const theme = [0, 1, 2, 0, 1, 2, 1, 2, 1][group]!;
     return Array.from({ length: count }, (_, index): EventRegistration => {
       const person = PEOPLE[(index + group * 8) % PEOPLE.length]!;

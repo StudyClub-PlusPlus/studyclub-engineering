@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { BadgeTone } from '@studyclub/ui';
-import { Badge } from '@studyclub/ui';
+import { Badge, Button } from '@studyclub/ui';
 import { ArrowRight, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { useEventWorkspace } from './EventWorkspace';
@@ -76,18 +76,17 @@ export function MyEventsSummary({ locale }: { locale: string }) {
           </div>
         )}
         {rows.length > recent.length && (
-          <button
+          <Button
             type='button'
+            variant='tertiary'
+            size='sm'
             aria-expanded={expanded}
+            trailingIcon={expanded ? <ChevronUp /> : <ChevronDown />}
             onClick={() => setExpanded((current) => !current)}
-            className='flex w-full items-center justify-center gap-1.5 px-5 py-3 type-label-sm text-fg-secondary transition-colors hover:bg-surface-1 hover:text-fg'
+            className='my-1 w-full'
           >
-            {expanded ? (
-              <>접기 <ChevronUp aria-hidden size={15} /></>
-            ) : (
-              <>전체 {rows.length}건 펼쳐보기 <ChevronDown aria-hidden size={15} /></>
-            )}
-          </button>
+            {expanded ? '접기' : `전체 ${rows.length}건 펼쳐보기`}
+          </Button>
         )}
       </div>
     </section>
