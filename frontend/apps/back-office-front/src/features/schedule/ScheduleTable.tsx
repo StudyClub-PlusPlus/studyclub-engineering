@@ -153,6 +153,7 @@ export function ScheduleTable({
         date: v.date,
         time: v.time,
         title: v.title,
+        scheduledAt: meetings.find((m) => m.id === id)?.scheduledAt,
         ...(v.presenter1 !== before?.presenter1 && { presenter1: v.presenter1 || null }),
         ...(v.presenter2 !== before?.presenter2 && { presenter2: v.presenter2 || null }),
       };
