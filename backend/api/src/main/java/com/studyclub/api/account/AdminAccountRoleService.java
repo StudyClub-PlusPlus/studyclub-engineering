@@ -26,14 +26,17 @@ public class AdminAccountRoleService {
     private final AccountRepository accountRepository;
     private final StudyRepository studyRepository;
     private final AdminAuditRecorder auditRecorder;
+    private final SuperAdmins superAdmins;
 
     public AdminAccountRoleService(
             AccountRepository accountRepository,
             StudyRepository studyRepository,
-            AdminAuditRecorder auditRecorder) {
+            AdminAuditRecorder auditRecorder,
+            SuperAdmins superAdmins) {
         this.accountRepository = accountRepository;
         this.studyRepository = studyRepository;
         this.auditRecorder = auditRecorder;
+        this.superAdmins = superAdmins;
     }
 
     /** specs/admin-users/spec.md 「계정 권한 변경 › 처리 규칙」 1~7 을 그 순서대로 한 트랜잭션에서 판정한다. */
@@ -60,9 +63,18 @@ public class AdminAccountRoleService {
                 studyRepository.findByOwnerCaptainIdAndStatusNotIn(
                         targetId, StudyStatus.ENDED_STATUSES);
 
+        // 요청자는 캡틴이라 1 의 ADMIN 목록에 있다. 최고 관리자 여부는 env 목록으로 판정한다
+        boolean actorIsSuperAdmin =
+                admins.stream().anyMatch(a -> a.getId().equals(actorId) && superAdmins.includes(a));
+
         // 판정은 엔티티 한 곳 — 목록이 배지를 잠그는 이유와 같은 메서드다. 캡틴 수는 1 에서 잠그고 센 값을 넘긴다
         RoleChangeBlockedReason blocked =
-                target.roleChangeBlockedReason(actorId, admins.size(), !ownedOngoing.isEmpty());
+                target.roleChangeBlockedReason(
+                        actorId,
+                        admins.size(),
+                        !ownedOngoing.isEmpty(),
+                        superAdmins.includes(target),
+                        actorIsSuperAdmin);
 
         // 3. 본인이면 값이 같아도 막는다
         if (blocked == RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE) {
@@ -78,6 +90,14 @@ public class AdminAccountRoleService {
         // 5. 마지막 캡틴은 내릴 수 없다 — 값이 다르고 대상이 캡틴이면 곧 내리는 요청이다
         if (blocked == RoleChangeBlockedReason.LAST_ADMIN_REQUIRED) {
             throw new BusinessException(ErrorCode.LAST_ADMIN_REQUIRED);
+        }
+
+        // 5-0. 최고 관리자는 화면 · API 로 못 내린다(env 가 정본), 캡틴 내리기는 최고 관리자만 (403)
+        if (blocked == RoleChangeBlockedReason.SUPER_ADMIN_LOCKED) {
+            throw new BusinessException(ErrorCode.SUPER_ADMIN_LOCKED);
+        }
+        if (blocked == RoleChangeBlockedReason.NOT_SUPER_ADMIN) {
+            throw new BusinessException(ErrorCode.NOT_SUPER_ADMIN);
         }
 
         // 5-1. 진행 중인 스터디의 담당 캡틴은 내릴 수 없다 — 담당을 먼저 넘긴다

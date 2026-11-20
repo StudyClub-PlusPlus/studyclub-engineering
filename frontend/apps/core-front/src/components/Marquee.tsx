@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 /**
  * 가로로 끝없이 흐르는 띠. 같은 목록을 두 번 이어 붙이고 절반만큼 움직여 이음매를 감춘다.
- * 마우스를 올리면 멈추고, 움직임 줄이기 설정이면 흐르지 않는다(globals.css `.marquee`).
+ * 마우스를 올리면 멈추고, 움직임 줄이기 설정이면 손으로 넘기는 가로 목록이 된다(globals.css `.marquee`).
  * 서버 컴포넌트 — JS 없이 CSS 애니메이션만 쓴다.
  */
 export function Marquee({

@@ -2,6 +2,18 @@
 
 이 파일은 Claude / Codex / 다른 AI agent 가 이 모노레포에서 작업할 때 따라야 할 컨텍스트와 개발 규약이다.
 
+<!-- repo-kit:dev-rules 1.0.0 -->
+## 개발 규칙 (MUST)
+
+1. 주석은 코드로 알 수 없는 제약·이유만 쓴다. 코드를 다시 말하는 주석, 스펙·docs 에 있는 규칙을 옮긴 주석, 버그 번호·작업 이력 주석은 쓰지 않는다. 이번 변경으로 틀려진 주석은 같은 변경에서 지운다
+2. 로직을 바꾸면 테스트를 같이 낸다
+3. 버그 수정은 제보 증상을 재현하는 테스트를 먼저 쓰고, 고치기 전 코드에서 실패하는 것을 확인한다
+4. 손댄 파일에 빠진 테스트가 보이면 같은 PR 에서 채운다
+5. 사용자 동작이 바뀌는 PR 은 prober 테스트 케이스를 PR 에 같이 올린다 (머지되면 확정본)
+
+테스트 쓰는 법은 이 레포의 `testing-guide.md`. 턴이 끝나면 `.claude/hooks/typecheck-on-stop.sh` 가 손댄 워크스페이스를 검사하고, 실패하면 끝내지 못한다.
+<!-- /repo-kit:dev-rules -->
+
 ## ⚠️ 이 레포는 PUBLIC 이다
 
 `StudyClub-PlusPlus/studyclub-engineering` 는 **공개 레포지토리**다. 아래는 **절대 커밋 금지**:
@@ -224,6 +236,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 | API 연동·에러/로딩 처리 | [`docs/frontend-development-guide/api-integration.md`](docs/frontend-development-guide/api-integration.md) |
 | **화면 문구·표기 (줄표 금지 등)** | [`docs/frontend-development-guide/ui-copy.md`](docs/frontend-development-guide/ui-copy.md) |
 | **화면 콘텐츠 폭 (PAGE·READ·FORM·DETAIL)** | [`docs/frontend-development-guide/layout.md`](docs/frontend-development-guide/layout.md) |
+| **테스트 — 재현 먼저 · 화면 규칙은 화면으로 · 명령** | [`docs/frontend-development-guide/testing-guide.md`](docs/frontend-development-guide/testing-guide.md) |
 
 #### FE 핵심 요약
 
@@ -242,7 +255,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 사실이 생기면 도메인 이벤트를 발행하고, 부수효과(ops 알림·메일·외부 연동)는 구독자로 붙인다. 서비스 메서드에서 부수효과를 직접 부르지 않는다. 운영자가 초반에 알아야 할 이벤트는 OpsAlertListener 가 구독한다.
 
-운영자가 초반에 알아야 할 이벤트(가입·신청·승인·실패)는 ops 알림으로 보낸다. 새 기능을 만들면 ops 이벤트가 필요한지 판단하고 spec 표에 추가한다.
+운영자가 초반에 알아야 할 이벤트(가입·신청·승인·실패)는 ops 알림으로 보낸다. 새 기능을 만들면 ops 이벤트가 필요한지 판단하고 spec 표에 추가한다. 알림은 등급(INFO·WARN·ERROR)을 달아 `OpsAlertNotifier.send(level, …)` 하나로 보내고, 목적지는 env 가 정한다(specs/ops-alerts §등급과 목적지). 코드에 환경 분기를 두지 않는다.
 
 - 이벤트 규칙·목록: [specs/domain-events/spec.md](./specs/domain-events/spec.md)
 - ops 알림 계약·표: [specs/ops-alerts/spec.md](./specs/ops-alerts/spec.md)

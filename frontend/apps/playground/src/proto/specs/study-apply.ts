@@ -149,7 +149,6 @@ export const APPLY_COMPLETE_SPEC: ScreenSpec = {
       title: '신청 완료 안내',
       display: [
         '"스터디 신청이 완료되었습니다. 내 스터디룸으로 이동할까요?"',
-        '"제출한 내용은 수정할 수 없습니다."',
       ],
       when: '신청을 제출한 뒤',
     },
