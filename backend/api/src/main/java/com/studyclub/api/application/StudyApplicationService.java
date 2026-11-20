@@ -5,7 +5,9 @@ import com.studyclub.api.application.StudyApplicationResponses.MyStudyApplicatio
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountActivatedEvent;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.ActivationAction;
 import com.studyclub.domain.application.ApplicationDay;
 import com.studyclub.domain.application.ApplicationFormQuestion;
 import com.studyclub.domain.application.StudyApplication;
@@ -123,6 +125,10 @@ public class StudyApplicationService {
                         accountId,
                         account.getNickname()));
         eventPublisher.publishEvent(StudyParticipantJoined.of(accountId, participant));
+        // 첫 활성화 — 계정 행을 잠근 트랜잭션이라 행사 신청과 동시에 와도 한쪽만 기록한다 (specs/analytics 「활성화」)
+        if (account.activate(ActivationAction.STUDY_APPLIED, Instant.now())) {
+            eventPublisher.publishEvent(AccountActivatedEvent.byStudy(accountId, studyId));
+        }
         return saved.getId();
     }
 

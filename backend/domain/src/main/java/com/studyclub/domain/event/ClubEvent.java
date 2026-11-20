@@ -243,6 +243,20 @@ public class ClubEvent extends BaseEntity {
                 .toList();
     }
 
+    /** 현재 질문의 지문 — 상세가 주고 신청 제출이 돌려보낸다. 잠금 뒤 다시 계산한 값과 다르면 질문이 바뀐 것이다. */
+    public String questionVersion() {
+        return QuestionVersion.of(getQuestions());
+    }
+
+    /** 사이트 목록의 탭 — 종료 · 행사 취소면 지난 행사, 그 밖은 예정된 행사. */
+    public EventListGroup listGroup(Instant now, EventSeatCounts counts) {
+        EventDisplayStatus display = displayStatus(now, counts);
+        if (display == EventDisplayStatus.ENDED || display == EventDisplayStatus.CANCELLED) {
+            return EventListGroup.PAST;
+        }
+        return EventListGroup.UPCOMING;
+    }
+
     // ── 수정 ───────────────────────────────────────────────────────────────
 
     /**
