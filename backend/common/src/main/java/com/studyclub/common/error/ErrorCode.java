@@ -106,6 +106,20 @@ public enum ErrorCode {
      * (specs/event-participant · specs/event-registration)
      */
     EVENT_REGISTRATION_STATUS_NOT_ALLOWED(409, "현재 신청 상태에서는 처리할 수 없습니다."),
+    /** 사이트 신청 — 수동 모집 마감 · 신청 마감 시각 · 행사 시작. 화면은 신청 창을 닫고 상세를 다시 읽는다 (specs/event-registration) */
+    EVENT_REGISTRATION_CLOSED(409, "모집이 마감된 행사입니다."),
+    /** 사이트 신청 — 계정 이메일이 비었거나 형식이 틀림. 화면은 계정 이메일 확인을 안내한다 */
+    EVENT_APPLICANT_EMAIL_INVALID(409, "계정 이메일을 확인한 뒤 다시 신청해 주세요."),
+    /** 사이트 신청 — 이 행사에 확인 대기 · 참가 확정 신청이 이미 있음. 화면은 내 신청 내역을 다시 읽는다 */
+    EVENT_ALREADY_REGISTERED(409, "이미 신청한 행사입니다. 내 신청 내역을 확인해 주세요."),
+    /** 사이트 신청 — 이 행사에서 참가 불가 처리된 이력이 있음. 화면은 재신청 제한을 안내한다 */
+    EVENT_REGISTRATION_DECLINED(409, "참가 불가 처리된 행사는 다시 신청할 수 없습니다."),
+    /** 사이트 신청 — 고른 참여 방식의 정원이 참. 화면은 입력을 남기고 다른 방식을 안내한다 */
+    EVENT_CHANNEL_FULL(409, "선택한 참여 방식의 정원이 찼습니다."),
+    /** 사이트 신청 — 작성 중 신청 질문이 바뀜. 화면은 최신 질문으로 다시 그리고 바뀌지 않은 질문의 답만 남긴다 */
+    EVENT_QUESTIONS_CHANGED(409, "신청 질문이 변경되었습니다. 변경된 질문을 확인해 주세요."),
+    /** 본인 취소 — 신청 마감 시각이 지남. 화면은 운영진 문의를 안내한다 */
+    EVENT_SELF_CANCEL_CLOSED(409, "신청 마감 후에는 운영진에게 취소를 요청해 주세요."),
     /** stage 테스트 로그인 — 코드가 틀림. 메시지에 남은 횟수가 있다. 화면은 코드 칸에 빨간 테두리 (specs/stage-email-login) */
     EMAIL_CODE_WRONG(400, "코드가 맞지 않아요."),
     /** stage 테스트 로그인 — 코드가 만료 · 이미 씀 · 5번 틀림 · 없음. 화면은 확인 버튼을 끄고 「코드 다시 받기」 만 남긴다 */

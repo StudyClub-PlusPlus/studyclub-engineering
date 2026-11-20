@@ -2,8 +2,10 @@ package com.studyclub.domain.event.registration;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.event.ClubEvent;
 import com.studyclub.domain.event.EventChannel;
 import com.studyclub.domain.event.EventConfirmation;
+import com.studyclub.domain.event.EventStatus;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -198,6 +200,27 @@ public class ClubEventRegistration extends BaseEntity {
                 ClubEventRegistrationCancelReason.SELF_CANCELLED,
                 accountId,
                 now);
+    }
+
+    /**
+     * 본인 취소를 할 수 없는 이유. 할 수 있으면 null. 모집 수동 마감은 보지 않는다 — 신청 마감 시각 전이면 취소할 수 있다 (S3). 행사 취소는 신청을 함께
+     * 취소하므로 {@code NOT_ACTIVE} 로 나온다.
+     */
+    public SelfCancelBlockedReason selfCancelBlockedReason(ClubEvent event, Instant now) {
+        if (!isActive()) {
+            return SelfCancelBlockedReason.NOT_ACTIVE;
+        }
+        if (!now.isBefore(event.getDeadlineAt())) {
+            return SelfCancelBlockedReason.DEADLINE_PASSED;
+        }
+        return null;
+    }
+
+    /** 온라인 참여 링크를 볼 수 있나 — 온라인으로 참가 확정 ∧ 행사 취소 아님. 종료 뒤에도 보인다 (R5). */
+    public boolean canSeeOnlineLink(ClubEvent event) {
+        return status == ClubEventRegistrationStatus.CONFIRMED
+                && channel == EventChannel.ONLINE
+                && event.getStatus() != EventStatus.CANCELLED;
     }
 
     /** 자리를 차지하는 신청인가 ({@code PENDING} · {@code CONFIRMED}). */
