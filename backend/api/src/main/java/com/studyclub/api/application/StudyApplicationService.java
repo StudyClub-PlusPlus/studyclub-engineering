@@ -88,6 +88,9 @@ public class StudyApplicationService {
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        if (isWithdrawn(accountId, studyId)) {
+            throw new BusinessException(ErrorCode.STUDY_WITHDRAWN);
+        }
         if (studyApplicationRepository.existsByStudyIdAndAccountId(studyId, accountId)) {
             throw new BusinessException(ErrorCode.CONFLICT, "이미 신청한 스터디입니다.");
         }
@@ -123,7 +126,8 @@ public class StudyApplicationService {
         return saved.getId();
     }
 
-    // 열려 있는 모집 회차, 없으면 가장 최근 회차 — 백오피스 신청 결과 목록과 같은 회차를 본다
+    // 신청서는 열려 있는 모집 회차(없으면 가장 최근 회차) 것을 먼저 보고, 없으면 이 스터디 다른 회차의 것을 본다.
+    // 제출이 스터디 전체로 중복을 막으므로 applied 도 스터디 전체 기준이다
     @Transactional(readOnly = true)
     public MyStudyApplicationResponse findMine(Long accountId, Long studyId) {
         // 탈퇴해도 신청서는 남는다 — 계정이 지워진 토큰으로는 조회하지 못하게 submit 과 같이 401
@@ -133,16 +137,31 @@ public class StudyApplicationService {
         if (!studyRepository.existsById(studyId)) {
             throw new BusinessException(ErrorCode.NOT_FOUND);
         }
+        boolean withdrawn = isWithdrawn(accountId, studyId);
         return currentRecruitment(studyId)
                 .flatMap(
                         recruitment ->
                                 studyApplicationRepository.findByRecruitmentIdAndAccountId(
                                         recruitment.getId(), accountId))
+                .or(
+                        () ->
+                                studyApplicationRepository
+                                        .findByStudyIdAndAccountIdOrderByIdDesc(studyId, accountId)
+                                        .stream()
+                                        .findFirst())
                 .map(
                         application ->
                                 new MyStudyApplicationResponse(
-                                        true, application.getId(), application.getCreatedAt()))
-                .orElse(MyStudyApplicationResponse.NOT_APPLIED);
+                                        true,
+                                        application.getId(),
+                                        application.getCreatedAt(),
+                                        withdrawn))
+                .orElseGet(() -> new MyStudyApplicationResponse(false, null, null, withdrawn));
+    }
+
+    private boolean isWithdrawn(Long accountId, Long studyId) {
+        return studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(
+                studyId, accountId, List.of(ParticipantStatus.WITHDRAWN));
     }
 
     private Optional<StudyRecruitment> currentRecruitment(Long studyId) {
@@ -178,7 +197,7 @@ public class StudyApplicationService {
     }
 
     // 신청 제출 = 명부 편입. 기본 반에 넣고, 반을 나누면 캡틴이 옮긴다.
-    // 이 스터디 명부에서 빠졌던 사람(ACTIVE·PAUSED 는 앞에서 409)은 옛 행을 되살린다.
+    // 이 스터디 명부에서 빠졌던 사람(ACTIVE·PAUSED·WITHDRAWN 은 앞에서 409)은 옛 행을 되살린다.
     // 새 행이든 되살린 행이든 들어온 행을 돌려준다 — study_participant.joined 는 둘 다 낸다
     private StudyParticipant joinRoster(Long accountId, Long studyId) {
         Instant now = Instant.now();

@@ -54,6 +54,7 @@ export function useSubmitApplication(studyId: number) {
         applied: true,
         applicationId: 1,
         submittedAt: new Date().toISOString(),
+        withdrawn: false,
       });
     },
   });

@@ -145,7 +145,7 @@ class StudyApplicationSubmissionIntegrationTest {
     @Test
     @DisplayName("성공 - 빠졌던 옛 명부 행을 되살려도 그 행으로 joined 를 낸다")
     void publishesJoinedForRejoinedRosterRow() {
-        insertParticipant(LINKED_ACCOUNT_ID, "WITHDRAWN", "LEADER");
+        insertParticipant(LINKED_ACCOUNT_ID, "COMPLETED", "LEADER");
         Long formerId =
                 jdbcTemplate.queryForObject(
                         "SELECT ID FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
@@ -524,9 +524,9 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 명부에서 빠진 참여자는 기존 신청이 없으면 제출할 수 있다")
+    @DisplayName("성공 - 수료·탈퇴로 명부에서 빠진 참여자는 기존 신청이 없으면 제출할 수 있다")
     void acceptsFormerParticipantWithoutApplication() {
-        for (String status : List.of("WITHDRAWN", "COMPLETED", "DELETED")) {
+        for (String status : List.of("COMPLETED", "DELETED")) {
             jdbcTemplate.update(
                     "DELETE FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ?", RECRUITMENT_ID);
             jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?", STUDY_ID);
@@ -546,6 +546,48 @@ class StudyApplicationSubmissionIntegrationTest {
                                     STUDY_ID))
                     .containsExactly("ACTIVE");
         }
+    }
+
+    @Test
+    @DisplayName("실패 - 참여 중단된 사람이 다시 신청하면 409 STUDY_WITHDRAWN 이고 명부를 되살리지 않는다")
+    void rejectsWithdrawnParticipant() {
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        insertParticipant(LINKED_ACCOUNT_ID, "WITHDRAWN", "MEMBER");
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody())
+                .containsEntry("errorCode", "STUDY_WITHDRAWN")
+                .containsEntry("errorMessage", "참여 중단된 스터디는 다시 신청할 수 없어요.");
+        assertThat(applicationCount()).isEqualTo(1L);
+        assertThat(
+                        jdbcTemplate.queryForList(
+                                "SELECT STATUS FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?",
+                                String.class,
+                                STUDY_ID))
+                .containsExactly("WITHDRAWN");
+        assertThat(joinedEvents.received).isEmpty();
+    }
+
+    @Test
+    @DisplayName("실패 - 신청서가 지워졌어도 참여 중단된 사람은 다시 신청할 수 없다")
+    void rejectsWithdrawnParticipantWithoutApplication() {
+        insertParticipant(LINKED_ACCOUNT_ID, "WITHDRAWN", "MEMBER");
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorCode", "STUDY_WITHDRAWN");
+        assertThat(applicationCount()).isZero();
     }
 
     @Test
@@ -916,7 +958,8 @@ class StudyApplicationSubmissionIntegrationTest {
         assertThat(response.getBody())
                 .containsEntry("applied", false)
                 .containsEntry("applicationId", null)
-                .containsEntry("submittedAt", null);
+                .containsEntry("submittedAt", null)
+                .containsEntry("withdrawn", false);
     }
 
     @Test
@@ -949,6 +992,48 @@ class StudyApplicationSubmissionIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("applicationId", 10_640);
+    }
+
+    @Test
+    @DisplayName("성공 - 참여 중단된 회원의 내 신청 여부는 withdrawn=true 이다")
+    void reportsWithdrawn() {
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        insertParticipant(LINKED_ACCOUNT_ID, "WITHDRAWN", "MEMBER");
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("applied", true)
+                .containsEntry("withdrawn", true);
+    }
+
+    @Test
+    @DisplayName("성공 - 참여 중인 회원은 withdrawn=false 이다")
+    void reportsNotWithdrawnForActiveParticipant() {
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        insertParticipant(LINKED_ACCOUNT_ID, "ACTIVE", "MEMBER");
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getBody())
+                .containsEntry("applied", true)
+                .containsEntry("withdrawn", false);
+    }
+
+    @Test
+    @DisplayName("성공 - 지난 회차에만 신청했어도 제출이 막히는 것과 같이 applied=true 이다")
+    void reportsAppliedInEarlierRecruitment() {
+        Instant now = Instant.now();
+        insertRecruitment(PAST_RECRUITMENT_ID, now.minusSeconds(7200), now.minusSeconds(3600));
+        insertApplication(10_641L, PAST_RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("applied", true)
+                .containsEntry("applicationId", 10_641);
     }
 
     @Test
