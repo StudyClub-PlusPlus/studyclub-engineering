@@ -11,6 +11,7 @@ export const authAccountSchema = z.object({
   email: z.string().optional(),
   nickname: z.string().nullable().optional(),
   picture: z.string().nullable().optional(),
+  timeZone: z.string().nullable().optional(),
   onboardingCompletedAt: z.string().nullable().optional(),
 });
 export const loginResponseSchema = z.object({ account: authAccountSchema });

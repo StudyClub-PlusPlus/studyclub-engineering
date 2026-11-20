@@ -2,6 +2,7 @@ package com.studyclub.api.study;
 
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyLifecycleQuery;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
@@ -98,8 +99,9 @@ class BackofficeStudyQueryDao implements BackofficeStudyDao {
             params.put("kind", filter.studyKind().name());
         }
         if (filter.status() != null) {
-            conditions.add("s.STATUS = :status");
+            conditions.add(StudyLifecycleQuery.STATUS_SQL + " = :status");
             params.put("status", filter.status().name());
+            params.put("asOf", Timestamp.from(asOf));
         }
         if (filter.studyId() != null) {
             conditions.add("s.ID = :studyId");
@@ -127,10 +129,6 @@ class BackofficeStudyQueryDao implements BackofficeStudyDao {
         if (filter.hasApplicationForm() != null) {
             conditions.add("(" + HAS_FORM + ") = :hasForm");
             params.put("hasForm", filter.hasApplicationForm() ? 1 : 0);
-        }
-        if (Boolean.TRUE.equals(filter.startedOnly())) {
-            conditions.add("s.START_AT IS NOT NULL AND s.START_AT <= :asOf");
-            params.put("asOf", Timestamp.from(asOf));
         }
         boolean recruitFilter = filter.recruitStatus() != null || filter.recruitFilter() != null;
         if (filter.recruitStatus() != null) {
@@ -165,7 +163,11 @@ class BackofficeStudyQueryDao implements BackofficeStudyDao {
                                     true;
                             default -> false;
                         };
-        if (recruitFilter || recruitSort) {
+        boolean statusSort =
+                sorted
+                        && (sort == BackofficeStudySort.STATUS_ASC
+                                || sort == BackofficeStudySort.STATUS_DESC);
+        if (recruitFilter || recruitSort || statusSort) {
             params.put("asOf", Timestamp.from(asOf));
         }
         // 일반 필터·건수 조회에는 필요 없는 모집/작성자 JOIN을 붙이지 않는다.
@@ -204,7 +206,9 @@ class BackofficeStudyQueryDao implements BackofficeStudyDao {
                     case "PROGRAM" -> "s.PROGRAM_ID";
                     case "TITLE" -> "s.TITLE";
                     case "STATUS" ->
-                            "CASE s.STATUS WHEN 'DRAFT' THEN 0 WHEN 'OPEN' THEN 1"
+                            "CASE "
+                                    + StudyLifecycleQuery.STATUS_SQL
+                                    + " WHEN 'DRAFT' THEN 0 WHEN 'OPEN' THEN 1"
                                     + " WHEN 'ONGOING' THEN 2 WHEN 'ENDED' THEN 3 WHEN 'CLOSED' THEN 4 END";
                     case "CATEGORY" ->
                             "CASE s.CATEGORY WHEN 'AI_ML' THEN 'AI · ML'"

@@ -9,6 +9,7 @@ import { Input, Pagination, Segmented, IconButton } from '@studyclub/ui';
 import { Info, Search } from 'lucide-react';
 
 import { PageHeader } from '@/components/ui';
+import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
 import { PermissionMatrixDialog } from '@/features/users/components/PermissionMatrixDialog';
 import { UsersTable } from '@/features/users/components/UsersTable';
 import { TAB_OPTIONS } from '@/features/users/labels';
@@ -118,6 +119,8 @@ function UsersAdminContent() {
           {error.message}
         </div>
       )}
+
+      <TimezoneNote subject='가입일은' />
 
       {isPending && !error ? (
         <p className='py-10 text-center type-body-sm text-fg-muted'>불러오는 중…</p>

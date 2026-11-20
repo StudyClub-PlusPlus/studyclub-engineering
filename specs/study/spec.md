@@ -509,11 +509,12 @@ Location: /api/admin/studies/{id}
 | 동작 | 선행 조건 | 결과 |
 |------|-----------|------|
 | publish (공개) | `STATUS=DRAFT` AND `APPLICATION_FORM.questions` ≥ 1 | `STATUS=OPEN`, 최신 회차(id MAX) `STUDY_RECRUITMENT.START_AT = now()` |
-| unpublish (공개 취소) | `STATUS=OPEN` | `STATUS=DRAFT`. 최신 회차 `STUDY_RECRUITMENT.START_AT = null` (모집 시작 전으로). 신청·크루·반·출석 변경 없음. 알림/이력 없음. |
+| unpublish (공개 취소) | `STATUS=OPEN` AND 시작 전(`STUDY.START_AT` 이 없거나 아직 안 됨, `STUDY.END_AT` 도 안 지남) | `STATUS=DRAFT`. 최신 회차 `STUDY_RECRUITMENT.START_AT = null` (모집 시작 전으로). 신청·크루·반·출석 변경 없음. 알림/이력 없음. |
 
 - 공개 = 모집 시작. 사이트 노출 여부는 `STATUS != DRAFT` 단일 판정.
 - `START_AT` 은 "모집이 언제 시작됐는가"라는 사실 데이터 — 노출 판정의 근거가 아님 ([ERD](../../docs/erd/STUDY.md#공개-여부)).
-- `ONGOING`·`ENDED`·`CLOSED` 에서 unpublish 는 불가 (409).
+- 시작한 스터디(진행 중·종료)는 unpublish 불가 (409 `STUDY_ALREADY_STARTED`). 판정은 저장된 `STATUS` 가 아니라 `Study#statusAsOf(now)` — `STATUS=OPEN` 으로 남아 있어도 `STUDY.START_AT`·`END_AT` 이 지났으면 막는다. 크루·출석이 이미 돌고 있어 내리면 사이트에서 사라진다.
+- `CLOSED` 에서 unpublish 도 불가 (409 `CONFLICT`).
 - 프로토타입은 공개·공개 취소 모두 확인 팝업을 거친다. 서버에 확인 단계는 없다.
 
 ### Error Responses
@@ -535,12 +536,14 @@ Location: /api/admin/studies/{id}
 | 401 | UNAUTHORIZED | 로그인 필요 |
 | 403 | FORBIDDEN | ADMIN 아님 (네비게이터 포함) |
 | 404 | NOT_FOUND | studyId 없음 |
-| 409 | CONFLICT | `DRAFT` 상태에서 unpublish, 또는 `ONGOING`·`ENDED`·`CLOSED` 에서 unpublish |
+| 409 | STUDY_ALREADY_STARTED | 시작일 경과(진행 중) 또는 종료일 경과·`ENDED` (저장된 `STATUS` 가 `OPEN` 이어도) |
+| 409 | CONFLICT | `DRAFT`·`CLOSED` 상태에서 unpublish |
 
 ### 신규 ErrorCode
 
 ```java
 APPLICATION_FORM_REQUIRED(409, "신청 폼을 먼저 연결하세요.")
+STUDY_ALREADY_STARTED(409, "시작한 스터디는 비공개로 바꿀 수 없습니다.")
 ```
 
 FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 하므로 전용 코드 추가. 신청 폼 판정 기준: `APPLICATION_FORM.questions` 배열 길이 ≥ 1 (NOT NULL 만으로 불충분).
@@ -549,7 +552,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 
 - `publish(accountId, studyId)` · `unpublish(accountId, studyId)` — 캡틴 전용이라 진입 메서드 각각 하나. 첫 줄 `assertCaptain`. `create`·`delete` 패턴과 동일. `FromSite`/`ForBackOffice` 접미사 없음.
 - 신청 폼 판정: `study.getApplicationForm()` null 이거나 `questions` 배열 길이 0 → `APPLICATION_FORM_REQUIRED`. APPLICATION_FORM JSON 구조 정본: [study-application/spec.md §APPLICATION_FORM](../study-application/spec.md)
-- 상태 전이는 `Study` 엔티티의 의미 있는 메서드(`Study#publish()` · `Study#unpublish()`)로. setter 금지.
+- 상태 전이는 `Study` 엔티티의 의미 있는 메서드(`Study#publish()` · `Study#unpublish(now)`)로. setter 금지. unpublish 의 선행 조건(시작 여부·`OPEN`)은 엔티티가 검사한다.
 - 최신 회차: `STUDY_RECRUITMENT` 에서 `id` MAX 인 행. 등록 시 `START_AT = null`, publish 시 `now()`, unpublish 시 `null` 로 되돌린다(V49). 신청서가 없으면 공개 취소 뒤 신청 폼을 다시 고칠 수 있다 — 이미 들어온 신청서가 있으면 그 신청서로 계속 잠긴다.
 
 ### 테스트 요구사항
@@ -557,7 +560,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 | 엔드포인트 | 성공 | 401 | 403 | 404 | 409-CONFLICT | 409-APP_FORM |
 |---|---|---|---|---|---|---|
 | `POST /api/admin/studies/{id}/publish` | DRAFT+폼 있음 → 204, STATUS=OPEN, 최신 회차 START_AT 채워짐 | 토큰 없음 | 네비게이터 | 없는 id | 이미 OPEN | 폼 없음/questions 0개 |
-| `POST /api/admin/studies/{id}/unpublish` | OPEN → 204, STATUS=DRAFT, START_AT 비움 | 토큰 없음 | 네비게이터 | 없는 id | DRAFT·ONGOING·ENDED·CLOSED | — |
+| `POST /api/admin/studies/{id}/unpublish` | 시작 전 OPEN → 204, STATUS=DRAFT, START_AT 비움 | 토큰 없음 | 네비게이터 | 없는 id | 시작일·종료일 경과(STUDY_ALREADY_STARTED) · DRAFT·CLOSED(CONFLICT) | — |
 
 ### 프론트엔드 사용처
 

@@ -21,6 +21,7 @@ import {
   type FeedbackStatus,
   type FeedbackType,
 } from '@/features/feedbacks/types';
+import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
 
@@ -117,6 +118,8 @@ function FeedbacksList() {
           {data && !error && `총 ${data.total.toLocaleString()}건`}
         </span>
       </div>
+
+      <TimezoneNote />
 
       {loading ? (
         <FeedbacksSkeleton />

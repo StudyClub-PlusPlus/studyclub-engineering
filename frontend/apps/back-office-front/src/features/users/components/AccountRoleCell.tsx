@@ -1,5 +1,7 @@
 'use client';
 
+import { Badge } from '@studyclub/ui';
+
 import { RoleBadgeSelect } from '@/features/users/components/RoleBadgeSelect';
 import { useChangeAccountRole } from '@/features/users/queries';
 import type { ApiAdminAccount, SystemRole } from '@/features/users/types';
@@ -18,12 +20,21 @@ export function AccountRoleCell({ account }: { account: ApiAdminAccount }) {
     change.mutate(systemRole);
   }
 
-  return (
+  const select = (
     <RoleBadgeSelect
       role={account.systemRole}
       blockedReason={account.roleChangeBlockedReason}
       pending={change.isPending}
       onChange={handleChange}
     />
+  );
+  if (!account.superAdmin) return select;
+  return (
+    <span className='inline-flex items-center gap-1.5'>
+      {select}
+      <Badge tone='captain' className='whitespace-nowrap px-2 py-0.5 type-label-sm'>
+        최고 관리자
+      </Badge>
+    </span>
   );
 }

@@ -1,5 +1,6 @@
 package com.studyclub.domain.participant;
 
+import com.studyclub.domain.study.StudyLifecycleQuery;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
@@ -19,16 +20,16 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
             Long studyId, Collection<ParticipantStatus> statuses);
 
     /**
-     * 진행 중 기수(STATUS=OPEN, START_AT 경과)의 ACTIVE 참여 명부. 대시보드 활성 크루·1인당 참여·시간대 분포용
-     * (specs/dashboard/spec.md 2-1). 결정 5에 따라 OPEN→ONGOING 전환을 당분간 일으키지 않으므로 START_AT 경과로 판단한다.
+     * 진행 중 기수({@code Study#isOngoing} — START_AT 경과 · END_AT 전)의 ACTIVE 참여 명부. 대시보드 활성 크루·1인당
+     * 참여·시간대 분포용 (specs/dashboard/spec.md 2-1).
      */
     @Query(
             "SELECT p FROM StudyParticipant p, Study s"
                     + " WHERE p.studyId = s.id"
-                    + " AND s.status = com.studyclub.domain.study.StudyStatus.OPEN"
-                    + " AND s.startAt IS NOT NULL AND s.startAt <= :asOf"
+                    + " AND "
+                    + StudyLifecycleQuery.ONGOING_JPQL
                     + " AND p.status = com.studyclub.domain.participant.ParticipantStatus.ACTIVE")
-    List<StudyParticipant> findActiveInStartedOpenStudies(@Param("asOf") Instant asOf);
+    List<StudyParticipant> findActiveInOngoingStudies(@Param("asOf") Instant asOf);
 
     void deleteByStudyId(Long studyId);
 
@@ -132,9 +133,9 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
             @Param("roles") Collection<ParticipantRole> roles);
 
     /**
-     * 웹 기준 navigator 의 디스코드 ID — 진행 중 스터디(OPEN · ONGOING) 어디서든 명부가 LEADER · (ACTIVE · PAUSED)이고
-     * 디스코드를 연동한 계정. navigator role 은 길드에 하나라 「다른 진행 중 스터디에서 활성 LEADER 면 떼지 않는다」(DSC-08)와 같은 식이다
-     * (specs/discord-role-sync/spec.md).
+     * 웹 기준 navigator 의 디스코드 ID — 안 끝난 스터디(OPEN · ONGOING 이고 END_AT 전) 어디서든 명부가 LEADER · (ACTIVE ·
+     * PAUSED)이고 디스코드를 연동한 계정. navigator role 은 길드에 하나라 「다른 진행 중 스터디에서 활성 LEADER 면 떼지 않는다」(DSC-08)와
+     * 같은 식이다 (specs/discord-role-sync/spec.md).
      */
     @Query(
             "SELECT DISTINCT a.discordId FROM StudyParticipant p, Study s, Account a"
@@ -144,13 +145,15 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
                     + " com.studyclub.domain.participant.ParticipantStatus.PAUSED)"
                     + " AND s.status IN (com.studyclub.domain.study.StudyStatus.OPEN,"
                     + " com.studyclub.domain.study.StudyStatus.ONGOING)"
+                    + " AND NOT "
+                    + StudyLifecycleQuery.ENDED_JPQL
                     + " AND a.discordId IS NOT NULL AND a.discordId <> ''")
-    List<String> findNavigatorDiscordIds();
+    List<String> findNavigatorDiscordIds(@Param("asOf") Instant asOf);
 
     /**
-     * 이 계정이 진행 중 스터디(OPEN · ONGOING) 어디서든 LEADER · (ACTIVE · PAUSED) 인지 — navigator role 보유 판정용.
-     * navigator role 은 길드에 하나라, 스터디 하나에서 LEADER 가 아니어도 다른 진행 중 스터디에서 LEADER 면 role 을 유지한다 (DSC-08 ·
-     * DSC-09, specs/discord-study-link/spec.md).
+     * 이 계정이 안 끝난 스터디(OPEN · ONGOING 이고 END_AT 전) 어디서든 LEADER · (ACTIVE · PAUSED) 인지 — navigator
+     * role 보유 판정용. navigator role 은 길드에 하나라, 스터디 하나에서 LEADER 가 아니어도 다른 진행 중 스터디에서 LEADER 면 role 을
+     * 유지한다 (DSC-08 · DSC-09, specs/discord-study-link/spec.md).
      */
     @Query(
             "SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END"
@@ -160,8 +163,11 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
                     + " AND p.status IN (com.studyclub.domain.participant.ParticipantStatus.ACTIVE,"
                     + " com.studyclub.domain.participant.ParticipantStatus.PAUSED)"
                     + " AND s.status IN (com.studyclub.domain.study.StudyStatus.OPEN,"
-                    + " com.studyclub.domain.study.StudyStatus.ONGOING)")
-    boolean existsActiveNavigatorInAnyActiveStudy(@Param("accountId") Long accountId);
+                    + " com.studyclub.domain.study.StudyStatus.ONGOING)"
+                    + " AND NOT "
+                    + StudyLifecycleQuery.ENDED_JPQL)
+    boolean existsActiveNavigatorInAnyActiveStudy(
+            @Param("accountId") Long accountId, @Param("asOf") Instant asOf);
 
     /** 디스코드 연결 해제 차단 — 어느 스터디든 참여 중인 행이 있는가 (AccountDiscordLinkService). */
     boolean existsByAccountIdAndStatusIn(Long accountId, Collection<ParticipantStatus> statuses);

@@ -3,6 +3,8 @@
 > ERD: [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md)
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
+> 갱신: 2026-11-19 — 반 이동 때 [STUDY_PARTICIPANT_GROUP_MOVE](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md) 에 한 줄 남긴다 (서버 동작 5-5). 「시작 뒤 반 이동」 미결을 반별 구간 출석률로 닫았다 ([share 11-19](../../docs/share/2026-11-19-group-move-log.md)). 상태: 반 이동 기록은 구현 전
+> 갱신: 2026-11-18 — 반 수정 `PATCH /{groupId}` 에 `moveUpcomingMeetings` — 시간대 · 정규 시각을 바꿀 때 시작 전 회차도 옮길 수 있다 ([회차 스펙 결정 14](../study-meeting/spec.md#결정-사항))
 > 갱신: 2026-11-16 — 담당 캡틴 바꾸기 `PATCH …/owner-captain` 추가, 참여 명단에 `ownerCaptain`. 담당 캡틴 판정을 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
 > 갱신: 2026-11-01 — `PATCH /{groupId}` 구현완료 — daysOfWeek · startTime · timezone 추가 (V54 마이그레이션)
 > 갱신: 2026-10-23 — 참여 명단 `groups[].isDefault` 추가 (기본 반 칩을 서버 판정으로)
@@ -18,10 +20,10 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 구현완료 |
-| PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 |
+| PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 · 반 이동 기록 스펙확정 (11-19) |
 | PATCH | /api/admin/studies/{studyId}/owner-captain | 담당 캡틴 바꾸기 (신청자 탭 맨 위 「담당 캡틴」 칸) | O (ADMIN) | 구현완료 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현완료 |
-| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현완료 |
+| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않고, 고르면 시작 전 회차를 새 시각으로 옮긴다 | O (ADMIN) | 구현완료 |
 | DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -67,7 +69,8 @@
       "nickname": "jamie",
       "discordNickname": "제이미/BE/서울/분산시스템",
       "email": "jamie@example.com",
-      "regionGroup": "KR",
+      "regionGroup": null,
+      "timeZone": "Asia/Seoul",
       "groupId": 7,
       "participantRole": "LEADER",
       "status": "ACTIVE",
@@ -90,7 +93,8 @@
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].nickname · email | String | N | 이메일은 이 백오피스 응답에만 | ACCOUNT |
 | participants[].discordNickname | String | Y | 디스코드 서버 별명. 신청 때 받은 값으로 갱신된다. 없으면 null — 화면 「—」 | ACCOUNT.DISCORD_NICKNAME |
-| participants[].regionGroup | String | Y | `KR` · `NA` · `ETC` | ACCOUNT.REGION_GROUP |
+| participants[].regionGroup | String | Y | `KR` · `NA` · `ETC`. 지금 어느 코드도 채우지 않아 늘 null 이다(profile-edit 「지역은 시간대에서 파생한다」). 화면은 `timeZone` 을 쓴다 | ACCOUNT.REGION_GROUP |
+| participants[].timeZone | String | Y | 프로필 IANA 시간대(`Asia/Seoul` 등). 온보딩 전이면 null. 화면은 약칭(KST · ET · PCT · PT)으로 보이고 이 값으로 거른다 | ACCOUNT.TIME_ZONE |
 | participants[].groupId | Long | N | 반. 신청 직후에는 기본 반 (2026-10-20) | STUDY_PARTICIPANT.STUDY_GROUP_ID |
 | participants[].participantRole | String | N | `LEADER` = 네비게이터 · `MEMBER` | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | participants[].captain | Boolean | N | 이 행이 담당 캡틴이면 true — 「캡틴」 칩. 담당 캡틴은 신청했을 때만 행이 있다 | 계산: `Study.isOwnedBy(ACCOUNT_ID)` — `STUDY.OWNER_CAPTAIN_ID = ACCOUNT_ID` |
@@ -158,6 +162,9 @@
    3. **옛 반의 지난 회차(시작한 회차) 출석은 그대로 둔다.** 이미 일어난 사실이다
    4. 옛 반에서 맡은 **예정** 회차의 발표자 칸은 비운다 — [회차 스펙](../study-meeting/spec.md)
    5. 명부 행의 반을 바꾼다 (`STUDY_PARTICIPANT.STUDY_GROUP_ID = groupId`). `STUDY_ID` · `JOINED_AT` 은 그대로
+      - **반 이동 기록 한 줄을 남긴다** — [STUDY_PARTICIPANT_GROUP_MOVE](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md): 옛 반 · 새 반의 ID 와 **이름**(1단계에서 잠근 반 행에서 읽는다), `MOVED_AT` = 1단계 잠금 뒤의 `now`(2단계 「예정 회차」 판정과 같은 값), `MOVED_BY_ACCOUNT_ID` = 요청한 캡틴. 반이 실제로 바뀐 행만 (→ [share 11-19](../../docs/share/2026-11-19-group-move-log.md))
+      - 이름을 복사해 두는 이유: 반을 지우면 반 행이 사라진다. 네비게이터 출석부는 그 뒤에도 「A반에서 이동」을 보여 준다
+      - 옮긴 캡틴은 기록만 한다. 어느 응답에도 내지 않는다
    6. **새 반의 예정 회차마다 출석 행을 `ABSENT` 로 만든다** — 회차 생성 규칙과 같다. 이미 행이 있으면(그 반에 있다가 나갔다 돌아온 경우) 건드리지 않는다 (`UNIQUE(STUDY_MEETING_ID, ACCOUNT_ID)`)
    7. 새 반의 지난 회차에는 출석 행을 만들지 않는다 — 그때 그 반에 없었다
 
@@ -299,7 +306,7 @@
 - **Method**: PATCH
 - **Path**: `/api/admin/studies/{studyId}/groups/{groupId}`
 - **인증**: 필요 — ADMIN
-- **설명**: 반 제목(신청자 탭 「수정」)이나 스터디 시간(일정 탭 「스터디 시간 정하기 · 수정」)을 바꾼다. 보낸 필드만 바꾼다. **회차는 만들지도 바꾸지도 않는다** (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md))
+- **설명**: 반 제목(신청자 탭 「수정」)이나 스터디 시간(일정 탭 「스터디 시간 정하기 · 수정」)을 바꾼다. 보낸 필드만 바꾼다. **회차는 만들지 않는다** (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md)). `moveUpcomingMeetings: true` 면 시작 전 회차를 새 시각으로 옮긴다 (2026-11-18, [회차 스펙 결정 14](../study-meeting/spec.md#결정-사항))
 
 ### Request Body
 
@@ -308,7 +315,8 @@
   "name": "A반",
   "daysOfWeek": ["thu"],
   "startTime": "20:00",
-  "timezone": "Asia/Seoul"
+  "timezone": "Asia/Seoul",
+  "moveUpcomingMeetings": true
 }
 ```
 
@@ -320,6 +328,7 @@
 | daysOfWeek | String[] | N | `mon` ~ `sun`, 1개 이상 |
 | startTime | String (HH:mm, 분반 현지) | N | timezone 없으면 `Asia/Seoul` 기준으로 저장 |
 | timezone | String (IANA) | N | [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) 의 4개 값 중 하나 |
+| moveUpcomingMeetings | Boolean | N | 기본 false. true 이고 `timezone` 이나 `startTime` 을 보냈을 때만 시작 전 회차를 옮긴다 |
 
 기간(시작일 · 종료일)은 받지 않는다. 반의 기간은 저장하지 않고 첫 회차 ~ 마지막 회차로 계산한다.
 
@@ -329,8 +338,15 @@
 - 이름 중복 규칙은 「반 만들기」와 같다 — 같은 스터디의 다른 반과 이름(대소문자 무시)이 겹치면 409 `CONFLICT`. 지금 이름 그대로 보내면 통과
 - `timezone` 만 바뀌고 `startTime` 이 없으면 벽시계 시각을 유지한 채 `START_AT` Instant 를 새 시간대로 재계산한다
 - `startTime` 을 보낼 때 반에 `timezone` 이 없으면 `Asia/Seoul` 기준으로 저장한다 — 회차 조회(`MeetingSchedule.zoneOf`)와 같은 기본값
-- 회차 · 출석은 건드리지 않는다. 회차는 [회차 스펙](../study-meeting/spec.md)의 추가 · 수정 · 삭제로만 바뀐다
-- 이미 있는 회차의 시각은 따라 바뀌지 않는다 — 회차마다 `SCHEDULED_AT` 을 갖는다
+- 반 행을 `FOR UPDATE` 로 잠그고 시작한다 — 트랜잭션의 첫 조회. 회차 API 와 같은 순서다 ([회차 스펙 「잠금」](../study-meeting/spec.md#잠금))
+- 출석은 건드리지 않는다. 회차를 만들거나 지우지 않는다
+- `moveUpcomingMeetings` 가 없거나 false 면 이미 있는 회차의 시각은 따라 바뀌지 않는다 — 회차마다 `SCHEDULED_AT` 을 갖는다
+- `moveUpcomingMeetings: true` 이고 `timezone` · `startTime` 중 하나라도 보냈으면, 반 회차를 `FOR UPDATE` 로 잠근 뒤 **시작 전 회차**(`START_AT IS NULL AND SCHEDULED_AT > now`, 킥오프 포함)의 `SCHEDULED_AT` 을 다시 계산한다
+  - 날짜: 옛 시간대의 현지 날짜 그대로
+  - 시각: `startTime` 을 보냈으면 그 시각, 시간대만 보냈으면 회차마다의 옛 벽시계 시각
+  - 새 시간대(보내지 않았으면 지금 시간대)로 UTC 를 계산한다. 서머타임으로 같은 시각이 두 번 있으면 앞쪽, 없는 시각이면 그만큼 뒤로 민다 — 반 시각 저장과 같은 `java.time` 기본 규칙
+  - 시작한 회차는 그대로 둔다. 출석 행은 회차 ID 에 붙어 따라온다
+  - 옮긴 결과가 지난 시각이면 400 `INVALID_INPUT`, 다른 회차와 같은 날(새 시간대 현지 날짜)이면 409 `MEETING_DATE_CONFLICT`. 반 이름 · 시각 변경까지 전부 되돌린다
 
 ### Response — 200
 
@@ -342,10 +358,11 @@
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 이름 길이 밖 · 요일 0개 · 요일 키 밖 · startTime HH:mm 형식 밖 · 시간대 목록 밖 |
+| 400 | INVALID_INPUT | 이름 길이 밖 · 요일 0개 · 요일 키 밖 · startTime HH:mm 형식 밖 · 시간대 목록 밖 · 회차를 옮기면 지난 시각이 되는 회차가 있음 |
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 반 |
 | 409 | CONFLICT | 이 스터디의 다른 반과 이름이 같음 |
+| 409 | MEETING_DATE_CONFLICT | 회차를 옮기면 다른 회차와 같은 날이 됨 |
 
 ### 킥오프
 
@@ -392,7 +409,7 @@
 ## 프론트엔드 사용처
 
 - back-office-front 스터디 상세 · `/studies/{id}/applicants` — `features/participants/ParticipantsTab.tsx`: 명단 · 반 생성/제목 수정/삭제 · 개별/일괄 반 · 역할(크루 · 네비게이터) 변경 후 한 번에 저장 — 한 줄에 `groupId` · `participantRole` 중 바뀐 것만 싣는다. 참여 명단 GET · 일괄 PATCH는 위 계약에 연결했으며 BE 구현 후 실제 연동 검증이 필요하다.
-- back-office-front 일정 탭 — 스터디 시간 정하기 · 수정(`GroupTimeDialog`)이 이 PATCH 로 `daysOfWeek` · `startTime` · `timezone` 을 저장한다. 요일(`weekdays`)은 참여 명단 GET 응답에 없어 브라우저 저장소에도 함께 남긴다 — 해당 GET 이 `daysOfWeek` 를 반환하면 제거 예정
+- back-office-front 일정 탭 — 스터디 시간 정하기 · 수정(`GroupTimeDialog`)이 이 PATCH 로 `daysOfWeek` · `startTime` · `timezone` 을 저장한다. 시각이나 시간대가 바뀌고 시작 전 회차(서버 `started` 가 false)가 있으면 「아직 시작 안 한 회차 N개도 새 시각으로 옮길까요?」 를 묻고 「옮기기」면 `moveUpcomingMeetings: true`, 「반 정보만 바꾸기」면 false 를 보낸다. 요일(`weekdays`)은 참여 명단 GET 응답에 없어 브라우저 저장소에도 함께 남긴다 — 해당 GET 이 `daysOfWeek` 를 반환하면 제거 예정
 - 역할 변경 프로토: playground `console/studies/{id}` 신청자 탭
 
 ## 퍼널·계측
@@ -405,7 +422,7 @@
 - ~~한 사람씩 바꾸는 `PATCH …/{participantId}/role` · `…/group`~~ → 일괄 `PATCH …/participants` 로 합쳤다. 화면이 「저장」으로 한 번에 반영하는데 API 가 한 사람씩이면 중간 실패 때 일부만 바뀐다 (2026-10-21)
 - ~~신청자를 명부(`STUDY_PARTICIPANT`)에 넣는 시점~~ → **신청 제출 때, 기본 반으로**. 기본 반은 스터디를 만들 때 생기는 첫 반(「기본반」)이고 지울 수 없다. 다른 반으로는 「반 · 역할 한 번에 바꾸기」(`PATCH …/participants`)로 옮긴다 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md))
 - ~~반 일정을 바꿀 때 지워지는 회차에 걸린 휴가 신청 처리~~ → 스터디 시간 수정이 회차를 지우지 않아 없어졌다 (2026-10-14)
-- [NEEDS CLARIFICATION · 기획 미정] **스터디 시작 뒤 반 이동** — 시작 뒤에도 반을 옮길 수 있다(2026-10-20 확인). 그런데 출석률 계산기(`AttendanceRateCalculator`)는 **지금 반의 회차**만 본다. 그래서 옮기면 (1) 옛 반 지난 출석은 남지만 출석률에서 빠지고, (2) 새 반의 지난 회차는 `JOINED_AT` 이후면 출석 행 없이 분모에 들어가 결석처럼 센다. 「옮긴 시각」을 기록해 반별로 나눠 셀지 등 기획이 필요하다. 위 「서버 동작」의 지난 출석 · 예정 출석 처리는 이 결정과 별개로 유지한다
+- ~~스터디 시작 뒤 반 이동의 출석률~~ → **반 평균은 반별 구간, 개인 출석률은 모든 구간 합산.** 구간은 옛 반에서 참여 중단처럼 이동 시각까지, 새 반에서 들어온 시각부터. 새 반 출석부는 옛 반 기록을 회차 번호로 맞춰 「A반」 표시와 함께 보여 준다 — 출석 행은 옮기지 않는다. 이동 시각은 반 이동 기록에 남긴다 (2026-11-19, → [share 11-19](../../docs/share/2026-11-19-group-move-log.md) · [attendance 출석률 산식](../attendance/spec.md#출석률-산식)). 위 「서버 동작」의 지난 출석 · 예정 출석 처리는 그대로다
 - [NEEDS CLARIFICATION · 기획 미정] **다른 반 출석** — A반 참여자가 B반 회차에 나와 출석할 수 있다(2026-10-20 확인). 어느 반 회차에 어떤 상태로 기록하고 출석률에 어떻게 셀지 정해지지 않았다. 지금 임시 규칙: 대시보드는 다른 반 참석을 **소속 반 회차의 `EXCUSED`** 로 인정한다([대시보드 스펙](../dashboard/spec.md)), 디스코드 출석은 다른 반 회차에 찍지 않고 `noMeeting[]` 으로 돌려준다([디스코드 출석 스펙](../discord-attendance/spec.md)). ERD 의 `STUDY_ATTENDANCE.STUDY_GROUP_ID` 는 「실제 참석한 반」을 가정했지만 코드는 소속 반으로 쓴다
   - 검토 중인 안 (2026-10-20, 미결정) — 두 항목을 한 규칙으로 묶는다: **출석은 언제나 소속 반 회차에 적고, 다른 반에서 한 출석은 같은 회차 번호의 소속 반 회차로 옮겨 적는다.** 반 이동은 지난 회차 전부를 새 반 같은 번호 회차로 옮겨 적는다. 함께 검토: (a) 출석 행에 실제 참석한 회차 표시 (b) 반 이동 이력 (c) 크루별 출석 기록 목록. (a)(b)는 나중에 채울 수 없으니 옮겨 적기와 같이 넣어야 한다
 - [NEEDS CLARIFICATION] 명단 열람을 그 스터디의 네비게이터에게도 열지 (PRD 는 허용) — 연다면 사용자 사이트 경로를 따로 두고 이메일을 빼야 한다

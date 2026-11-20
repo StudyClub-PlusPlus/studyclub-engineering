@@ -10,7 +10,7 @@ public interface StudyBookmarkRepository extends JpaRepository<StudyBookmark, Lo
     @Query(
             value =
                     """
-            SELECT sc.TITLE AS title, sc.CATEGORY AS category
+            SELECT sb.STUDY_ID AS studyId, sc.TITLE AS title, sc.CATEGORY AS category
             FROM STUDY_BOOKMARK sb
             JOIN STUDY sc ON sb.STUDY_ID = sc.ID
             WHERE sb.ACCOUNT_ID = :accountId
@@ -24,6 +24,11 @@ public interface StudyBookmarkRepository extends JpaRepository<StudyBookmark, Lo
             @Param("limit") int limit);
 
     long countByAccountId(Long accountId);
+
+    boolean existsByAccountIdAndStudyId(Long accountId, Long studyId);
+
+    @Transactional
+    long deleteByAccountIdAndStudyId(Long accountId, Long studyId);
 
     @Transactional
     void deleteByAccountId(Long accountId);
