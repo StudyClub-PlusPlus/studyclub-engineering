@@ -4,13 +4,26 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Study } from '@studyclub/types';
-import { Button, Checkbox, Input, Modal, Select, SelectionCount, TableActionBar, cx, FilterChip } from '@studyclub/ui';
-import { Mic, Plus, X } from 'lucide-react';
+import {
+  Button,
+  ButtonLink,
+  Checkbox,
+  Input,
+  Modal,
+  Select,
+  SelectionCount,
+  TableActionBar,
+  TimeSelect,
+  cx,
+  FilterChip,
+} from '@studyclub/ui';
+import { CalendarPlus, Mic, Plus, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import { type ApiAttendance } from '@/features/attendance/types';
 import { useDisplayTimeZone } from '@/features/profile/use-display-timezone';
 import { meetingFormSchema, type MeetingFormValues } from '@/features/schedule/form-schema';
+import { googleCalendarUrl } from '@/features/schedule/google-calendar';
 import {
   dateWithDow,
   dayLabel,
@@ -204,7 +217,7 @@ function AddMeetingForm({
       }
     >
       <div className='flex flex-col gap-4 py-2'>
-        <div className='grid gap-3 sm:grid-cols-[10rem_8rem]'>
+        <div className='grid gap-3 sm:grid-cols-[10rem_12rem]'>
           <Input
             type='date'
             label={draft.repeat === 'none' ? '일자' : '시작 일자'}
@@ -213,13 +226,12 @@ function AddMeetingForm({
             error={errors.date}
             onChange={(ev) => change({ date: ev.target.value })}
           />
-          <Input
-            type='time'
+          <TimeSelect
             label={`시작 시각 (${zoneLabel(inputZone, firstInstant)})`}
             required
             value={draft.time}
             error={errors.time}
-            onChange={(ev) => change({ time: ev.target.value })}
+            onChange={(time) => change({ time })}
           />
         </div>
 
@@ -522,6 +534,8 @@ export function ScheduleTab({
         zonedInstant(m.date, m.time ?? group.startAt, group.timeZone).toISOString(),
     );
 
+  const nextMeeting = meetings.find((m) => m.scheduledAt && !pendingIds.has(m.id) && !startedOf(m));
+
   const value = (m: ProtoMeeting) =>
     drafts[m.id] ?? {
       date: m.date,
@@ -755,6 +769,23 @@ export function ScheduleTab({
         </h2>
 
         <div className='ml-auto flex items-center gap-2'>
+          {nextMeeting && (
+            <ButtonLink
+              external
+              variant='secondary'
+              size='sm'
+              leadingIcon={<CalendarPlus size={15} />}
+              href={googleCalendarUrl({
+                title: [meetingData?.study.title ?? study.title.ko, meetingLabel(nextMeeting), nextMeeting.title]
+                  .filter((part, i, all) => part && all.indexOf(part) === i)
+                  .join(' '),
+                start: new Date(nextMeeting.scheduledAt!),
+                details: meetingData?.study.discordChannelUrl,
+              })}
+            >
+              다음 회차 구글 캘린더에 추가
+            </ButtonLink>
+          )}
           {canEdit ? (
             <label className='flex items-center gap-2 type-label-sm text-fg-muted'>
               시간대
@@ -999,14 +1030,13 @@ export function ScheduleTab({
                       <td className='px-2 py-3 text-center'>
                         <div className='flex items-center justify-center gap-1.5'>
                           {editable ? (
-                            <Input
-                              type='time'
+                            <TimeSelect
                               aria-label={`${meetingLabel(m)} 시작 시각 (${abbreviation})`}
                               size='sm'
                               value={shown.time}
                               error={errors.time}
-                              onChange={(e) => changeWall(m, { time: e.target.value })}
-                              className='w-full max-w-none px-2 py-1'
+                              onChange={(time) => changeWall(m, { time })}
+                              className='w-full'
                             />
                           ) : (
                             shown.time

@@ -158,7 +158,7 @@ class AccountTest {
     @DisplayName("권한 변경 가능 여부 — 본인이면 마지막 캡틴이어도 「본인」이 먼저다")
     void ownAccountComesFirst() {
         Account me = accountWithId(1L, SystemRole.ADMIN);
-        assertThat(me.roleChangeBlockedReason(1L, 1, false))
+        assertThat(me.roleChangeBlockedReason(1L, 1, false, false, true))
                 .isEqualTo(RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE);
     }
 
@@ -166,17 +166,21 @@ class AccountTest {
     @DisplayName("권한 변경 가능 여부 — 남의 계정이 마지막 캡틴이면 막고, 캡틴이 둘 이상이면 연다")
     void lastAdminIsBlocked() {
         Account other = accountWithId(2L, SystemRole.ADMIN);
-        assertThat(other.roleChangeBlockedReason(1L, 1, false))
+        assertThat(other.roleChangeBlockedReason(1L, 1, false, false, true))
                 .isEqualTo(RoleChangeBlockedReason.LAST_ADMIN_REQUIRED);
-        assertThat(other.roleChangeBlockedReason(1L, 2, false)).isNull();
+        assertThat(other.roleChangeBlockedReason(1L, 2, false, false, true)).isNull();
     }
 
     @Test
     @DisplayName("권한 변경 가능 여부 — 진행 중 담당 스터디가 있는 캡틴은 OWNS_STUDY, 크루는 해당 없음")
     void ownerOfOngoingStudyIsBlocked() {
-        assertThat(accountWithId(2L, SystemRole.ADMIN).roleChangeBlockedReason(1L, 2, true))
+        assertThat(
+                        accountWithId(2L, SystemRole.ADMIN)
+                                .roleChangeBlockedReason(1L, 2, true, false, true))
                 .isEqualTo(RoleChangeBlockedReason.OWNS_STUDY);
-        assertThat(accountWithId(3L, SystemRole.MEMBER).roleChangeBlockedReason(1L, 2, true))
+        assertThat(
+                        accountWithId(3L, SystemRole.MEMBER)
+                                .roleChangeBlockedReason(1L, 2, true, false, true))
                 .isNull();
     }
 
@@ -185,15 +189,34 @@ class AccountTest {
     void memberIsNeverBlockedByAdminCount() {
         Account crew = accountWithId(3L, SystemRole.MEMBER);
         crew.linkDiscord("1327394882193880003", "crew");
-        assertThat(crew.roleChangeBlockedReason(1L, 1, false)).isNull();
+        assertThat(crew.roleChangeBlockedReason(1L, 1, false, false, true)).isNull();
+    }
+
+    @Test
+    @DisplayName("권한 변경 가능 여부 — 최고 관리자인 캡틴은 SUPER_ADMIN_LOCKED, 최고 관리자가 아닌 요청자는 NOT_SUPER_ADMIN")
+    void superAdminRules() {
+        Account captain = accountWithId(2L, SystemRole.ADMIN);
+        assertThat(captain.roleChangeBlockedReason(1L, 2, false, true, true))
+                .isEqualTo(RoleChangeBlockedReason.SUPER_ADMIN_LOCKED);
+        assertThat(captain.roleChangeBlockedReason(1L, 2, false, false, false))
+                .isEqualTo(RoleChangeBlockedReason.NOT_SUPER_ADMIN);
+        // 크루를 올리는 것은 요청자가 최고 관리자가 아니어도 된다
+        assertThat(
+                        accountWithId(3L, SystemRole.MEMBER)
+                                .roleChangeBlockedReason(1L, 2, false, false, false))
+                .isNull();
     }
 
     @Test
     @DisplayName("권한 변경 가능 여부 — 디스코드 연동 여부와 상관없다 (2026-10-27, 캡틴에게 연동은 필수가 아니다)")
     void unlinkedAccountsAreNotBlocked() {
-        assertThat(accountWithId(3L, SystemRole.MEMBER).roleChangeBlockedReason(1L, 2, false))
+        assertThat(
+                        accountWithId(3L, SystemRole.MEMBER)
+                                .roleChangeBlockedReason(1L, 2, false, false, true))
                 .isNull();
-        assertThat(accountWithId(4L, SystemRole.ADMIN).roleChangeBlockedReason(1L, 2, false))
+        assertThat(
+                        accountWithId(4L, SystemRole.ADMIN)
+                                .roleChangeBlockedReason(1L, 2, false, false, true))
                 .isNull();
     }
 }

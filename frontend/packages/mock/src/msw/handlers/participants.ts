@@ -26,7 +26,7 @@ const person = (
     discordNickname?: string;
     groupId?: number;
     role?: "LEADER" | "MEMBER";
-    region?: "KR" | "NA" | "ETC" | null;
+    timeZone?: string | null;
     accountId?: number;
   } = {},
 ) => ({
@@ -35,7 +35,8 @@ const person = (
   nickname,
   discordNickname: extra.discordNickname ?? null,
   email: `crew${id}@example.com`,
-  regionGroup: extra.region === undefined ? "KR" : extra.region,
+  regionGroup: null,
+  timeZone: extra.timeZone === undefined ? "Asia/Seoul" : extra.timeZone,
   groupId: extra.groupId ?? 1,
   participantRole: extra.role ?? "MEMBER",
   status,
@@ -48,7 +49,7 @@ type Row = ReturnType<typeof person>;
 
 /**
  * 두 반 · 반마다 네비게이터 하나 · 신청한 담당 캡틴 한 줄(「캡틴」 칩) · 휴식 중 · 참여 중단(`includeLeft` 때만) ·
- * 디스코드 별명 없는 사람(「—」) · 지역 없는 사람 · 닉네임이 겹치는 두 사람(디스코드 별명으로 가른다).
+ * 디스코드 별명 없는 사람(「—」) · 시간대 없는 사람 · 닉네임이 겹치는 두 사람(디스코드 별명으로 가른다).
  */
 const CREW: Row[] = [
   person(1, "jamie", "ACTIVE", {
@@ -62,15 +63,15 @@ const CREW: Row[] = [
   }),
   person(3, "doyun", "ACTIVE", {
     discordNickname: "도윤/FE/시애틀",
-    region: "NA",
+    timeZone: "America/Vancouver",
   }),
   person(4, "harin", "PAUSED", { discordNickname: "하린/BE/부산" }),
   person(5, "minjun", "ACTIVE", { discordNickname: "민준/BE/서울" }),
   person(6, "minjun", "ACTIVE", {
     discordNickname: "민준/ML/LA",
-    region: "NA",
+    timeZone: "America/Los_Angeles",
   }),
-  person(7, "seoyun", "ACTIVE", { region: null }),
+  person(7, "seoyun", "ACTIVE", { timeZone: null }),
   person(8, "jihoo", "WITHDRAWN", { discordNickname: "지후/FE/서울" }),
   person(11, "chaewon", "ACTIVE", {
     discordNickname: "채원/DE/서울",
@@ -80,7 +81,7 @@ const CREW: Row[] = [
   person(12, "eunwoo", "ACTIVE", {
     discordNickname: "은우/BE/토론토",
     groupId: 2,
-    region: "ETC",
+    timeZone: "America/New_York",
   }),
   person(13, "yuna", "ACTIVE", { groupId: 2 }),
 ];
