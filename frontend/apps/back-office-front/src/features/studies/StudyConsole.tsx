@@ -59,9 +59,9 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   // 고른 반 — 일정 탭과 출석 탭이 같이 쓴다. 비면 첫 반
   const [groupId, setGroupId] = useState('');
   const displayTz = useDisplayTimeZone();
-  // 출석부 회차 머리의 시간대 — 반을 바꿔도 남는다. POL-0006: 브라우저 시간대 → 서울
+  // 출석부 회차 머리의 시간대 — 반을 바꿔도 남는다. 처음은 내 프로필 시간대
   const [zone, setZone] = useState<string>(() => displayTz);
-  // SSR→클라이언트 전환 후 displayTz가 바뀌면(서울 고정 → 브라우저 시간대) zone을 맞춘다.
+  // 프로필을 받기 전에는 서울로 그렸다가, 받으면 프로필 시간대로 맞춘다
   useEffect(() => {
     setZone(displayTz);
   }, [displayTz]);

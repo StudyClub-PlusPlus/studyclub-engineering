@@ -7,12 +7,15 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "북마크", description = "스터디 북마크 조회")
+@Tag(name = "북마크", description = "스터디 북마크 조회·담기·빼기")
 @RestController
 @RequestMapping("/api/me")
 public class StudyBookmarkController {
@@ -43,5 +46,23 @@ public class StudyBookmarkController {
         StudyBookmarkService.Result result =
                 studyBookmarkService.getStudyBookmarks(accountId, offset, limit);
         return ResponseEntity.status(result.httpStatus()).body(result.response());
+    }
+
+    @RequireOnboarding
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/bookmarks/{studyId}")
+    public ResponseEntity<Void> addBookmark(
+            @PathVariable Long studyId, Authentication authentication) {
+        studyBookmarkService.addBookmark((Long) authentication.getPrincipal(), studyId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @RequireOnboarding
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/bookmarks/{studyId}")
+    public ResponseEntity<Void> removeBookmark(
+            @PathVariable Long studyId, Authentication authentication) {
+        studyBookmarkService.removeBookmark((Long) authentication.getPrincipal(), studyId);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -1,31 +1,59 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
-/**
- * 유효한 IANA 시간대 ID를 반환하거나 판별 불가이면 `'Asia/Seoul'`.
- * 에러가 나거나 브라우저가 값을 주지 않으면 'Asia/Seoul'.
- */
-function detectZone(): string {
+import { z } from 'zod';
+
+import { getUser, setUserTimeZone } from '@/features/auth/auth';
+import { http } from '@/lib/http';
+
+export const FALLBACK_TIME_ZONE = 'Asia/Seoul';
+
+function profileZone(): string {
+  const zone = getUser()?.timeZone;
+  if (!zone) return FALLBACK_TIME_ZONE;
   try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (!tz) return 'Asia/Seoul';
-    new Intl.DateTimeFormat('en-US', { timeZone: tz }); // 유효성 검사
-    return tz;
+    new Intl.DateTimeFormat('en-US', { timeZone: zone });
+    return zone;
   } catch {
-    return 'Asia/Seoul';
+    return FALLBACK_TIME_ZONE;
   }
 }
 
-const noSubscription = () => () => {};
+const listeners = new Set<() => void>();
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
 
 /**
- * 화면에 날짜·시각을 표시할 때 쓸 시간대 (IANA ID).
- *
- * POL-0006: 프로필 시간대 → 브라우저 시간대 → 서울 순서.
- * 이 훅은 **브라우저 시간대 → 서울** 까지만 담당한다.
- * 프로필 시간대가 필요한 화면(대시보드 등)은 서버 응답의 `timeZone` 필드를 사용한다.
- *
- * SSR 에서는 하이드레이션 불일치를 막기 위해 'Asia/Seoul' 을 반환한다.
+ * 백오피스가 시각을 읽고 쓰는 기준 시간대 (IANA ID) — 운영자 프로필 시간대(세션 user 의 `timeZone`), 없으면 서울.
+ * 브라우저 시간대는 쓰지 않는다: 같은 운영자가 다른 곳에서 열어도 화면마다 기준이 같아야 한다.
+ * 반 시간대가 본질인 일정 표·출석은 이 값 대신 반 시간대를 쓴다.
+ * 프로필을 바꾸면 백오피스를 다시 열 때 반영된다(`ProfileTimeZoneSync`). 서버 렌더에서는 세션을 모르므로 서울로 그린다.
  */
 export function useDisplayTimeZone(): string {
-  return useSyncExternalStore(noSubscription, detectZone, () => 'Asia/Seoul');
+  return useSyncExternalStore(subscribe, profileZone, () => FALLBACK_TIME_ZONE);
+}
+
+const meSchema = z.object({ timeZone: z.string().nullable().optional() });
+
+/** 백오피스를 열 때 한 번 프로필을 읽어, 로그인 뒤 사이트에서 바꾼 시간대를 세션에 반영한다. */
+export async function syncProfileTimeZone(): Promise<void> {
+  const user = getUser();
+  if (!user) return;
+  try {
+    const { timeZone = null } = await http('/api/me', meSchema);
+    if ((timeZone ?? null) === (user.timeZone ?? null)) return;
+    setUserTimeZone(timeZone ?? null);
+    listeners.forEach((l) => l());
+  } catch {
+    // 못 읽으면 로그인 때 받은 값을 그대로 쓴다
+  }
+}
+
+export function ProfileTimeZoneSync() {
+  useEffect(() => {
+    void syncProfileTimeZone();
+  }, []);
+  return null;
 }

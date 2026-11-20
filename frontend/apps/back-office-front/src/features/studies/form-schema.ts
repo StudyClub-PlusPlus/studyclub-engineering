@@ -71,7 +71,7 @@ export const EMPTY_FORM: StudyFormValues = {
 
 /**
  * ISO 타임스탬프를 폼 입력 날짜(`yyyy-mm-dd`)로 변환한다.
- * POL-0006: 사용자 시간대(브라우저 → 서울) 기준.
+ * 운영자 프로필 시간대(`useDisplayTimeZone()`) 기준.
  */
 function toDisplayDate(iso: string | null, tz: string): string {
   if (!iso) return '';

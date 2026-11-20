@@ -3,10 +3,8 @@ import type { StudyMeeting } from '@studyclub/types';
 import { isKickoff, wallParts, type NavigatorGroup, type ProtoMeeting } from './meetings';
 import type { ApiMeetingList } from '@/features/schedule/types';
 
-export type JoinedMeetingRow = StudyMeeting & { no: number };
-
 /** 일정 표와 주간 일정이 같은 순서를 사용하도록 킥오프와 정규 회차를 정렬한다. */
-export function meetingRows(meetings: StudyMeeting[]): JoinedMeetingRow[] {
+export function meetingRows<T extends StudyMeeting>(meetings: T[]): (T & { no: number })[] {
   const sorted = [...meetings].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   const kickoff = sorted.find(isKickoff);
   const regular = sorted

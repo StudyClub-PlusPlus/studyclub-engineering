@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { sessionUserSchema } from './response-schema';
+import { BOOKMARK_KEY } from '@/features/bookmarks/storage';
 import { optOutAnalyticsLocally, suspendAnalytics } from '@/lib/analytics-privacy-state';
 import { API_BASE } from '@/lib/http';
 
@@ -114,6 +115,7 @@ export function clearSession(): void {
   suspendAnalytics();
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(USER_KEY);
+  window.localStorage.removeItem(BOOKMARK_KEY);
   setSuggestedNickname(null);
   window.dispatchEvent(new Event(USER_CHANGED_EVENT));
 }
@@ -174,13 +176,15 @@ export async function deleteAccount(reason: LeaveReason | null): Promise<DeleteA
   return { ok: true };
 }
 
-export type LoginMethod = 'google' | 'apple';
+/** email = 테스트 로그인(숨은 /auth/email, specs/stage-email-login) */
+export type LoginMethod = 'google' | 'apple' | 'email';
 
 /** 이번 로그인 수단 — 온보딩 완료 때 `User Signed Up` 의 method 로 쓴다. 없으면 google(애플 이전 가입은 전부 구글이다) */
 export function getLoginMethod(): LoginMethod {
   if (typeof window === 'undefined') return 'google';
   try {
-    return window.sessionStorage.getItem(LOGIN_METHOD_KEY) === 'apple' ? 'apple' : 'google';
+    const v = window.sessionStorage.getItem(LOGIN_METHOD_KEY);
+    return v === 'apple' || v === 'email' ? v : 'google';
   } catch {
     return 'google';
   }
