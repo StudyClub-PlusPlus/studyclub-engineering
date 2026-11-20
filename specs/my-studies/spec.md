@@ -105,7 +105,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].captain | Boolean | N | 내가 이 스터디의 **담당 캡틴**(처음엔 스터디를 생성한 캡틴, 백오피스에서 바뀔 수 있다)이면 true — 「캡틴」 배지. 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다. 다른 캡틴(ADMIN)이 신청해 참여한 스터디는 false(크루) | 계산: `STUDY.OWNER_CAPTAIN_ID = 나` |
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |
-| items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김 | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |
+| items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김. 반을 옮겼으면 있었던 반 모두 합산 ([share 11-19](../../docs/share/2026-11-19-group-move-log.md)) | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |
 | items[].meetings | Array | N | 내 반 회차. `scheduledAt` 오름차순. 없으면 `[]` | STUDY_MEETING (`STUDY_GROUP_ID` = 내 명부의 반) |
 | items[].meetings[].meetingId | Long | N | | STUDY_MEETING.ID |
 | items[].meetings[].sequence | Integer | N | 회차 번호. 1부터 | 계산: 반 안에서 `scheduledAt` 순번 |
@@ -113,7 +113,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].meetings[].startAt | String (ISO 8601 UTC) | Y | 실제 시작 | STUDY_MEETING.START_AT |
 | items[].meetings[].endAt | String (ISO 8601 UTC) | Y | 실제 종료 | STUDY_MEETING.END_AT |
 | items[].meetings[].attendanceStatus | String | Y | `PRESENT` / `LATE` / `EXCUSED` / `ABSENT`. 출석 행이 없으면 null. **시작 전 회차**(`startAt` null 이고 `scheduledAt` > now)의 `ABSENT` 도 null — 회차를 만들 때 참여자 전원에게 기본으로 들어가는 값이라 화면에 결석으로 그리지 않는다. 시작 전이라도 `EXCUSED` 는 그대로 준다(사전 휴가 배지) | STUDY_ATTENDANCE.STATUS (내 계정) |
-| items[].meetings[].countedInRate | Boolean | N | 이 회차가 `attendanceRate` 분모에 들어갔는지. `scheduledAt` 이 편입 시각(`JOINED_AT`) 이상이고 상한(`ACTIVE`/`PAUSED`/`COMPLETED` 는 now, `WITHDRAWN`·`DELETED` 는 떠난 시각 `LEFT_AT`) 이하일 때 true — 하차 이전 회차는 그대로 집계에 남고 이후 회차만 제외한다([user-leave spec](../user-leave/spec.md) "WITHDRAWN·DELETED", 2026-10-01). 편입 전 회차는 격자에는 보이지만 false | 계산: `AttendanceRateCalculator.countsToward` 와 같은 조건 |
+| items[].meetings[].countedInRate | Boolean | N | 이 회차가 `attendanceRate` 분모에 들어갔는지. `scheduledAt` 이 지금 반에 들어온 시각(`JOINED_AT`, 반을 옮겼으면 그 뒤 가장 늦은 이동 시각 — [share 11-19](../../docs/share/2026-11-19-group-move-log.md)) 이상이고 상한(`ACTIVE`/`PAUSED`/`COMPLETED` 는 now, `WITHDRAWN`·`DELETED` 는 떠난 시각 `LEFT_AT`) 이하일 때 true — 하차 이전 회차는 그대로 집계에 남고 이후 회차만 제외한다([user-leave spec](../user-leave/spec.md) "WITHDRAWN·DELETED", 2026-10-01). 편입 전 회차는 격자에는 보이지만 false | 계산: `AttendanceRateCalculator.countsToward` 와 같은 조건 |
 
 #### relation — 나와의 관계
 
@@ -141,7 +141,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 - 다음 회차: `ONGOING` 은 **회차 종료 기준 > now** 인 첫 회차 — 진행 중인 회차가 끝날 때까지 다음 회차로 남아 참석 버튼이 유지된다. `UPCOMING` 은 `sequence = 1`
 - 주간 일정: `relation ∈ {UPCOMING, ONGOING}` 인 스터디의 `meetings[].scheduledAt`
 - 스터디 기간(PRD §4-5): 첫·마지막 회차의 `scheduledAt`
-- 완주 점수판 `n/m`: `countedInRate = true` 인 회차 중 `attendanceStatus ∈ {PRESENT, LATE}` 개수 / `EXCUSED` 가 아닌 개수. 출석률과 같은 회차 집합을 본다
+- 완주 점수판 `n/m`: `countedInRate = true` 인 회차 중 `attendanceStatus ∈ {PRESENT, LATE}` 개수 / `EXCUSED` 가 아닌 개수. 출석률과 같은 회차 집합을 본다. 반을 옮겼으면 옛 반 구간의 회차도 더한다 — 출석률과 같은 합산 (share 11-19). [NEEDS CLARIFICATION] 회차 격자(`meetings[]`)에 옛 반 회차를 함께 그릴지는 미정 — 지금은 지금 반 회차만
 - 참석 버튼 활성: `scheduledAt − 30분` ≤ now ≤ 회차 종료 기준
 - 디스코드 아이콘: `COMPLETED` 면 채널 URL 과 무관하게 클럽 초대 링크(완주 뒤 채널은 닫힌다 — 프로토 `joined.ts` `discordUrl`). `UPCOMING`·`ONGOING` 은 `discordChannelUrl`, null 이면 클럽 초대 링크
 
