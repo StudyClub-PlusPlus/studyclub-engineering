@@ -22,7 +22,7 @@ const participant = (id: number, nickname: string, status: Participant['status']
   nickname,
   discordNickname: null,
   email: `${id}@example.com`,
-  regionGroup: 'KR',
+  timeZone: 'Asia/Seoul',
   groupId: 1,
   participantRole: 'MEMBER',
   status,
