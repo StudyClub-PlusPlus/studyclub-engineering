@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Modal, Select, FilterChip, TimeSelect } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
@@ -13,19 +15,24 @@ import { DOW_LABEL, otherClock, STUDY_TZS, type StudyTz } from '@/features/sched
  *
  * **회차를 만들지도 지우지도 않는다.** 회차는 일정 표의 「회차 추가」로만 만든다 — 그 창이 이 요일 · 시각으로
  * 매주 반복을 채워 연다. 기간 칸은 없다 — 반의 기간은 첫 회차 ~ 마지막 회차다.
+ * 시각이나 시간대를 바꾸면 시작 전 회차도 옮길지 묻는다 — 옮기기는 서버가 같은 날짜의 새 시각으로 다시 계산한다.
  *
  * 연 쪽이 `key` 로 다시 그려 처음 값을 채운다 — 열 때마다 지금 값에서 시작한다.
  */
 export function GroupTimeDialog({
   group,
+  upcomingCount,
   onClose,
   onSave,
 }: {
   group: ScheduleGroup;
+  /** 아직 시작 안 한 회차 수 — 서버의 `started` 로 센다. */
+  upcomingCount: number;
   onClose: () => void;
-  onSave: (time: GroupTime) => void;
+  onSave: (time: GroupTime, moveUpcomingMeetings: boolean) => void;
 }) {
   const editing = hasTime(group);
+  const [asking, setAsking] = useState<GroupTime | null>(null);
   const {
     watch,
     setValue,
@@ -48,7 +55,36 @@ export function GroupTimeDialog({
     });
   }
 
-  const save = handleSubmit(onSave);
+  const save = handleSubmit((next) => {
+    const clockChanged = next.time !== group.time.time || next.tz !== group.time.tz;
+    if (upcomingCount > 0 && clockChanged) setAsking(next);
+    else onSave(next, false);
+  });
+
+  if (asking) {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title='회차도 옮길까요?'
+        description={group.title}
+        footer={
+          <>
+            <Button variant='secondary' onClick={() => onSave(asking, false)}>
+              반 정보만 바꾸기
+            </Button>
+            <Button onClick={() => onSave(asking, true)}>옮기기</Button>
+          </>
+        }
+      >
+        <p className='py-2 type-body-sm text-fg'>
+          아직 시작 안 한 회차 {upcomingCount}개도 새 시각으로 옮길까요?
+          <br />
+          <span className='text-fg-muted'>날짜는 그대로 두고 시각만 바뀝니다. 이미 시작한 회차는 그대로입니다.</span>
+        </p>
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -125,7 +161,7 @@ export function GroupTimeDialog({
             <span className='font-semibold text-error-600'>요일을 하나 이상 골라 주세요.</span>
           ) : (
             <span className='text-fg-muted'>
-              스터디 시간만 {editing ? '바꿉니다. 이미 있는 회차는 그대로입니다' : '정합니다'}.
+              {editing ? '시각이나 시간대를 바꾸면 아직 시작 안 한 회차도 옮길지 묻습니다' : '스터디 시간만 정합니다'}.
               <br />
               회차는 일정 표의 「회차 추가」로 만듭니다.
             </span>

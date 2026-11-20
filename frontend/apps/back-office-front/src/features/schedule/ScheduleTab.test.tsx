@@ -132,6 +132,54 @@ describe('일정 탭', () => {
     expect(screen.getByText('아직 회차가 없습니다. 「회차 추가」로 만드세요.')).toBeVisible();
   });
 
+  it('시각을 바꾸면 시작 전 회차를 옮길지 묻고, 「옮기기」면 회차 옮기기를 함께 보낸다', async () => {
+    mount();
+    await setTimeAndAddMeetings();
+
+    await userEvent.click(screen.getByRole('button', { name: '스터디 시간 수정' }));
+    await setTime('스터디 시간', '21:00', within(screen.getByRole('dialog')));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '저장' }));
+
+    const ask = screen.getByRole('dialog');
+    expect(within(ask).getByText(/아직 시작 안 한 회차 5개도 새 시각으로 옮길까요/)).toBeVisible();
+    await userEvent.click(within(ask).getByRole('button', { name: '옮기기' }));
+
+    await waitFor(() =>
+      expect(server.calls.filter((c) => c.method === 'PATCH').at(-1)?.body).toMatchObject({
+        startTime: '21:00',
+        moveUpcomingMeetings: true,
+      }),
+    );
+  });
+
+  it('「반 정보만 바꾸기」면 회차를 옮기지 않고, 요일만 바꾸면 묻지 않는다', async () => {
+    mount();
+    await setTimeAndAddMeetings();
+
+    await userEvent.click(screen.getByRole('button', { name: '스터디 시간 수정' }));
+    await userEvent.selectOptions(
+      within(screen.getByRole('dialog')).getByRole('combobox', { name: '시간대' }),
+      'America/New_York',
+    );
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '저장' }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '반 정보만 바꾸기' }));
+    await waitFor(() =>
+      expect(server.calls.filter((c) => c.method === 'PATCH').at(-1)?.body).toMatchObject({
+        timezone: 'America/New_York',
+        moveUpcomingMeetings: false,
+      }),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: '스터디 시간 수정' }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '금' }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '저장' }));
+    expect(screen.queryByText(/새 시각으로 옮길까요/)).not.toBeInTheDocument();
+    await waitFor(() => expect(server.calls.filter((c) => c.method === 'PATCH')).toHaveLength(3));
+    expect(server.calls.filter((c) => c.method === 'PATCH').at(-1)?.body).toMatchObject({
+      moveUpcomingMeetings: false,
+    });
+  });
+
   it('회차 추가는 킥오프를 만들지 않고, 정규 회차만 센다 — 반 시간대로 펼친 시각을 한 요청에 보낸다', async () => {
     mount();
     await setTimeAndAddMeetings();

@@ -25,6 +25,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   const [formOpen, setFormOpen] = useState(false);
   const [discordOpen, setDiscordOpen] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [withdrawn, setWithdrawn] = useState(false);
   const [deadlineLabel, setDeadlineLabel] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   /** GET /api/me 로 연동 여부를 묻는 중 — 두 번 눌러 창이 겹치지 않게 막는다 */
@@ -43,6 +44,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   const state = recruitState(study);
   const applyLabel = deadlineLabel ?? recruitLabel(state, locale);
   const doneLabel = t({ ko: '신청 완료', en: 'Applied' }, locale);
+  const withdrawnLabel = t({ ko: '참여 중단됨', en: 'Withdrawn' }, locale);
 
   const isUser = Boolean(getUser());
   // isFetched: apply=1 복귀 때 신청 여부 조회가 끝나기 전에 의도를 소비하면, myApp 갱신으로
@@ -51,6 +53,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
 
   useEffect(() => {
     setReady(true);
+    if (myApp?.withdrawn) setWithdrawn(true);
     const local = Boolean(getApplication(study.id));
     if (local || myApp?.applied) {
       setAlreadyApplied(true);
@@ -79,7 +82,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
 
     const user = getUser();
     if (!user?.onboardingCompletedAt) return;
-    if (state === 'closed' || Boolean(getApplication(study.id)) || myApp?.applied) return;
+    if (state === 'closed' || Boolean(getApplication(study.id)) || myApp?.applied || myApp?.withdrawn) return;
 
     let cancelled = false;
     void (async () => {
@@ -105,12 +108,12 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     return () => {
       cancelled = true;
     };
-  }, [ready, state, study.id, myApp?.applied, myAppFetched, isUser, pathname, locale, router]);
+  }, [ready, state, study.id, myApp?.applied, myApp?.withdrawn, myAppFetched, isUser, pathname, locale, router]);
 
   const isClosed = state === 'closed' || Boolean(deadlineLabel);
 
   async function requestApply() {
-    if (alreadyApplied || checking) return;
+    if (alreadyApplied || withdrawn || checking) return;
     track({
       name: 'Study Apply CTA Clicked',
       props: {
@@ -196,6 +199,10 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     <Button type='button' size='lg' className='w-full rounded-pill' disabled>
       {applyLabel}
     </Button>
+  ) : ready && withdrawn ? (
+    <Button type='button' size='lg' className='w-full rounded-pill' disabled>
+      {withdrawnLabel}
+    </Button>
   ) : ready && alreadyApplied ? (
     <Button type='button' size='lg' className='w-full rounded-pill' disabled>
       {doneLabel}
@@ -224,6 +231,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
         onClose={() => setFormOpen(false)}
         onSubmitted={handleSubmitted}
         onDeadline={(label) => setDeadlineLabel(label)}
+        onWithdrawn={() => setWithdrawn(true)}
         onRequireDiscord={() => {
           const user = getUser();
           if (user) forgetDiscordLinkState(user.id);
