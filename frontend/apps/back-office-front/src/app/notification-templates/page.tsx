@@ -11,12 +11,15 @@ import { TemplateDialog } from '@/features/notification-templates/components/Tem
 import { useNotificationTemplates } from '@/features/notification-templates/queries';
 import type { NotificationTemplate } from '@/features/notification-templates/types';
 import { NotificationTabs } from '@/features/notifications/components/NotificationTabs';
+import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
 import { channelLabel, eventLabel, formatStamp } from '@/features/notifications/labels';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 export default function NotificationTemplatesPage() {
   const { data, error, isPending, isFetching, refetch } = useNotificationTemplates();
   /** null = 닫힘, 'new' = 추가, 템플릿 = 그 템플릿 수정 */
   const [target, setTarget] = useState<'new' | NotificationTemplate | null>(null);
+  const tz = useDisplayTimeZone();
 
   // 새로 더한 것이 맨 위에 선다 — 서버가 준 순서에 기대지 않고 화면에서 id 내림차순으로 놓는다
   const templates = useMemo(() => (data ? [...data].sort((a, b) => b.id - a.id) : undefined), [data]);
@@ -64,6 +67,8 @@ export default function NotificationTemplatesPage() {
         </div>
       )}
 
+      {templates && templates.length > 0 && <TimezoneNote />}
+
       {templates && templates.length > 0 && (
         <TableCard>
           <thead>
@@ -85,7 +90,7 @@ export default function NotificationTemplatesPage() {
                 <td className='whitespace-nowrap text-fg-secondary'>{channelLabel(t.channel)}</td>
                 <td className='max-w-0 truncate text-fg-secondary'>{t.subject}</td>
                 <td className='tnum whitespace-nowrap text-fg-secondary'>
-                  {t.updatedAt ? formatStamp(t.updatedAt) : '-'}
+                  {t.updatedAt ? formatStamp(t.updatedAt, tz) : '-'}
                 </td>
               </tr>
             ))}

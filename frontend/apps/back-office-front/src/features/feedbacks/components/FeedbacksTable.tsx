@@ -6,6 +6,7 @@ import { TableCard } from '@/components/ui';
 import { FeedbackStatusBadge, FeedbackTypeBadge } from '@/features/feedbacks/components/FeedbackBadges';
 import { EMPTY_VALUE, formatStamp, personLabel } from '@/features/feedbacks/labels';
 import { FEEDBACK_PAGE_SIZE, type ApiAdminFeedback } from '@/features/feedbacks/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 const COLUMNS = 6;
 
@@ -39,6 +40,7 @@ function FeedbacksHead() {
  * (접수 시각 내림차순 고정, 열 머리로 정렬하지 않는다). 줄 어디를 눌러도 상세로 간다.
  */
 export function FeedbacksTable({ rows, onOpen }: { rows: ApiAdminFeedback[]; onOpen: (id: number) => void }) {
+  const tz = useDisplayTimeZone();
   return (
     <TableCard tableClassName='table-fixed'>
       <FeedbacksHead />
@@ -53,7 +55,7 @@ export function FeedbacksTable({ rows, onOpen }: { rows: ApiAdminFeedback[]; onO
             }}
             className='cursor-pointer hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none'
           >
-            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(f.createdAt)}</td>
+            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(f.createdAt, tz)}</td>
             <td className='whitespace-nowrap'>
               <FeedbackTypeBadge type={f.type} />
             </td>
