@@ -671,6 +671,63 @@ class StudyApplicationSubmissionIntegrationTest {
         }
     }
 
+    @Test
+    @DisplayName("서로 다른 두 계정이 마지막 한 자리에 동시에 신청하면 하나만 들어가고 나머지는 정원 409이다")
+    void serializesConcurrentSubmissionsForLastSeat() throws Exception {
+        insertParticipant(UNLINKED_ACCOUNT_ID, "ACTIVE", "MEMBER"); // 정원 2 중 1 자리
+        List<HttpEntity<Map<String, Object>>> requests = new ArrayList<>();
+        for (long accountId = 10_650L; accountId < 10_652L; accountId++) {
+            insertAccount(
+                    accountId,
+                    "last-seat-" + accountId + "@example.com",
+                    "discord-" + accountId,
+                    Timestamp.from(Instant.now()));
+            requests.add(authenticatedRequest(accountId, validRequest()));
+        }
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var futures =
+                    requests.stream()
+                            .map(
+                                    request ->
+                                            executor.submit(
+                                                    () -> {
+                                                        start.await();
+                                                        return rest.postForEntity(
+                                                                "/api/studies/"
+                                                                        + STUDY_ID
+                                                                        + "/applications",
+                                                                request,
+                                                                Map.class);
+                                                    }))
+                            .toList();
+            start.countDown();
+            List<org.springframework.http.ResponseEntity<Map>> responses = new ArrayList<>();
+            for (var future : futures) {
+                responses.add(future.get(15, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            assertThat(
+                            responses.stream()
+                                    .map(org.springframework.http.ResponseEntity::getStatusCode)
+                                    .toList())
+                    .containsExactlyInAnyOrder(HttpStatus.CREATED, HttpStatus.CONFLICT);
+            assertThat(
+                            responses.stream()
+                                    .filter(r -> r.getStatusCode().equals(HttpStatus.CONFLICT))
+                                    .findFirst()
+                                    .orElseThrow()
+                                    .getBody())
+                    .containsEntry("errorMessage", "정원이 가득 찼습니다.");
+        }
+        assertThat(applicationCount()).isEqualTo(1L);
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND STATUS = 'ACTIVE'",
+                                Long.class,
+                                STUDY_ID))
+                .isEqualTo(2L);
+    }
+
     private void insertParticipant(Long accountId, String status, String role) {
         Timestamp now = Timestamp.from(Instant.now());
         jdbcTemplate.update(
