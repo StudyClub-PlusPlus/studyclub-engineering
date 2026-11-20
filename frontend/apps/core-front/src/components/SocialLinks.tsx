@@ -1,6 +1,6 @@
-import { Instagram, Linkedin, MessageCircle } from 'lucide-react';
+import type { Locale } from '@studyclub/types';
+import { Instagram, Linkedin, MessageCircle, Youtube } from 'lucide-react';
 
-import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import { activeSocialChannels, type SocialId } from '@/lib/social';
 
@@ -16,6 +16,7 @@ function XMark({ size = 16 }: { size?: number }) {
 const PENDING = '주소 준비 중';
 
 const ICON: Record<SocialId, (p: { size?: number }) => React.ReactNode> = {
+  youtube: (p) => <Youtube {...p} />,
   instagram: (p) => <Instagram {...p} />,
   x: (p) => <XMark {...p} />,
   kakao: (p) => <MessageCircle {...p} />,

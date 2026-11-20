@@ -1,6 +1,6 @@
-import { summarizeAnswers } from './answers';
-import type { ApplicationResult, ResultQuestion } from './types';
 import { TYPE_LABEL } from '@/features/application-form/question';
+import { summarizeAnswers } from '@/features/application-results/answers';
+import type { ApplicationResult, ResultQuestion } from '@/features/application-results/types';
 
 export function QuestionSummary({
   question,

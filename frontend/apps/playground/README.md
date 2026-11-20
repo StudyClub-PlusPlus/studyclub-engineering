@@ -43,8 +43,10 @@ cp -r study-detail 내가-만들-화면-이름
 2. `src/app/(site)/page.tsx` 의 `ENTRIES` 배열에 링크를 한 줄 추가합니다
 3. http://localhost:4702 에서 확인합니다
 
-**규칙 하나** — 버튼·카드 같은 부품은 직접 만들지 말고 `@studyclub/ui` 에서 가져옵니다.
-어떤 게 있는지는 http://localhost:4702/components 에서 전부 볼 수 있습니다.
+**규칙 하나** — 버튼·입력칸·카드 같은 부품은 직접 만들지 말고 `@studyclub/ui` 에서 가져옵니다.
+어떤 게 있는지는 http://localhost:4702/components 에서 전부 볼 수 있습니다(왼쪽 목차에서 누르면 그 부품으로 옮겨 갑니다).
+`<button>` · `<input>` · `<select>` 를 화면에 직접 쓰면 PR 의 `design-drift` 검사가 막습니다 — 카드 전체가 누르는 곳 같은 예외는
+태그 안에 `// ui-native: 이유` 를 적습니다. 규칙 전문은 [`docs/frontend-development-guide/component-guide.md`](../../../docs/frontend-development-guide/component-guide.md#공용-ui--studyclubui-먼저).
 
 ### 디자인 시스템 문서 3종의 역할
 
@@ -55,11 +57,12 @@ cp -r study-detail 내가-만들-화면-이름
 | **이 playground `/components`** | **실제 React 컴포넌트를 렌더** | 지금 코드가 어떻게 생겼는지 볼 때 |
 
 ```tsx
-import { StudyCard, StatusBadge, Pill } from "@studyclub/ui";
+import { Button, Input, StudyCard } from "@studyclub/ui";
 ```
 
-여기 없는 부품이 필요하면 **일단 그 화면 파일 안에** 만들어 두세요.
-같은 게 두 화면에서 쓰이게 되면 그때 `packages/ui` 로 올립니다 (개발자에게 말해주세요).
+여기 없는 부품이 필요하면 **화면 파일이 아니라 `packages/ui` 에** 만듭니다 — 한 화면에서만 써도 같습니다.
+`frontend/` 에서 `pnpm --filter @studyclub/ui new-component {Name}` 을 실행하면 부품 · 스토리 · export · 이 카탈로그 칸이 한 번에 생깁니다.
+만들기 전에 `packages/design/docs/design-system.md` §9 를 읽고, §9 에 없는 부품이면 같은 PR 에서 스펙을 추가합니다.
 
 ## 색·글꼴을 바꾸고 싶다면
 
@@ -85,7 +88,7 @@ git push -u origin design/내가-만든-화면
 ## 개발자용 메모
 
 - 이 앱은 `core-front` 와 **배포가 완전히 분리**돼 있다. playground 빌드가 깨져도 core-front CI 는 영향 없음
-- 컴포넌트는 `@studyclub/ui`(디자인 시스템 프리미티브), 토큰은 `@studyclub/design`, 데이터는 `@studyclub/mock`. 백엔드 호출 없음
+- 컴포넌트는 `@studyclub/ui`(디자인 시스템 프리미티브), 토큰은 `@studyclub/design`, 공용 타입은 `@studyclub/types`, 함수·상수는 `@studyclub/utils`, 데이터는 `@studyclub/mock`. 백엔드 호출 없음
 - `robots.ts` 로 전체 noindex — 미공개 시안이 검색에 잡히지 않게
 - 카탈로그는 **프리미티브만** 다룬다. `StudyCard`·`Nav` 같은 도메인 컴포넌트는 core-front 앱 안에 있어 여기서 import 하지 않는다.
   두 앱에서 같은 도메인 컴포넌트가 필요해지면 그때 `packages/ui` 승격을 논의한다

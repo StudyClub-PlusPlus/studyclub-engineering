@@ -9,7 +9,7 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
-| STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | N | 반. 반 이동 = 이 값 변경 |
+| STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | N | 반. 반 이동 = 이 값 변경 + [STUDY_PARTICIPANT_GROUP_MOVE](./STUDY_PARTICIPANT_GROUP_MOVE.md) 한 줄 (→ [share 11-19](../share/2026-11-19-group-move-log.md)) |
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 비정규화 — "이 사람이 몇 기 멤버였는가" 조회용 (STUDY_CLASS_ID 로 도출 가능). 반 이동 시에도 같은 기수 안이면 불변 |
 | STATUS | VARCHAR(20) | N | 아래 |
 | PARTICIPANT_ROLE | VARCHAR(20) | N | 아래 |
@@ -51,7 +51,7 @@ stateDiagram-v2
 
 스터디 안에서의 역할. 시스템 권한(ACCOUNT.SYSTEM_ROLE)과 별개.
 
-> 캡틴 값은 두지 않는다. 스터디를 만든 **담당 캡틴**이 참여하려면 신청하고, 그러면 이 테이블에 크루와 같은 `MEMBER` 행이 생긴다. 「담당 캡틴인가」는 이 테이블이 아니라 `STUDY.CREATED_BY` 로 판정한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-10-14).
+> 캡틴 값은 두지 않는다. 스터디를 만든 **담당 캡틴**이 참여하려면 신청하고, 그러면 이 테이블에 크루와 같은 `MEMBER` 행이 생긴다. 「담당 캡틴인가」는 이 테이블이 아니라 `STUDY.OWNER_CAPTAIN_ID` 로 판정한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-11-16 — 그전엔 `CREATED_BY`).
 
 | 값 | 뜻 |
 |---|---|
@@ -65,5 +65,5 @@ stateDiagram-v2
 - 같은 기수의 다른 반에 동시 소속 금지는 앱 레벨 (`STUDY_COHORT_ID` 는 비정규화 컬럼이라 DB 제약 대상이 아님)
 
 ## 미확정
-- 반 이동 이력을 남길지 (`SECTION_MOVED_AT` 또는 별도 로그).
+- ~~반 이동 이력을 남길지~~ → 별도 표 [STUDY_PARTICIPANT_GROUP_MOVE](./STUDY_PARTICIPANT_GROUP_MOVE.md) 에 남긴다 (2026-11-19, → [share 11-19](../share/2026-11-19-group-move-log.md))
 - 운영 `MEMO` — 표 설계에 있음. (`LEFT_AT` 은 2026-10-01 회원 탈퇴 작업으로 DELETED 구현 완료; WITHDRAWN 은 `StudyParticipant.markWithdrawn()` 로 2026-10-05 구현 완료)

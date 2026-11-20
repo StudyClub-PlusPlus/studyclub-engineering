@@ -76,52 +76,83 @@ class MeetingScheduleTest {
     }
 
     @Test
-    @DisplayName("첫 날과 마지막 날이 30일 차이(시작일 포함 31일)면 통과, 31일 차이면 INVALID_INPUT")
-    void enforces31DaySpanBoundary() {
+    @DisplayName("첫 날부터 1년 뒤 같은 날까지 매일(366개)이면 통과, 하루라도 넘으면 INVALID_INPUT")
+    void enforcesOneYearSpanBoundary() {
         var schedule = new MeetingSchedule("Asia/Seoul", List.of());
-        Instant first = Instant.parse("2026-10-05T11:00:00Z");
+        // KST 2026-10-05 ~ 2027-10-05
+        List<Instant> yearly = new ArrayList<>();
+        for (int i = 0; i <= 365; i++) {
+            yearly.add(Instant.parse("2026-10-05T11:00:00Z").plusSeconds(86_400L * i));
+        }
 
-        assertThatCode(
-                        () ->
-                                schedule.checkAdd(
-                                        List.of(first, Instant.parse("2026-11-04T11:00:00Z")), NOW))
-                .doesNotThrowAnyException();
+        assertThatCode(() -> schedule.checkAdd(yearly, NOW)).doesNotThrowAnyException();
         assertThatThrownBy(
                         () ->
                                 schedule.checkAdd(
-                                        List.of(first, Instant.parse("2026-11-05T11:00:00Z")), NOW))
+                                        List.of(
+                                                Instant.parse("2026-10-05T11:00:00Z"),
+                                                Instant.parse("2027-10-06T11:00:00Z")),
+                                        NOW))
                 .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
     }
 
     @Test
-    @DisplayName("31일은 현지 날짜로 잰다 — 서머타임이 끝나 UTC 로 30일 1시간이 되어도 통과한다")
-    void spanIgnoresDaylightSavingShift() {
+    @DisplayName("1년은 분반 현지 날짜로 잰다 — UTC 날짜로는 1년 하루여도 현지로 1년이면 통과한다")
+    void spanUsesGroupLocalDate() {
         var schedule = new MeetingSchedule("America/Vancouver", List.of());
 
-        // 밴쿠버 10/15 20:00 PDT → 11/14 20:00 PST. 현지 날짜 차이 30일, UTC 경과 30일 1시간
+        // 밴쿠버 2026-10-15 10:00 PDT(UTC 10/15) ~ 2027-10-15 20:00 PDT(UTC 10/16). 현지로는 딱 1년
         assertThatCode(
                         () ->
                                 schedule.checkAdd(
                                         List.of(
-                                                Instant.parse("2026-11-15T04:00:00Z"),
-                                                Instant.parse("2026-10-16T03:00:00Z")),
+                                                Instant.parse("2027-10-16T03:00:00Z"),
+                                                Instant.parse("2026-10-15T17:00:00Z")),
                                         NOW))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("0개 또는 32개면 INVALID_INPUT")
+    @DisplayName("2/29 에 시작하면 다음 해 2/28 까지 — 2/29 를 낀 1년 매일 367개도 통과한다")
+    void leapDayStartEndsOnFeb28() {
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of());
+        Instant leapDay = Instant.parse("2028-02-29T11:00:00Z"); // KST 2/29 20:00
+
+        assertThatCode(
+                        () ->
+                                schedule.checkAdd(
+                                        List.of(leapDay, Instant.parse("2029-02-28T11:00:00Z")),
+                                        NOW))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(
+                        () ->
+                                schedule.checkAdd(
+                                        List.of(leapDay, Instant.parse("2029-03-01T11:00:00Z")),
+                                        NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+
+        // KST 2027-03-01 ~ 2028-03-01 — 2/29 를 낀 1년은 367일
+        List<Instant> daily = new ArrayList<>();
+        for (int i = 0; i <= 366; i++) {
+            daily.add(Instant.parse("2027-03-01T11:00:00Z").plusSeconds(86_400L * i));
+        }
+        assertThatCode(() -> schedule.checkAdd(daily, NOW)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("0개 또는 368개면 INVALID_INPUT — 큰 목록은 하나씩 보기 전에 거절한다")
     void rejectsEmptyOrTooMany() {
         var schedule = new MeetingSchedule("Asia/Seoul", List.of());
         List<Instant> tooMany = new ArrayList<>();
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < 368; i++) {
             tooMany.add(Instant.parse("2026-10-05T11:00:00Z").plusSeconds(86_400L * i));
         }
 
         assertThatThrownBy(() -> schedule.checkAdd(List.of(), NOW))
                 .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
         assertThatThrownBy(() -> schedule.checkAdd(tooMany, NOW))
-                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT))
+                .hasMessageContaining("1~367개");
     }
 
     @Test

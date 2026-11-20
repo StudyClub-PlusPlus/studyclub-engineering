@@ -85,13 +85,16 @@ function LeavePageInner() {
     <div className='mx-auto w-full max-w-[640px] px-6 py-10'>
       <ScreenSpecRegistrar spec={SPEC} />
 
-      <button
+      <Button
         type='button'
+        variant='tertiary'
+        size='sm'
+        leadingIcon={<ArrowLeft size={15} />}
         onClick={() => { cancelLeave(); router.push(`/proto/core/${locale}/my`); }}
-        className='mb-6 inline-flex items-center gap-1.5 type-label-lg text-fg-muted hover:text-fg'
+        className='mb-6'
       >
-        <ArrowLeft size={15} /> 마이페이지
-      </button>
+        마이페이지
+      </Button>
 
       <header data-anno='leave:1'>
         <h1 className='type-headline-lg'>회원 탈퇴</h1>
@@ -103,17 +106,10 @@ function LeavePageInner() {
       </header>
 
       <section data-anno='leave:2' className='mt-7'>
-        {/*
-          공용 Select 를 쓴다 — 손으로 만든 select 는 브라우저가 그리는 화살표가 테두리에 붙어
-          칸 밖으로 비어져 나온 것처럼 보였다. 다른 지면의 드롭다운과도 모양이 달랐다.
-        */}
-        <label htmlFor='leave-reason' className='type-label-lg'>
-          탈퇴 사유 <span className='font-semibold text-fg-muted'>(선택)</span>
-        </label>
         <Select
           id='leave-reason'
-          size='lg'
-          className='mt-2'
+          label='탈퇴 사유'
+          labelHint='선택'
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         >

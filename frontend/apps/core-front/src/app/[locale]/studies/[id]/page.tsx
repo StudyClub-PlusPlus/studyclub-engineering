@@ -1,7 +1,8 @@
+import type { Locale } from '@studyclub/types';
 import type { Metadata } from 'next';
 
-import { StudyDetailView } from '@/components/StudyDetailView';
-import { getStudies, getStudy, type Locale } from '@/lib/content';
+import { getStudies, getStudy } from '@/features/studies/server';
+import { StudyDetailView } from '@/features/studies/StudyDetailView';
 import { t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 

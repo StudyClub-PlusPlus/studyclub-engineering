@@ -65,7 +65,7 @@
 
 ## 같은 조건에 템플릿 여럿 (2026-10-30)
 
-> Spec: [갱신 2026-10-30](./spec.md) · 마이그레이션 V45 예정 (V44 는 반 공지 수신자 유니크 키 이름 변경에 사용. 번호는 구현 PR 병합 직전에 beta 최신으로 다시 확인) · 회원 탈퇴 조건은 이 범위 밖
+> Spec: [갱신 2026-10-30](./spec.md) · 마이그레이션 V50 (운영 main의 V49 다음 번호. 문의 테이블 V51 · 회신 메일 시드 V52) · 회원 탈퇴 조건은 이 범위 밖
 
 ### 스펙·문서
 
@@ -75,16 +75,21 @@
 
 ### 백엔드
 
-- [ ] T063 V45 — `uk_notification_template_event_channel` 제거, `(EVENT_TYPE, CHANNEL)` 일반 인덱스. 엔티티의 `@UniqueConstraint` 도 같이 바꾼다 (stage 는 SQL 을 손으로 한 번)
-- [ ] T064 `NotificationTemplateRepository` — 조건의 템플릿 목록(`id` 오름차순)·건수 조회, `findByEventTypeAndChannel` 제거
-- [ ] T065 `NotificationCreationService` — 웰컴(템플릿 수만큼 행, 0개면 로그만)·공지(수신자 × 템플릿, 0개면 롤백)
-- [ ] T066 `NotificationTemplateCommandService` — `rejectIfTaken`·유일 제약 → 409 변환 제거
-- [ ] T067 공지별 메일 건수 — 수신자 기준 집계 (`countByReferenceAndStatus` → 수신자별 대표 상태: 실패 > 대기 > 완료, `CANCELLED` 만이면 제외)
-- [ ] T068 테스트 — 단위(팬아웃 N × M, 0개), 통합(웰컴 2행, 공지 4행과 건수 ≤ 수신자 수, 409 케이스 정리, 탈퇴 N행, 재발송 한 행), 시딩 보조 코드 정리
-- [ ] T069 `./gradlew check`
+- [x] T063 V50 — `uk_notification_template_event_channel` 제거, `(EVENT_TYPE, CHANNEL)` 일반 인덱스. 엔티티의 `@UniqueConstraint` 도 같이 바꾼다 (stage 는 SQL 을 손으로 한 번)
+- [x] T064 `NotificationTemplateRepository` — 조건의 템플릿 목록(`id` 오름차순)·건수 조회, `findByEventTypeAndChannel` 제거
+- [x] T065 `NotificationCreationService` — 웰컴(템플릿 수만큼 행, 0개면 로그만)·공지(수신자 × 템플릿, 0개면 롤백)
+- [x] T066 `NotificationTemplateCommandService` — `rejectIfTaken`·유일 제약 → 409 변환 제거
+- [x] T067 공지별 메일 건수 — 수신자 기준 집계 (`countByReferenceAndStatus` → `countRecipientsByMailResult`: 받는 사람별 대표 상태 실패 > 대기 > 완료, `CANCELLED` 만이면 제외. 줄이는 일은 네이티브 SQL 이 하고 돌아오는 행은 공지당 많아야 3개). 실제 MySQL 로 7가지 상태 조합 확인
+- [x] T068 테스트 — 단위(팬아웃 N × M, 0개), 통합(웰컴 2행, 공지 4행과 건수 ≤ 수신자 수, 409 케이스 정리, 탈퇴 N행, 재발송 한 행), 시딩 보조 코드 정리
+- [x] T069 `./gradlew check`
 
 ### 프론트
 
-- [ ] T070 MSW — 409 프리셋 삭제
-- [ ] T071 `TemplateDialog` — 409 분기·`DUPLICATE` 삭제, 삭제 확인 영향 안내를 목록에서 센 같은 조건의 템플릿 수(하나뿐이면 마지막)로 가른다
-- [ ] T072 동작 테스트, 로컬 Chrome 확인 (실 API)
+- [x] T070 MSW — 409 프리셋 삭제
+- [x] T071 `TemplateDialog` — 409 분기·`DUPLICATE` 삭제, 삭제 확인 영향 안내를 목록에서 센 같은 조건의 템플릿 수(하나뿐이면 마지막)로 가른다
+- [x] T072 동작 테스트
+- [x] T076 수정 팝업에서 조건을 바꿀 때의 영향 안내 (PR #384 리뷰) — 원래 조건의 마지막 템플릿을 다른 조건으로 옮기면 저장 전에 그 조건의 알림이 멈춘다고 알린다. 저장은 막지 않는다
+- [x] T073 빈 MySQL 8 에 V1..V52 적용 + `ddl-auto=validate` 부팅 — CI `backend-migration-check` 가 통과했고, 로컬 임시 컨테이너에서도 같은 방식으로 다시 확인했다(번호는 병합 때 V46 → V50 으로 바뀌었다)
+- [x] T074 로컬 Chrome 확인 (임시 MySQL + 실 API, 임시 JWT) — 같은 조건에 둘째 템플릿 추가(409 없음), 삭제 확인 안내(마지막이 아닐 때/마지막), 조건 변경 안내(마지막이면 빨간 안내, 다른 템플릿이 남거나 되돌리면 없음), 가입 한 번에 알림 행 2개와 발송 이력 화면, 스터디 공지 4행(수신자 2 × 템플릿 2)과 기록의 건수가 받는 사람 수 기준(대기·완료·실패·취소 혼합 4가지)임을 실제 MySQL 에서 확인
+- [ ] T075 stage 수동 SQL — 코드 배포 **후** `SHOW INDEX FROM NOTIFICATION_TEMPLATE` 로 먼저 본다. stage 는 Hibernate(`update`)가 엔티티의 `@Index` 를 부팅 때 만들 수 있어 `idx_notification_template_event_channel` 이 **이미 있을 수 있다**. 이미 있으면 `DROP INDEX uk_notification_template_event_channel` **만** 실행한다(V50 의 `ALTER` 를 그대로 돌리면 `Duplicate key name` 으로 통째로 실패해 유니크 제약이 남는다). 없을 때만 V50 의 `ALTER` 를 그대로 쓴다. 그 전에는 같은 조건에 둘째 템플릿을 추가하지 않는다(DB 유니크 위반이 500 으로 나온다)
+- [ ] T077 V50 롤아웃 주의 — prod 는 Flyway 라 V50 이 기동 때 돌고 `uk…`·`idx…` 가 항상 맞게 처리된다. 다만 (1) 롤링 배포 중 옛 인스턴스가 한 조건에 템플릿이 둘일 때 `Optional` 조회를 하면 예외가 나므로(웰컴은 삼켜져 메일이 안 가고 공지는 롤백) **배포가 끝나기 전에는 둘째 템플릿을 추가하지 않는다**, (2) 둘째 템플릿이 생긴 뒤에는 유니크 제약을 다시 걸 수 없어 V50 은 사실상 되돌릴 수 없다(되돌리려면 중복 템플릿부터 정리)

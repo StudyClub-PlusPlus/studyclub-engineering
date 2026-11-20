@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { Card } from '@console/components/DashboardCharts';
 import { TableCard } from '@console/components/ui';
 import { TYPE_LABEL } from '@core/components/ApplicationFormUi';
-import type { ApplicationQuestion, Crew, Study } from '@studyclub/mock';
+import type { ApplicationQuestion, Crew, Study } from '@studyclub/types';
+import { Segmented } from '@studyclub/ui';
 
 /**
  * 신청 결과 탭 — 캡틴이 설계한 신청 폼 추가 질문에 지원자들이 남긴 답을 모아본다.
@@ -165,23 +166,9 @@ export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
         <p className='type-body-sm text-fg-muted'>
           응답자 <span className='tnum font-semibold text-fg'>{respondents.length}</span>명
         </p>
-        <nav data-anno='results:2-1' className='inline-flex rounded-pill bg-surface-2 p-1'>
-          {VIEW_OPTIONS.map((o) => {
-            const on = view === o.value;
-            return (
-              <button
-                key={o.value}
-                type='button'
-                onClick={() => setView(o.value)}
-                className={`rounded-pill px-3 py-1.5 type-label-lg transition-colors ${
-                  on ? 'bg-surface text-fg shadow-sm' : 'text-fg-muted hover:text-fg'
-                }`}
-              >
-                {o.label}
-              </button>
-            );
-          })}
-        </nav>
+        <span data-anno='results:2-1'>
+          <Segmented shape='pill' options={VIEW_OPTIONS} value={view} onChange={setView} />
+        </span>
       </div>
 
       {respondents.length === 0 ? (

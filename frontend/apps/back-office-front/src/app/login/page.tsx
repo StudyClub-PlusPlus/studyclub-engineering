@@ -3,7 +3,8 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import { buildGoogleAuthUrl, isConfigured, setUser } from '@/lib/auth';
+import { buildGoogleAuthUrl, isConfigured, setUser } from '@/features/auth/auth';
+import { loginResponseSchema } from '@/features/auth/response-schema';
 
 // useSearchParams() 는 next build 프리렌더 시 Suspense 경계가 필요.
 export default function BackOfficeLoginPage() {
@@ -49,7 +50,13 @@ function BackOfficeLoginForm() {
           }
           throw new Error(data?.errorMessage ?? data?.message ?? `로그인 실패 (${res.status})`);
         }
-        if (data.account) setUser(data.account);
+        const { account } = loginResponseSchema.parse(data);
+        setUser({
+          ...account,
+          email: account.email ?? '',
+          nickname: account.nickname ?? null,
+          picture: account.picture ?? null,
+        });
         router.replace(next);
       } catch (e) {
         setError(e instanceof Error ? e.message : '로그인 중 오류가 발생했습니다.');
@@ -99,6 +106,7 @@ function BackOfficeLoginForm() {
         <p className='mt-2 type-label-sm text-neutral-500'>허용된 운영자 계정만 접근할 수 있습니다.</p>
 
         <button
+          // ui-native: 구글 로그인 — 구글 브랜드 표시 규정(흰 바탕 · 로고)을 따른다
           type='button'
           onClick={startLogin}
           disabled={loading}

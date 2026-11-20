@@ -70,7 +70,9 @@ function pageOf(items: ApiSiteNotice[], total = items.length, offset = 0): ApiSi
 
 /** `staleTime` 을 넘기면 앱 기본 캐시(1분)처럼 받은 값을 한동안 다시 묻지 않는 상태로 그린다. */
 function renderPage(staleTime = 0) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime }, mutations: { retry: false } } });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime }, mutations: { retry: false } },
+  });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
@@ -161,7 +163,7 @@ describe('공지 등록·편집 팝업', () => {
     const bodyBox = (await screen.findByLabelText(/본문/)) as HTMLTextAreaElement;
     const dialog = screen.getByRole('dialog');
     await waitFor(() => expect(bodyBox.value).toBe('본문 첫 줄\n둘째 줄'));
-    expect(httpMock).toHaveBeenCalledWith('/api/admin/notices/12');
+    expect(httpMock).toHaveBeenCalledWith('/api/admin/notices/12', expect.anything());
 
     const user = userEvent.setup();
     const titleBox = within(dialog).getByLabelText(/제목/);
@@ -170,9 +172,9 @@ describe('공지 등록·편집 팝업', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
     await within(dialog).findByText('저장되었습니다. 사이트 공지에 바로 반영됩니다.');
-    const patch = httpMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
+    const patch = httpMock.mock.calls.find(([, , init]) => init?.method === 'PATCH');
     expect(patch?.[0]).toBe('/api/admin/notices/12');
-    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ title: '고친 제목', body: '본문 첫 줄\n둘째 줄' });
+    expect(JSON.parse(String(patch?.[2]?.body))).toEqual({ title: '고친 제목', body: '본문 첫 줄\n둘째 줄' });
   });
 
   it('빈 칸은 서버에 보내기 전에 막고, 채우면 POST 로 등록한다', async () => {
@@ -185,7 +187,7 @@ describe('공지 등록·편집 팝업', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '등록' }));
     expect(await within(dialog).findByText('제목을 입력하세요.')).toBeTruthy();
     expect(within(dialog).getByText('본문을 입력하세요.')).toBeTruthy();
-    expect(httpMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+    expect(httpMock.mock.calls.some(([, , init]) => init?.method === 'POST')).toBe(false);
 
     const user = userEvent.setup();
     await user.type(within(dialog).getByLabelText(/제목/), '새 공지');
@@ -193,9 +195,9 @@ describe('공지 등록·편집 팝업', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '등록' }));
 
     await within(dialog).findByText('등록되었습니다. 사이트 공지에 바로 올라갑니다.');
-    const post = httpMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    const post = httpMock.mock.calls.find(([, , init]) => init?.method === 'POST');
     expect(post?.[0]).toBe('/api/admin/notices');
-    expect(JSON.parse(String(post?.[1]?.body))).toEqual({ title: '새 공지', body: '내용' });
+    expect(JSON.parse(String(post?.[2]?.body))).toEqual({ title: '새 공지', body: '내용' });
   });
 
   it('편집 팝업의 「공지 삭제」는 확인 단계를 거쳐 DELETE 를 보낸다', async () => {
@@ -211,17 +213,17 @@ describe('공지 등록·편집 팝업', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '공지 삭제' }));
 
     await within(dialog).findByText('‘11월 스터디 모집 일정 안내’ 공지를 삭제합니다.');
-    expect(httpMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
+    expect(httpMock.mock.calls.some(([, , init]) => init?.method === 'DELETE')).toBe(false);
     fireEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
 
     await within(dialog).findByText('삭제되었습니다. 사이트 공지에서 내려갔습니다.');
-    const del = httpMock.mock.calls.find(([, init]) => init?.method === 'DELETE');
+    const del = httpMock.mock.calls.find(([, , init]) => init?.method === 'DELETE');
     expect(del?.[0]).toBe('/api/admin/notices/12');
   });
 
   it('서버가 「title: 사유」로 거절하면 그 칸의 오류로 보이고 입력값은 그대로 남는다', async () => {
     const detail: ApiSiteNoticeDetail = { ...notice(), body: '본문' };
-    httpMock.mockImplementation(async (path, init) => {
+    httpMock.mockImplementation(async (path, _schema, init) => {
       if (init?.method === 'PATCH') throw new Error('title: 제목은 200자까지입니다.');
       const p = String(path);
       if (p.startsWith('/api/admin/notices?')) return pageOf([notice()]);
@@ -248,7 +250,7 @@ describe('공지 등록·편집 팝업', () => {
     const last = notice({ noticeId: 21, title: '마지막 공지' });
     const detail: ApiSiteNoticeDetail = { ...last, body: '본문' };
     let deleted = false;
-    httpMock.mockImplementation(async (path, init) => {
+    httpMock.mockImplementation(async (path, _schema, init) => {
       const p = String(path);
       if (init?.method === 'DELETE') {
         deleted = true;
@@ -274,7 +276,7 @@ describe('공지 등록·편집 팝업', () => {
     await waitFor(() => expect(memoryUrl.get()).not.toContain('page=2'));
     await waitFor(() => expect(paramsOf(listCalls().at(-1)![0]).get('offset')).toBe('0'));
     const detailGets = httpMock.mock.calls.filter(
-      ([path, init]) => String(path) === '/api/admin/notices/21' && !init?.method,
+      ([path, , init]) => String(path) === '/api/admin/notices/21' && !init?.method,
     );
     expect(detailGets).toHaveLength(1);
   });

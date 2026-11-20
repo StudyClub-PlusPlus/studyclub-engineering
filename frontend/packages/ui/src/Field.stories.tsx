@@ -64,6 +64,11 @@ export const InputSuffix: Story = {
   render: () => <Input label='모집 정원' inputMode='numeric' defaultValue='20' suffix='명' />,
 };
 
+export const InputLeadingIcon: Story = {
+  name: 'Input / 앞 아이콘 (검색)',
+  render: () => <Input type='search' size='sm' aria-label='검색' placeholder='제목 검색' leadingIcon={<Search size={15} />} />,
+};
+
 export const SelectDefault: Story = {
   name: 'Select / 기본',
   render: () => (

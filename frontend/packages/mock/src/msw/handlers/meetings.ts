@@ -269,6 +269,19 @@ function studyIdOf(params: Record<string, string | string[]>) {
  * TODO(api): PUT /api/studies/:studyId/meetings/:meetingId/presenters/:slot/me
  * TODO(api): DELETE /api/studies/:studyId/meetings/:meetingId/presenters/:slot/me
  */
+/**
+ * 응답 모양은 실제 API(`StudyMeetingListResponse`)와 같게 — 목이 더 주는 필드를 화면이 기대면 실제 연결에서 깨진다.
+ * 안에서 쓰는 참여 중단 · 캡틴 · 디스코드 닉네임은 내보내기 직전에 뺀다 (MeView = participantId · canEdit, ParticipantView = participantId · name).
+ */
+function toApiResponse(r: ReturnType<typeof responseFor>) {
+  if (!r) return r;
+  return {
+    ...r,
+    me: { participantId: r.me.participantId, canEdit: r.me.canEdit },
+    participants: r.participants.map(({ participantId, name }) => ({ participantId, name })),
+  };
+}
+
 export const studyMeetingsHandlers = mockClient.createHandlerGroup(
   "/api/studies",
   [
@@ -280,7 +293,7 @@ export const studyMeetingsHandlers = mockClient.createHandlerGroup(
           label: "정상",
           status: 200,
           response: (context: MockResolveContext) =>
-            responseFor(context) ??
+            toApiResponse(responseFor(context)) ??
             HttpResponse.json(
               {
                 errorCode: "NOT_FOUND",

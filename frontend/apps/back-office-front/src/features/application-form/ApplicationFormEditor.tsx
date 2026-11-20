@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/mock';
-import { Button, Checkbox, Input, Select, Textarea } from '@studyclub/ui';
+import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/types';
+import { Button, Checkbox, Input, Select, Textarea, IconButton } from '@studyclub/ui';
 import { ArrowDown, ArrowUp, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useForm } from 'react-hook-form';
 
@@ -14,9 +14,9 @@ import {
   MARKDOWN_HINT,
   OptionEditor,
   QuestionFillView,
-} from './ApplicationFormUi';
-import { allowsOther, needsOptions, QUESTION_TYPES, TYPE_LABEL } from './question';
-import { applicationFormSchema, type ApplicationFormValues } from './schema';
+} from '@/features/application-form/ApplicationFormUi';
+import { allowsOther, needsOptions, QUESTION_TYPES, TYPE_LABEL } from '@/features/application-form/question';
+import { applicationFormSchema, type ApplicationFormValues } from '@/features/application-form/schema';
 
 const HEADER_ID = '__form-header__';
 const DISCORD_QUESTION: ApplicationQuestion = {
@@ -104,7 +104,7 @@ export function ApplicationFormEditor({
 
   return (
     <form
-      className='mx-auto flex w-full max-w-2xl flex-col gap-3'
+      className='flex w-full flex-col gap-3'
       onSubmit={(event) => {
         void submit(event).catch(() => {});
       }}
@@ -272,7 +272,7 @@ export function ApplicationFormEditor({
                     <Button
                       type='button'
                       size='sm'
-                      variant='ghost'
+                      variant='tertiary'
                       leadingIcon={<Trash2 size={13} />}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -292,41 +292,38 @@ export function ApplicationFormEditor({
                   </div>
                   {!readOnly && (
                     <div className='flex shrink-0 flex-col gap-1'>
-                      <button
-                        type='button'
+                      <IconButton
+                        variant='tertiary'
+                        size='xs'
                         aria-label={`질문 ${index + 1} 수정`}
                         onClick={(event) => {
                           event.stopPropagation();
                           setSelectedId(question.id);
                         }}
-                        className='p-1 text-fg-muted'
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        type='button'
+                        icon={<Pencil />}
+                      />
+                      <IconButton
+                        variant='tertiary'
+                        size='xs'
                         aria-label={`질문 ${index + 1} 위로`}
                         disabled={disabled || Boolean(selectedId) || index === 0}
                         onClick={(event) => {
                           event.stopPropagation();
                           reorder(index, index - 1);
                         }}
-                        className='p-1 text-fg-muted disabled:opacity-30'
-                      >
-                        <ArrowUp size={15} />
-                      </button>
-                      <button
-                        type='button'
+                        icon={<ArrowUp />}
+                      />
+                      <IconButton
+                        variant='tertiary'
+                        size='xs'
                         aria-label={`질문 ${index + 1} 아래로`}
                         disabled={disabled || Boolean(selectedId) || index === fields.length - 1}
                         onClick={(event) => {
                           event.stopPropagation();
                           reorder(index, index + 1);
                         }}
-                        className='p-1 text-fg-muted disabled:opacity-30'
-                      >
-                        <ArrowDown size={15} />
-                      </button>
+                        icon={<ArrowDown />}
+                      />
                     </div>
                   )}
                 </div>

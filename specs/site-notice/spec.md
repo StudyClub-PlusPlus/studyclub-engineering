@@ -123,7 +123,7 @@ HTML 로 해석하지 않으므로 서버가 태그를 걸러 내거나 바꾸�
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/app/[locale]/notices/page.tsx` — 서버 컴포넌트. `?page=N` 을 `offset = (N-1) × 10` 으로 바꿔 부른다
-- `frontend/apps/core-front/src/lib/api.ts` — `fetchNotices(offset, limit)`. 캐시하지 않는다(`no-store`) — 등록 즉시 보여야 한다
+- `frontend/apps/core-front/src/features/site-notices/repository.ts` — `fetchNotices(offset, limit)`. 캐시하지 않는다(`no-store`) — 등록 즉시 보여야 한다
 
 ---
 
@@ -185,7 +185,7 @@ HTML 로 해석하지 않으므로 서버가 태그를 걸러 내거나 바꾸�
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/app/[locale]/notices/[id]/page.tsx` — 404 는 `notFound()`
-- `frontend/apps/core-front/src/lib/api.ts` — `fetchNotice(noticeId)`. `no-store`
+- `frontend/apps/core-front/src/features/site-notices/repository.ts` — `fetchNotice(noticeId)`. `no-store`
 
 ---
 

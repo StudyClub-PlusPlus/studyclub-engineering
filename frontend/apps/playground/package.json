@@ -9,6 +9,9 @@
     "start": "next start -p 4702",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
+    "test:timezones": "node scripts/check-timezones.mjs",
+    "test:user-dormancy": "node scripts/check-user-dormancy.mjs",
+    "test:events": "node scripts/check-events.mjs",
     "export-specs": "node scripts/export-specs.mjs"
   },
   "dependencies": {
@@ -17,9 +20,11 @@
     "@studyclub/ui": "workspace:*",
     "lucide-react": "^0.460.0",
     "msw": "^2.15.0",
-    "next": "16.4.1",
+    "next": "16.4.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "@studyclub/types": "workspace:*",
+    "@studyclub/utils": "workspace:*"
   },
   "prettier": "@studyclub/prettier-config",
   "devDependencies": {

@@ -6,8 +6,9 @@ import { EventDialog } from '@console/components/EventDialog';
 import { EVENT_TYPES } from '@console/components/EventForm';
 import { TableCard } from '@console/components/ui';
 import { tx, EVENT_TYPE_LABEL } from '@console/lib/l10n';
-import type { StudyclubEvent } from '@studyclub/mock';
-import { Badge, Select, cx } from '@studyclub/ui';
+import type { StudyclubEvent } from '@studyclub/types';
+import { Badge, Input, Select, cx } from '@studyclub/ui';
+import { Search } from 'lucide-react';
 
 /**
  * 행사 관리 목록 — 스터디 목록과 같은 규칙.
@@ -34,10 +35,12 @@ const WHEN_OPTIONS: { value: WhenFilter; label: string }[] = [
 
 /** 필터 셀렉트 — 스터디 목록과 같은 생김새. */
 function FilterSelect<T extends string>({
+  label,
   value,
   onChange,
   options,
 }: {
+  label: string;
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
@@ -45,10 +48,11 @@ function FilterSelect<T extends string>({
   return (
     <Select
       size='sm'
+      aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
       className={cx(
-        'h-9 w-auto shrink-0',
+        'w-auto shrink-0',
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
       )}
     >
@@ -91,15 +95,18 @@ export function EventsTable({ events }: { events: StudyclubEvent[] }) {
   return (
     <div>
       <div className='mb-5 flex flex-wrap items-center gap-2'>
-        <input
+        <Input
           type='search'
+          size='sm'
+          aria-label='행사 검색'
+          leadingIcon={<Search size={15} />}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='행사명 · 한 줄 소개 검색'
-          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
+          className='w-56'
         />
-        <FilterSelect value={type} onChange={setType} options={TYPE_OPTIONS} />
-        <FilterSelect value={when} onChange={setWhen} options={WHEN_OPTIONS} />
+        <FilterSelect label='종류' value={type} onChange={setType} options={TYPE_OPTIONS} />
+        <FilterSelect label='시기' value={when} onChange={setWhen} options={WHEN_OPTIONS} />
         <span className='ml-auto type-label-sm text-fg-muted'>{rows.length}개</span>
       </div>
 
@@ -120,6 +127,7 @@ export function EventsTable({ events }: { events: StudyclubEvent[] }) {
               <tr key={e.id}>
                 <td className='w-[42%] max-w-0'>
                   <button
+                    // ui-native: 표의 제목 칸 — 누르면 그 줄을 여는 글자 링크
                     type='button'
                     onClick={() => setEditing(e)}
                     className='block w-full truncate text-left font-semibold underline-offset-4 hover:text-brand hover:underline'

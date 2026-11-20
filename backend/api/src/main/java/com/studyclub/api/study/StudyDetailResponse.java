@@ -26,7 +26,8 @@ public record StudyDetailResponse(
         Instant startAt,
         Instant endAt,
         String discordChannelUrl,
-        String driveUrl) {
+        String driveUrl,
+        boolean discordLinked) {
 
     /**
      * {@code timezone} 은 운영자가 고른 값 그대로다 — {@code null} 이면 미정. 목록처럼 일정 문구로 추정하지 않는다: 수정 폼이 추정값을 고른
@@ -40,7 +41,8 @@ public record StudyDetailResponse(
             StudyProgram program,
             long applicantCount,
             Instant recruitDeadlineAt,
-            Integer recruitmentCapacity) {
+            Integer recruitmentCapacity,
+            boolean discordLinked) {
         return new StudyDetailResponse(
                 study.getId(),
                 study.getProgramId(),
@@ -61,7 +63,8 @@ public record StudyDetailResponse(
                 study.getStartAt(),
                 study.getEndAt(),
                 study.getDiscordChannelUrl(),
-                study.getDriveUrl());
+                study.getDriveUrl(),
+                discordLinked);
     }
 
     /** 디스코드 채널·자료실 링크를 비운 사본 — 볼 권한이 없는 사람에게 준다. */
@@ -86,6 +89,7 @@ public record StudyDetailResponse(
                 startAt,
                 endAt,
                 null,
-                null);
+                null,
+                discordLinked);
     }
 }

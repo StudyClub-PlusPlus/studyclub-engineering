@@ -95,7 +95,9 @@ function RegionDonut({ data }: { data: ApiCrewTimezones }) {
               <span className='tnum shrink-0 type-label-lg text-fg'>
                 {g.percentage === null ? '—' : `${Math.round(g.percentage)}%`}
               </span>
-              <span className='tnum w-14 shrink-0 text-right type-label-sm text-fg-muted'>{formatCount(g.count)}명</span>
+              <span className='tnum w-14 shrink-0 text-right type-label-sm text-fg-muted'>
+                {formatCount(g.count)}명
+              </span>
             </li>
           );
         })}

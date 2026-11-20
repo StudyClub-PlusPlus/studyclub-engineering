@@ -3,7 +3,8 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import { track } from '@/lib/analytics';
+import type { Locale } from '@studyclub/types';
+
 import {
   appleRedirectUri,
   buildAppleAuthUrl,
@@ -11,15 +12,19 @@ import {
   isConfigured,
   setLoginMethod,
   setSuggestedNickname,
+  getUser,
   setUser,
-} from '@/lib/auth';
-import type { SessionUser } from '@/lib/auth';
+} from '@/features/auth/auth';
 import {
   LOGIN_NOT_CONFIGURED_MESSAGE,
   loginErrorFromCaught,
   loginErrorFromExchange,
   loginErrorFromOAuthPopup,
-} from '@/lib/login-errors';
+} from '@/features/auth/login-errors';
+import { exchangeSocialLogin } from '@/features/auth/repository';
+import { returnPath } from '@/features/onboarding/model';
+import { track } from '@/lib/analytics';
+import { afterAnalyticsReady } from '@/lib/analytics-privacy-state';
 
 type Provider = 'google' | 'apple';
 const PROVIDER_LABEL = { google: 'Google', apple: 'Apple' } as const;
@@ -38,7 +43,7 @@ function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const locale = (params?.locale as string) ?? 'ko';
-  const next = search.get('next') ?? `/${locale}/my`;
+  const next = returnPath(search.get('next'), locale as Locale);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,18 +57,14 @@ function LoginForm() {
       try {
         // 애플은 authorize 때 쓴 콜백을 교환에도 실어야 한다. 이름은 첫 인가에만 온다
         const extra = provider === 'apple' ? { redirectUri: appleRedirectUri(), name: name || undefined } : {};
-        const res = await fetch('/api/auth/social/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, provider, ...extra }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          httpStatus = res.status;
-          throw new Error(loginErrorFromExchange(res.status, data, PROVIDER_LABEL[provider]));
+        const result = await exchangeSocialLogin({ code, provider, ...extra });
+        if (!result.ok) {
+          httpStatus = result.status;
+          throw new Error(loginErrorFromExchange(result.status, result.body, PROVIDER_LABEL[provider]));
         }
+        const data = result.data;
         if (data.account) {
-          const account = data.account as SessionUser;
+          const account = data.account;
           setUser(account);
           setLoginMethod(provider);
           if (typeof data.suggestedNickname === 'string' && data.suggestedNickname.trim()) {
@@ -72,14 +73,23 @@ function LoginForm() {
             setSuggestedNickname(null);
           }
           if (!account.onboardingCompletedAt) {
-            track({ name: 'Auth Login Completed', props: { is_new_user: true, next_path: next } });
+            afterAnalyticsReady(
+              () => getUser()?.id === account.id,
+              () => track({ name: 'Auth Login Completed', props: { is_new_user: true, next_path: next } }),
+            );
             router.replace(`/${locale}/onboarding?next=${encodeURIComponent(next)}`);
             return;
           }
         }
-        track({ name: 'Auth Login Completed', props: { is_new_user: false, next_path: next } });
-        // 가입(온보딩)을 마친 회원의 로그인만 센다 — 새 회원은 온보딩 완료가 `User Signed Up` 이다
-        track({ name: 'User Logged In', props: { method: provider } });
+        // 서버가 같은 계정의 분석 허용을 확인한 뒤 로그인 이벤트를 보낸다.
+        if (data.account)
+          afterAnalyticsReady(
+            () => getUser()?.id === data.account?.id,
+            () => {
+              track({ name: 'Auth Login Completed', props: { is_new_user: false, next_path: next } });
+              track({ name: 'User Logged In', props: { method: provider } });
+            },
+          );
         router.replace(next);
       } catch (e) {
         track({ name: 'Auth Login Failed', props: { error_message: String(e), http_status: httpStatus } });
@@ -138,6 +148,7 @@ function LoginForm() {
       <p className='mt-2 type-body-sm text-fg-muted'>로그인하면 내 스터디룸에서 참여한 스터디를 볼 수 있어요.</p>
 
       <button
+        // ui-native: 구글 로그인 — 구글 브랜드 표시 규정(흰 바탕 · 로고)을 따른다
         type='button'
         onClick={startLogin}
         disabled={loading}
@@ -162,6 +173,7 @@ function LoginForm() {
       </button>
 
       <button
+        // ui-native: 애플 로그인 — 애플 브랜드 표시 규정(검은 바탕 · 로고)을 따른다
         type='button'
         onClick={startAppleLogin}
         disabled={loading}

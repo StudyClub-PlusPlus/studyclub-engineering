@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { PageHeader } from '@console/components/ui';
-import { Badge, Button, Pagination, Select, cx } from '@studyclub/ui';
+import { Badge, Button, Input, Pagination, Select, cx } from '@studyclub/ui';
+import { Search } from 'lucide-react';
 
 import {
   FEEDBACK_STATUSES,
@@ -67,7 +68,7 @@ function FilterSelect<T extends string>({
       value={value}
       onChange={(e) => onChange(e.target.value as T | 'all')}
       className={cx(
-        'h-9 w-auto shrink-0',
+        'w-auto shrink-0',
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
       )}
     >
@@ -137,12 +138,15 @@ export function FeedbacksTable() {
       <PageHeader title='문의·오류 신고' />
 
       <div data-anno='feedback-admin:1' className='mb-3 flex flex-wrap items-center gap-2'>
-        <input
+        <Input
           type='search'
+          size='sm'
+          aria-label='문의 검색'
+          leadingIcon={<Search size={15} />}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder='제목·내용 검색'
-          className='h-9 w-52 shrink-0 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
+          className='w-52'
         />
         <FilterSelect
           label='유형'

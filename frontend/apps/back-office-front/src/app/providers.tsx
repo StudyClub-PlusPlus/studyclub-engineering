@@ -7,7 +7,7 @@ import { mockHandlerGroups } from '@studyclub/mock/msw';
 import { Button, Toaster } from '@studyclub/ui';
 import { QueryClientProvider } from '@tanstack/react-query';
 
-import { USER_KEY } from '@/lib/auth';
+import { USER_KEY } from '@/features/auth/auth';
 import { trackHistoryNavigation } from '@/lib/history-guard';
 import { isMockApiEnabled } from '@/lib/mock-api';
 import { getQueryClient } from '@/lib/query-client';

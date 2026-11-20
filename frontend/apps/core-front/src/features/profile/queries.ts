@@ -1,10 +1,15 @@
-// 마이페이지 내 정보 — 프로필 저장과 마케팅 수신 동의. 키·fetcher·훅을 한곳에. 브라우저가 백엔드를 직접 부른다.
+// 프로필 및 마케팅 수신 동의의 쿼리 캐시와 변경 훅.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { OnboardingAccount } from '@/lib/api/onboarding';
-import { http } from '@/lib/http';
-
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
+import {
+  fetchAccount,
+  updateProfile,
+  attachProfileImage,
+  removeProfileImage,
+  fetchMarketingConsent,
+  changeMarketingConsent,
+} from './repository';
+import type { MarketingConsent } from './types';
 
 export const profileKeys = {
   all: ['profile'] as const,
@@ -12,15 +17,6 @@ export const profileKeys = {
   marketingConsent: (accountId: number) => [...profileKeys.all, 'marketing-consent', accountId] as const,
   account: (accountId: number) => [...profileKeys.all, 'account', accountId] as const,
 };
-
-/** PATCH /api/me 요청 바디. 닉네임·시간대 둘 다 필수 — 부분 갱신이 없다. */
-export type ProfilePayload = { nickname: string; timeZone: string };
-
-/** 마케팅 수신 동의 현재 값. 동의 기록이 없으면 `agreedAt` 은 null 이다. */
-export type MarketingConsent = { agreed: boolean; agreedAt: string | null };
-
-/** GET /api/me — 내 계정. 프로필 편집과 신청 버튼의 디스코드 연동 확인(lib/discord.ts)이 `profileKeys.account` 캐시를 같이 쓴다. */
-export const fetchAccount = () => http<OnboardingAccount>('/api/me');
 
 /**
  * GET /api/me — 편집에 들어갈 때 최신 값을 받는다. 다른 기기에서 먼저 바꿨으면 이 브라우저 세션에는 이전 값이 남아 있다.
@@ -41,31 +37,21 @@ export function useFetchLatestAccount(accountId: number) {
 /** PATCH /api/me — 응답은 `GET /api/me` 와 같은 모양이라 세션 user 를 이걸로 갱신한다. */
 export function useUpdateProfile() {
   return useMutation({
-    mutationFn: (payload: ProfilePayload) =>
-      http<OnboardingAccount>('/api/me', {
-        method: 'PATCH',
-        headers: JSON_HEADERS,
-        body: JSON.stringify(payload),
-      }),
+    mutationFn: updateProfile,
   });
 }
 
 /** PUT /api/me/profile-image — 올려 둔 번호를 프로필에 연결한다. 응답은 `GET /api/me` 와 같은 모양이라 세션 user 를 이걸로 갱신한다. */
 export function useAttachProfileImage() {
   return useMutation({
-    mutationFn: (fileId: number) =>
-      http<OnboardingAccount>('/api/me/profile-image', {
-        method: 'PUT',
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ fileId }),
-      }),
+    mutationFn: attachProfileImage,
   });
 }
 
 /** DELETE /api/me/profile-image — 사진이 없어도 200. 응답은 `picture: null` 인 계정. */
 export function useRemoveProfileImage() {
   return useMutation({
-    mutationFn: () => http<OnboardingAccount>('/api/me/profile-image', { method: 'DELETE' }),
+    mutationFn: removeProfileImage,
   });
 }
 
@@ -73,7 +59,7 @@ export function useRemoveProfileImage() {
 export function useMarketingConsent(accountId: number, enabled: boolean) {
   return useQuery({
     queryKey: profileKeys.marketingConsent(accountId),
-    queryFn: () => http<MarketingConsent>('/api/me/marketing-consent'),
+    queryFn: fetchMarketingConsent,
     enabled,
   });
 }
@@ -87,12 +73,7 @@ export function useChangeMarketingConsent(accountId: number) {
   const queryClient = useQueryClient();
   const queryKey = profileKeys.marketingConsent(accountId);
   return useMutation({
-    mutationFn: (agreed: boolean) =>
-      http<MarketingConsent>('/api/me/marketing-consent', {
-        method: 'PUT',
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ agreed }),
-      }),
+    mutationFn: changeMarketingConsent,
     onMutate: async (agreed) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<MarketingConsent>(queryKey);

@@ -6,9 +6,7 @@ export function TemplatePreview({ subject, body }: { subject: string; body: stri
     <div className='flex flex-col gap-3'>
       <div className='rounded-card border border-border bg-surface-1 px-4 py-3'>
         <span className='type-label-sm text-fg-muted'>메일 제목</span>
-        <p className='break-words type-label-lg text-ink'>
-          {subject.trim() ? subject : '제목을 입력해 주세요.'}
-        </p>
+        <p className='break-words type-label-lg text-ink'>{subject.trim() ? subject : '제목을 입력해 주세요.'}</p>
       </div>
       {body.trim() ? (
         <iframe

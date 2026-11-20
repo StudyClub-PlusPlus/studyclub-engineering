@@ -11,6 +11,7 @@
 | 스터디 | [study/](./study/) | 구현중 | 스터디 목록·상세·등록 |
 | 스터디 신청 | [study-application/](./study-application/) | 스펙작성중 | 신청 폼 설계·제출·결과·디스코드 연동. 기획: [폼 제작](../01-planning/stories/captain-application-form/PRD.md) · [제출](../01-planning/stories/crew-submit-application/PRD.md) · [결과](../01-planning/stories/captain-application-results/PRD.md) |
 | 회원 | [account/](./account/) | — | 인증·프로필·온보딩 |
+| 테스트 로그인 | [stage-email-login/](./stage-email-login/) | 구현완료 | `/auth/email/{signup,verify,login}` — 메뉴에 없는 이메일 가입(메일 코드) · 비밀번호 로그인. 스위치(`EMAIL_LOGIN_ENABLED`)로 열고, 운영도 스위치로 연다(2026-11-20 결정, 테스트 뒤 끈다) |
 | 제안 | [proposal/](./proposal/) | — | 스터디 제안·관심 표시 |
 | 알림 | [notification/](./notification/) | 구현중 | 이벤트 기반 알림 발송 (첫 구현: 회원가입 웰컴메일) · 백오피스 템플릿·발송 이력 조회 · 실패 건 재발송(`POST /api/admin/notifications/resend`). 기획: [알림 템플릿](../01-planning/stories/notification-template/PRD.md) · [발송 이력](../01-planning/stories/notification-history/PRD.md) |
 | 대시보드 | [dashboard/](./dashboard/) | 스펙작성중 | 운영 대시보드 화면·집계·API 및 미정 사항. 기획: [운영 현황](../01-planning/stories/console-dashboard/PRD.md) |
@@ -19,10 +20,11 @@
 | 회원 탈퇴 | [user-leave/](./user-leave/) | 스펙작성중 | `DELETE /api/me` — 계정 즉시 삭제, 데이터 파기·보존 정책 |
 | 회원 관리 (백오피스) | [admin-users/](./admin-users/) | 스펙작성중 | `/api/admin/users` — 회원 목록 · 계정 권한(캡틴↔크루) 변경. 기획: [회원 목록](../01-planning/stories/captain-list-users/PRD.md) · [권한](../01-planning/stories/captain-grant-roles/PRD.md) |
 | 참여 중단 (사용자 사이트) | [study-participant/](./study-participant/) | 스펙작성중 | 출석 저장 `POST /api/studies/{studyId}/attendances` 에 `withdrawals[]` 추가 — 네비게이터가 출석부 저장 한 번에 출석과 참여 중단. 기획: [참여 중단](../01-planning/stories/navigator-withdraw-participant/PRD.md) |
-| 분반 · 참여 명단 (백오피스) | [study-group/](./study-group/) | 스펙작성중 | 참여 명단 · 네비게이터 지정 · 가능 시간 집계 · 반 만들기·수정·삭제 · 반 지정. 기획: [참석자](../01-planning/stories/captain-view-attendees/PRD.md) · [반 편성](../01-planning/stories/captain-assign-classes/PRD.md) |
+| 분반 · 참여 명단 (백오피스) | [study-group/](./study-group/) | 스펙작성중 | 참여 명단 · 네비게이터 지정 · 담당 캡틴 바꾸기 · 가능 시간 집계 · 반 만들기·수정·삭제 · 반 지정. 기획: [참석자](../01-planning/stories/captain-view-attendees/PRD.md) · [반 편성](../01-planning/stories/captain-assign-classes/PRD.md) |
 | 반 공지 | [study-notice/](./study-notice/) | 구현완료 | `/api/studies/{studyId}/groups/{groupId}/notices` — 네비게이터·담당 캡틴이 반 팀원에게 메일·디스코드로 보낸다 · 보내기 화면 값 · 보낸 기록. 기획: [반 공지](../01-planning/stories/navigator-study-notice/PRD.md) |
 | 사이트 공지 | [site-notice/](./site-notice/) | 구현완료 | `/api/notices` 읽기(비로그인 허용) · `/api/admin/notices` 등록·수정·소프트 삭제. 기획: [캡틴 공지 작성](../01-planning/stories/captain-post-notice/PRD.md) · [크루 공지 열람](../01-planning/stories/crew-view-notices/PRD.md) |
-| 문의·오류 신고 | [feedback/](./feedback/) | 스펙작성중 | `POST /api/feedbacks` · `/api/me/feedbacks` — 크루 제출·내 문의, `/api/admin/feedbacks` — 운영 목록·상세·상태·회신·메모. 회신 알림은 후속. 기획: [크루 제출](../01-planning/stories/crew-submit-feedback/PRD.md) · [캡틴 조회](../01-planning/stories/captain-view-feedbacks/PRD.md) |
+| 행사 | [event/](./event/) | 스펙작성중 | `/api/admin/events`: 캡틴의 행사 등록·수정·운영 목록·상세. 사용자 사이트 조회·신청·참가자 처리·메일·상태 전환은 별도. 기획: [행사 운영](../01-planning/stories/captain-manage-events/PRD.md) |
+| 문의·오류 신고 | [feedback/](./feedback/) | 스펙작성중 | `POST /api/feedbacks` · `/api/me/feedbacks` — 크루 제출·내 문의, `/api/admin/feedbacks` — 운영 목록·상세·상태·회신·메모. 첫 회신 HTML 알림 포함. 기획: [크루 제출](../01-planning/stories/crew-submit-feedback/PRD.md) · [캡틴 조회](../01-planning/stories/captain-view-feedbacks/PRD.md) |
 
 ## 도메인 외 스펙
 
@@ -30,6 +32,7 @@ API 도메인이 아닌 것(인프라·운영). 구조는 같되 엔드포인트
 
 | 스펙 | 폴더 | 상태 | 설명 |
 |------|------|------|------|
+| 데이터 보관·정리 | [data-retention/](./data-retention/) | 구현완료 | 문의·파일·감사 기록의 일일 정리, IP·권한 말소 기록 |
 | 관측 스택 | [observability-stack/](./observability-stack/) | 1단계 구현 | 로그(Grafana+Loki+Alloy) → 메트릭·알림은 후속 |
 | 도메인 이벤트 | [domain-events/](./domain-events/) | 1단계 구현 | 사실 → 이벤트 발행, 부수효과는 `AFTER_COMMIT` 구독자 (`@Async` 실행기 상한) |
 | 운영자 알림 | [ops-alerts/](./ops-alerts/) | 1단계 구현 | 가입·신청 등 운영자가 알아야 할 이벤트 → 운영 디스코드 채널 (`OPS_DISCORD_WEBHOOK_URL`) |

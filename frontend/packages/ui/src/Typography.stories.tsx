@@ -25,9 +25,9 @@ const ROLES = [
     'type-label-lg',
     '14 / 20 · 600',
     '시간대 전체 · 스터디 검색',
-    '버튼·탭·필드 라벨·목록 필터/검색 입력값과 placeholder',
+    'md/lg 버튼·탭·필드 라벨·목록 필터/검색 입력값과 placeholder',
   ],
-  ['type-label-sm', '12 / 18 · 500', '모집 중 · 2026.10.18', '배지·메타데이터·타임스탬프·캡션'],
+  ['type-label-sm', '12 / 18 · 500', '모집 중 · 2026.10.18', 'sm 버튼·배지·메타데이터·타임스탬프·캡션'],
 ] as const;
 
 const meta = { title: 'Foundations/Typography' } satisfies Meta;

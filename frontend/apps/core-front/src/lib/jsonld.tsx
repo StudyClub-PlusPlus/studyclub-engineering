@@ -4,7 +4,8 @@
 // 1. 검색 리치 결과 (Course·Event 카드)
 // 2. GEO — AI 검색(ChatGPT·Perplexity·AI Overview)이 인용할 **사실 근거**.
 //    사람이 읽는 본문은 문장이라 인용이 흔들리지만 JSON-LD 는 값이라 그대로 인용된다.
-import type { Locale, Site, Study, StudyclubEvent } from './content';
+import type { Locale, Site, Study, StudyclubEvent } from '@studyclub/types';
+
 import { t } from './i18n';
 import { SITE_NAME, SITE_URL } from './seo';
 
@@ -116,7 +117,7 @@ export function eventJsonLd(ev: StudyclubEvent, locale: Locale, url: string): Js
     description: t(ev.summary, locale),
     // 연도만 아는 행사는 연도만 (ISO 8601 은 YYYY 를 허용) — 지어낸 1월 1일을 검색엔진에 내보내지 않는다
     startDate: ev.datePrecision === 'year' ? ev.date.slice(0, 4) : ev.date,
-    eventStatus: 'https://schema.org/EventScheduled',
+    // eventStatus · offers 는 넣지 않는다 — 상태 · 정원 데이터가 없어 고정값이면 취소 · 마감 행사도 「예정 · 자리 있음」 으로 나간다
     eventAttendanceMode: online
       ? 'https://schema.org/OnlineEventAttendanceMode'
       : 'https://schema.org/OfflineEventAttendanceMode',
@@ -125,7 +126,6 @@ export function eventJsonLd(ev: StudyclubEvent, locale: Locale, url: string): Js
       : { '@type': 'Place', name: t(ev.location!, locale), address: t(ev.location!, locale) },
     ...(ev.image ? { image: ev.image } : {}),
     organizer: { '@id': `${SITE_URL}/#organization` },
-    offers: { '@type': 'Offer', price: 0, priceCurrency: 'KRW', availability: 'https://schema.org/InStock', url },
   };
 }
 

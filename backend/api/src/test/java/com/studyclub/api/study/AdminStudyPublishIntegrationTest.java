@@ -122,35 +122,21 @@ class AdminStudyPublishIntegrationTest {
     // ── unpublish 성공 ────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("성공(unpublish) - OPEN → 204, STATUS=DRAFT (STUDY_RECRUITMENT 변경 없음)")
+    @DisplayName("성공(unpublish) - OPEN → 204, STATUS=DRAFT, 최신 회차 START_AT 을 비운다")
     void unpublish_openToDraft() {
         Long studyId = createStudy("공개 취소 테스트");
         setApplicationFormJson(
                 studyId, "{\"questions\":[{\"id\":\"q1\",\"label\":\"intro\",\"type\":\"TEXT\"}]}");
         postNoBody("/api/admin/studies/" + studyId + "/publish", ADMIN_ID);
-
-        // 모집 회차 START_AT 스냅샷
-        Instant startAtBefore =
-                jdbcTemplate.queryForObject(
-                        "SELECT START_AT FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?"
-                                + " ORDER BY ID DESC LIMIT 1",
-                        Instant.class,
-                        studyId);
+        assertThat(latestStartAt(studyId)).isNotNull();
 
         var response = postNoBody("/api/admin/studies/" + studyId + "/unpublish", ADMIN_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(studyRepository.findById(studyId).orElseThrow().getStatus())
                 .isEqualTo(StudyStatus.DRAFT);
-
-        // STUDY_RECRUITMENT 는 변경하지 않는다
-        Instant startAtAfter =
-                jdbcTemplate.queryForObject(
-                        "SELECT START_AT FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?"
-                                + " ORDER BY ID DESC LIMIT 1",
-                        Instant.class,
-                        studyId);
-        assertThat(startAtAfter).isEqualTo(startAtBefore);
+        // 모집 시작 전으로 돌아간다 — 신청서가 없으면 신청 폼을 다시 고칠 수 있다
+        assertThat(latestStartAt(studyId)).isNull();
     }
 
     // ── unpublish 실패 ────────────────────────────────────────────────────────
@@ -191,10 +177,16 @@ class AdminStudyPublishIntegrationTest {
         return Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
     }
 
+    private Instant latestStartAt(Long studyId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT START_AT FROM STUDY_RECRUITMENT WHERE STUDY_ID = ? ORDER BY ID DESC LIMIT 1",
+                Instant.class,
+                studyId);
+    }
+
     /**
-     * 신청 폼을 직접 JDBC 로 주입한다. {@code PUT application-form} API 는 {@code START_AT <= now} 이면 잠겨서 호출 불가
-     * — {@code create} 가 {@code START_AT=now} 으로 채우기 때문이다. H2 JSON 컬럼은 {@code CAST(? AS JSON)} 로
-     * 저장해야 Hibernate 의 {@code @JdbcTypeCode(SqlTypes.JSON)} 가 올바르게 읽는다.
+     * 신청 폼을 직접 JDBC 로 주입한다 — 폼 문항 검증과 상관없이 공개 조건만 보려고. H2 JSON 컬럼은 {@code CAST(? AS JSON)} 로 저장해야
+     * Hibernate 의 {@code @JdbcTypeCode(SqlTypes.JSON)} 가 올바르게 읽는다.
      */
     private void setApplicationFormJson(Long studyId, String formJson) {
         jdbcTemplate.update(

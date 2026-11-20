@@ -25,26 +25,27 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * 같은 DB 를 다른 테스트 클래스와 같이 쓴다 — 목록은 닉네임 접두사({@value #PREFIX})로 좁혀서 본다. 그러면 전체 수·순서가 이 픽스처만으로 정해진다.
  *
- * <p>픽스처 (정렬 순서대로, 가입일은 {@code base} 기준 며칠 전):
+ * <p>픽스처 (정렬 순서 = 가입일 최신순, 가입일은 {@code base} 기준 며칠 전):
  *
  * <ul>
+ *   <li>9908 MEMBER · 0일 전 · 9951·9952·9953 MEMBER ACTIVE → 참여 3, 담당 아님
+ *   <li>9910 MEMBER · 1시간 전 · 같은 스터디 9951 의 두 반(그룹 99510·99511)에서 LEADER → 담당 스터디 1개
+ *   <li>9902 MEMBER · 1일 전 · 참여 0 (403 요청자)
+ *   <li>9904 MEMBER · 2일 전 · 9951 MEMBER ACTIVE → 참여 1
+ *   <li>9905 MEMBER · 3일 전 · 하차한 LEADER 행 + 완주한 MEMBER 행뿐 → 참여 0
+ *   <li>9903 MEMBER · 4일 전 · 담당 2곳(9951 LEADER, 9953 LEADER)
+ *   <li>9909 MEMBER · 6일 전 · 9952 LEADER PAUSED → 담당
+ *   <li>9914·9915 MEMBER · 7일 전(같은 시각) · 참여 0 → 가입일이 같아 id 가 큰 쪽(9915)이 먼저
+ *   <li>9901 ADMIN · 10일 전 · 요청자 · 참여 0
  *   <li>9916 ADMIN · 15일 전 · 9953 LEADER → 캡틴이면서 담당 (role=NAVIGATOR 에도 나온다)
  *   <li>9907 ADMIN · 20일 전 · 담당 캡틴처럼 MEMBER 역할 ACTIVE 행 1개(스터디 9952) → 참여 1, 담당 아님
- *   <li>9901 ADMIN · 10일 전 · 요청자 · 참여 0
- *   <li>9903 MEMBER · 4일 전 · 담당 2곳(9951 LEADER, 9953 LEADER) → 담당, 참여 2
- *   <li>9910 MEMBER · 1시간 전 · 같은 스터디 9951 의 두 반(그룹 99510·99511)에서 LEADER → 참여 1, 담당 스터디 1개
- *   <li>9909 MEMBER · 6일 전 · 9952 LEADER PAUSED → 담당, 참여 1
- *   <li>9908 MEMBER · 0일 전 · 9951·9952·9953 MEMBER ACTIVE → 참여 3, 담당 아님
- *   <li>9904 MEMBER · 2일 전 · 9951 MEMBER ACTIVE → 참여 1
- *   <li>9902 MEMBER · 1일 전 · 참여 0 (403 요청자)
- *   <li>9905 MEMBER · 3일 전 · 하차한 LEADER 행 + 완주한 MEMBER 행뿐 → 참여 0
- *   <li>9914·9915 MEMBER · 7일 전(같은 시각) · 참여 0 → 정렬 규칙 1~4 가 같아 id 가 큰 쪽(9915)이 먼저
  *   <li>9906 MEMBER · 온보딩 전 — 닉네임이 접두사와 같아도 이름으로 찾히지 않는다
  * </ul>
  */
@@ -57,7 +58,7 @@ class AdminAccountListIntegrationTest {
     private static final long MEMBER_ID = 9902L;
     private static final long NAVIGATOR_ID = 9903L;
     private static final long CREW_ID = 9904L;
-    private static final long DORMANT_ID = 9905L;
+    private static final long RECENT_INACTIVE_ID = 9905L;
     private static final long NOT_ONBOARDED_ID = 9906L;
     private static final long CAPTAIN_PARTICIPANT_ID = 9907L;
     private static final long BUSY_CREW_ID = 9908L;
@@ -72,7 +73,7 @@ class AdminAccountListIntegrationTest {
                     MEMBER_ID,
                     NAVIGATOR_ID,
                     CREW_ID,
-                    DORMANT_ID,
+                    RECENT_INACTIVE_ID,
                     NOT_ONBOARDED_ID,
                     CAPTAIN_PARTICIPANT_ID,
                     BUSY_CREW_ID,
@@ -90,18 +91,18 @@ class AdminAccountListIntegrationTest {
     /** 접두사로 거른 이 픽스처의 정렬된 ID — 온보딩 전 계정(9906)은 이름으로 안 찾힌다. */
     private static final List<Long> SORTED_IDS =
             List.of(
-                    CAPTAIN_NAVIGATOR_ID,
-                    CAPTAIN_PARTICIPANT_ID,
-                    ADMIN_ID,
-                    NAVIGATOR_ID,
-                    SAME_STUDY_LEADER_ID,
-                    PAUSED_NAVIGATOR_ID,
                     BUSY_CREW_ID,
-                    CREW_ID,
+                    SAME_STUDY_LEADER_ID,
                     MEMBER_ID,
-                    DORMANT_ID,
+                    CREW_ID,
+                    RECENT_INACTIVE_ID,
+                    NAVIGATOR_ID,
+                    PAUSED_NAVIGATOR_ID,
                     TIE_HIGH_ID,
-                    TIE_LOW_ID);
+                    TIE_LOW_ID,
+                    ADMIN_ID,
+                    CAPTAIN_NAVIGATOR_ID,
+                    CAPTAIN_PARTICIPANT_ID);
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
@@ -116,7 +117,7 @@ class AdminAccountListIntegrationTest {
         insertAccount(MEMBER_ID, SystemRole.MEMBER, true, base.minus(1, ChronoUnit.DAYS));
         insertAccount(NAVIGATOR_ID, SystemRole.MEMBER, true, base.minus(4, ChronoUnit.DAYS));
         insertAccount(CREW_ID, SystemRole.MEMBER, true, base.minus(2, ChronoUnit.DAYS));
-        insertAccount(DORMANT_ID, SystemRole.MEMBER, true, base.minus(3, ChronoUnit.DAYS));
+        insertAccount(RECENT_INACTIVE_ID, SystemRole.MEMBER, true, base.minus(3, ChronoUnit.DAYS));
         insertAccount(NOT_ONBOARDED_ID, SystemRole.MEMBER, false, base.minus(5, ChronoUnit.DAYS));
         insertAccount(
                 CAPTAIN_PARTICIPANT_ID, SystemRole.ADMIN, true, base.minus(20, ChronoUnit.DAYS));
@@ -198,13 +199,13 @@ class AdminAccountListIntegrationTest {
                 base.minus(5, ChronoUnit.DAYS));
         // 하차·완주는 지난 일 — 담당에도 참여에도 안 센다
         insertParticipant(
-                DORMANT_ID,
+                RECENT_INACTIVE_ID,
                 STUDY_A,
                 ParticipantRole.LEADER,
                 ParticipantStatus.WITHDRAWN,
                 base.minus(9, ChronoUnit.DAYS));
         insertParticipant(
-                DORMANT_ID,
+                RECENT_INACTIVE_ID,
                 STUDY_B,
                 ParticipantRole.MEMBER,
                 ParticipantStatus.COMPLETED,
@@ -217,13 +218,25 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 정렬: 캡틴 먼저 → 담당 스터디 있는 사람 → 참여 중인 스터디 수 → 가입일 최신순")
-    void sortsByRoleThenNavigatorThenParticipationThenJoinedAt() {
+    @DisplayName("성공 - 정렬: 권한·담당·참여 수와 상관없이 가입일 최신순")
+    void sortsByJoinedAtDescending() {
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(ids(response.getBody())).containsExactlyElementsOf(SORTED_IDS);
         assertThat(total(response.getBody())).isEqualTo(SORTED_IDS.size());
+    }
+
+    @Test
+    @DisplayName("성공 - 회원의 권한을 바꿔도 목록에서 그 회원의 자리가 그대로다")
+    void roleChangeKeepsPosition() {
+        List<Long> before = ids(get("/api/admin/users?q=" + PREFIX, ADMIN_ID).getBody());
+
+        var patched = patchSystemRole(MEMBER_ID, "ADMIN");
+        assertThat(patched.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        List<Long> after = ids(get("/api/admin/users?q=" + PREFIX, ADMIN_ID).getBody());
+        assertThat(after).containsExactlyElementsOf(before);
     }
 
     @Test
@@ -262,13 +275,13 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 하차·완주한 스터디는 담당에도 참여에도 안 센다 (휴면)")
+    @DisplayName("성공 - 하차·완주한 명부는 담당에서 빠지지만 신규 회원을 휴면으로 표시하지 않는다")
     void withdrawnAndCompletedRowsAreNotCounted() {
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
 
-        Map<String, Object> dormant = itemById(response.getBody(), DORMANT_ID);
+        Map<String, Object> dormant = itemById(response.getBody(), RECENT_INACTIVE_ID);
         assertThat(navigatorOf(dormant)).isEmpty();
-        assertThat(dormant).containsEntry("dormant", true);
+        assertThat(dormant).containsEntry("dormant", false);
     }
 
     @Test
@@ -279,9 +292,6 @@ class AdminAccountListIntegrationTest {
         Map<String, Object> captain = itemById(response.getBody(), CAPTAIN_PARTICIPANT_ID);
         assertThat(captain).containsEntry("dormant", false).containsEntry("systemRole", "ADMIN");
         assertThat(navigatorOf(captain)).isEmpty();
-        // 참여가 있어서 담당이 아닌 캡틴 안에서는 참여 0 인 요청자보다 앞선다 (가입일은 더 오래됐다)
-        List<Long> ids = ids(response.getBody());
-        assertThat(ids.indexOf(CAPTAIN_PARTICIPANT_ID)).isLessThan(ids.indexOf(ADMIN_ID));
     }
 
     @Test
@@ -291,10 +301,10 @@ class AdminAccountListIntegrationTest {
 
         assertThat(ids(response.getBody()))
                 .containsExactly(
-                        CAPTAIN_NAVIGATOR_ID,
-                        NAVIGATOR_ID,
                         SAME_STUDY_LEADER_ID,
-                        PAUSED_NAVIGATOR_ID);
+                        NAVIGATOR_ID,
+                        PAUSED_NAVIGATOR_ID,
+                        CAPTAIN_NAVIGATOR_ID);
         assertThat(navigatorOf(itemById(response.getBody(), PAUSED_NAVIGATOR_ID)))
                 .containsExactly(Map.of("studyId", (int) STUDY_B, "title", "AI 논문 리딩"));
     }
@@ -305,7 +315,7 @@ class AdminAccountListIntegrationTest {
         var response = get("/api/admin/users?role=CAPTAIN&q=" + PREFIX, ADMIN_ID);
 
         assertThat(ids(response.getBody()))
-                .containsExactly(CAPTAIN_NAVIGATOR_ID, CAPTAIN_PARTICIPANT_ID, ADMIN_ID);
+                .containsExactly(ADMIN_ID, CAPTAIN_NAVIGATOR_ID, CAPTAIN_PARTICIPANT_ID);
         assertThat(total(response.getBody())).isEqualTo(3);
     }
 
@@ -316,13 +326,13 @@ class AdminAccountListIntegrationTest {
 
         assertThat(ids(response.getBody()))
                 .containsExactly(
-                        NAVIGATOR_ID,
-                        SAME_STUDY_LEADER_ID,
-                        PAUSED_NAVIGATOR_ID,
                         BUSY_CREW_ID,
-                        CREW_ID,
+                        SAME_STUDY_LEADER_ID,
                         MEMBER_ID,
-                        DORMANT_ID,
+                        CREW_ID,
+                        RECENT_INACTIVE_ID,
+                        NAVIGATOR_ID,
+                        PAUSED_NAVIGATOR_ID,
                         TIE_HIGH_ID,
                         TIE_LOW_ID);
         assertThat(itemById(response.getBody(), NAVIGATOR_ID))
@@ -345,7 +355,7 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 같은 스터디의 두 반을 맡아도 담당 스터디는 한 번, 참여 중인 스터디 수도 한 번만 센다")
+    @DisplayName("성공 - 같은 스터디의 두 반을 맡아도 담당 스터디는 한 번만 나온다")
     void sameStudyInTwoGroupsIsCountedOnce() {
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
 
@@ -353,15 +363,10 @@ class AdminAccountListIntegrationTest {
         assertThat(navigatorOf(leader))
                 .containsExactly(Map.of("studyId", (int) STUDY_A, "title", "알고리즘 스터디"));
         assertThat(leader).containsEntry("dormant", false);
-        // 참여 1 이므로 참여 2 인 9903 뒤, 참여 1 이고 가입일이 더 오래된 9909 앞이다. 두 번 세면 9903 과 같은 2 가 돼 가입일이 최신인 이
-        // 계정이 9903 앞에 선다
-        List<Long> ids = ids(response.getBody());
-        assertThat(ids.indexOf(NAVIGATOR_ID)).isLessThan(ids.indexOf(SAME_STUDY_LEADER_ID));
-        assertThat(ids.indexOf(SAME_STUDY_LEADER_ID)).isLessThan(ids.indexOf(PAUSED_NAVIGATOR_ID));
     }
 
     @Test
-    @DisplayName("성공 - 정렬 규칙 1~4 가 모두 같으면(가입일까지) id 가 큰 쪽이 먼저 — 페이지를 넘겨도 순서가 흔들리지 않는다")
+    @DisplayName("성공 - 가입일이 같으면 id 가 큰 쪽이 먼저 — 페이지를 넘겨도 순서가 흔들리지 않는다")
     void tieBreaksByIdDescending() {
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
 
@@ -478,7 +483,7 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 행마다 디스코드 연동 여부와 계정 이름. 미연동 크루도 권한 배지는 잠기지 않는다")
+    @DisplayName("성공 - 목록에는 디스코드 연동 여부만 보낸다. 원본은 개별 열람으로만 제공한다")
     void rowsCarryDiscordLink() {
         jdbcTemplate.update("UPDATE ACCOUNT SET DISCORD_ID = NULL WHERE ID = ?", CREW_ID);
         jdbcTemplate.update(
@@ -488,11 +493,11 @@ class AdminAccountListIntegrationTest {
 
         assertThat(itemById(response.getBody(), CREW_ID))
                 .containsEntry("roleChangeBlockedReason", null)
-                .containsEntry("discordLinked", false)
-                .containsEntry("discordHandle", null);
-        assertThat(itemById(response.getBody(), ADMIN_ID))
-                .containsEntry("discordLinked", true)
-                .containsEntry("discordHandle", "captain_h");
+                .containsEntry("discordLinked", false);
+        assertThat(itemById(response.getBody(), ADMIN_ID)).containsEntry("discordLinked", true);
+        items(response.getBody())
+                .forEach(item -> assertThat(item).doesNotContainKeys("discordHandle", "discordId"));
+        assertThat(response.getBody().toString()).doesNotContain("captain_h");
     }
 
     @Test
@@ -579,6 +584,126 @@ class AdminAccountListIntegrationTest {
         assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
     }
 
+    @Test
+    @DisplayName("휴면은 모든 로그인 수단의 최신 시각을 본다 — 캡틴도 같고 신규·로그인 미확인은 제외")
+    void dormantUsesLatestLoginAndRegistration() {
+        prepareOldAccounts();
+        jdbcTemplate.update(
+                "UPDATE ACCOUNT SET CREATED_AT = ? WHERE ID = ?",
+                Timestamp.from(Instant.now()),
+                MEMBER_ID);
+        jdbcTemplate.update("DELETE FROM ACCOUNT_IDENTITY WHERE ACCOUNT_ID = ?", CREW_ID);
+        insertIdentity(ADMIN_ID, "APPLE", Instant.now());
+
+        var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(itemById(response.getBody(), ADMIN_ID)).containsEntry("dormant", false);
+        assertThat(itemById(response.getBody(), CAPTAIN_PARTICIPANT_ID))
+                .containsEntry("dormant", true);
+        assertThat(itemById(response.getBody(), RECENT_INACTIVE_ID)).containsEntry("dormant", true);
+        assertThat(itemById(response.getBody(), MEMBER_ID)).containsEntry("dormant", false);
+        assertThat(itemById(response.getBody(), CREW_ID)).containsEntry("dormant", false);
+    }
+
+    @Test
+    @DisplayName("명부의 모든 상태와 스터디 종료·하차일을 조회한다 — 현재 참여 수만으로 휴면을 판단하지 않는다")
+    void dormantUsesParticipationPeriods() {
+        prepareOldAccounts();
+        Instant now = Instant.now();
+        Instant joined = now.minus(300, ChronoUnit.DAYS);
+        Instant oldEnd = now.minus(200, ChronoUnit.DAYS);
+        jdbcTemplate.update(
+                "UPDATE STUDY SET END_AT = ?, STATUS = 'ENDED' WHERE ID = ?",
+                Timestamp.from(oldEnd),
+                STUDY_A);
+        jdbcTemplate.update(
+                "UPDATE STUDY SET END_AT = ?, STATUS = 'ENDED' WHERE ID = ?",
+                Timestamp.from(now.minus(7, ChronoUnit.DAYS)),
+                STUDY_B);
+        insertParticipant(
+                CREW_ID, STUDY_A, ParticipantRole.MEMBER, ParticipantStatus.ACTIVE, joined);
+        insertParticipant(
+                RECENT_INACTIVE_ID,
+                STUDY_B,
+                ParticipantRole.MEMBER,
+                ParticipantStatus.COMPLETED,
+                joined);
+        insertParticipant(
+                PAUSED_NAVIGATOR_ID,
+                STUDY_C,
+                ParticipantRole.LEADER,
+                ParticipantStatus.PAUSED,
+                joined);
+        insertParticipant(
+                NAVIGATOR_ID, STUDY_C, ParticipantRole.MEMBER, ParticipantStatus.WITHDRAWN, joined);
+        jdbcTemplate.update(
+                "UPDATE STUDY_PARTICIPANT SET LEFT_AT = ? WHERE ACCOUNT_ID = ?",
+                Timestamp.from(now.minus(30, ChronoUnit.DAYS)),
+                NAVIGATOR_ID);
+        insertParticipant(
+                TIE_LOW_ID, STUDY_A, ParticipantRole.MEMBER, ParticipantStatus.WITHDRAWN, joined);
+        jdbcTemplate.update(
+                "UPDATE STUDY_PARTICIPANT SET LEFT_AT = ? WHERE ACCOUNT_ID = ?",
+                Timestamp.from(now.minus(30, ChronoUnit.DAYS)),
+                TIE_LOW_ID);
+        insertParticipant(
+                TIE_HIGH_ID, STUDY_C, ParticipantRole.MEMBER, ParticipantStatus.COMPLETED, joined);
+        insertParticipant(
+                SAME_STUDY_LEADER_ID,
+                999999L,
+                ParticipantRole.MEMBER,
+                ParticipantStatus.ACTIVE,
+                joined);
+        insertParticipant(
+                BUSY_CREW_ID, STUDY_A, ParticipantRole.MEMBER, ParticipantStatus.COMPLETED, joined);
+        insertParticipant(
+                BUSY_CREW_ID, STUDY_B, ParticipantRole.MEMBER, ParticipantStatus.COMPLETED, joined);
+
+        var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(itemById(response.getBody(), CREW_ID)).containsEntry("dormant", true);
+        assertThat(itemById(response.getBody(), TIE_LOW_ID)).containsEntry("dormant", true);
+        for (long id :
+                List.of(
+                        RECENT_INACTIVE_ID,
+                        PAUSED_NAVIGATOR_ID,
+                        NAVIGATOR_ID,
+                        TIE_HIGH_ID,
+                        SAME_STUDY_LEADER_ID,
+                        BUSY_CREW_ID)) {
+            assertThat(itemById(response.getBody(), id))
+                    .as("account %s", id)
+                    .containsEntry("dormant", false);
+        }
+    }
+
+    private void prepareOldAccounts() {
+        String ids = inClause(ACCOUNT_IDS.size());
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PARTICIPANT WHERE ACCOUNT_ID IN (" + ids + ")",
+                ACCOUNT_IDS.toArray());
+        for (long id : ACCOUNT_IDS) {
+            jdbcTemplate.update(
+                    "UPDATE ACCOUNT SET CREATED_AT = ? WHERE ID = ?",
+                    Timestamp.from(Instant.now().minus(400, ChronoUnit.DAYS)),
+                    id);
+            insertIdentity(id, "GOOGLE", Instant.now().minus(200, ChronoUnit.DAYS));
+        }
+    }
+
+    private void insertIdentity(long accountId, String issuer, Instant loginAt) {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO ACCOUNT_IDENTITY (ACCOUNT_ID, ISSUER, PROVIDER_ACCOUNT_ID, PROVIDER_EMAIL, LAST_LOGIN_AT, CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                accountId,
+                issuer,
+                "dormancy-" + accountId,
+                "dormancy-" + accountId + "@example.com",
+                Timestamp.from(loginAt),
+                now,
+                now);
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
@@ -586,6 +711,18 @@ class AdminAccountListIntegrationTest {
     private ResponseEntity<Map> get(String path, long requesterId, Object... uriVariables) {
         return rest.exchange(
                 path, HttpMethod.GET, authenticatedRequest(requesterId), Map.class, uriVariables);
+    }
+
+    private ResponseEntity<Map> patchSystemRole(long targetId, String systemRole) {
+        HttpHeaders headers = authenticatedRequest(ADMIN_ID).getHeaders();
+        HttpHeaders json = new HttpHeaders();
+        json.putAll(headers);
+        json.setContentType(MediaType.APPLICATION_JSON);
+        return rest.exchange(
+                "/api/admin/users/" + targetId + "/system-role",
+                HttpMethod.PATCH,
+                new HttpEntity<>("{\"systemRole\":\"" + systemRole + "\"}", json),
+                Map.class);
     }
 
     private HttpEntity<Void> authenticatedRequest(long accountId) {
@@ -623,6 +760,12 @@ class AdminAccountListIntegrationTest {
 
     private void cleanSeedRows() {
         String accountIn = inClause(ACCOUNT_IDS.size());
+        jdbcTemplate.update(
+                "DELETE FROM ADMIN_AUDIT_LOG WHERE TARGET_ACCOUNT_ID IN (" + accountIn + ")",
+                ACCOUNT_IDS.toArray());
+        jdbcTemplate.update(
+                "DELETE FROM ACCOUNT_IDENTITY WHERE ACCOUNT_ID IN (" + accountIn + ")",
+                ACCOUNT_IDS.toArray());
         jdbcTemplate.update(
                 "DELETE FROM STUDY_PARTICIPANT WHERE ACCOUNT_ID IN (" + accountIn + ")",
                 ACCOUNT_IDS.toArray());

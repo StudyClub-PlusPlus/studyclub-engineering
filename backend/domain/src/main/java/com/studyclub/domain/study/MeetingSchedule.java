@@ -18,19 +18,20 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 한 분반의 회차 일정 규칙 — 같은 날 중복 금지 · 한 번에 31일 · 지난 시각 금지 (specs/study-meeting/spec.md).
+ * 한 분반의 회차 일정 규칙 — 같은 날 중복 금지 · 한 번에 1년 · 지난 시각 금지 (specs/study-meeting/spec.md).
  *
- * <p>「같은 날」 은 UTC 가 아니라 분반 시간대의 현지 날짜다. 미주반 저녁 회차는 UTC 로 다음 날이 되기 때문이다. 31일도 같은 현지 날짜로 잰다 — UTC 경과
- * 시간으로 재면 서머타임이 낀 30일이 30일 1시간이 되어 정상 요청이 걸린다.
+ * <p>「같은 날」 은 UTC 가 아니라 분반 시간대의 현지 날짜다. 미주반 저녁 회차는 UTC 로 다음 날이 되기 때문이다. 1년도 같은 현지 날짜로 잰다 — UTC 경과
+ * 시간으로 재면 서머타임이 낀 기간이 1시간 길어져 정상 요청이 걸린다.
  */
 public class MeetingSchedule {
 
     /** {@code STUDY_GROUP.TIMEZONE} 이 비어 있을 때. 손으로 넣은 옛 분반만 해당한다 — 반 편성은 시간대를 받는다. */
     public static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Seoul");
 
-    static final int MAX_MEETINGS_PER_ADD = 31;
-    // 시작일 포함 31일 → 첫 날과 마지막 날의 차이는 30일까지
-    static final int MAX_SPAN_DAYS = 30;
+    // 첫 날부터 1년 뒤 같은 날까지 (2/29 시작이면 다음 해 2/28). 같은 날 중복이 막히므로 개수도 여기서 묶인다
+    static final int MAX_SPAN_YEARS = 1;
+    // 1년 안의 서로 다른 날은 많아야 367일(2/29 를 낀 1년 + 끝날). 이보다 길면 하나씩 보기 전에 거절한다
+    static final int MAX_MEETINGS_PER_ADD = 367;
 
     private static final DateTimeFormatter SHORT_DAY =
             DateTimeFormatter.ofPattern("M/d(E)", Locale.KOREAN);
@@ -65,9 +66,9 @@ public class MeetingSchedule {
         }
         LocalDate first = days.stream().min(LocalDate::compareTo).orElseThrow();
         LocalDate last = days.stream().max(LocalDate::compareTo).orElseThrow();
-        if (ChronoUnit.DAYS.between(first, last) > MAX_SPAN_DAYS) {
+        if (last.isAfter(first.plusYears(MAX_SPAN_YEARS))) {
             throw new BusinessException(
-                    ErrorCode.INVALID_INPUT, "반복은 시작일부터 " + (MAX_SPAN_DAYS + 1) + "일 안에서만 만듭니다.");
+                    ErrorCode.INVALID_INPUT, "반복은 시작일부터 " + MAX_SPAN_YEARS + "년 안에서만 만듭니다.");
         }
         for (LocalDate day : days) {
             assertAfterKickoff(day, null);

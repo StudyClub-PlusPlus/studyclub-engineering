@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 
-import { BulkSelect, CHECKBOX, SelectAll } from '@console/components/AttendanceTab';
+import { BulkSelect, SelectAll } from '@console/components/AttendanceTab';
 import { DiscordCell } from '@console/components/DiscordCell';
 import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
-import { MEMBER_REGIONS, type Crew } from '@studyclub/mock';
-import { Badge, Button, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
-import { Plus } from 'lucide-react';
+import { captainOptions } from '@console/lib/users';
+import { type Crew } from '@studyclub/types';
+import { Badge, Button, Checkbox, Input, Select, SelectionCount, TableActionBar, cx, toast } from '@studyclub/ui';
+import { MEMBER_REGIONS } from '@studyclub/utils';
+import { Loader2, Plus } from 'lucide-react';
 
 /**
  * 신청자 탭 — 반, 참여 명단.
@@ -22,6 +24,8 @@ import { Plus } from 'lucide-react';
  *
  * **캡틴도 참여하려면 신청한다.** 스터디를 만든 캡틴이라고 명부에 저절로 들어가지 않는다 — 참여할지는
  * 스터디마다 다르다. 신청하면 크루와 같은 줄로 여기 나온다 (POL-0001).
+ *
+ * **담당 캡틴은 명부와 따로 선다.** 맨 위 「담당 캡틴」 칸은 스터디당 한 명이고, 참여하지 않는 캡틴도 고를 수 있다.
  */
 
 function regionLabel(key: Crew['region']) {
@@ -38,7 +42,12 @@ export function CrewTab({
   onDirtyChange,
   navigators,
   onToggleNavigator,
+  ownerCaptainId,
+  onOwnerCaptainChange,
 }: {
+  /** 담당 캡틴 계정 id — 스터디당 한 명. */
+  ownerCaptainId: string;
+  onOwnerCaptainChange: (captainId: string) => void;
   crew: Crew[];
   classes: StudyClass[];
   assign: Record<string, string>;
@@ -82,7 +91,6 @@ export function CrewTab({
   /** 카드 안 입력 — 입력칸은 줄의 절반, 취소 · 저장은 오른쪽(읽기 상태의 수정 · 삭제 자리). */
   function editor(cls: StudyClass | undefined) {
     if (!renaming) return null;
-    const errId = `class-title-${renaming.id}`;
     const empty = renaming.touched && !renaming.title.trim();
     return (
       <form
@@ -95,18 +103,19 @@ export function CrewTab({
         onKeyDown={(ev) => ev.key === 'Escape' && setRenaming(null)}
       >
         <div className='flex items-center gap-3'>
-          <input
-            aria-label='반 제목'
-            value={renaming.title}
-            maxLength={CLASS_TITLE_MAX}
-            placeholder={cls ? undefined : '예: A반 · 미국 금요일반'}
-            aria-invalid={empty || undefined}
-            aria-describedby={errId}
-            onChange={(ev) => setRenaming({ ...renaming, title: ev.target.value })}
-            className='h-9 w-1/2 min-w-0 rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
-          />
+          <div className='w-1/2 min-w-0'>
+            <Input
+              size='sm'
+              aria-label='반 제목'
+              value={renaming.title}
+              maxLength={CLASS_TITLE_MAX}
+              placeholder={cls ? undefined : '예: A반 · 미국 금요일반'}
+              error={empty ? '반 제목을 입력해 주세요.' : undefined}
+              onChange={(ev) => setRenaming({ ...renaming, title: ev.target.value })}
+            />
+          </div>
           <div className='ml-auto flex shrink-0 gap-1.5'>
-            <Button type='button' size='sm' variant='ghost' onClick={() => setRenaming(null)}>
+            <Button type='button' size='sm' variant='tertiary' onClick={() => setRenaming(null)}>
               취소
             </Button>
             <Button type='submit' size='sm'>
@@ -114,9 +123,6 @@ export function CrewTab({
             </Button>
           </div>
         </div>
-        <p id={errId} role='status' className='type-label-sm text-error-600'>
-          {empty ? '반 제목을 입력해 주세요.' : ''}
-        </p>
       </form>
     );
   }
@@ -186,6 +192,7 @@ export function CrewTab({
 
   return (
     <div className='flex flex-col gap-6'>
+      <OwnerCaptainField value={ownerCaptainId} onChange={onOwnerCaptainChange} />
       <section data-anno='class:1'>
         <h2 className='flex items-baseline gap-2 type-title-lg'>
           반<span className='tnum type-label-lg text-fg-muted'>{classes.length}</span>
@@ -310,7 +317,7 @@ export function CrewTab({
                         onPick={(v) => applyBulk({ role: v as 'crew' | 'navigator' })}
                       />
                       {selected.length > 0 && (
-                        <Button size='sm' variant='ghost' onClick={() => setCheckedIds(new Set())}>
+                        <Button size='sm' variant='tertiary' onClick={() => setCheckedIds(new Set())}>
                           선택 해제
                         </Button>
                       )}
@@ -322,7 +329,7 @@ export function CrewTab({
                         {saved && changed === 0 ? '저장했습니다.' : ''}
                       </span>
                       {changed > 0 && (
-                        <Button variant='ghost' size='sm' onClick={discard}>
+                        <Button variant='tertiary' size='sm' onClick={discard}>
                           변경 취소
                         </Button>
                       )}
@@ -359,10 +366,9 @@ export function CrewTab({
                 // 고친 줄은 옅게 칠한다 — 저장 전인 것이 한눈에 보인다
                 <tr key={c.id} className={changedIds.has(c.id) ? 'bg-brand-subtle/40' : undefined}>
                   <td className='w-8'>
-                    <input
-                      type='checkbox'
-                      aria-label={`${c.name} 선택`}
-                      className={CHECKBOX}
+                    <Checkbox
+                      label={`${c.name} 선택`}
+                      hideLabel
                       checked={checkedIds.has(c.id)}
                       onChange={() => pick(c.id)}
                     />
@@ -380,11 +386,15 @@ export function CrewTab({
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
                   <td className='whitespace-nowrap text-fg-secondary'>{regionLabel(c.region)}</td>
                   <td data-anno='class:2' className='whitespace-nowrap'>
-                    {/* 반 이동 = 이 값 변경 */}
-                    <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
+                    {/* 반 이동 = 이 값 변경. 칸 너비가 아니라 글자 너비로 — 화살표가 상자 안에 붙게 감싼다 */}
+                    <div className='inline-flex'>
+                      <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
+                    </div>
                   </td>
                   <td data-anno='attendee:3-2' className='whitespace-nowrap'>
-                    <RolePick name={c.name} navigator={isNavigator(c.id)} onChange={(nav) => pickRole(c.id, nav)} />
+                    <div className='inline-flex'>
+                      <RolePick name={c.name} navigator={isNavigator(c.id)} onChange={(nav) => pickRole(c.id, nav)} />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -448,6 +458,53 @@ function withDraft<T>(drafts: Record<string, T>, id: string, value: T | undefine
   if (value === undefined) delete next[id];
   else next[id] = value;
   return next;
+}
+
+/**
+ * 담당 캡틴 — 스터디당 한 명, 캡틴 계정 중에서 고른다. 명부(참여 크루)와 상관없다.
+ *
+ * 명단의 반 · 역할처럼 모았다가 「저장」하지 않고 **고르는 즉시 저장**한다 — 명부 행이 아니라 스터디 한 칸이고,
+ * 한 번에 한 명만 바뀐다. 저장되기 전에는 지금 값 그대로 두고 옆에서 하나가 돈다 (유저 지면 권한 바꾸기와 같다).
+ */
+function OwnerCaptainField({ value, onChange }: { value: string; onChange: (captainId: string) => void }) {
+  const [saving, setSaving] = useState(false);
+  const options = captainOptions();
+  function pick(next: string) {
+    if (next === value) return;
+    setSaving(true);
+    // TODO(api): PATCH /api/admin/studies/{studyId}/owner-captain { accountId }
+    window.setTimeout(() => {
+      setSaving(false);
+      onChange(next);
+      toast.success('담당 캡틴을 바꿨습니다.');
+    }, 600);
+  }
+  return (
+    <section data-anno='attendee:4' className='card flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3'>
+      <h2 className='type-title-md'>담당 캡틴</h2>
+      <div className='flex items-center gap-2'>
+        <Select
+          size='sm'
+          data-anno='attendee:4-1'
+          aria-label='담당 캡틴'
+          value={value}
+          disabled={saving}
+          onChange={(ev) => pick(ev.target.value)}
+          className='w-auto border-border-strong text-neutral-900'
+        >
+          {options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </Select>
+        {saving && <Loader2 size={16} className='animate-spin text-fg-muted' aria-label='저장 중' />}
+      </div>
+      <p data-anno='attendee:4-2' className='type-body-sm text-fg-muted'>
+        신청 폼 수정 · 참여 중단 · 사이트 일정 관리를 맡습니다. 참여하지 않아도 됩니다.
+      </p>
+    </section>
+  );
 }
 
 /** 「반 추가」로 연 새 카드의 자리 표시 id — 저장하면 진짜 id 를 받는다. */

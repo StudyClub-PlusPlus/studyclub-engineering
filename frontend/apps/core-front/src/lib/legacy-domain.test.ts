@@ -1,6 +1,6 @@
+import { legacyRedirectUrl } from '@studyclub/utils';
 import { describe, expect, it } from 'vitest';
 
-import { legacyRedirectUrl } from './legacy-domain';
 
 describe('legacyRedirectUrl', () => {
   it('루트·서브도메인·경로·쿼리를 그대로 옮긴다', () => {

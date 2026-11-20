@@ -7,9 +7,9 @@ import type { NoticeFormValues } from '@console/components/NoticeForm';
 import { PageHeader } from '@console/components/ui';
 import { getUser } from '@console/lib/auth';
 import { seedNotices, type Notice } from '@console/lib/notices';
-import { todayISO } from '@studyclub/mock';
-import { Button, Pagination } from '@studyclub/ui';
-import { Plus } from 'lucide-react';
+import { Button, Input, Pagination } from '@studyclub/ui';
+import { todayISO } from '@studyclub/utils';
+import { Plus, Search } from 'lucide-react';
 
 /**
  * 공지 관리 — **스터디 관리 목록과 같은 모양**이다. 두 화면을 오가는 운영자가 다른 규칙을 외우지 않게.
@@ -42,6 +42,7 @@ function SortLabel({
 }) {
   return (
     <button
+      // ui-native: 표 머리 정렬 — 머리 글자 자체가 정렬 단추
       type='button'
       data-anno={anno}
       onClick={() => onChange(active === 'asc' ? 'desc' : 'asc')}
@@ -121,15 +122,18 @@ export function NoticesConsole() {
       />
 
       <div data-anno='notice:1' className='mb-3 flex flex-wrap items-center gap-2'>
-        <input
+        <Input
           type='search'
+          size='sm'
+          aria-label='공지 검색'
+          leadingIcon={<Search size={15} />}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
             setPage(1);
           }}
           placeholder='제목 검색'
-          className='h-9 w-44 shrink-0 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
+          className='w-44'
         />
         <span className='ml-auto shrink-0 pl-2 type-label-sm text-fg-muted'>{filtered.length}개</span>
       </div>
@@ -156,6 +160,7 @@ export function NoticesConsole() {
               <tr key={n.id}>
                 <td className='min-w-[22rem] max-w-[34rem]'>
                   <button
+                    // ui-native: 표의 제목 칸 — 누르면 그 공지를 여는 글자 링크
                     type='button'
                     onClick={() => setTarget(n.id)}
                     className='flex max-w-full items-center gap-1.5 text-left font-semibold underline-offset-4 hover:text-brand hover:underline'

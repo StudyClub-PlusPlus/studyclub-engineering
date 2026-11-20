@@ -1,13 +1,7 @@
 // 공지 탭의 순수 규칙 — 고르기 · 길이 · 안내 문구. 서버가 내려준 값을 읽어 그릴 문장만 만들고, 판정(보낼 수 있는가 · 한도)은 다시 하지 않는다.
-import type {
-  ApiNoticeCompose,
-  ApiNoticeItem,
-  ApiNoticeList,
-  ApiNoticeRecipient,
-  DiscordSkipReason,
-  NoticeChannel,
-  NoticeParticipantStatus,
-} from '@/lib/study-notice-api';
+import { z } from 'zod';
+
+import type { ApiNoticeCompose, ApiNoticeItem, ApiNoticeList, ApiNoticeRecipient, DiscordSkipReason, NoticeChannel, NoticeParticipantStatus } from '@/features/study-notices/types';
 
 /** POL-0010. 서버가 같은 값으로 검증한다. */
 export const NOTICE_LIMITS = { title: 60, body: 1500 } as const;
@@ -55,7 +49,23 @@ export function mentionedCount(recipients: ApiNoticeRecipient[], selected: Reado
   return recipients.filter((r) => selected.has(r.participantId) && r.discordLinked).length;
 }
 
-export type Draft = { title: string; body: string; channels: NoticeChannel[]; selectedCount: number };
+export const noticeDraftSchema = z.object({
+  title: z
+    .string()
+    .refine(
+      (value) => value.trim().length > 0 && value.trim().length <= NOTICE_LIMITS.title,
+      `제목은 1~${NOTICE_LIMITS.title}자로 써 주세요.`,
+    ),
+  body: z
+    .string()
+    .refine(
+      (value) => value.trim().length > 0 && value.trim().length <= NOTICE_LIMITS.body,
+      `본문은 1~${NOTICE_LIMITS.body.toLocaleString()}자로 써 주세요.`,
+    ),
+  channels: z.array(z.enum(['EMAIL', 'DISCORD'])).min(1, '보낼 곳을 하나 이상 골라 주세요.'),
+  selectedCount: z.number().int().positive('받는 사람을 하나 이상 골라 주세요.'),
+});
+export type Draft = z.infer<typeof noticeDraftSchema>;
 
 /** 앞뒤 공백을 자른 길이. 서버도 같은 기준으로 센다. */
 export const lengthOf = (value: string) => value.trim().length;
@@ -92,10 +102,7 @@ export function pruneSelection(selected: ReadonlySet<number>, recipients: ApiNot
  * - `form`: 폼을 그린다. `staleError` 가 true 면 최신 값을 못 받았다는 안내를 폼 위에 함께 보인다
  */
 export type ComposeView =
-  | { kind: 'loading' }
-  | { kind: 'error' }
-  | { kind: 'forbidden' }
-  | { kind: 'form'; staleError: boolean };
+  { kind: 'loading' } | { kind: 'error' } | { kind: 'forbidden' } | { kind: 'form'; staleError: boolean };
 
 export function composeView(state: { hasData: boolean; isError: boolean; errorStatus?: number | null }): ComposeView {
   if (state.isError && state.errorStatus === 403) return { kind: 'forbidden' };
@@ -140,16 +147,7 @@ export function nextRefetchDelay(
 
 /** 서버가 보낼 수 있다고 한 때(`canSend`)에만, 글과 보낼 곳과 받는 사람이 갖춰졌을 때 보낼 수 있다. */
 export function canSubmit(draft: Draft, compose: Pick<ApiNoticeCompose, 'canSend'>): boolean {
-  const p = draftProblems(draft);
-  return (
-    compose.canSend &&
-    p.titleLen > 0 &&
-    !p.titleOver &&
-    p.bodyLen > 0 &&
-    !p.bodyOver &&
-    draft.channels.length > 0 &&
-    draft.selectedCount > 0
-  );
+  return compose.canSend && noticeDraftSchema.safeParse(draft).success;
 }
 
 /** 보낼 곳을 서버 값에 맞춘다 — 디스코드를 못 쓰는 상태에서 고른 디스코드는 뺀다. */

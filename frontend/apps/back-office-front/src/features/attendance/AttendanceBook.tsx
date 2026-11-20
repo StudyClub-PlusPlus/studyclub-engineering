@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { Badge, Button, Checkbox, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
-import { CircleHelp, Mic, Undo2 } from 'lucide-react';
+import { Badge, Button, Checkbox, Modal, Select, SelectionCount, TableActionBar, HelpPopover } from '@studyclub/ui';
+import { Mic, Undo2 } from 'lucide-react';
 
-import { attendanceRateOf, changedCount, cloneBook, nextStatus, STATUS_LABEL } from './book';
-import type { AttendanceBook as Book, AttendanceStatus } from '@/features/schedule/store';
+import { attendanceRateOf, changedCount, cloneBook, nextStatus, STATUS_LABEL } from '@/features/attendance/book';
+import type { AttendanceStatus, AttendanceBook as Book } from '@/features/schedule/store';
 
 /**
  * 출석부 — 크루 × 회차 격자. 명세: playground `console/studies/[id]/spec.ts` 의 `ATTENDANCE_SPEC`.
@@ -103,6 +103,7 @@ function Cell({
   const label = `${status ? STATUS_LABEL[status] : '미체크'}${presenting ? ' · 발표' : ''}`;
   return (
     <button
+      // ui-native: 출석부 칸 — 칸 전체가 누르는 곳이고 누를 때마다 상태가 돈다
       type='button'
       onClick={onClick}
       aria-label={changed ? `${label} · 저장되지 않음` : label}
@@ -120,57 +121,21 @@ function Cell({
 
 /** 제목 옆 「?」 — 칸 왼쪽 위 마이크가 무엇인지. 누르면 열고, 바깥 · Esc 로 닫는다. */
 function PresenterHelp() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
   return (
-    <span ref={ref} className='relative inline-flex align-middle'>
-      <button
-        type='button'
-        aria-label='발표 표시 설명'
-        aria-expanded={open}
-        aria-controls='presenter-help'
-        onClick={() => setOpen((v) => !v)}
-        className='grid h-6 w-6 place-items-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg'
-      >
-        <CircleHelp size={15} aria-hidden />
-      </button>
-      {open && (
-        <div
-          id='presenter-help'
-          role='dialog'
-          aria-label='발표 표시 설명'
-          className='absolute -left-24 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-2rem)] rounded-card border border-border bg-surface-raised p-3 text-left type-label-sm text-fg-secondary shadow-md sm:left-0'
-        >
-          <p className='flex items-center gap-1.5 font-semibold text-fg'>
-            <span className='relative grid h-8 w-[3.6rem] shrink-0 place-items-center rounded-sm bg-success-100 type-label-lg text-success-700'>
-              <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
-              출석
-            </span>
-            칸 왼쪽 위 마이크 = 그 회차 발표자
-          </p>
-          <ul className='mt-2 list-disc space-y-1 pl-4'>
-            <li>일정 탭의 발표자1 · 발표자2에서 가져옵니다. 여기서 따로 입력하지 않습니다.</li>
-            <li>발표자를 바꾸면 마이크도 따라 바뀝니다.</li>
-            <li>「발표 횟수」는 발표자로 맡은 회차 수입니다. 아직 오지 않은 회차의 배정도 셉니다.</li>
-          </ul>
-        </div>
-      )}
-    </span>
+    <HelpPopover label='발표 표시 설명'>
+      <p className='flex items-center gap-1.5 font-semibold text-fg'>
+        <span className='relative grid h-8 w-[3.6rem] shrink-0 place-items-center rounded-sm bg-success-100 type-label-lg text-success-700'>
+          <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
+          출석
+        </span>
+        칸 왼쪽 위 마이크 = 그 회차 발표자
+      </p>
+      <ul className='mt-2 list-disc space-y-1 pl-4'>
+        <li>일정 탭의 발표자1 · 발표자2에서 가져옵니다. 여기서 따로 입력하지 않습니다.</li>
+        <li>발표자를 바꾸면 마이크도 따라 바뀝니다.</li>
+        <li>「발표 횟수」는 발표자로 맡은 회차 수입니다. 아직 오지 않은 회차의 배정도 셉니다.</li>
+      </ul>
+    </HelpPopover>
   );
 }
 
@@ -416,7 +381,7 @@ export function AttendanceBook({
                 참여 중단
               </Button>
               {selected.length > 0 && (
-                <Button size='sm' variant='ghost' onClick={() => setPicked(new Set())}>
+                <Button size='sm' variant='tertiary' onClick={() => setPicked(new Set())}>
                   선택 해제
                 </Button>
               )}
@@ -434,7 +399,7 @@ export function AttendanceBook({
           save={
             <>
               {dirty && (
-                <Button variant='ghost' size='sm' onClick={revert}>
+                <Button variant='tertiary' size='sm' onClick={revert}>
                   변경 취소
                 </Button>
               )}
@@ -562,6 +527,7 @@ export function AttendanceBook({
                         {pendingLeave && (
                           // 저장 전이라 아직 중단이 아니다 — 칩 없이 되돌리기 아이콘만. 줄 색이 예정임을 말한다
                           <button
+                            // ui-native: 출석부 줄의 되돌리기 아이콘 — 옆으로 뜨는 고유 말풍선이 붙어 IconButton 으로 담지 못한다
                             type='button'
                             aria-label={`${r.name} 중단 예정 취소`}
                             onClick={() => unmarkWithdraw(r.id)}

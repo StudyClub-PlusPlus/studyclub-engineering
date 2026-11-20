@@ -1,11 +1,11 @@
 ---
 name: spec
-description: "API 스펙을 생성·계획·태스크 도출·검증한다. specs/{도메인}/ 폴더에 구조화된 파일(spec.md, plan.md, tasks.md)을 만든다."
+description: "API 스펙을 생성·계획·태스크 도출·검증한다. specs/{도메인}/ 폴더에 구조화된 파일(spec.md, plan.md, tasks.md)을 만든다. 새 API 를 구현하기 전에 스펙을 먼저 쓸 때, 엔드포인트를 스펙에 추가할 때, 구현 계획·태스크를 뽑을 때, 스펙과 ERD·FE·구현 코드가 맞는지 검증할 때 쓴다. 「스펙 써줘」「API 스펙」「엔드포인트 추가」「스펙 리뷰」「스펙이랑 구현 맞는지 봐줘」「/spec study」"
 ---
 
 # /spec — API 스펙 관리 스킬
 
-spec-kit 스타일의 구조화된 스펙 관리. `specs/{도메인}/` 폴더에 spec.md → plan.md → tasks.md 를 만들고 검증한다.
+`specs/{도메인}/` 에 spec.md → plan.md → tasks.md 를 만들고 검증한다. 상태 값·전이 규칙의 정본은 [`docs/backend-development-guide/spec-driven-development.md`](../../../docs/backend-development-guide/spec-driven-development.md) 다.
 
 ## 사용법
 
@@ -81,7 +81,7 @@ specs/
 - **nullable** 은 ERD 의 NULL 컬럼을 따른다
 - **enum** 값은 백엔드 도메인 엔티티의 enum 정의를 따른다
 - **소스 컬럼**을 반드시 표기: `STUDY.TITLE`, `STUDY_COHORT.STATUS`, `계산: now() < deadline`
-- **판정은 필드로 준다** — 화면이 "모집 중인가·찼나·할 수 있나·몇 %" 를 보여주면 그 결론을 응답 필드로 넣는다 (`recruitStatus`, `can*`, `attendanceRate`). 재료(날짜·인원)만 주고 프론트가 계산하게 두지 않는다. 소스는 `계산: {엔티티 메서드}` 로 적고, 같은 판정이 다른 스펙에 있으면 링크한다 ([`docs/backend-development-guide/api/endpoint-convention.md`](../../docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다))
+- **판정은 필드로 준다** — 화면이 "모집 중인가·찼나·할 수 있나·몇 %" 를 보여주면 그 결론을 응답 필드로 넣는다 (`recruitStatus`, `can*`, `attendanceRate`). 재료(날짜·인원)만 주고 프론트가 계산하게 두지 않는다. 소스는 `계산: {엔티티 메서드}` 로 적고, 같은 판정이 다른 스펙에 있으면 링크한다 ([`docs/backend-development-guide/api/endpoint-convention.md`](../../../docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다))
 - **에러 응답**은 인증(401)·권한(403)·없음(404)·충돌(409) 중 해당하는 것
 - 불확실한 부분은 **`[NEEDS CLARIFICATION]`** 로 명시. 추측하지 않는다
 - 상태는 `스펙작성중` 으로 표기

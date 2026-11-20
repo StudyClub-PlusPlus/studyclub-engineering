@@ -1,11 +1,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import type { Locale } from '@studyclub/types';
+import { ButtonLink } from '@studyclub/ui';
+
 import { MobileNav } from '@/components/MobileNav';
 import { MyStudiesLink } from '@/components/MyStudiesLink';
 import { NavAuth } from '@/components/NavAuth';
 import { NavLinks } from '@/components/NavLinks';
-import type { Locale } from '@/lib/content';
+import { FEATURES } from '@/lib/features';
 import { m } from '@/lib/i18n';
 
 export function SiteHeader({
@@ -20,7 +23,7 @@ export function SiteHeader({
   const other: Locale = locale === 'ko' ? 'en' : 'ko';
   const links = [
     { href: `/${locale}/studies`, label: m('nav.studies', locale) },
-    { href: `/${locale}/events`, label: m('nav.events', locale) },
+    ...(FEATURES.EVENTS ? [{ href: `/${locale}/events`, label: m('nav.events', locale) }] : []),
     { href: `/${locale}/guide`, label: m('nav.guide', locale) },
     { href: `/${locale}/notices`, label: m('nav.notices', locale) },
     { href: `/${locale}/about`, label: m('nav.about', locale) },
@@ -32,7 +35,9 @@ export function SiteHeader({
       <div className='mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6 md:gap-7'>
         <Link href={`/${locale}`} className='flex shrink-0 items-center gap-2 type-title-md'>
           <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
-          StudyClub
+          <span>
+            Study<span className='text-logo-accent'>Club</span>
+          </span>
         </Link>
 
         <NavLinks links={links} mentoring={mentoring} />
@@ -44,23 +49,23 @@ export function SiteHeader({
           >
             {other.toUpperCase()}
           </Link>
-          <a
+          <ButtonLink
+            variant='tertiary'
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='hidden rounded-full px-4 py-2 type-label-lg text-white shadow-sm transition-colors sm:block'
-            style={{ background: 'var(--color-brand)' }}
+            className='hidden sm:inline-flex'
           >
             {m('nav.join', locale)}
-          </a>
+          </ButtonLink>
           <MyStudiesLink locale={locale} />
-          <NavAuth locale={locale} />
           <MobileNav
             locale={locale}
             links={links}
             mentoring={mentoring}
             join={{ href: discordUrl, label: m('nav.join', locale) }}
           />
+          <NavAuth locale={locale} />
         </div>
       </div>
     </header>

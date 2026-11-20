@@ -99,6 +99,7 @@ export function RoleBadgeSelect({
   return (
     <>
       <button
+        // ui-native: 역할 고르기 열기 — 역할 뱃지 모양의 고유 listbox 팝오버 단추
         ref={buttonRef}
         type='button'
         onMouseDown={(e) => e.stopPropagation()}
@@ -124,6 +125,7 @@ export function RoleBadgeSelect({
         >
           {ACCOUNT_ROLES.map((r) => (
             <button
+              // ui-native: 역할 목록의 한 줄 — listbox 팝오버의 option
               key={r}
               type='button'
               role='option'

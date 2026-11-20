@@ -11,7 +11,7 @@ import {
   type StudyFormErrors,
   type StudyFormValues,
 } from '@console/components/StudyForm';
-import type { Study } from '@studyclub/mock';
+import type { Study } from '@studyclub/types';
 import { Button, Modal } from '@studyclub/ui';
 
 import { ScreenSpecRegistrar } from '@/proto/annotate';

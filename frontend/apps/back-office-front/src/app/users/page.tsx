@@ -5,8 +5,8 @@
 // 서버 상태는 features/users/queries.ts, 이 페이지는 탭·검색·페이지 입력과 「보기」로 받은 원본만 들고 있다.
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
-import { Pagination, Segmented } from '@studyclub/ui';
-import { Info } from 'lucide-react';
+import { Input, Pagination, Segmented, IconButton } from '@studyclub/ui';
+import { Info, Search } from 'lucide-react';
 
 import { PageHeader } from '@/components/ui';
 import { PermissionMatrixDialog } from '@/features/users/components/PermissionMatrixDialog';
@@ -14,6 +14,7 @@ import { UsersTable } from '@/features/users/components/UsersTable';
 import { TAB_OPTIONS } from '@/features/users/labels';
 import { useUsers } from '@/features/users/queries';
 import { USER_PAGE_SIZE, type UserFilter, type UserRole } from '@/features/users/types';
+import { useRevealedDiscordHandles } from '@/features/users/use-revealed-discord-handles';
 import { useRevealedEmails } from '@/features/users/use-revealed-emails';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
@@ -58,7 +59,8 @@ function UsersAdminContent() {
   );
 
   const { data, error, isPending, isPlaceholderData, dataUpdatedAt } = useUsers(filter);
-  const { emails, reveal } = useRevealedEmails(dataUpdatedAt);
+  const { emails, reveal, hide } = useRevealedEmails(dataUpdatedAt);
+  const { handles, reveal: revealDiscord, hide: hideDiscord } = useRevealedDiscordHandles(dataUpdatedAt);
 
   // 권한을 바꾼 뒤 필터 결과가 줄면 지금 페이지가 범위 밖일 수 있다(서버는 빈 items + 실제 total).
   // 에러가 아니므로 total 로 마지막 페이지를 계산해 다시 부른다(결과가 아예 없으면 첫 페이지).
@@ -77,15 +79,14 @@ function UsersAdminContent() {
       <PageHeader
         title='유저'
         action={
-          <button
-            type='button'
+          <IconButton
+            variant='tertiary'
+            size='sm'
             onClick={() => setMatrixOpen(true)}
             title='역할별 기본 권한'
             aria-label='역할별 기본 권한'
-            className='grid h-8 w-8 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-          >
-            <Info size={17} />
-          </button>
+            icon={<Info />}
+          />
         }
       />
 
@@ -97,14 +98,16 @@ function UsersAdminContent() {
           value={tab}
           onChange={(next) => setFilters({ role: next, page: '1' })}
         />
-        <input
+        <Input
           type='search'
+          size='sm'
+          leadingIcon={<Search size={15} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder='이름 · 이메일 검색'
           aria-label='이름 · 이메일 검색'
           maxLength={100}
-          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
+          className='w-56'
         />
         {/* 탭·검색으로 걸러진 뒤의 수다 — 표 위에 두어야 무엇을 세고 있는지가 분명하다 */}
         <span className='tnum ml-auto type-body-sm text-fg-muted'>{data && `총 ${data.total}명`}</span>
@@ -119,7 +122,17 @@ function UsersAdminContent() {
       {isPending && !error ? (
         <p className='py-10 text-center type-body-sm text-fg-muted'>불러오는 중…</p>
       ) : (
-        data && <UsersTable rows={data.items} revealed={emails} onReveal={reveal} />
+        data && (
+          <UsersTable
+            rows={data.items}
+            revealed={emails}
+            onReveal={reveal}
+            onHide={hide}
+            revealedDiscord={handles}
+            onRevealDiscord={revealDiscord}
+            onHideDiscord={hideDiscord}
+          />
+        )
       )}
 
       <Pagination page={page} total={pageCount} onChange={setPage} className='mt-4' />

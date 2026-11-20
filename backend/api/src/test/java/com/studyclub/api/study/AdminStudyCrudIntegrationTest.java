@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.discord.StudyDiscordLink;
+import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.study.StudyRepository;
@@ -48,6 +50,7 @@ class AdminStudyCrudIntegrationTest {
     @Autowired AccountRepository accountRepository;
     @Autowired StudyRepository studyRepository;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired StudyDiscordLinkRepository studyDiscordLinkRepository;
 
     @BeforeEach
     void setUp() {
@@ -75,6 +78,24 @@ class AdminStudyCrudIntegrationTest {
         assertThat(response.getBody())
                 .containsEntry("title", "백오피스 상세")
                 .containsEntry("status", "DRAFT");
+    }
+
+    @Test
+    @DisplayName("상세의 연결 여부는 URL 입력 여부가 아닌 저장된 디스코드 연결을 따른다")
+    void detailReflectsDiscordLink() {
+        Long studyId = createStudy("디스코드 연결 상태");
+        jdbcTemplate.update(
+                "UPDATE STUDY SET DISCORD_CHANNEL_URL = ? WHERE ID = ?",
+                "https://discord.com/channels/123/456",
+                studyId);
+        var unlinked = exchange(HttpMethod.GET, "/api/admin/studies/" + studyId, ADMIN_ID, null);
+        assertThat(unlinked.getBody()).containsEntry("discordLinked", false);
+
+        studyDiscordLinkRepository.save(
+                new StudyDiscordLink(studyId, "1327394882193883136", "1327394882193883140"));
+        jdbcTemplate.update("UPDATE STUDY SET DISCORD_CHANNEL_URL = NULL WHERE ID = ?", studyId);
+        var linked = exchange(HttpMethod.GET, "/api/admin/studies/" + studyId, ADMIN_ID, null);
+        assertThat(linked.getBody()).containsEntry("discordLinked", true);
     }
 
     @Test

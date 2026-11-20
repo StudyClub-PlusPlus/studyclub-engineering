@@ -1,6 +1,7 @@
 'use client';
 
-import { getStudyCrew, type AttendanceStatus, type Crew, type Study } from '@studyclub/mock';
+import { getStudyCrew } from '@studyclub/mock';
+import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
 
 /**
  * 네비게이터가 사용자 사이트에서 고치는 출석부 — **맡은 분반의 참여자만**.

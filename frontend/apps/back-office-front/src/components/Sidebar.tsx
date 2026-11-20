@@ -4,16 +4,28 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { LayoutDashboard, BookOpen, CalendarDays, Users, Mail, Megaphone, LogOut } from 'lucide-react';
+import { IconButton } from '@studyclub/ui';
+import { BookOpen, CalendarDays, LayoutDashboard, LogOut, Mail, Megaphone, MessageSquare, Users } from 'lucide-react';
 
-import { getUser, logout, type SessionUser } from '@/lib/auth';
+import { getUser, logout, type SessionUser } from '@/features/auth/auth';
+import { FEATURES } from '@/lib/features';
 
-const NAV = [
+const NAV: Array<{
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number }>;
+  exact?: boolean;
+  also?: string[];
+  feature?: keyof typeof FEATURES;
+}> = [
   { href: '/', label: '대시보드', icon: LayoutDashboard, exact: true },
   { href: '/studies', label: '스터디', icon: BookOpen },
-  { href: '/events', label: '행사', icon: CalendarDays },
+  // feature 플래그가 false 이면 렌더에서 숨긴다 (FEATURES.EVENTS = true 로 바꾸면 메뉴 노출)
+  { href: '/events', label: '행사', icon: CalendarDays, feature: 'EVENTS' },
   // 스터디원 + 운영진을 "유저" 하나로 통합 (실제 DB 유저 표시)
   { href: '/users', label: '유저', icon: Users },
+  // 크루가 보낸 문의 · 개선 의견 · 오류 신고.
+  { href: '/feedbacks', label: '문의·오류 신고', icon: MessageSquare },
   // 알림 템플릿과 발송 이력은 한 메뉴의 두 탭이다 — 어느 쪽 화면에 있어도 「알림」이 활성이다
   { href: '/notifications', label: '알림', icon: Mail, also: ['/notification-templates'] },
   // 사이트 전체 공지(캡틴이 올린다). 네비게이터의 반 공지(알림)와는 다른 메뉴다
@@ -49,6 +61,7 @@ export function Sidebar() {
       </div>
       <nav className='flex flex-1 flex-col gap-0.5 p-3'>
         {NAV.map((item) => {
+          if (item.feature && !FEATURES[item.feature]) return null;
           const active = item.exact
             ? pathname === item.href
             : [item.href, ...(item.also ?? [])].some((prefix) => pathname.startsWith(prefix));
@@ -87,14 +100,14 @@ export function Sidebar() {
               <div className='truncate type-label-lg'>{user.nickname ?? '운영자'}</div>
               <div className='truncate type-label-sm text-[var(--color-fg-muted)]'>{user.email}</div>
             </div>
-            <button
-              type='button'
+            <IconButton
+              variant='tertiary'
+              size='sm'
               onClick={handleLogout}
               title='로그아웃'
-              className='grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--color-fg-muted)] transition-colors hover:bg-[var(--color-surface-subtle)] hover:text-danger-fg'
-            >
-              <LogOut size={15} />
-            </button>
+              aria-label='로그아웃'
+              icon={<LogOut />}
+            />
           </div>
         ) : (
           <div className='px-1 py-2 type-label-sm text-[var(--color-fg-muted)]'>로그인 필요</div>

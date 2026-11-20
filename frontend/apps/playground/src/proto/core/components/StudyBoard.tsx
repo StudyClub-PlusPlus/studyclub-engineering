@@ -1,15 +1,19 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
 import { meetingsOf } from '@core/lib/attendance';
 import { canOpenDiscord, canOpenDrive, discordUrl, driveUrl } from '@core/lib/joined';
-import { DOW_LABEL, dowOf, isKickoff, zoneLabel, type NavigatorGroup, type ScheduleRole } from '@core/lib/meetings';
+import { dowOf, isKickoff, type NavigatorGroup, type ScheduleRole } from '@core/lib/meetings';
+import { regularScheduleDisplay } from '@core/lib/regular-schedule';
 import { navigatorNameOf } from '@core/lib/schedule-board';
-import type { Study } from '@studyclub/mock';
-import { Button } from '@studyclub/ui';
-import { ExternalLink } from 'lucide-react';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
+import { getStudyCrew } from '@studyclub/mock';
+import { type Study } from '@studyclub/types';
+import { Button, HelpPopover } from '@studyclub/ui';
+import { ExternalLink, Info } from 'lucide-react';
 
 /**
  * 사용자 사이트 스터디 정보 카드 — 내 분반의 시간 · 네비게이터 · 바로가기 · 규칙.
@@ -31,16 +35,29 @@ export function StudyBoard({
   onDirtyChange: (dirty: boolean) => void;
 }) {
   const router = useRouter();
-  // 시트의 「스터디 시간 : 목요일 7PM PDT」 — 요일은 첫 정규 회차에서, 시각·시간대는 분반에서.
-  const firstRegular = meetingsOf(study).find((m) => !isKickoff(m));
-  const time = firstRegular
-    ? `매주 ${DOW_LABEL[dowOf(firstRegular.date)]}요일 ${group.startAt} ${zoneLabel(group.timeZone)}`
-    : `${group.startAt} ${zoneLabel(group.timeZone)}`;
+  const viewerZone = useDisplayTimeZone();
+  const [, setRevision] = useState(0);
+  useEffect(() => {
+    const refresh = () => setRevision((n) => n + 1);
+    window.addEventListener('storage', refresh);
+    window.addEventListener('sc:meetings-change', refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('sc:meetings-change', refresh);
+    };
+  }, []);
+  // mock에는 분반 요일이 없어 최초 원본 회차에서 읽는다. 개별 회차를 옮겨도 정규 요일은 바꾸지 않는다.
+  const firstRegular = getStudyCrew(study).meetings.find((m) => !isKickoff(m));
+  const regularGroup = {
+    ...group,
+    weekdays: group.weekdays ?? (firstRegular ? [dowOf(firstRegular.date)] : []),
+  };
+  const time = regularScheduleDisplay(regularGroup, meetingsOf(study), viewerZone);
 
   return (
     <StudyInfoCard
       anno='manage:3'
-      time={time}
+      time={<RegularTime summary={time} />}
       navigator={navigatorNameOf(study, role)}
       leadingAction={
         role === 'captain' ? (
@@ -63,5 +80,17 @@ export function StudyBoard({
       canEdit={canEdit}
       onDirtyChange={onDirtyChange}
     />
+  );
+}
+
+function RegularTime({ summary }: { summary: ReturnType<typeof regularScheduleDisplay> }) {
+  return (
+    <span className='inline-block'>
+      {summary.label}{' '}
+      <HelpPopover label='스터디 시간 기준 안내' icon={<Info />}>
+        <span className='block font-semibold text-fg'>반 기준: {summary.original}</span>
+        <span className='mt-1 block'>서머타임에 따라 내 지역의 시간이 달라질 수 있어요.</span>
+      </HelpPopover>
+    </span>
   );
 }

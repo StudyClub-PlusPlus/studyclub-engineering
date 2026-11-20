@@ -5,13 +5,14 @@ import { useEffect, useState } from 'react';
 
 import { AttendanceTab } from '@console/components/AttendanceTab';
 import { ruleFromMeetings } from '@console/lib/schedule';
-import { SegmentTabs } from '@core/components/SegmentTabs';
 import { useManage } from '@core/components/StudyManageShell';
 import { getMyAttendance, meetingWindow, meetingsOf } from '@core/lib/attendance';
-import { bookFromSchedule, DISPLAY_ZONES, wallParts } from '@core/lib/meetings';
+import { bookFromSchedule, wallParts } from '@core/lib/meetings';
 import { getGroupAttendance, saveGroupAttendance, type AttendanceBook } from '@core/lib/navigator-attendance';
 import { ME_ID, participantsOf, withdrawParticipant } from '@core/lib/schedule-board';
 import { dropPresenters, studySource } from '@core/lib/schedule-source';
+import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { Button } from '@studyclub/ui';
 
 import { ATTENDANCE_SPEC, MANAGE_SPEC } from '../spec';
@@ -26,7 +27,7 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
  *
  * 캡틴·네비게이터는 체크박스로 참여자를 골라 출석을 한 번에 적용하거나 「중단 예정」으로 둔다.
  * 운영진(나 · 캡틴 · 네비게이터)도 고를 수 있다 — 참여 중단만 막는다.
- * 회차 머리의 일자·시각은 일정 탭처럼 KST/PDT 로 바꿔 본다.
+ * 회차 머리의 날짜는 내 프로필 시간대로 표시한다. 출석 판정·집계는 반 기준을 유지한다.
  * 저장을 누르면 확인 창을 거쳐 출석과 참여 중단이 함께 반영된다. 되돌리기는 없다.
  * 하차·제명을 가르지 않는다 — 사유는 묻지도 남기지도 않는다.
  */
@@ -34,10 +35,7 @@ export default function StudyManageAttendancePage() {
   const router = useRouter();
   const { study, group, locale, canEdit, setDirty } = useManage();
   const [book, setBook] = useState<AttendanceBook | null>(null);
-  /** 회차 머리를 어느 시간대로 보일지. 일정 탭과 같다 — 처음엔 분반 시간대, 탭에 없는 시간대면 KST. */
-  const [zone, setZone] = useState<string>(
-    DISPLAY_ZONES.some((z) => z.iana === group.timeZone) ? group.timeZone : DISPLAY_ZONES[0].iana,
-  );
+  const zone = useDisplayTimeZone();
   /** 중단·재개 뒤 다시 그려 명단을 새로 읽는다 — 프로토는 브라우저 저장소에서 읽는다. */
   const [, rerender] = useState(0);
 
@@ -119,13 +117,9 @@ export default function StudyManageAttendancePage() {
             startAt={group.startAt}
             title='출석'
             toolbar={
-              <SegmentTabs
-                anno='book:3-11'
-                label='회차 표시 시간대'
-                value={zone}
-                options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
-                onChange={setZone}
-              />
+              <span data-anno='book:3-11' className='type-label-sm text-fg-secondary'>
+                내 시간대: {scheduleZoneTitle(zone, locale === 'en' ? 'en' : 'ko')}
+              </span>
             }
             whenOf={(m) => wallParts(meetingWindow(study, m).start, zone)}
           />

@@ -6,11 +6,10 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { mockHandlerGroups } from '@studyclub/mock/msw';
 import { QueryClientProvider } from '@tanstack/react-query';
 
+import { AnalyticsPrivacy } from '@/components/AnalyticsPrivacy';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { ThirdPartyAnalytics } from '@/components/ThirdPartyAnalytics';
-import { initAmplitude } from '@/lib/amplitude';
-import { captureFirstTouch, syncAnalyticsUser } from '@/lib/analytics';
-import { getUser, USER_CHANGED_EVENT } from '@/lib/auth';
+import { dropLegacyDemoSeed } from '@/features/account/local-state';
 import { getQueryClient } from '@/lib/query-client';
 
 const MSWProvider = dynamic(() => import('@studyclub/mock/msw').then((m) => m.MSWProvider), { ssr: false });
@@ -20,20 +19,9 @@ const USE_MSW = process.env.NODE_ENV === 'development';
 
 const loadWorker = () => import('msw/browser').then(({ setupWorker }) => setupWorker());
 
-function AmplitudeInit() {
-  useEffect(() => {
-    initAmplitude();
-    captureFirstTouch();
-    // 로그인·로그아웃·프로필 저장이 모두 세션 user 를 바꾸며 이 이벤트를 쏜다 — 여기 한 곳에서 맞춘다
-    const sync = () => syncAnalyticsUser(getUser());
-    sync();
-    window.addEventListener(USER_CHANGED_EVENT, sync);
-    return () => window.removeEventListener(USER_CHANGED_EVENT, sync);
-  }, []);
-  return null;
-}
-
 function MswQueryInvalidator() {
+  // 예전 개발 서버가 채운 더미 신청·관심을 지운다 — MSW 를 꺼도 더미가 보였다
+  useEffect(() => dropLegacyDemoSeed(), []);
   useEffect(() => {
     const handler = () => {
       getQueryClient().invalidateQueries();
@@ -50,7 +38,7 @@ export function Providers({ children }: { children: ReactNode }) {
   const app = (
     <QueryClientProvider client={queryClient}>
       <ThirdPartyAnalytics />
-      <AmplitudeInit />
+      <AnalyticsPrivacy />
       <PageViewTracker />
       {USE_MSW && <MswQueryInvalidator />}
       {children}

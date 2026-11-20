@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 
 import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
@@ -15,26 +15,20 @@ import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import { classView, FIRST_CLASS, type ClassView } from '@console/lib/class-view';
 import { classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
 import { tx } from '@console/lib/l10n';
+import { useStudiesListHref } from '@console/lib/list-return';
 import { type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
+import { studyAuthor } from '@console/lib/users';
 import { ScheduleManager } from '@core/components/ScheduleManager';
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
 import { discordUrl, driveUrl } from '@core/lib/joined';
 import { DISPLAY_ZONES, wallParts, zonedInstant, type ProtoMeeting } from '@core/lib/meetings';
 import { dropPresenters } from '@core/lib/schedule-source';
-import {
-  attendanceRate,
-  getStudyCrew,
-  publishState,
-  recruitState,
-  toISODate,
-  todayISO,
-  type AttendanceStatus,
-  type Crew,
-  type Study,
-} from '@studyclub/mock';
-import { Badge, Button, Modal } from '@studyclub/ui';
+import { getStudyCrew } from '@studyclub/mock';
+import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
+import { Badge, Button, Modal, Switch, Tabs } from '@studyclub/ui';
+import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState, recruitState, toISODate, todayISO } from '@studyclub/utils';
 import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
 import { useAnnotate } from '@/proto/annotate';
@@ -110,6 +104,8 @@ export function StudyConsole({ study }: { study: Study }) {
   // 이 스터디를 맡은 크루. 역할은 스터디마다 따로 서므로 전역 역할 값과 섞지 않는다.
   // TODO(api): STUDY_PARTICIPANT 에 담당 표시가 필요하다. 지금은 화면 상태로만 둔다.
   const [navigators, setNavigators] = useState<string[]>([]);
+  // 담당 캡틴 — 스터디당 한 명. 처음 값은 만든 캡틴이다. 명부와 따로 선다 (STUDY.OWNER_CAPTAIN_ID)
+  const [ownerCaptainId, setOwnerCaptainId] = useState<string>(() => studyAuthor(study).id);
   // 참여 중단한 크루 — 출석부에서 고른다. 하차 · 제명을 가르지 않고, 되돌리지 않는다 (사용자 사이트와 같다).
   // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT
   const [left, setLeft] = useState<Record<string, { at: string }>>({});
@@ -165,6 +161,36 @@ export function StudyConsole({ study }: { study: Study }) {
   }, []);
 
   const active = crew;
+  // 위 카드의 출석률 — 모든 반의 분자 · 분모를 합친다(반별 평균을 다시 평균하지 않는다).
+  // 출석 탭과 같은 규칙: 휴가 · 킥오프 · 중단 뒤 회차는 뺀다. 프로토는 목 데이터로 셈하고, 실제는 서버 값을 그린다.
+  const studyRate = useMemo(() => {
+    let score = 0;
+    let total = 0;
+    for (const cls of classes) {
+      const v = classView({
+        study,
+        cls,
+        base: meetings[cls.id] ?? [],
+        crew: active.filter((c) => assign[c.id] === cls.id),
+        navigators,
+        left,
+      });
+      if (!v) continue;
+      for (const c of v.crew) {
+        const gone = new Set(
+          v.meetings
+            .filter((m) => c.left && `${m.date}T${m.time ?? v.group.startAt}` > c.left.at)
+            .map((m) => m.id),
+        );
+        for (const [mid, s] of Object.entries(books[cls.id]?.[c.id] ?? {})) {
+          if (s === 'excused' || v.book.notCounted?.has(mid) || gone.has(mid)) continue;
+          score += attendancePoint(s);
+          total += 1;
+        }
+      }
+    }
+    return total === 0 ? undefined : Math.round((score / total) * 100);
+  }, [classes, study, meetings, active, assign, navigators, left, books]);
   const open = recruitState(study) === 'apply';
   const deadline = toISODate(study.recruitment?.deadline);
   // 마감까지 남은 날. 마감일은 필수라 늘 있다 — 값이 비어 있는 옛 데이터만 undefined.
@@ -172,8 +198,21 @@ export function StudyConsole({ study }: { study: Study }) {
     deadline === undefined
       ? undefined
       : Math.round((Date.parse(`${deadline}T00:00:00Z`) - Date.parse(`${todayISO()}T00:00:00Z`)) / 86_400_000);
+  // 목록에 걸어 둔 필터 · 정렬 · 페이지로 돌아간다
+  const listHref = useStudiesListHref();
+  // 사이트 공개 — 화면 상태로만 바꾼다(새로고침하면 되돌아간다). 목록 「스터디 공개」 칸과 같은 규칙 · 같은 확인 팝업
+  const [published, setPublished] = useState(() => publishState(study) !== 'draft');
+  const [publishConfirm, setPublishConfirm] = useState<boolean | null>(null);
   // 아직 켜지 않은 스터디는 사이트에 없다 — 헤더에서 그 사실을 알린다.
-  const draft = publishState(study) === 'draft';
+  const draft = !published;
+  const publishReasonId = useId();
+  const publishBlocked = published
+    ? lifecycleState(study) !== 'OPEN' && lifecycleState(study) !== 'DRAFT'
+      ? '진행 중이거나 종료된 스터디는 비공개로 돌릴 수 없습니다.'
+      : undefined
+    : applyFormUrl(study) || study.applicationForm?.length
+      ? undefined
+      : '신청 폼을 먼저 연결하세요.';
 
   /** 반을 만들거나 이름을 바꾼다. 회차는 건드리지 않는다 — 회차는 일정 탭에서 일정을 정할 때 깔린다. */
   function saveClass(cls: StudyClass) {
@@ -310,7 +349,7 @@ export function StudyConsole({ study }: { study: Study }) {
   return (
     <div>
       <Link
-        href='/proto/console/studies'
+        href={listHref}
         className='inline-flex items-center gap-1.5 type-label-lg text-fg-secondary transition-colors hover:text-fg'
       >
         <ArrowLeft size={15} /> 스터디 관리
@@ -325,45 +364,98 @@ export function StudyConsole({ study }: { study: Study }) {
         <h1 data-anno='attendee:1-1' className='min-w-0 type-headline-md'>
           {tx(study.title)}
         </h1>
-        <div data-anno='attendee:1-2' className='flex shrink-0 items-center gap-2'>
-          {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
-          {study.program?.kind === 'club' && (
-            <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setNextOpen(true)}>
-              다음 기수 만들기
-            </Button>
-          )}
-          <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
-            {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
-            {/* 마감일 당일도 아직 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
-            {open ? (dday === undefined ? '모집중' : `모집중 · D-${dday}`) : '모집 마감'}
-          </Badge>
-          {draft && (
-            <Badge tone='closingsoon' className='px-2.5 py-1 font-semibold'>
-              미공개
+        <div className='flex shrink-0 flex-col items-end gap-2'>
+          <div data-anno='attendee:1-2' className='flex items-center gap-2'>
+            {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
+            {study.program?.kind === 'club' && (
+              <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setNextOpen(true)}>
+                다음 기수 만들기
+              </Button>
+            )}
+            <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
+              {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
+              {/* 마감일 당일도 아직 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
+              {open ? (dday === undefined ? '모집중' : `모집중 · D-${dday}`) : '모집 마감'}
             </Badge>
-          )}
+            {draft && (
+              <Badge tone='closingsoon' className='px-2.5 py-1 font-semibold'>
+                미공개
+              </Badge>
+            )}
+          </div>
+          {/* 사이트 공개 스위치 — 상세에서도 켜고 끈다. 막히면 이유를 바로 아래 글로 (백오피스 PublishSwitch 와 같다) */}
+          <div data-anno='attendee:1-3' className='flex flex-col items-end gap-1'>
+            <Switch
+              label='사이트 공개'
+              tone='success'
+              checked={published}
+              aria-disabled={publishBlocked ? true : undefined}
+              aria-describedby={publishBlocked ? publishReasonId : undefined}
+              onCheckedChange={setPublishConfirm}
+            />
+            {publishBlocked && (
+              <p id={publishReasonId} className='type-label-sm text-fg-muted'>
+                {publishBlocked}
+              </p>
+            )}
+          </div>
         </div>
       </header>
 
+      <Modal
+        open={publishConfirm !== null}
+        onClose={() => setPublishConfirm(null)}
+        title={publishConfirm ? '스터디 공개' : '스터디 비공개'}
+        footer={
+          <>
+            {/* 결정을 묻는 모달 — 안전한 쪽이 기본 포커스를 받는다. Enter 로 실행되면 안 된다 (POL-0008) */}
+            <Button variant='secondary' data-autofocus onClick={() => setPublishConfirm(null)}>
+              취소
+            </Button>
+            <Button
+              onClick={() => {
+                if (publishConfirm !== null) setPublished(publishConfirm);
+                setPublishConfirm(null);
+              }}
+            >
+              {publishConfirm ? '공개' : '비공개로 전환'}
+            </Button>
+          </>
+        }
+      >
+        <div className='py-6 text-center'>
+          <p className='type-label-lg text-fg'>
+            ‘{tx(study.title)}’ {publishConfirm ? '스터디를 공개하시겠습니까?' : '스터디를 비공개로 전환하시겠습니까?'}
+          </p>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>
+            {publishConfirm
+              ? '공개하면 오늘이 모집 시작일이 되고, 스터디 상태가 「개설」이 되어 사용자 사이트에 노출됩니다.'
+              : '사용자 사이트에서 내려가고 스터디 상태가 「작성 중」으로 돌아갑니다.'}
+          </p>
+        </div>
+      </Modal>
+
       {/*
-        지표 카드를 두지 않는다. 넷 다 탭이 이미 말한다 —
-        진행 일정은 반, 참석자는 크루 탭, 출석률은 출석 탭.
-        같은 숫자를 위에도 두면 어느 쪽이 정본인지 헷갈리고, 기준이 갈리면 서로 안 맞는다.
+        운영자가 매일 확인하는 숫자 — 탭을 옮겨 다니지 않아도 보이게 위에 둔다 (백오피스와 같다).
+        출석률은 모든 반을 합친 하나다. 서버가 출석 탭과 같은 산식으로 계산해 내려준다 — 화면이 따로 셈하지 않는다.
+        TODO(api): GET /api/admin/studies/{studyId}/attendances/summary
       */}
-      <nav data-anno='attendee:2 crew:1 results:1' className='mt-6 flex gap-1 border-b border-border'>
-        {TABS.map((tb) => (
-          <button
-            key={tb.key}
-            type='button'
-            onClick={() => requestTab(tb.key)}
-            className={`-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors ${
-              tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
-            }`}
-          >
-            {tb.label}
-          </button>
-        ))}
-      </nav>
+      <div data-anno='attendee:1-4' className='mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3'>
+        <SummaryStat label='진행 일정' value={study.schedule ? tx(study.schedule) : '미정 · 신청자 조율'} small />
+        <SummaryStat
+          label='참석자'
+          value={String(active.length)}
+          sub={study.recruitment?.capacity ? `정원 ${study.recruitment.capacity}명` : '정원 제한 없음'}
+        />
+        <SummaryStat
+          label='출석률'
+          value={studyRate === undefined ? '-' : `${studyRate}%`}
+          sub='모든 반 · 지각 포함'
+        />
+      </div>
+      <div data-anno='attendee:2 crew:1 results:1' className='mt-6'>
+        <Tabs activeKey={tab} items={TABS.map((tb) => ({ key: tb.key, label: tb.label }))} onChange={(key) => requestTab(key as TabKey)} />
+      </div>
 
       <div className='mt-5'>
         {tab === 'crew' && (
@@ -376,6 +468,8 @@ export function StudyConsole({ study }: { study: Study }) {
             onRemoveClass={removeClass}
             onAssign={(crewId, id) => setAssign((a) => ({ ...a, [crewId]: id }))}
             navigators={navigators}
+            ownerCaptainId={ownerCaptainId}
+            onOwnerCaptainChange={setOwnerCaptainId}
             onToggleNavigator={(crewId) =>
               setNavigators((ns) => (ns.includes(crewId) ? ns.filter((n) => n !== crewId) : [...ns, crewId]))
             }
@@ -561,6 +655,33 @@ export function StudyConsole({ study }: { study: Study }) {
           {LEAVE_COPY[dirtyTab ?? 'attendance']}
         </p>
       </Modal>
+    </div>
+  );
+}
+
+/** 위 요약 카드 하나 — 백오피스 StudyConsole 의 Stat 과 같은 모양. */
+function SummaryStat({
+  label,
+  value,
+  /** 일정처럼 글자로 된 값 — 숫자와 같은 크기로 두면 줄이 넘쳐 카드 높이가 어긋난다 */
+  small,
+  sub,
+}: {
+  label: string;
+  value: string;
+  small?: boolean;
+  sub?: string;
+}) {
+  return (
+    <div className='card px-4 py-3'>
+      <p className='type-label-sm text-fg-muted'>{label}</p>
+      <p
+        className={`mt-0.5 font-semibold text-fg ${small ? 'truncate type-body-sm' : 'tnum type-title-lg'}`}
+        title={small ? value : undefined}
+      >
+        {value}
+      </p>
+      {sub && <p className='tnum -mt-0.5 type-label-sm text-fg-muted'>{sub}</p>}
     </div>
   );
 }

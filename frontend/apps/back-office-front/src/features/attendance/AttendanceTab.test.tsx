@@ -1,10 +1,10 @@
-import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import '@testing-library/jest-dom';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AttendanceTab } from './AttendanceTab';
+import { AttendanceTab } from '@/features/attendance/AttendanceTab';
 import type { Participant, ParticipantsResponse } from '@/features/participants/types';
 import { fakeServer, type FakeMeeting } from '@/features/schedule/fake-server';
 import type { ApiStudyDetail } from '@/features/studies/types';
@@ -35,6 +35,7 @@ const participants: ParticipantsResponse = {
   studyId: 107,
   participantCount: 2,
   recruitmentCapacity: null,
+  ownerCaptain: null,
   groups: [{ groupId: 1, name: '기본반', isDefault: true, canDelete: false }],
   participants: [
     participant(1, '김크루', 'ACTIVE', 'kim_dev'),

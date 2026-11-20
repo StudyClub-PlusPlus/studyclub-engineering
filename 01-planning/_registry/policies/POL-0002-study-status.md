@@ -50,10 +50,9 @@ STUDY_KIND(스터디/클럽)는 기수가 아니라 프로그램의 속성이라
 버그가 생길 여지가 있다(공개 취소가 `STATUS` 만 되돌리고 `START_AT` 은 못 지우면, `START_AT` 기준
 판정은 여전히 공개로 남는다). `STATUS` 하나만 보면 이 동기화 문제가 없다. 예약 공개는 없다.
 
-> 지금 등록 API가 `START_AT` 을 `now()` 로 채우는 것도 고쳐야 할 별도 버그다(등록 직후 미공개로
-> 두려는 기획과 어긋난다) — 자세한 내용은 [STUDY.md](../../../docs/erd/STUDY.md#공개-여부) 참고.
-> `STATUS` 기준으로 판정을 옮기면 이 버그가 공개 여부에는 더 이상 영향을 주지 않지만, `START_AT` 자체는
-> 여전히 잘못된 값이라 데이터 정확성을 위해 별도로 고쳐야 한다.
+> `START_AT` 은 공개(= 모집 시작)할 때 채우고 공개를 취소하면 비운다. 등록 직후에는 비어 있다(2026-10-30, V49).
+> 예전에는 컬럼이 NOT NULL 이라 등록 API가 `now()` 를 채웠고, 그 값 때문에 공개 전 스터디의 신청 폼이
+> 「모집이 시작되어」로 잠겼다 — 자세한 내용은 [STUDY.md](../../../docs/erd/STUDY.md#공개-여부) 참고.
 
 ## 판정 규칙
 
@@ -102,7 +101,7 @@ STUDY_KIND(스터디/클럽)는 기수가 아니라 프로그램의 속성이라
 |---|---|---|
 | `STATUS` 값 | 3값(`DRAFT`/`OPEN`/`CLOSED`) | **5값** — `ONGOING`·`ENDED` 추가. 진행중·종료를 모집 상태가 아니라 라이프사이클로 저장 |
 | `STUDY_KIND` | `STUDY` 컬럼(기수 단위) | `STUDY_PROGRAM` 으로 이동(프로그램 단위). 한 번 정하면 변경 불가 — [POL-0003](POL-0003-study-fields.md) |
-| 공개 여부 | `IS_HIDDEN` 플래그. 등록 시 `START_AT=now` 를 채움 | `IS_HIDDEN` 삭제. 공개 = `STATUS != DRAFT`. 등록 직후는 항상 `DRAFT`(미공개) — 등록 API가 `START_AT=now` 채우는 것도 별도로 고쳐야 함 |
+| 공개 여부 | `IS_HIDDEN` 플래그. 등록 시 `START_AT=now` 를 채움 | `IS_HIDDEN` 삭제. 공개 = `STATUS != DRAFT`. 등록 직후는 항상 `DRAFT`(미공개)이고 `START_AT` 은 비어 있다 — 공개 때 채우고 공개 취소 때 비운다 (V49 에서 반영) |
 | 상시 모집 | `RECRUIT_DEADLINE_AT` NULL 허용 | NOT NULL — 상시 모집 없음. 이어지는 참여는 클럽의 기수 이월로 표현 |
 | 완료 전환 | 「운영자 종료 또는 `END_AT` 경과」로 `CLOSED` | `END_AT` 경과로 자동 종료하지 않는다. `ONGOING → ENDED` 만 N주 경과로 자동, `ENDED → CLOSED` 는 캡틴 수동 확인만 |
 | 모집 회차 | 1개로 가정 | 여러 개 허용(추가 모집). id 최대인 회차 기준으로 판정 — [study-recruit-status](../../../specs/study-recruit-status/spec.md) |

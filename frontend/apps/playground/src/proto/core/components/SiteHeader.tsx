@@ -6,6 +6,7 @@ import { NavAuth } from '@core/components/NavAuth';
 import { NavLinks } from '@core/components/NavLinks';
 import type { Locale } from '@core/lib/content';
 import { m } from '@core/lib/i18n';
+import { ButtonLink } from '@studyclub/ui';
 
 export function SiteHeader({
   locale,
@@ -30,7 +31,9 @@ export function SiteHeader({
       <div className='mx-auto flex h-16 max-w-6xl items-center gap-7 px-6'>
         <Link href={`/proto/core/${locale}`} className='flex items-center gap-2 type-title-md'>
           <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
-          StudyClub
+          <span>
+            Study<span className='text-logo-accent'>Club</span>
+          </span>
         </Link>
 
         <NavLinks
@@ -45,15 +48,15 @@ export function SiteHeader({
           >
             {other.toUpperCase()}
           </Link>
-          <a
+          <ButtonLink
+            variant='tertiary'
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='hidden rounded-full px-4 py-2 type-label-lg text-white shadow-sm transition-colors sm:block'
-            style={{ background: 'var(--color-brand)' }}
+            className='hidden sm:inline-flex'
           >
             {m('nav.join', locale)}
-          </a>
+          </ButtonLink>
           <MyStudiesLink locale={locale} />
           <NavAuth locale={locale} />
         </div>

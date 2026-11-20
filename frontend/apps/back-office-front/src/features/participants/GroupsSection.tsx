@@ -2,9 +2,9 @@ import { useState } from 'react';
 
 import { Badge, Button, Modal } from '@studyclub/ui';
 
-import { GroupEditor } from './GroupEditor';
-import { useDeleteGroup } from './queries';
-import type { ParticipantsResponse } from './types';
+import { GroupEditor } from '@/features/participants/GroupEditor';
+import { useDeleteGroup } from '@/features/participants/queries';
+import type { ParticipantsResponse } from '@/features/participants/types';
 import { ApiError } from '@/lib/http';
 
 export function GroupsSection({
@@ -73,7 +73,7 @@ export function GroupsSection({
               <div className='ml-auto flex gap-2'>
                 <Button
                   size='sm'
-                  variant='ghost'
+                  variant='tertiary'
                   disabled={busy || editing !== null}
                   aria-label={`${group.name} 수정`}
                   onClick={() => setEditing(group.groupId)}

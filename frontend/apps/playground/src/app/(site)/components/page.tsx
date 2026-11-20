@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   AutoTextarea,
@@ -12,40 +12,190 @@ import {
   Checkbox,
   DiscordGlyph,
   EmptyState,
+  FieldShell,
   FilterChip,
   HotBadge,
   Input,
+  IconButton,
+  MarkdownLite,
   Modal,
+  Nav,
   Pagination,
+  Radio,
   Segmented,
   Select,
+  SelectionCount,
   StatCard,
+  StudyCard,
+  StudyThumb,
+  Switch,
+  TableActionBar,
   Tabs,
   Textarea,
   Toaster,
   toast,
+  ButtonLink,
+  HelpPopover,
+  TimeSelect,
 } from '@studyclub/ui';
 import type { BadgeTone, ButtonSize, ButtonVariant } from '@studyclub/ui';
-import { CalendarDays, Search, Users } from 'lucide-react';
+import { BookOpen, CalendarClock, CalendarDays, Globe, LayoutDashboard, Rocket, Search, Users } from 'lucide-react';
 
-const VARIANTS: ButtonVariant[] = ['primary', 'tonal', 'secondary', 'ghost', 'destructive'];
+const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'tertiary', 'danger', 'destructive'];
 const SIZES: ButtonSize[] = ['sm', 'md', 'lg'];
 const STATUS_TONES: BadgeTone[] = ['recruiting', 'closingsoon', 'inprogress', 'closed', 'ended'];
 const ROLE_TONES: BadgeTone[] = ['captain', 'navigator', 'member'];
 
-/** 카탈로그 한 칸. 제목 + 짧은 설명 + 실물. */
+/** 칸 제목 → 주소 조각(#button, #hotbadge-discordglyph …). 한글 제목도 그대로 쓴다. */
+function caseId(title: string) {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/**
+ * 카탈로그 한 칸. 제목 + 짧은 설명 + 실물.
+ * `data-case` 로 목차가 칸을 찾는다 — 칸을 더하면 목차에도 저절로 생긴다.
+ * 목차에서 고르면 이 칸으로 포커스가 온다(tabIndex -1). 고정 머리(h-14)에 가리지 않게 scroll-mt 를 둔다.
+ */
 function Case({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
-    <section className='border-t border-[var(--color-border)] pt-8'>
-      <h2 className='type-title-md'>{title}</h2>
+    <section
+      id={caseId(title)}
+      data-case={title}
+      tabIndex={-1}
+      className='group scroll-mt-20 border-t border-[var(--color-border)] pt-8 outline-none'
+    >
+      <h2 className='type-title-md transition-colors group-focus:text-[var(--color-brand)]'>{title}</h2>
       {note && <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>{note}</p>}
       <div className='mt-4'>{children}</div>
     </section>
   );
 }
 
+/** 칸으로 옮겨 가 포커스를 준다. 움직임 줄이기를 켠 사람에게는 부드러운 스크롤을 하지 않는다. */
+function jumpTo(id: string) {
+  const target = document.getElementById(id);
+  if (!target) return;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  target.focus({ preventScroll: true });
+  history.replaceState(null, '', `#${id}`);
+}
+
+/** 칸 위쪽이 이 선(고정 머리 h-14 + scroll-mt-20 여유) 위로 올라가면 그 칸을 보고 있는 것으로 친다. */
+const READ_LINE = 100;
+
+/**
+ * 지금 보는 칸 — 위쪽이 READ_LINE 을 지난 칸 중 마지막. 페이지 끝에 닿으면 마지막 칸.
+ * 끝 쪽의 짧은 칸들은 화면 위까지 올라올 수 없어서, 끝 판정이 없으면 앞 칸에 머문다.
+ */
+function sectionInView(sections: HTMLElement[]) {
+  const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+  if (atBottom) return sections.at(-1)?.id ?? '';
+  let id = sections[0]?.id ?? '';
+  for (const el of sections) {
+    if (el.getBoundingClientRect().top > READ_LINE) break;
+    id = el.id;
+  }
+  return id;
+}
+
+/**
+ * 목차 — 넓은 화면은 왼쪽 고정 사이드바, 좁은 화면은 맨 위 Select.
+ * 항목은 그려진 칸(`[data-case]`)에서 읽고, 지금 보는 칸을 칠한다.
+ * 목차에서 고른 칸은 사람이 직접 스크롤(휠 · 터치 · 키)할 때까지 그대로 칠해 둔다 —
+ * 끝 쪽 칸을 고르면 페이지 끝 판정이 마지막 칸을 가리켜 고른 것과 달라지기 때문이다.
+ */
+function CatalogNav() {
+  const [cases, setCases] = useState<{ id: string; title: string }[]>([]);
+  const [current, setCurrent] = useState('');
+  const pinned = useRef(false);
+
+  useEffect(() => {
+    const sections = [...document.querySelectorAll<HTMLElement>('[data-case]')];
+    setCases(sections.map((el) => ({ id: el.id, title: el.dataset.case ?? el.id })));
+
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (!pinned.current) setCurrent(sectionInView(sections));
+      });
+    };
+    const unpin = () => {
+      pinned.current = false;
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    window.addEventListener('wheel', unpin, { passive: true });
+    window.addEventListener('touchmove', unpin, { passive: true });
+    window.addEventListener('keydown', unpin);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('wheel', unpin);
+      window.removeEventListener('touchmove', unpin);
+      window.removeEventListener('keydown', unpin);
+    };
+  }, []);
+
+  const go = (id: string) => {
+    if (!id) return;
+    pinned.current = true;
+    setCurrent(id);
+    jumpTo(id);
+  };
+
+  return (
+    <>
+      <div className='lg:hidden'>
+        <Select size='sm' aria-label='컴포넌트로 이동' value={current} onChange={(e) => go(e.target.value)}>
+          <option value=''>컴포넌트로 이동</option>
+          {cases.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.title}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <nav
+        aria-label='컴포넌트 목차'
+        className='sticky top-20 hidden max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 lg:block'
+      >
+        <p className='mb-2 px-2 type-label-sm text-[var(--color-fg-muted)]'>컴포넌트 {cases.length}</p>
+        <ul className='space-y-0.5'>
+          {cases.map((c) => (
+            <li key={c.id}>
+              <a
+                href={`#${c.id}`}
+                aria-current={current === c.id ? 'location' : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  go(c.id);
+                }}
+                className={`block rounded-control px-2 py-1.5 type-label-lg transition-colors ${
+                  current === c.id
+                    ? 'bg-[var(--color-brand-subtle)] text-[var(--color-brand)]'
+                    : 'text-[var(--color-fg-secondary)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-fg)]'
+                }`}
+              >
+                {c.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </>
+  );
+}
+
 export default function ComponentsCatalog() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [time, setTime] = useState('20:30');
   const [chip, setChip] = useState('all');
   const [checked, setChecked] = useState(true);
   const [countedText, setCountedText] = useState('');
@@ -55,367 +205,575 @@ export default function ComponentsCatalog() {
   const [segVal, setSegVal] = useState('all');
   const [segView, setSegView] = useState('grid');
   const [page, setPage] = useState(1);
+  const [mode, setMode] = useState('online');
+  const [alerts, setAlerts] = useState(true);
+  const [published, setPublished] = useState(false);
 
   return (
-    <div className='space-y-10'>
-      <Toaster />
-      <header>
-        <h1 className='type-headline-lg'>컴포넌트 카탈로그</h1>
-        <p className='mt-2 max-w-2xl type-body-sm text-[var(--color-fg-muted)]'>
-          <code>@studyclub/ui</code> 의 프리미티브를 상태별로 늘어놓았습니다.{' '}
-          <strong>여기 보이는 것이 실제 서비스에 나가는 컴포넌트</strong>입니다 — 정적 목업이 아니라 코드를 그대로
-          렌더합니다.
-        </p>
-      </header>
+    <div className='grid gap-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10'>
+      <aside>
+        <CatalogNav />
+      </aside>
+      <div className='min-w-0 space-y-10'>
+        <Toaster />
+        <header>
+          <h1 className='type-headline-lg'>컴포넌트 카탈로그</h1>
+          <p className='mt-2 max-w-2xl type-body-sm text-[var(--color-fg-muted)]'>
+            <code>@studyclub/ui</code> 의 프리미티브를 상태별로 늘어놓았습니다.{' '}
+            <strong>여기 보이는 것이 실제 서비스에 나가는 컴포넌트</strong>입니다 — 정적 목업이 아니라 코드를 그대로
+            렌더합니다.
+          </p>
+        </header>
 
-      <Case title='Button' note='variant 5종 × size 3종. disabled 상태도 함께.'>
-        <div className='space-y-3'>
-          {SIZES.map((size) => (
-            <div key={size} className='flex flex-wrap items-center gap-2'>
-              <span className='w-8 type-label-sm text-[var(--color-fg-muted)]'>{size}</span>
+        <Case
+          title='Button'
+          note='variant 5종 × size 3종. Hover·Pressed·키보드 Focus도 직접 확인하세요. sm은 label-sm, md/lg는 label-lg.'
+        >
+          <div className='space-y-3'>
+            {SIZES.map((size) => (
+              <div key={size} className='flex flex-wrap items-center gap-2'>
+                <span className='w-8 type-label-sm text-[var(--color-fg-muted)]'>{size}</span>
+                {VARIANTS.map((v) => (
+                  <Button key={v} variant={v} size={size} className='w-[120px] shrink-0'>
+                    {v}
+                  </Button>
+                ))}
+              </div>
+            ))}
+            <div className='flex flex-wrap items-center gap-2 pt-1'>
+              <span className='w-8 type-label-sm text-[var(--color-fg-muted)]'>off</span>
               {VARIANTS.map((v) => (
-                <Button key={v} variant={v} size={size}>
+                <Button key={v} variant={v} disabled className='w-[120px] shrink-0'>
                   {v}
                 </Button>
               ))}
             </div>
-          ))}
-          <div className='flex flex-wrap items-center gap-2 pt-1'>
-            <span className='w-8 type-label-sm text-[var(--color-fg-muted)]'>off</span>
-            {VARIANTS.map((v) => (
-              <Button key={v} variant={v} disabled>
-                {v}
-              </Button>
+          </div>
+        </Case>
+
+        <Case
+          title='Button states'
+          note='Error는 variant별 스타일을 비교합니다. Loading은 레이블을 유지하고 중복 클릭을 막으며, 처리 상태는 버튼 밖에서 안내합니다.'
+        >
+          <div className='space-y-4 p-2'>
+            <div className='flex flex-wrap items-center gap-4'>
+              <Button leadingIcon={<Search />}>스터디 검색</Button>
+              <div className='flex items-center gap-2'>
+                <Button loading>저장</Button>
+                <span role='status' className='type-body-sm text-fg-muted'>저장 중…</span>
+              </div>
+            </div>
+            <p id='catalog-save-error' role='alert' className='type-body-sm text-danger-fg'>
+              저장하지 못했어요. 잠시 후 다시 시도해 주세요.
+            </p>
+            <div className='flex flex-wrap items-center gap-4'>
+              {VARIANTS.map((variant) => (
+                <div key={variant} className='flex flex-col items-start gap-2'>
+                  <span className='type-label-sm text-fg-muted'>{variant}</span>
+                  <Button variant={variant} state='error' aria-describedby='catalog-save-error'>
+                    저장
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Case>
+
+        <Case title='모바일 CTA' note='375px에서도 한 줄 레이블을 유지하고, 작은 화면에서 전체 너비로 표시합니다.'>
+          <Button size='lg' className='w-full sm:w-auto'>스터디 참여 신청 내용을 저장하기</Button>
+        </Case>
+
+        <Case
+          title='IconButton'
+          note='sm 32 / md 40 / lg 48px. aria-label 필수. 터치 환경에서는 클릭 영역을 양축 44px 이상 확보합니다.'
+        >
+          <div className='flex flex-wrap items-center gap-4 p-2'>
+            {SIZES.map((size) => (
+              <IconButton key={size} size={size} variant='tertiary' aria-label='검색' icon={<Search />} />
             ))}
+            <IconButton aria-label='검색' icon={<Search />} loading />
+            <IconButton aria-label='검색' icon={<Search />} state='error' />
+            <IconButton aria-label='검색' icon={<Search />} disabled />
           </div>
-        </div>
-      </Case>
+        </Case>
 
-      <Case title='Badge' note='스터디 상태 5종 · 역할 3종. dot 을 켜면 앞에 점이 붙는다.'>
-        <div className='space-y-3'>
-          <div className='flex flex-wrap gap-2'>
-            {STATUS_TONES.map((t) => (
-              <Badge key={t} tone={t} dot>
-                {t}
-              </Badge>
-            ))}
-          </div>
-          <div className='flex flex-wrap gap-2'>
-            {ROLE_TONES.map((t) => (
-              <Badge key={t} tone={t}>
-                {t}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </Case>
-
-      <Case title='HotBadge · DiscordGlyph' note='마감 임박 뱃지와 디스코드 공식 아이콘. 배너·버튼 등에 사용한다.'>
-        <div className='flex flex-wrap items-center gap-4'>
-          <div className='flex items-center gap-2 rounded-card bg-[var(--color-surface-2)] p-3'>
-            <span className='type-label-sm text-[var(--color-fg-muted)]'>HotBadge:</span>
-            <HotBadge />
-          </div>
-          <div className='flex items-center gap-3 rounded-card border border-[var(--color-border)] p-3'>
-            <span className='type-label-sm text-[var(--color-fg-muted)]'>DiscordGlyph:</span>
-            <DiscordGlyph size={16} />
-            <DiscordGlyph size={24} />
-          </div>
-        </div>
-      </Case>
-
-      <Case title='Card' note='padding none · md · lg. interactive 를 켜면 hover 반응이 붙는다.'>
-        <div className='grid gap-4 sm:grid-cols-3'>
-          <Card padding='none' className='p-4'>
-            <p className='type-label-lg'>padding none</p>
-            <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>여백을 직접 준다.</p>
-          </Card>
-          <Card padding='md'>
-            <p className='type-label-lg'>padding md</p>
-            <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>기본값.</p>
-          </Card>
-          <Card padding='lg' interactive>
-            <p className='type-label-lg'>interactive</p>
-            <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>마우스를 올려보세요.</p>
-          </Card>
-        </div>
-      </Case>
-
-      <Case
-        title='Input'
-        note='텍스트 입력 필드. sm(h-8) · md(h-10) · lg(h-12) 크기와 required · helper · error 상태 조합.'
-      >
-        <div className='space-y-6 max-w-2xl'>
-          <div>
-            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>크기 3종 (sm · md · lg)</p>
-            <div className='grid gap-3 sm:grid-cols-3'>
-              <Input label='sm (h-8)' size='sm' placeholder='Small (32px)' />
-              <Input label='md / 기본 (h-10)' size='md' placeholder='Medium (40px)' />
-              <Input label='lg (h-12)' size='lg' placeholder='Large (48px)' />
+        <Case title='Badge' note='스터디 상태 5종 · 역할 3종. dot 을 켜면 앞에 점이 붙는다.'>
+          <div className='space-y-3'>
+            <div className='flex flex-wrap gap-2'>
+              {STATUS_TONES.map((t) => (
+                <Badge key={t} tone={t} dot>
+                  {t}
+                </Badge>
+              ))}
+            </div>
+            <div className='flex flex-wrap gap-2'>
+              {ROLE_TONES.map((t) => (
+                <Badge key={t} tone={t}>
+                  {t}
+                </Badge>
+              ))}
             </div>
           </div>
-          <div>
-            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>상태 및 옵션 조합</p>
-            <div className='grid gap-4 sm:grid-cols-2'>
-              <Input label='스터디 이름' placeholder='예: 시스템 디자인 스터디' required />
-              <Input label='이메일' helper='가입에 쓴 주소를 적어주세요' defaultValue='test@test.com' />
-              <Input label='닉네임' error='이미 사용 중인 닉네임입니다' defaultValue='중복닉네임' />
-              <Input label='비활성' disabled defaultValue='수정할 수 없습니다' />
-            </div>
-          </div>
-          <div>
-            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>아이콘 위치</p>
-            <div className='grid gap-4 sm:grid-cols-3'>
-              <Select label='기본 (오른쪽)' defaultValue='weekly'>
-                <option value='none'>반복 안 함</option>
-                <option value='weekly'>매주</option>
-              </Select>
-              <Select label='왼쪽 아이콘' icon={<Search size={16} />} iconPosition='left' defaultValue='search'>
-                <option value='search'>스터디 검색</option>
-                <option value='member'>멤버 검색</option>
-              </Select>
-              <Select label='사용자 아이콘' icon={<CalendarDays size={16} />} defaultValue='date'>
-                <option value='date'>날짜 선택</option>
-                <option value='time'>시간 선택</option>
-              </Select>
-            </div>
-          </div>
-        </div>
-      </Case>
+        </Case>
 
-      <Case title='Select' note='드롭다운 선택 필드. sm(h-8) · md(h-10) · lg(h-12) 크기와 helper · error 상태 조합.'>
-        <div className='space-y-6 max-w-2xl'>
-          <div>
-            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>크기 3종 (sm · md · lg)</p>
-            <div className='grid gap-3 sm:grid-cols-3'>
-              <Select label='sm (h-8)' size='sm' defaultValue='online'>
-                <option value='online'>온라인 (sm / 32px)</option>
-                <option value='offline'>오프라인</option>
-              </Select>
-              <Select label='md / 기본 (h-10)' size='md' defaultValue='online'>
-                <option value='online'>온라인 (md / 40px)</option>
-                <option value='offline'>오프라인</option>
-              </Select>
-              <Select label='lg (h-12)' size='lg' defaultValue='online'>
-                <option value='lg'>온라인 (lg / 48px)</option>
-                <option value='offline'>오프라인</option>
-              </Select>
+        <Case title='HotBadge · DiscordGlyph' note='마감 임박 뱃지와 디스코드 공식 아이콘. 배너·버튼 등에 사용한다.'>
+          <div className='flex flex-wrap items-center gap-4'>
+            <div className='flex items-center gap-2 rounded-card bg-[var(--color-surface-2)] p-3'>
+              <span className='type-label-sm text-[var(--color-fg-muted)]'>HotBadge:</span>
+              <HotBadge />
+            </div>
+            <div className='flex items-center gap-3 rounded-card border border-[var(--color-border)] p-3'>
+              <span className='type-label-sm text-[var(--color-fg-muted)]'>DiscordGlyph:</span>
+              <DiscordGlyph size={16} />
+              <DiscordGlyph size={24} />
             </div>
           </div>
-          <div>
-            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>상태 및 옵션 조합</p>
-            <div className='grid gap-4 sm:grid-cols-2'>
-              <Select label='진행 방식' helper='주요 모임 방식을 선택하세요' defaultValue='hybrid'>
-                <option value='hybrid'>하이브리드</option>
-                <option value='online'>온라인</option>
-                <option value='offline'>오프라인</option>
-              </Select>
-              <Select label='지역' error='지역을 선택해 주세요' defaultValue=''>
-                <option value='' disabled>
-                  지역 선택
-                </option>
-                <option value='gangnam'>강남</option>
-                <option value='pangyo'>판교</option>
-              </Select>
+        </Case>
+
+        <Case title='Card' note='padding none · md · lg. interactive 를 켜면 hover 반응이 붙는다.'>
+          <div className='grid gap-4 sm:grid-cols-3'>
+            <Card padding='none' className='p-4'>
+              <p className='type-label-lg'>padding none</p>
+              <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>여백을 직접 준다.</p>
+            </Card>
+            <Card padding='md'>
+              <p className='type-label-lg'>padding md</p>
+              <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>기본값.</p>
+            </Card>
+            <Card padding='lg' interactive>
+              <p className='type-label-lg'>interactive</p>
+              <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>마우스를 올려보세요.</p>
+            </Card>
+          </div>
+        </Case>
+
+        <Case
+          title='Input'
+          note='텍스트 입력 필드. sm(h-8) · md(h-10) · lg(h-12) 크기와 required · helper · error 상태 조합.'
+        >
+          <div className='space-y-6 max-w-2xl'>
+            <div>
+              <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>크기 3종 (sm · md · lg)</p>
+              <div className='grid gap-3 sm:grid-cols-3'>
+                <Input label='sm (h-8)' size='sm' placeholder='Small (32px)' />
+                <Input label='md / 기본 (h-10)' size='md' placeholder='Medium (40px)' />
+                <Input label='lg (h-12)' size='lg' placeholder='Large (48px)' />
+              </div>
+            </div>
+            <div>
+              <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>상태 및 옵션 조합</p>
+              <div className='grid gap-4 sm:grid-cols-2'>
+                <Input label='스터디 이름' placeholder='예: 시스템 디자인 스터디' required />
+                <Input label='이메일' helper='가입에 쓴 주소를 적어주세요' defaultValue='test@test.com' />
+                <Input label='닉네임' error='이미 사용 중인 닉네임입니다' defaultValue='중복닉네임' />
+                <Input label='비활성' disabled defaultValue='수정할 수 없습니다' />
+              </div>
+            </div>
+            <div>
+              <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>아이콘 위치</p>
+              <div className='grid gap-4 sm:grid-cols-3'>
+                <Select label='기본 (오른쪽)' defaultValue='weekly'>
+                  <option value='none'>반복 안 함</option>
+                  <option value='weekly'>매주</option>
+                </Select>
+                <Select label='왼쪽 아이콘' icon={<Search size={16} />} iconPosition='left' defaultValue='search'>
+                  <option value='search'>스터디 검색</option>
+                  <option value='member'>멤버 검색</option>
+                </Select>
+                <Select label='사용자 아이콘' icon={<CalendarDays size={16} />} defaultValue='date'>
+                  <option value='date'>날짜 선택</option>
+                  <option value='time'>시간 선택</option>
+                </Select>
+              </div>
             </div>
           </div>
-        </div>
-      </Case>
+        </Case>
 
-      <Case
-        title='Textarea'
-        note='여러 줄 텍스트 입력 필드. rows 행 수 지정 및 label · helper · error 상태 조합. showCount + maxLength 를 함께 쓰면 textarea 우하단에 글자수 카운터가 표시된다.'
-      >
-        <div className='space-y-4 max-w-xl'>
-          <Textarea
-            label='소개'
-            helper='200자 이내로 입력해 주세요.'
-            rows={3}
-            placeholder='어떤 스터디인지 적어주세요'
-          />
-          <Textarea label='활동 목표' error='목표를 최소 10자 이상 작성해 주세요.' rows={2} defaultValue='짧은 목표' />
-          <Textarea
-            label='스터디 규칙'
-            helper='showCount · maxLength 조합'
-            rows={4}
-            maxLength={500}
-            showCount
-            placeholder='스터디 규칙을 입력하세요'
-            value={countedText}
-            onChange={(e) => setCountedText(e.target.value)}
-          />
-        </div>
-      </Case>
+        <Case title='Select' note='드롭다운 선택 필드. sm(h-8) · md(h-10) · lg(h-12) 크기와 helper · error 상태 조합.'>
+          <div className='space-y-6 max-w-2xl'>
+            <div>
+              <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>크기 3종 (sm · md · lg)</p>
+              <div className='grid gap-3 sm:grid-cols-3'>
+                <Select label='sm (h-8)' size='sm' defaultValue='online'>
+                  <option value='online'>온라인 (sm / 32px)</option>
+                  <option value='offline'>오프라인</option>
+                </Select>
+                <Select label='md / 기본 (h-10)' size='md' defaultValue='online'>
+                  <option value='online'>온라인 (md / 40px)</option>
+                  <option value='offline'>오프라인</option>
+                </Select>
+                <Select label='lg (h-12)' size='lg' defaultValue='online'>
+                  <option value='lg'>온라인 (lg / 48px)</option>
+                  <option value='offline'>오프라인</option>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>상태 및 옵션 조합</p>
+              <div className='grid gap-4 sm:grid-cols-2'>
+                <Select label='진행 방식' helper='주요 모임 방식을 선택하세요' defaultValue='hybrid'>
+                  <option value='hybrid'>하이브리드</option>
+                  <option value='online'>온라인</option>
+                  <option value='offline'>오프라인</option>
+                </Select>
+                <Select label='지역' error='지역을 선택해 주세요' defaultValue=''>
+                  <option value='' disabled>
+                    지역 선택
+                  </option>
+                  <option value='gangnam'>강남</option>
+                  <option value='pangyo'>판교</option>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </Case>
 
-      <Case
-        title='AutoTextarea'
-        note='내용 길이에 맞춰 높이가 자동 조절되는 텍스트 영역. 멀티라인 확장과 한 줄 인라인(singleLine) 형태를 모두 지원한다.'
-      >
-        <div className='space-y-6 max-w-xl'>
-          <div>
-            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>멀티라인 자동 높이 확장</p>
-            <AutoTextarea
-              label='자동 높이 조절 텍스트'
-              placeholder='텍스트를 여러 줄 입력해보세요. 내용에 따라 높이가 자동으로 늘어납니다.'
-              value={autoText}
-              onChange={setAutoText}
-              minRows={2}
+        <Case
+          title='Textarea'
+          note='여러 줄 텍스트 입력 필드. rows 행 수 지정 및 label · helper · error 상태 조합. showCount + maxLength 를 함께 쓰면 textarea 우하단에 글자수 카운터가 표시된다.'
+        >
+          <div className='space-y-4 max-w-xl'>
+            <Textarea
+              label='소개'
+              helper='200자 이내로 입력해 주세요.'
+              rows={3}
+              placeholder='어떤 스터디인지 적어주세요'
+            />
+            <Textarea label='활동 목표' error='목표를 최소 10자 이상 작성해 주세요.' rows={2} defaultValue='짧은 목표' />
+            <Textarea
+              label='스터디 규칙'
+              helper='showCount · maxLength 조합'
+              rows={4}
+              maxLength={500}
+              showCount
+              placeholder='스터디 규칙을 입력하세요'
+              value={countedText}
+              onChange={(e) => setCountedText(e.target.value)}
             />
           </div>
+        </Case>
 
-          <div>
-            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>
-              인라인 한 줄 입력 (singleLine · 엔터 방지)
-            </p>
-            <div className='flex items-center gap-3 rounded-card border border-[var(--color-border)] bg-[var(--color-bg)] p-3'>
-              <span className='shrink-0 type-label-lg text-neutral-800'>스터디 규칙:</span>
-              <div className='flex-1 min-w-0'>
-                <AutoTextarea
-                  label='인라인 스터디 규칙 입력'
-                  placeholder='제목이나 규칙처럼 한 줄 인라인으로 늘어나며, 엔터는 공백으로 치환됩니다.'
-                  value={singleLineText}
-                  onChange={setSingleLineText}
-                  singleLine
-                  className='py-1 px-2.5 type-body-sm'
+        <Case
+          title='AutoTextarea'
+          note='내용 길이에 맞춰 높이가 자동 조절되는 텍스트 영역. 멀티라인 확장과 한 줄 인라인(singleLine) 형태를 모두 지원한다.'
+        >
+          <div className='space-y-6 max-w-xl'>
+            <div>
+              <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>멀티라인 자동 높이 확장</p>
+              <AutoTextarea
+                label='자동 높이 조절 텍스트'
+                placeholder='텍스트를 여러 줄 입력해보세요. 내용에 따라 높이가 자동으로 늘어납니다.'
+                value={autoText}
+                onChange={setAutoText}
+                minRows={2}
+              />
+            </div>
+
+            <div>
+              <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>
+                인라인 한 줄 입력 (singleLine · 엔터 방지)
+              </p>
+              <div className='flex items-center gap-3 rounded-card border border-[var(--color-border)] bg-[var(--color-bg)] p-3'>
+                <span className='shrink-0 type-label-lg text-neutral-800'>스터디 규칙:</span>
+                <div className='flex-1 min-w-0'>
+                  <AutoTextarea
+                    label='인라인 스터디 규칙 입력'
+                    placeholder='제목이나 규칙처럼 한 줄 인라인으로 늘어나며, 엔터는 공백으로 치환됩니다.'
+                    value={singleLineText}
+                    onChange={setSingleLineText}
+                    singleLine
+                    className='py-1 px-2.5 type-body-sm'
+                  />
+                </div>
+                <Button size='sm'>저장</Button>
+              </div>
+            </div>
+          </div>
+        </Case>
+
+        <Case title='Checkbox' note='label 조합. disabled 상태도 함께.'>
+          <div className='space-y-2'>
+            <Checkbox label='매주 알림 받기' checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+            <Checkbox label='비활성' disabled />
+          </div>
+        </Case>
+
+        <Case
+          title='Radio'
+          note='같은 name 묶음에서 하나만 고른다. 묶음 제목은 fieldset + legend. description 으로 고르면 달라지는 것을 적는다.'
+        >
+          <fieldset className='space-y-2'>
+            <legend className='mb-2 type-label-lg'>참여 방식</legend>
+            <Radio name='catalog-mode' label='온라인' checked={mode === 'online'} onChange={() => setMode('online')} />
+            <Radio
+              name='catalog-mode'
+              label='오프라인'
+              description='모임 장소는 캡틴이 따로 알립니다'
+              checked={mode === 'offline'}
+              onChange={() => setMode('offline')}
+            />
+            <Radio name='catalog-mode' label='마감된 선택지' disabled />
+          </fieldset>
+        </Case>
+
+        <Case
+          title='Switch'
+          note='누르는 즉시 반영되는 설정. tone brand(기본) · success. 막힌 상태는 aria-disabled 로 포커스를 남기고 이유를 아래에 적는다.'
+        >
+          <div className='flex flex-wrap items-start gap-8'>
+            <Switch label='알림 받기' checked={alerts} onCheckedChange={setAlerts} />
+            <Switch label='사이트 공개' tone='success' checked={published} onCheckedChange={setPublished} />
+            <div className='flex flex-col items-start gap-1'>
+              <Switch label='사이트 공개' tone='success' checked={false} aria-disabled aria-describedby='catalog-switch-reason' />
+              <p id='catalog-switch-reason' className='type-label-sm text-[var(--color-fg-muted)]'>
+                신청 폼을 먼저 연결하세요.
+              </p>
+            </div>
+          </div>
+        </Case>
+
+        <Case title='FieldShell' note='Input · Select · Textarea 가 아닌 컨트롤에 라벨 · 도움말 · 오류를 붙일 때.'>
+          <div className='max-w-sm'>
+            <FieldShell label='진행 요일' helper='여러 개 고를 수 있어요' required>
+              <div className='flex flex-wrap gap-2'>
+                {['월', '수', '금'].map((d) => (
+                  <FilterChip key={d} selected={d === '수'}>
+                    {d}
+                  </FilterChip>
+                ))}
+              </div>
+            </FieldShell>
+          </div>
+        </Case>
+
+        <Case title='FilterChip' note='선택 상태를 가진 필터 칩. 목록 상단 필터에 쓴다.'>
+          <div className='flex flex-wrap gap-2'>
+            {['all', 'recruiting', 'inprogress', 'closed'].map((c) => (
+              <FilterChip key={c} selected={chip === c} onClick={() => setChip(c)}>
+                {c}
+              </FilterChip>
+            ))}
+          </div>
+        </Case>
+
+        <Case title='Avatar' note='size 24 · 32 · 40. 이미지가 없으면 이름 이니셜.'>
+          <div className='flex items-center gap-3'>
+            <Avatar name='김연지' size={24} />
+            <Avatar name='이가온' size={32} />
+            <Avatar name='김리나' size={40} role='captain' />
+          </div>
+        </Case>
+
+        <Case title='StatCard' note='운영자 콘솔 대시보드용. delta 부호로 ▲▼ 가 갈린다.'>
+          <div className='grid gap-4 sm:grid-cols-3'>
+            <StatCard label='전체 스터디' value='24' sub='전체 코호트' leadingIcon={<Users size={16} />} />
+            <StatCard label='이번 달 신규' value='6' delta={3} deltaSuffix='건' deltaLabel='지난달 대비' />
+            <StatCard label='완주율' value='72%' delta={-4} deltaSuffix='%p' deltaLabel='지난 기수 대비' />
+          </div>
+        </Case>
+
+        <Case title='CapacityBar' note='정원 대비 신청 인원. 80% 이상이면 경고색으로 바뀐다.'>
+          <div className='max-w-md space-y-4'>
+            <CapacityBar taken={4} total={20} showLabel />
+            <CapacityBar taken={17} total={20} showLabel />
+            <CapacityBar taken={20} total={20} showLabel />
+          </div>
+        </Case>
+
+        <Case title='Tabs · Segmented' note='언더라인형 탭과 세그먼트 컨트롤. 목록 필터링이나 뷰 전환에 쓴다.'>
+          <div className='space-y-6 max-w-xl'>
+            <div>
+              <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>Tabs</p>
+              <Tabs
+                items={[
+                  { key: 'studies', label: '스터디 목록', badge: <Badge tone='recruiting'>12</Badge> },
+                  { key: 'schedule', label: '주간 일정' },
+                  { key: 'notices', label: '공지사항' },
+                ]}
+                activeKey={activeTab}
+                onChange={setActiveTab}
+              />
+            </div>
+            <div>
+              <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>Segmented</p>
+              <div className='flex flex-wrap items-center gap-4'>
+                <Segmented
+                  size='md'
+                  options={[
+                    { value: 'all', label: '전체' },
+                    { value: 'online', label: '온라인' },
+                    { value: 'offline', label: '오프라인' },
+                  ]}
+                  value={segVal}
+                  onChange={setSegVal}
+                />
+                <Segmented
+                  size='sm'
+                  shape='pill'
+                  options={[
+                    { value: 'grid', label: '격자' },
+                    { value: 'list', label: '목록' },
+                  ]}
+                  value={segView}
+                  onChange={setSegView}
                 />
               </div>
-              <Button size='sm'>저장</Button>
             </div>
           </div>
-        </div>
-      </Case>
+        </Case>
 
-      <Case title='Checkbox' note='label 조합. disabled 상태도 함께.'>
-        <div className='space-y-2'>
-          <Checkbox label='매주 알림 받기' checked={checked} onChange={(e) => setChecked(e.target.checked)} />
-          <Checkbox label='비활성' disabled />
-        </div>
-      </Case>
+        <Case title='Pagination' note='페이지 번호 창. 7페이지를 넘기면 중간에 gap(…)을 두고 윈도우를 계산한다.'>
+          <div className='max-w-md'>
+            <Pagination page={page} total={12} onChange={setPage} />
+          </div>
+        </Case>
 
-      <Case title='FilterChip' note='선택 상태를 가진 필터 칩. 목록 상단 필터에 쓴다.'>
-        <div className='flex flex-wrap gap-2'>
-          {['all', 'recruiting', 'inprogress', 'closed'].map((c) => (
-            <FilterChip key={c} selected={chip === c} onClick={() => setChip(c)}>
-              {c}
-            </FilterChip>
-          ))}
-        </div>
-      </Case>
+        <Case title='Toast' note='semantic 토큰 기반 경량 토스트 알림. 버튼을 눌러 확인하세요.'>
+          <div className='flex flex-wrap gap-2'>
+            <Button variant='secondary' size='sm' onClick={() => toast.success('신청이 성공적으로 접수되었습니다.')}>
+              성공 토스트
+            </Button>
+            <Button variant='secondary' size='sm' onClick={() => toast.error('모집 정원이 마감되었습니다.')}>
+              에러 토스트
+            </Button>
+            <Button variant='tertiary' size='sm' onClick={() => toast('기본 안내 알림입니다.')}>
+              기본 토스트
+            </Button>
+          </div>
+        </Case>
 
-      <Case title='Avatar' note='size 24 · 32 · 40. 이미지가 없으면 이름 이니셜.'>
-        <div className='flex items-center gap-3'>
-          <Avatar name='김연지' size={24} />
-          <Avatar name='이가온' size={32} />
-          <Avatar name='김리나' size={40} role='captain' />
-        </div>
-      </Case>
+        <Case title='EmptyState' note='목록이 비었을 때. action 으로 버튼을 넣는다.'>
+          <EmptyState
+            icon={<Search size={24} />}
+            title='조건에 맞는 스터디가 없어요'
+            description='필터를 줄이거나 다른 키워드로 찾아보세요.'
+            action={<Button variant='tertiary'>필터 초기화</Button>}
+          />
+        </Case>
 
-      <Case title='StatCard' note='운영자 콘솔 대시보드용. delta 부호로 ▲▼ 가 갈린다.'>
-        <div className='grid gap-4 sm:grid-cols-3'>
-          <StatCard label='전체 스터디' value='24' sub='전체 코호트' leadingIcon={<Users size={16} />} />
-          <StatCard label='이번 달 신규' value='6' delta={3} deltaSuffix='건' deltaLabel='지난달 대비' />
-          <StatCard label='완주율' value='72%' delta={-4} deltaSuffix='%p' deltaLabel='지난 기수 대비' />
-        </div>
-      </Case>
+        <Case title='Modal' note='열어서 확인하세요. ESC · 배경 클릭으로 닫힙니다.'>
+          <Button onClick={() => setModalOpen(true)}>모달 열기</Button>
+          <Modal
+            open={modalOpen}
+            onClose={() => setModalOpen(false)}
+            title='스터디 신청'
+            description='신청하면 캡틴에게 알림이 갑니다.'
+            footer={
+              <>
+                <Button variant='secondary' onClick={() => setModalOpen(false)}>
+                  취소
+                </Button>
+                <Button onClick={() => setModalOpen(false)}>신청</Button>
+              </>
+            }
+          >
+            <p className='type-body-sm text-[var(--color-fg-muted)]'>모달 본문이 들어가는 자리입니다.</p>
+          </Modal>
+        </Case>
 
-      <Case title='CapacityBar' note='정원 대비 신청 인원. 80% 이상이면 경고색으로 바뀐다.'>
-        <div className='max-w-md space-y-4'>
-          <CapacityBar taken={4} total={20} showLabel />
-          <CapacityBar taken={17} total={20} showLabel />
-          <CapacityBar taken={20} total={20} showLabel />
-        </div>
-      </Case>
+        <Case title='TableActionBar · SelectionCount' note='표 위·아래 작업 바. 왼쪽은 고른 것에 하는 일, 오른쪽은 저장.'>
+          <TableActionBar
+            selection={
+              <>
+                <SelectionCount count={2} total={12} unit='명' />
+                <Button size='sm' variant='danger'>
+                  참여 중단
+                </Button>
+              </>
+            }
+            save={<Button size='sm'>저장</Button>}
+          />
+        </Case>
 
-      <Case title='Tabs · Segmented' note='언더라인형 탭과 세그먼트 컨트롤. 목록 필터링이나 뷰 전환에 쓴다.'>
-        <div className='space-y-6 max-w-xl'>
-          <div>
-            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>Tabs</p>
-            <Tabs
-              items={[
-                { key: 'studies', label: '스터디 목록', badge: <Badge tone='recruiting'>12</Badge> },
-                { key: 'schedule', label: '주간 일정' },
-                { key: 'notices', label: '공지사항' },
+        <Case title='StudyCard · StudyThumb' note='스터디 목록 카드. 이미지가 없으면 StudyThumb 가 카테고리 그라디언트를 그린다.'>
+          <div className='grid gap-4 sm:grid-cols-2'>
+            <StudyCard
+              href='#'
+              category='소프트웨어 개발'
+              badge={{ label: '모집중 D-5', dotClassName: 'bg-recruiting-dot' }}
+              title='React 딥다이브 스터디'
+              summary='리액트 19의 신규 기능과 렌더링 최적화를 깊이 있게 학습합니다.'
+              details={[
+                { icon: CalendarClock, label: '매주 목 20:00 · 8주 과정' },
+                { icon: Globe, label: '한국 시간 (KST)' },
+                { icon: Rocket, label: '시작 예정일 11/03' },
               ]}
-              activeKey={activeTab}
-              onChange={setActiveTab}
             />
+            <div className='overflow-hidden rounded-card border border-[var(--color-border)]'>
+              <StudyThumb category='AI · ML' />
+            </div>
           </div>
-          <div>
-            <p className='mb-2 type-label-sm text-[var(--color-fg-muted)]'>Segmented</p>
-            <div className='flex flex-wrap items-center gap-4'>
-              <Segmented
-                size='md'
-                options={[
-                  { value: 'all', label: '전체' },
-                  { value: 'online', label: '온라인' },
-                  { value: 'offline', label: '오프라인' },
+        </Case>
+
+        <Case title='Nav' note='사이트는 상단 가로(site), 콘솔은 좌측(sidebar).'>
+          <div className='space-y-4'>
+            <Nav
+              variant='site'
+              brand={<span className='type-title-md'>StudyClub</span>}
+              items={[
+                { key: 'studies', label: '스터디', href: '#', active: true },
+                { key: 'events', label: '행사', href: '#' },
+                { key: 'notices', label: '공지사항', href: '#' },
+              ]}
+              actions={<Button size='sm'>로그인</Button>}
+            />
+            <div className='w-60'>
+              <Nav
+                variant='sidebar'
+                items={[
+                  { key: 'dashboard', label: '대시보드', icon: <LayoutDashboard size={18} />, active: true },
+                  { key: 'studies', label: '스터디', icon: <BookOpen size={18} /> },
+                  { key: 'users', label: '유저', icon: <Users size={18} /> },
                 ]}
-                value={segVal}
-                onChange={setSegVal}
-              />
-              <Segmented
-                size='sm'
-                shape='pill'
-                options={[
-                  { value: 'grid', label: '격자' },
-                  { value: 'list', label: '목록' },
-                ]}
-                value={segView}
-                onChange={setSegView}
               />
             </div>
           </div>
-        </div>
-      </Case>
+        </Case>
 
-      <Case title='Pagination' note='페이지 번호 창. 7페이지를 넘기면 중간에 gap(…)을 두고 윈도우를 계산한다.'>
-        <div className='max-w-md'>
-          <Pagination page={page} total={12} onChange={setPage} />
-        </div>
-      </Case>
+        <Case title='MarkdownLite' note='공지 · 스터디 규칙 본문. 제목 · 굵게 · 목록 · 코드만 그린다.'>
+          <MarkdownLite text={'### 스터디 규칙\n- **매주 목요일** 20시 시작\n- 결석은 하루 전까지 알려 주세요\n\n`지각 3회` = 결석 1회'} />
+        </Case>
 
-      <Case title='Toast' note='semantic 토큰 기반 경량 토스트 알림. 버튼을 눌러 확인하세요.'>
-        <div className='flex flex-wrap gap-2'>
-          <Button variant='secondary' size='sm' onClick={() => toast.success('신청이 성공적으로 접수되었습니다.')}>
-            성공 토스트
-          </Button>
-          <Button variant='secondary' size='sm' onClick={() => toast.error('모집 정원이 마감되었습니다.')}>
-            에러 토스트
-          </Button>
-          <Button variant='ghost' size='sm' onClick={() => toast('기본 안내 알림입니다.')}>
-            기본 토스트
-          </Button>
-        </div>
-      </Case>
-
-      <Case title='EmptyState' note='목록이 비었을 때. action 으로 버튼을 넣는다.'>
-        <EmptyState
-          icon={<Search size={24} />}
-          title='조건에 맞는 스터디가 없어요'
-          description='필터를 줄이거나 다른 키워드로 찾아보세요.'
-          action={<Button variant='tonal'>필터 초기화</Button>}
-        />
-      </Case>
-
-      <Case title='Modal' note='열어서 확인하세요. ESC · 배경 클릭으로 닫힙니다.'>
-        <Button onClick={() => setModalOpen(true)}>모달 열기</Button>
-        <Modal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title='스터디 신청'
-          description='신청하면 캡틴에게 알림이 갑니다.'
-          footer={
-            <>
-              <Button variant='secondary' onClick={() => setModalOpen(false)}>
-                취소
-              </Button>
-              <Button onClick={() => setModalOpen(false)}>신청</Button>
-            </>
-          }
+        <Case
+          title='ButtonLink'
+          note='다른 주소로 가는 링크인데 Button 과 같은 모양이어야 할 때. 변형 · 크기는 Button 과 같다. 바깥 사이트는 external(새 탭), 앱 안 이동은 linkAs={Link}.'
         >
-          <p className='type-body-sm text-[var(--color-fg-muted)]'>모달 본문이 들어가는 자리입니다.</p>
-        </Modal>
-      </Case>
+          <div className='flex flex-wrap items-center gap-2'>
+            <ButtonLink href='#' size='lg'>
+              스터디 둘러보기
+            </ButtonLink>
+            <ButtonLink href='#' variant='secondary'>
+              공지 목록
+            </ButtonLink>
+            <ButtonLink href='https://drive.google.com' external variant='secondary' size='sm' leadingIcon={<BookOpen />}>
+              자료실
+            </ButtonLink>
+          </div>
+        </Case>
+
+        <Case
+          title='HelpPopover'
+          note='제목 · 값 옆 「?」 를 누르면 그 아래에 짧은 설명이 뜬다. 바깥 클릭 · 포커스 이동 · Esc 로 닫힌다. 글줄 안에도 놓인다.'
+        >
+          <p className='flex items-center gap-1 type-body-sm'>
+            출석
+            <HelpPopover label='발표 표시 설명'>칸 왼쪽 위 마이크는 그 회차 발표자예요.</HelpPopover>
+          </p>
+        </Case>
+
+        <Case
+          title='TimeSelect'
+          note='시각 입력. 브라우저 기본 time 칸 대신 시(00~23) · 분(5분 간격) 두 칸으로 고른다. 값은 HH:mm.'
+        >
+          <div className='grid max-w-2xl gap-4 sm:grid-cols-3'>
+            <TimeSelect label='기본' required value={time} onChange={setTime} />
+            <TimeSelect label='오류' value='' error='시작 시각을 입력해 주세요.' onChange={() => {}} />
+            <TimeSelect label='비활성' value='09:00' disabled onChange={() => {}} />
+          </div>
+        </Case>
+
+        {/* new-component: pnpm --filter @studyclub/ui new-component 이 새 부품 칸을 이 줄 위에 넣는다 */}
+      </div>
     </div>
   );
 }

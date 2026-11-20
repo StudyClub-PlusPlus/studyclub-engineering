@@ -48,12 +48,6 @@ export function ApplyCompleteDialog({
             locale,
           )}
         </p>
-        <p className='text-fg-secondary'>
-          {t(
-            { ko: '제출한 내용은 수정할 수 없습니다.', en: 'Submitted answers cannot be edited.' },
-            locale,
-          )}
-        </p>
       </div>
     </Modal>
   );

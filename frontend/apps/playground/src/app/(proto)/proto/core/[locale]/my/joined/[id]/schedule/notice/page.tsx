@@ -179,7 +179,7 @@ export default function StudyManageNoticesPage() {
       <ScreenSpecRegistrar spec={MANAGE_SPEC} />
       <ScreenSpecRegistrar spec={SPEC} />
 
-      <div className='max-w-2xl space-y-6'>
+      <div className='space-y-6'>
         <section data-anno='notice:1' className='card space-y-5 p-6'>
           <h2 className='text-base font-bold text-fg'>공지 쓰기</h2>
 
@@ -309,9 +309,11 @@ export default function StudyManageNoticesPage() {
                     {n.body}
                   </p>
                   {n.body.split('\n').length > 3 || n.body.length > 120 ? (
-                    <button
+                    <Button
                       type='button'
-                      className='mt-1 text-xs font-semibold text-brand hover:underline'
+                      variant='tertiary'
+                      size='sm'
+                      className='mt-1'
                       onClick={() =>
                         setOpenBody((cur) => {
                           const next = new Set(cur);
@@ -322,7 +324,7 @@ export default function StudyManageNoticesPage() {
                       }
                     >
                       {openBody.has(n.noticeId) ? '접기' : '모두 보기'}
-                    </button>
+                    </Button>
                   ) : null}
                   <div className='mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted'>
                     {n.email.requested && (

@@ -4,16 +4,15 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Badge, Button, Card, EmptyState, cx, Select } from '@studyclub/ui';
+import type { Locale } from '@studyclub/types';
+import { Badge, Button, IconButton, Card, EmptyState, Pagination, cx, Select } from '@studyclub/ui';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { SegmentTabs } from '@/components/SegmentTabs';
-import { useMyStudies, type JoinedStudy } from '@/features/my-studies/queries';
-import { bookScore, myAttendanceBook, type MyAttendanceBook } from '@/lib/attendance-book';
-import { getUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
-import { t } from '@/lib/i18n';
+import { bookScore, myAttendanceBook, type MyAttendanceBook } from '@/features/attendance/book';
+import { getUser } from '@/features/auth/auth';
+import { IS_DEV, syncPreview } from '@/features/auth/preview';
 import {
   LEFT_BADGE,
   LIFE_LABEL,
@@ -25,16 +24,18 @@ import {
   mondayOf,
   upcomingMeeting,
   upcomingOf,
-  userWallTz,
   weekDays,
   ymdInTz,
   type LifeStatus,
   type WallTz,
   type WeekDay,
-} from '@/lib/joined';
+} from '@/features/my-studies/model';
+import { useMyStudies } from '@/features/my-studies/queries';
+import { type JoinedStudy } from '@/features/my-studies/types';
+import { useDisplayTimeZone } from '@/features/profile/use-display-timezone';
+import { scheduleZoneTitle } from '@/features/schedule/timezone';
+import { t } from '@/lib/i18n';
 import { PAGE } from '@/lib/layout';
-import { getRegion } from '@/lib/me';
-import { IS_DEV, syncPreview } from '@/lib/preview';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
 
 type Filter = 'all' | LifeStatus;
@@ -146,7 +147,6 @@ function WeekStrip({
   locale,
   wallTz,
   studies,
-  onWallTz,
   onPrev,
   onNext,
 }: {
@@ -155,7 +155,6 @@ function WeekStrip({
   locale: Locale;
   wallTz: WallTz;
   studies: JoinedStudy[];
-  onWallTz: (tz: WallTz) => void;
   onPrev: () => void;
   onNext: () => void;
 }) {
@@ -170,22 +169,10 @@ function WeekStrip({
           <span className='tnum font-semibold text-fg-muted'>{range}</span>
         </h2>
         <div className='flex items-center gap-2'>
-          <SegmentTabs
-            label='타임존'
-            value={wallTz}
-            options={[
-              { key: 'KST', label: 'KST' },
-              { key: 'PDT', label: 'PDT' },
-            ]}
-            onChange={onWallTz}
-          />
-          <div className='flex items-center'>
-            <Button variant='ghost' size='sm' aria-label='이전 주' onClick={onPrev}>
-              <ChevronLeft size={16} />
-            </Button>
-            <Button variant='ghost' size='sm' aria-label='다음 주' onClick={onNext}>
-              <ChevronRight size={16} />
-            </Button>
+          <span className='type-label-sm text-fg-muted'>내 시간대: {scheduleZoneTitle(wallTz, locale)}</span>
+          <div className='flex items-center gap-3'>
+            <IconButton variant='tertiary' size='sm' aria-label='이전 주' onClick={onPrev} icon={<ChevronLeft />} />
+            <IconButton variant='tertiary' size='sm' aria-label='다음 주' onClick={onNext} icon={<ChevronRight />} />
           </div>
         </div>
       </div>
@@ -200,9 +187,7 @@ function WeekStrip({
               <p className={cx('text-center type-label-sm', d.today ? 'text-primary-700' : 'text-fg-muted')}>
                 {d.label}
               </p>
-              <p className={cx('tnum text-center type-label-lg', d.today ? 'text-primary-700' : 'text-fg')}>
-                {d.day}
-              </p>
+              <p className={cx('tnum text-center type-label-lg', d.today ? 'text-primary-700' : 'text-fg')}>{d.day}</p>
               <ul className='mt-1 flex min-h-10 flex-col gap-1'>
                 {d.hits.map((hit) => {
                   const study = byId.get(hit.studyId);
@@ -211,8 +196,9 @@ function WeekStrip({
                   return (
                     <li key={`${hit.studyId}-${hit.meetingId}`}>
                       <button
+                        // ui-native: 달력 칸의 일정 — 스터디 색 띠가 칠해진 칸 전체가 누르는 곳
                         type='button'
-                        title={`${hit.time} ${hit.title} ${hit.no === 0 ? '킥오프' : `${hit.no}회차`}`}
+                        title={`${hit.time} ${hit.abbreviation} ${hit.title} ${hit.no === 0 ? '킥오프' : `${hit.no}회차`}`}
                         onClick={() => study && router.push(schedulePath(locale, study))}
                         className='block w-full rounded-sm border-l-[3px] px-1.5 py-1 text-left type-label-lg hover:brightness-[0.97]'
                         style={{
@@ -221,7 +207,9 @@ function WeekStrip({
                           color: accent,
                         }}
                       >
-                        <span className='tnum block type-label-sm opacity-75'>{hit.time}</span>
+                        <span className='tnum block type-label-sm opacity-75'>
+                          {hit.time} {hit.abbreviation}
+                        </span>
                         <span className='line-clamp-2 break-keep'>{hit.title}</span>
                       </button>
                     </li>
@@ -233,49 +221,6 @@ function WeekStrip({
         </ol>
       </div>
     </section>
-  );
-}
-
-function Pager({ page, pages, onChange }: { page: number; pages: number; onChange: (page: number) => void }) {
-  if (pages <= 1) return null;
-  return (
-    <nav className='mt-8 flex items-center justify-center gap-1' aria-label='목록 페이지'>
-      <Button
-        variant='ghost'
-        size='sm'
-        disabled={page <= 1}
-        leadingIcon={<ChevronLeft size={16} />}
-        onClick={() => onChange(page - 1)}
-      >
-        이전
-      </Button>
-      {Array.from({ length: pages }, (_, i) => i + 1).map((n) => {
-        const on = n === page;
-        return (
-          <button
-            key={n}
-            type='button'
-            aria-current={on ? 'page' : undefined}
-            onClick={() => onChange(n)}
-            className={cx(
-              'grid h-8 min-w-8 place-items-center rounded-control px-2.5 type-label-lg transition-colors',
-              on ? 'bg-brand text-on-brand' : 'text-fg-secondary hover:bg-surface-2 hover:text-fg',
-            )}
-          >
-            {n}
-          </button>
-        );
-      })}
-      <Button
-        variant='ghost'
-        size='sm'
-        disabled={page >= pages}
-        trailingIcon={<ChevronRight size={16} />}
-        onClick={() => onChange(page + 1)}
-      >
-        다음
-      </Button>
-    </nav>
   );
 }
 
@@ -388,12 +333,7 @@ function StudyItem({ study, locale, wallTz }: { study: JoinedStudy; locale: Loca
             <MissionClear book={book} />
           ) : (
             <div className='mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
-              <p
-                className={cx(
-                  'min-w-0',
-                  left ? 'type-label-lg text-fg-muted' : 'type-title-md text-fg',
-                )}
-              >
+              <p className={cx('min-w-0', left ? 'type-label-lg text-fg-muted' : 'type-title-md text-fg')}>
                 {upcomingOf(study, locale, wallTz)}
               </p>
             </div>
@@ -431,8 +371,9 @@ function MyJoinedPageContent() {
   const role = query.role as RoleFilter;
   const sort = (query.sort || defaultSortOf(filter)) as SortKey;
   const page = pageOf(query.page);
-  const [wallTz, setWallTz] = useState<WallTz>('KST');
-  const [weekStart, setWeekStart] = useState(() => mondayOf(ymdInTz(new Date(), 'KST')));
+  const wallTz = useDisplayTimeZone();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStart = addDays(mondayOf(ymdInTz(new Date(), wallTz)), weekOffset * 7);
   const listTop = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -446,9 +387,6 @@ function MyJoinedPageContent() {
       return;
     }
     setAccountId(u.id);
-    const tz = userWallTz(getRegion());
-    setWallTz(tz);
-    setWeekStart(mondayOf(ymdInTz(new Date(), tz)));
     setReady(true);
   }, [locale, router]);
 
@@ -503,9 +441,8 @@ function MyJoinedPageContent() {
         locale={locale}
         wallTz={wallTz}
         studies={mine}
-        onWallTz={setWallTz}
-        onPrev={() => setWeekStart(addDays(weekStart, -7))}
-        onNext={() => setWeekStart(addDays(weekStart, 7))}
+        onPrev={() => setWeekOffset((offset) => offset - 1)}
+        onNext={() => setWeekOffset((offset) => offset + 1)}
       />
 
       <div className='mt-5 flex flex-wrap items-center gap-2'>
@@ -573,7 +510,7 @@ function MyJoinedPageContent() {
               <StudyItem key={study.id} study={study} locale={locale} wallTz={wallTz} />
             ))}
           </ul>
-          <Pager page={pageSafe} pages={pages} onChange={changePage} />
+          {pages > 1 && <Pagination className='mt-8' page={pageSafe} total={pages} onChange={changePage} />}
         </div>
       )}
     </div>

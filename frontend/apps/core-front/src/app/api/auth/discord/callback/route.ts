@@ -2,7 +2,7 @@
 // postMessage 하고 창을 닫는다. 구글 로그인 콜백(../../callback)과 같은 모양이다.
 import { NextRequest } from 'next/server';
 
-import { DISCORD_OAUTH_SOURCE } from '@/lib/discord';
+import { DISCORD_OAUTH_SOURCE } from '@/features/profile/discord';
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;

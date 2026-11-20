@@ -20,7 +20,7 @@ import {
   toggleVisible,
   visibleRecipients,
 } from './model';
-import type { ApiNoticeCompose, ApiNoticeItem, ApiNoticeList, ApiNoticeRecipient } from '@/lib/study-notice-api';
+import type { ApiNoticeCompose, ApiNoticeItem, ApiNoticeList, ApiNoticeRecipient } from '@/features/study-notices/types';
 
 
 const person = (

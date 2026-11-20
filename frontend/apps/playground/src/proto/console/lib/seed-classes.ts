@@ -1,6 +1,6 @@
 import type { StudyClass } from '@console/lib/classes';
 import { ruleFromMeetings, type StudyTz } from '@console/lib/schedule';
-import type { AttendanceStatus, Study, StudyCrewData, StudyMeeting } from '@studyclub/mock';
+import type { AttendanceStatus, Study, StudyCrewData, StudyMeeting } from '@studyclub/types';
 
 /**
  * 프로토 mock — 분반이 여럿인 스터디.

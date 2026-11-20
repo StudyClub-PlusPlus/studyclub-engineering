@@ -276,7 +276,7 @@ ACCOUNT_IDENTITY
 ## 퍼널·계측
 
 - 단계: 가입
-- 이벤트 (front): `Onboarding Started` · `Onboarding Nickname Submitted` · `Onboarding Nickname Conflict` · `Onboarding Consents Agreed` · `Onboarding Completed`
+- 이벤트 (front): `Onboarding Started` · `Onboarding Nickname Submitted` · `Onboarding Nickname Conflict` · `Onboarding Consents Agreed` · `Onboarding Completed`, 디스코드 단계의 연결 성공은 `My Discord Connected{source=onboarding}`, 실패는 `Discord Connect Failed{source=onboarding, reason}`, 건너뛰기는 `Onboarding Discord Skipped{after_not_in_guild}`
 - 가입 확정 `User Signed Up` / `sign_up` 은 **서버 정본** (`user.registered` 커밋 뒤, insert_id `user_signed_up_account_{id}`). 프론트는 Amplitude 퍼널 사본만 보낸다
 - 이 문서로 바뀌는 이벤트는 없다. A/B 없음
 

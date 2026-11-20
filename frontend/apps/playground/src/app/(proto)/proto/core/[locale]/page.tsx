@@ -8,6 +8,7 @@ import { Marquee } from '@core/components/Marquee';
 import { PAST_STUDIES, VOICES } from '@core/lib/community-voices';
 import { getStudies, getEvents, getOperatorMap, getMembers, getSite, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
+import { ButtonLink } from '@studyclub/ui';
 import { ArrowRight } from 'lucide-react';
 
 export default async function Landing({ params }: { params: Promise<{ locale: Locale }> }) {
@@ -44,22 +45,23 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
           {m('hero.subtitle', locale)}
         </p>
         <div className='mt-8 flex flex-wrap items-center gap-3'>
-          <a
+          <ButtonLink
+            size='lg'
             href={site.discord_invite}
             target='_blank'
             rel='noreferrer'
-            className='group inline-flex items-center gap-2 rounded-full px-6 py-3 type-label-lg text-white shadow-sm transition-transform hover:scale-[1.02]'
-            style={{ background: 'var(--color-brand)' }}
           >
             {m('hero.cta', locale)}
-            <ArrowRight size={17} className='transition-transform group-hover:translate-x-0.5' />
-          </a>
-          <Link
+            <ArrowRight size={20} aria-hidden='true' />
+          </ButtonLink>
+          <ButtonLink
+            linkAs={Link}
+            variant='secondary'
+            size='lg'
             href={`/proto/core/${locale}/studies`}
-            className='rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg)] px-6 py-3 type-label-lg shadow-sm transition-colors hover:bg-[var(--color-surface-subtle)]'
           >
             {m('hero.cta_studies', locale)}
-          </Link>
+          </ButtonLink>
         </div>
 
         {/* Stats */}
@@ -159,9 +161,9 @@ function SectionHead({
         {subtitle && <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>{subtitle}</p>}
       </div>
       {href && (
-        <Link href={href} className='shrink-0 type-label-lg text-[var(--color-brand)] hover:underline'>
+        <ButtonLink linkAs={Link} variant='tertiary' href={href} className='shrink-0'>
           {more} →
-        </Link>
+        </ButtonLink>
       )}
     </div>
   );

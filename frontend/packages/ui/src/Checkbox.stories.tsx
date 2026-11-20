@@ -32,3 +32,8 @@ export const Disabled: Story = {
 export const DisabledChecked: Story = {
   render: () => <Checkbox label='동의합니다' disabled defaultChecked />,
 };
+
+export const HiddenLabel: Story = {
+  name: '라벨 숨김 (표의 행 선택)',
+  render: () => <Checkbox label='김스터디 선택' hideLabel />,
+};

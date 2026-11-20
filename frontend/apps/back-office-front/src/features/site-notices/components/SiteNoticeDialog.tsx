@@ -2,22 +2,23 @@
 
 import { useEffect, useState } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Modal } from '@studyclub/ui';
+import { useForm } from 'react-hook-form';
 
 import {
   EMPTY_NOTICE,
   SiteNoticeForm,
   serverErrorToNoticeField,
-  validateSiteNoticeForm,
-  type SiteNoticeFormErrors,
 } from '@/features/site-notices/components/SiteNoticeForm';
+import { siteNoticeSchema, type SiteNoticeValues } from '@/features/site-notices/form-schema';
 import {
   useCreateSiteNotice,
   useDeleteSiteNotice,
   useSiteNotice,
   useUpdateSiteNotice,
 } from '@/features/site-notices/queries';
-import type { ApiSiteNoticeDetail, SiteNoticePayload } from '@/features/site-notices/types';
+import type { ApiSiteNoticeDetail } from '@/features/site-notices/types';
 
 /**
  * 공지 등록·편집 팝업 — 스터디 등록 팝업과 같은 폼 규칙.
@@ -72,8 +73,18 @@ function SiteNoticeEditor({
   notice?: ApiSiteNoticeDetail;
 }) {
   const editing = Boolean(notice);
-  const [form, setForm] = useState<SiteNoticePayload>(EMPTY_NOTICE);
-  const [errors, setErrors] = useState<SiteNoticeFormErrors>({});
+  const {
+    watch,
+    setValue,
+    reset,
+    setError,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SiteNoticeValues>({
+    resolver: zodResolver(siteNoticeSchema),
+    defaultValues: EMPTY_NOTICE,
+  });
+  const form = watch();
   const [failure, setFailure] = useState<string | null>(null);
   const [done, setDone] = useState<false | 'saved' | 'deleted'>(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -87,8 +98,7 @@ function SiteNoticeEditor({
     if (!open) return;
     let initial = EMPTY_NOTICE;
     if (notice) initial = { title: notice.title, body: notice.body };
-    setForm(initial);
-    setErrors({});
+    reset(initial);
     setFailure(null);
     setDone(false);
     setConfirmDelete(false);
@@ -101,11 +111,8 @@ function SiteNoticeEditor({
     onClose();
   }
 
-  async function handleSubmit() {
+  const submit = handleSubmit(async (form) => {
     if (saving) return;
-    const e = validateSiteNoticeForm(form);
-    setErrors(e);
-    if (Object.keys(e).length > 0) return;
 
     setFailure(null);
     try {
@@ -117,10 +124,13 @@ function SiteNoticeEditor({
       let message = '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
       if (err instanceof Error && err.message) message = err.message;
       const fieldError = serverErrorToNoticeField(message);
-      if (fieldError) setErrors(fieldError);
-      else setFailure(message);
+      if (fieldError) {
+        for (const field of ['title', 'body'] as const) {
+          if (fieldError[field]) setError(field, { type: 'server', message: fieldError[field] });
+        }
+      } else setFailure(message);
     }
-  }
+  });
 
   async function handleDelete() {
     if (saving) return;
@@ -165,17 +175,12 @@ function SiteNoticeEditor({
       <>
         {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 사이트에서 바로 내려간다 */}
         {editing && (
-          <button
-            type='button'
-            onClick={() => setConfirmDelete(true)}
-            disabled={saving}
-            className='mr-auto h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
-          >
+          <Button type='button' variant='danger' onClick={() => setConfirmDelete(true)} disabled={saving} className='mr-auto'>
             공지 삭제
-          </button>
+          </Button>
         )}
         {/* 입력·설정 모달이라 취소를 두지 않는다 — 닫는 길은 X 와 Esc 다 (POL-0008) */}
-        <Button onClick={handleSubmit} loading={create.isPending || update.isPending} disabled={saving}>
+        <Button onClick={submit} loading={create.isPending || update.isPending} disabled={saving}>
           {submitLabel}
         </Button>
       </>
@@ -200,7 +205,14 @@ function SiteNoticeEditor({
       <>
         {failure && <p className='mb-3 rounded-control bg-error-50 px-3 py-2 text-sm text-error-700'>{failure}</p>}
         <fieldset disabled={saving} className='min-w-0'>
-          <SiteNoticeForm value={form} errors={errors} onChange={setForm} />
+          <SiteNoticeForm
+            value={form}
+            errors={{ title: errors.title?.message, body: errors.body?.message }}
+            onChange={(next) => {
+              setValue('title', next.title, { shouldDirty: true });
+              setValue('body', next.body, { shouldDirty: true });
+            }}
+          />
         </fieldset>
       </>
     );

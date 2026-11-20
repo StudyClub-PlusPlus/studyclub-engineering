@@ -1,7 +1,7 @@
 'use client';
 
-import { Badge } from '@studyclub/ui';
-import { Loader2, RotateCw } from 'lucide-react';
+import { Badge, IconButton } from '@studyclub/ui';
+import { RotateCw } from 'lucide-react';
 
 import { TableCard } from '@/components/ui';
 import { channelLabel, eventLabel, formatStamp, statusLabel, statusTone } from '@/features/notifications/labels';
@@ -84,17 +84,16 @@ function StatusCell({
         {statusLabel(row.status)}
       </Badge>
       {(row.canResend || spinning) && (
-        <button
-          type='button'
+        // 보내는 중에는 loading 으로 막는다 — design-system §9-1 은 버튼 안 스피너를 쓰지 않는다
+        <IconButton
+          variant='tertiary'
+          size='sm'
           title='재발송'
           aria-label='재발송'
-          aria-busy={spinning || undefined}
-          disabled={spinning}
+          loading={spinning}
           onClick={() => onResend(row.id)}
-          className='grid h-7 w-7 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-wait disabled:hover:bg-transparent'
-        >
-          {spinning ? <Loader2 size={15} className='animate-spin' /> : <RotateCw size={15} />}
-        </button>
+          icon={<RotateCw />}
+        />
       )}
     </span>
   );
@@ -121,13 +120,7 @@ export function HistorySkeleton() {
 }
 
 /** 표 자리에 서는 안내 한 줄(+ 버튼). 비어도 표 자리의 높이를 지킨다. */
-export function HistoryNotice({
-  children,
-  action,
-}: {
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
+export function HistoryNotice({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className='flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center'>
       <p className='type-body-sm text-fg-secondary'>{children}</p>

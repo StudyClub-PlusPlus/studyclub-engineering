@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { LIFECYCLE_HINT, LIFECYCLE_LABEL, LIFECYCLE_ORDER } from '@console/components/lifecycle';
 import { ACCOUNT_ROLES, PERMISSIONS, PERMISSION_GROUPS, ROLE_LABEL, scopeOf } from '@console/lib/roles';
 import { ZONES } from '@core/lib/zones';
-import { STUDY_CATEGORIES } from '@studyclub/mock';
+import { STUDY_CATEGORIES } from '@studyclub/utils';
 
 const REPO = 'https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies';
 
@@ -57,6 +57,7 @@ export default function PolicyLibrary() {
           <div className='sticky top-6 flex flex-col gap-0.5'>
             {GROUPS.map((g) => (
               <button
+                // ui-native: playground 정책 문서 목차 — 서비스 화면이 아니라 문서 열람 도구
                 key={g.key}
                 type='button'
                 onClick={() => {

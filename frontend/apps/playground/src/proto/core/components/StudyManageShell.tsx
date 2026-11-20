@@ -8,7 +8,7 @@ import { StudyBoard } from '@core/components/StudyBoard';
 import { getUser } from '@core/lib/auth';
 import { t } from '@core/lib/i18n';
 import { scheduleAccessOf, type NavigatorGroup, type ScheduleRole } from '@core/lib/meetings';
-import { type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/types';
 import { Button, Modal, cx } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
 

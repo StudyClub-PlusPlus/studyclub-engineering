@@ -6,7 +6,7 @@ import { Button, cx } from '@studyclub/ui';
 
 import { discordResultLabel, mailResultLabel, mergeNoticePages } from '../model';
 import { useNotices } from '../queries';
-import type { ApiNoticeItem } from '@/lib/study-notice-api';
+import type { ApiNoticeItem } from '@/features/study-notices/types';
 
 /** 보는 사람의 시간대로 「월/일 시:분」. */
 const when = (iso: string) =>
@@ -109,9 +109,9 @@ function NoticeRow({
         {n.body}
       </p>
       {long && (
-        <button type='button' className='mt-1 type-label-lg text-brand hover:underline' onClick={onToggle}>
+        <Button type='button' variant='tertiary' size='sm' className='mt-1' onClick={onToggle}>
           {expanded ? '접기' : '모두 보기'}
-        </button>
+        </Button>
       )}
       <div className='mt-2 flex flex-wrap gap-x-4 gap-y-1 type-label-sm text-fg-muted'>
         {mail && <span>{mail}</span>}

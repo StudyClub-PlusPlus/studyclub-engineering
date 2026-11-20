@@ -1,4 +1,5 @@
 import { getStudies, getStudy, type Locale } from '@core/lib/content';
+import { withConfirmedScheduleExample } from '@core/lib/recruit';
 
 import { StudyDetailView } from '@/proto/core/components/StudyDetailView';
 
@@ -14,10 +15,23 @@ export async function generateStaticParams() {
  * 등록 폼(운영자 콘솔)에 있는 항목만 노출한다.
  * 클라이언트 뷰 컴포넌트(StudyDetailView)에서 MSW Devtool 상태(정상, 404, 500)에 반응한다.
  */
-export default async function StudyDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
+export default async function StudyDetail({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: Locale; id: string }>;
+  searchParams: Promise<{ scenario?: string }>;
+}) {
+  const schedulePreview = (await searchParams).scenario === 'confirmed-schedule';
   const { locale, id } = await params;
   const study = await getStudy(id);
 
-  return <StudyDetailView study={study ?? null} id={id} locale={locale} />;
+  return (
+    <StudyDetailView
+      study={study && schedulePreview ? withConfirmedScheduleExample(study) : study}
+      id={id}
+      locale={locale}
+      schedulePreview={schedulePreview}
+    />
+  );
 }
-

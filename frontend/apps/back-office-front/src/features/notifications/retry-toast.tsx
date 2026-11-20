@@ -1,6 +1,6 @@
 'use client';
 
-import { toast, type Toast } from '@studyclub/ui';
+import { toast, type Toast, Button } from '@studyclub/ui';
 
 /**
  * 「다시 시도」가 붙은 오류 토스트. 재발송 요청이 서버에 닿지 못했을 때 쓴다 — **한 건도 나가지 않은 것**이라 같은 요청을 그대로
@@ -14,16 +14,17 @@ function RetryToast({ t, message, onRetry }: { t: Toast; message: string; onRetr
   return (
     <span className='flex items-center gap-3'>
       <span>{message}</span>
-      <button
+      <Button
         type='button'
-        className='shrink-0 rounded-control px-2 py-1 type-label-lg underline underline-offset-2 hover:bg-surface-2'
+        variant='tertiary'
+        size='sm'
         onClick={() => {
           toast.dismiss(t.id);
           onRetry();
         }}
       >
         다시 시도
-      </button>
+      </Button>
     </span>
   );
 }

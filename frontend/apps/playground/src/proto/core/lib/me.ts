@@ -1,7 +1,8 @@
 'use client';
 
 import { seedMyAttendance } from '@core/lib/attendance';
-import type { MemberRegion } from '@studyclub/mock';
+import { resolveDisplayZone } from '@core/lib/schedule-timezone';
+import type { MemberRegion } from '@studyclub/types';
 
 /**
  * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청·거주 지역.
@@ -113,13 +114,14 @@ export function getRegion(): MemberRegion {
  */
 export function getTimeZone(): string {
   const saved = readJSON<string>(ZONE_KEY, '');
-  if (saved) return saved;
-  return getRegion() === 'KR' ? 'Asia/Seoul' : 'America/Vancouver';
+  const browser = typeof window === 'undefined' ? undefined : Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return resolveDisplayZone(saved, browser);
 }
 
 export function setTimeZone(zone: string) {
   writeJSON(ZONE_KEY, zone);
   setRegion(zone === 'Asia/Seoul' ? 'KR' : 'NA');
+  window.dispatchEvent(new Event('sc:timezone-change'));
 }
 
 export function setRegion(region: MemberRegion) {

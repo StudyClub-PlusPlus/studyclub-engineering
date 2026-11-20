@@ -20,7 +20,6 @@ import {
   upcomingMeeting,
   mondayOf,
   upcomingOf,
-  userWallTz,
   weekDays,
   ymdInTz,
   type LifeStatus,
@@ -28,11 +27,13 @@ import {
   type WeekDay,
 } from '@core/lib/joined';
 import { PAGE } from '@core/lib/layout';
-import { getApplications, getRegion } from '@core/lib/me';
+import { getApplications } from '@core/lib/me';
 import { SCHEDULE_ROLE_LABEL, isKickoff, manageAccessOf, type ScheduleRole } from '@core/lib/meetings';
-import { type Study } from '@studyclub/mock';
-import { categoryGradient, categoryMeta } from '@studyclub/ui';
-import { Badge, Button, Card, EmptyState, Select, cx } from '@studyclub/ui';
+import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
+import { type Study } from '@studyclub/types';
+import { categoryGradient, categoryMeta, Pagination } from '@studyclub/ui';
+import { Badge, IconButton, Card, EmptyState, Select, cx } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { MEETING_SPEC, SPEC } from './spec';
@@ -81,7 +82,7 @@ const SORTS: { key: SortKey; label: string }[] = [
 
 const defaultSortOf = (filter: Filter): SortKey => (filter === 'ended' ? 'end' : 'next');
 
-/** 역할로 거르기 — 운영 = 캡틴(만든 캡틴)·네비게이터, 참여 = 크루. */
+/** 역할로 거르기 — 운영 = 캡틴(담당 캡틴)·네비게이터, 참여 = 크루. */
 type RoleFilter = 'all' | 'manage' | 'join';
 
 const ROLE_FILTERS: { key: RoleFilter; label: string }[] = [
@@ -90,7 +91,7 @@ const ROLE_FILTERS: { key: RoleFilter; label: string }[] = [
   { key: 'join', label: '참여 (크루)' },
 ];
 
-/** 내가 캡틴(그 스터디를 만든 캡틴)이나 네비게이터로 맡은 스터디. */
+/** 내가 캡틴(그 스터디의 담당 캡틴)이나 네비게이터로 맡은 스터디. */
 const isMine = (study: Study) => manageAccessOf(study.id) !== undefined;
 
 /** 첫·마지막 정규 회차 일자 — 킥오프는 기간에 넣지 않는다. */
@@ -149,7 +150,6 @@ function WeekStrip({
   locale,
   wallTz,
   studies,
-  onWallTz,
   onPrev,
   onNext,
 }: {
@@ -158,7 +158,6 @@ function WeekStrip({
   locale: Locale;
   wallTz: WallTz;
   studies: Study[];
-  onWallTz: (tz: WallTz) => void;
   onPrev: () => void;
   onNext: () => void;
 }) {
@@ -172,22 +171,13 @@ function WeekStrip({
           {thisWeek ? '이번 주 일정 ' : '주간 일정 '} <span className='tnum font-semibold text-fg-muted'>{range}</span>
         </h2>
         <div className='flex items-center gap-2'>
-          <SegmentTabs
-            anno='1-1-1'
-            value={wallTz}
-            options={[
-              { key: 'KST', label: 'KST' },
-              { key: 'PDT', label: 'PDT' },
-            ]}
-            onChange={onWallTz}
-          />
-          <div className='flex items-center'>
-            <Button variant='ghost' size='sm' aria-label='이전 주' onClick={onPrev}>
-              <ChevronLeft size={16} />
-            </Button>
-            <Button variant='ghost' size='sm' aria-label='다음 주' onClick={onNext}>
-              <ChevronRight size={16} />
-            </Button>
+          <p data-anno='1-1-1' className='type-label-sm text-fg-secondary'>
+            {locale === 'ko' ? '내 시간대: ' : 'My time zone: '}
+            {scheduleZoneTitle(wallTz, locale)}
+          </p>
+          <div className='flex items-center gap-3'>
+            <IconButton variant='tertiary' size='sm' aria-label='이전 주' onClick={onPrev} icon={<ChevronLeft />} />
+            <IconButton variant='tertiary' size='sm' aria-label='다음 주' onClick={onNext} icon={<ChevronRight />} />
           </div>
         </div>
       </div>
@@ -202,9 +192,7 @@ function WeekStrip({
               <p className={cx('text-center type-label-sm', d.today ? 'text-primary-700' : 'text-fg-muted')}>
                 {d.label}
               </p>
-              <p className={cx('tnum text-center type-label-lg', d.today ? 'text-primary-700' : 'text-fg')}>
-                {d.day}
-              </p>
+              <p className={cx('tnum text-center type-label-lg', d.today ? 'text-primary-700' : 'text-fg')}>{d.day}</p>
               <ul className='mt-1 flex min-h-10 flex-col gap-1'>
                 {d.hits.map((hit) => {
                   const study = byId.get(hit.studyId);
@@ -212,6 +200,7 @@ function WeekStrip({
                   return (
                     <li key={`${hit.studyId}-${hit.meetingId}`}>
                       <button
+                        // ui-native: 달력 칸의 일정 — 스터디 색 띠가 칠해진 칸 전체가 누르는 곳
                         type='button'
                         title={`${hit.time} ${hit.title} ${hit.no === 0 ? '킥오프' : `${hit.no}회차`}`}
                         onClick={() => study && router.push(schedulePath(locale, study))}
@@ -222,7 +211,9 @@ function WeekStrip({
                           color: accent,
                         }}
                       >
-                        <span className='tnum block type-label-sm opacity-75'>{hit.time}</span>
+                        <span className='tnum block type-label-sm opacity-75'>
+                          {hit.time} {hit.abbreviation}
+                        </span>
                         <span data-anno='1-1-2' className='line-clamp-2 break-keep'>
                           {hit.title}
                         </span>
@@ -236,49 +227,6 @@ function WeekStrip({
         </ol>
       </div>
     </section>
-  );
-}
-
-function Pager({ page, pages, onChange }: { page: number; pages: number; onChange: (page: number) => void }) {
-  if (pages <= 1) return null;
-  return (
-    <nav data-anno='5' className='mt-8 flex items-center justify-center gap-1' aria-label='목록 페이지'>
-      <Button
-        variant='ghost'
-        size='sm'
-        disabled={page <= 1}
-        leadingIcon={<ChevronLeft size={16} />}
-        onClick={() => onChange(page - 1)}
-      >
-        이전
-      </Button>
-      {Array.from({ length: pages }, (_, i) => i + 1).map((n) => {
-        const on = n === page;
-        return (
-          <button
-            key={n}
-            type='button'
-            aria-current={on ? 'page' : undefined}
-            onClick={() => onChange(n)}
-            className={cx(
-              'grid h-8 min-w-8 place-items-center rounded-control px-2.5 type-label-lg transition-colors',
-              on ? 'bg-brand text-on-brand' : 'text-fg-secondary hover:bg-surface-2 hover:text-fg',
-            )}
-          >
-            {n}
-          </button>
-        );
-      })}
-      <Button
-        variant='ghost'
-        size='sm'
-        disabled={page >= pages}
-        trailingIcon={<ChevronRight size={16} />}
-        onClick={() => onChange(page + 1)}
-      >
-        다음
-      </Button>
-    </nav>
   );
 }
 
@@ -299,8 +247,9 @@ export default function MyJoinedPage() {
   const [sort, setSort] = useState<SortKey>(defaultSortOf('active'));
   const [role, setRole] = useState<RoleFilter>('all');
   const [page, setPage] = useState(1);
-  const [wallTz, setWallTz] = useState<WallTz>('KST');
-  const [weekStart, setWeekStart] = useState(() => mondayOf(ymdInTz(new Date(), 'KST')));
+  const wallTz = useDisplayTimeZone();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStart = addDays(mondayOf(ymdInTz(new Date(), wallTz)), weekOffset * 7);
   const listTop = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -313,8 +262,6 @@ export default function MyJoinedPage() {
         .filter((a) => a.status === 'accepted')
         .map((a) => a.studyId),
     );
-    setWallTz(userWallTz(getRegion()));
-    setWeekStart(mondayOf(ymdInTz(new Date(), userWallTz(getRegion()))));
     setReady(true);
   }, [locale, router]);
 
@@ -375,9 +322,8 @@ export default function MyJoinedPage() {
         locale={locale}
         wallTz={wallTz}
         studies={mine}
-        onWallTz={setWallTz}
-        onPrev={() => setWeekStart(addDays(weekStart, -7))}
-        onNext={() => setWeekStart(addDays(weekStart, 7))}
+        onPrev={() => setWeekOffset((n) => n - 1)}
+        onNext={() => setWeekOffset((n) => n + 1)}
       />
 
       <div className='mt-5 flex flex-wrap items-center gap-2'>
@@ -433,7 +379,7 @@ export default function MyJoinedPage() {
               <StudyItem key={study.id} study={study} locale={locale} wallTz={wallTz} />
             ))}
           </ul>
-          <Pager page={pageSafe} pages={pages} onChange={changePage} />
+          {pages > 1 && <Pagination data-anno='5' className='mt-8' page={pageSafe} total={pages} onChange={changePage} />}
         </div>
       )}
     </div>
@@ -560,10 +506,7 @@ function StudyItem({ study, locale, wallTz }: { study: Study; locale: Locale; wa
             <div className='mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
               <p
                 data-anno='4-4'
-                className={cx(
-                  'min-w-0',
-                  ended ? 'type-label-lg text-fg-muted' : 'type-title-md text-fg',
-                )}
+                className={cx('min-w-0', ended ? 'type-label-lg text-fg-muted' : 'type-title-md text-fg')}
               >
                 {upcomingOf(study, locale, wallTz)}
               </p>

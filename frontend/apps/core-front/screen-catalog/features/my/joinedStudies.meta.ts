@@ -3,6 +3,7 @@ import type { ScreenStateDef } from '../../types';
 export const joinedStudiesScreenStates: ScreenStateDef[] = [
   {
     id: 'my-joined--default',
+    prdScenarios: ['CORE-ST-009-V01', 'CORE-ST-009-S01', 'CORE-ST-009-S02', 'CORE-ST-009-S03'],
     label: '내 스터디 — 기본 (참여중 탭 & 주간 일정)',
     pageId: 'my-joined',
     rationale:
@@ -31,6 +32,7 @@ export const joinedStudiesScreenStates: ScreenStateDef[] = [
   },
   {
     id: 'my-joined--ended',
+    prdScenarios: ['CORE-ST-009-S05'],
     label: '내 스터디 — 참여 종료 탭 (완주 카드 & 종료 카드)',
     pageId: 'my-joined',
     rationale:

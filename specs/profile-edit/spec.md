@@ -214,7 +214,7 @@ Response `200 OK` — 조회와 같은 모양이고 저장된 값이 실린다.
 ## 퍼널·계측
 
 - 단계: 재방문 (마이페이지)
-- 이벤트 (front): `My Profile Updated{changed_fields, new_region}` (닉네임 · 시간대 저장), 디스코드 줄의 연결 성공은 `My Discord Connected`
+- 이벤트 (front): `My Profile Updated{changed_fields, new_region}` (닉네임 · 시간대 저장), 디스코드 줄의 연결 성공은 `My Discord Connected{source=my_page}`, 실패는 `Discord Connect Failed{source=my_page, reason}`
 - 디스코드 연결 해제에는 이벤트가 없다
 - 이 문서로 바뀌는 이벤트는 없다. A/B 없음
 

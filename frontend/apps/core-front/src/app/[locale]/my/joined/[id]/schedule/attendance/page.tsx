@@ -1,8 +1,9 @@
 'use client';
 
-import { AttendanceTabContent } from '@/components/AttendanceTabContent';
-import { useManage } from '@/components/StudyManageShell';
-import { useStudyAttendance, useStudyMeetings } from '@/features/studies/queries';
+import { AttendanceTabContent } from '@/features/attendance/AttendanceTabContent';
+import { useStudyAttendance } from '@/features/attendance/queries';
+import { useStudyMeetings } from '@/features/schedule/queries';
+import { useManage } from '@/features/schedule/StudyManageShell';
 
 export default function StudyManageAttendancePage() {
   const { study, group, groupId, canEdit } = useManage();

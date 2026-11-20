@@ -20,7 +20,7 @@
 **반복 묶음은 `SERIES_ID` 로 남긴다** — 지금은 쓰는 기능이 없고 삭제·수정은 한 회차씩이다. 반복 단위 수정·삭제를 붙일 때 쓴다.
 **발표 여부는 저장하지 않는다** — 출석부의 발표 표시·횟수는 `PRESENTER1·2_PARTICIPANT_ID` 에서 계산한다.
 **회차 번호는 저장하지 않는다** — 킥오프는 0, 정규 회차는 `SCHEDULED_AT` 오름차순으로 센 순번으로 계산한다. 저장하면 추가·삭제·수정 때마다 뒤 회차를 전부 다시 써야 한다.
-쓰기 규칙(같은 날 중복 금지 · 31일 상한 · 시작한 회차 수정·삭제 금지)은 [study-meeting 스펙](../../specs/study-meeting/spec.md).
+쓰기 규칙(같은 날 중복 금지 · 1년 상한 · 시작한 회차 수정·삭제 금지)은 [study-meeting 스펙](../../specs/study-meeting/spec.md).
 
 ## 관계
 - N : 1 [STUDY_GROUP](./STUDY_GROUP.md)

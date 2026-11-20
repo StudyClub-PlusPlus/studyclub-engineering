@@ -2,6 +2,7 @@ package com.studyclub.domain.account;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.participant.ParticipationPeriod;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +14,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 /**
  * 회원. 프로필·지역·디스코드 연결. 인증 수단은 AccountIdentity 로 분리.
@@ -173,6 +176,18 @@ public class Account extends BaseEntity {
         return onboardingCompletedAt;
     }
 
+    /** 최근 180일간 명부 참여와 로그인이 모두 없는 회원. 캡틴도 같고, 기록 미확인은 제외한다. */
+    public boolean isDormant(
+            Instant lastLoginAt, List<ParticipationPeriod> participationPeriods, Instant asOf) {
+        Instant cutoff = asOf.minus(180, ChronoUnit.DAYS);
+        return getCreatedAt() != null
+                && getCreatedAt().isBefore(cutoff)
+                && lastLoginAt != null
+                && lastLoginAt.isBefore(cutoff)
+                && participationPeriods != null
+                && participationPeriods.stream().allMatch(period -> period.endedBefore(cutoff));
+    }
+
     public void setNickname(String nickname) {
         this.nickname = clip(nickname, NICKNAME_MAX);
     }
@@ -209,14 +224,32 @@ public class Account extends BaseEntity {
      *
      * <p><b>판정은 여기 하나다</b> — 백오피스 목록의 배지 잠금과 권한 변경 API 의 거절이 모두 이 메서드를 부른다 (endpoint-convention
      * 「판정은 서버가 내려준다」). 캡틴 수는 계정 하나로 알 수 없어 호출자가 세어 넘긴다 ({@code SYSTEM_ROLE = ADMIN} 행 수 — 목록은 그냥
-     * 세고, 변경은 잠그고 센다).
+     * 세고, 변경은 잠그고 센다). 진행 중 담당 스터디가 있는지도 STUDY 를 봐야 알 수 있어 호출자가 넘긴다. 최고 관리자 여부는 env 목록이 정본이라
+     * 호출자(SuperAdmins)가 판정해 넘긴다.
+     *
+     * <p>순서: 본인 → 마지막 캡틴 → 최고 관리자 잠금 → 요청자가 최고 관리자 아님 → 진행 중 담당. 마지막 캡틴을 앞에 두는 건 캡틴 둘이 동시에 서로를 내릴
+     * 때의 잠금 판정이 최고 관리자 규칙보다 먼저 보이게 하려는 것이다.
      */
-    public RoleChangeBlockedReason roleChangeBlockedReason(Long actorId, long adminCount) {
+    public RoleChangeBlockedReason roleChangeBlockedReason(
+            Long actorId,
+            long adminCount,
+            boolean ownsOngoingStudy,
+            boolean superAdmin,
+            boolean actorIsSuperAdmin) {
         if (id.equals(actorId)) {
             return RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE;
         }
         if (systemRole == SystemRole.ADMIN && adminCount <= 1) {
             return RoleChangeBlockedReason.LAST_ADMIN_REQUIRED;
+        }
+        if (systemRole == SystemRole.ADMIN && superAdmin) {
+            return RoleChangeBlockedReason.SUPER_ADMIN_LOCKED;
+        }
+        if (systemRole == SystemRole.ADMIN && !actorIsSuperAdmin) {
+            return RoleChangeBlockedReason.NOT_SUPER_ADMIN;
+        }
+        if (systemRole == SystemRole.ADMIN && ownsOngoingStudy) {
+            return RoleChangeBlockedReason.OWNS_STUDY;
         }
         return null;
     }

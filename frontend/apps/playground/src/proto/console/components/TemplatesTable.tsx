@@ -14,6 +14,8 @@ import {
 import { Button, Input, Modal, Select, Tabs, Textarea } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
+import { useEventWorkspace } from '@/proto/events/EventWorkspace';
+import { mergeNotificationTemplates } from '@/proto/events/model';
 import { toPreviewDocument } from '@/proto/mail/render';
 
 type Draft = { trigger: NotificationTrigger; subject: string; body: string };
@@ -33,7 +35,19 @@ const EMPTY: Draft = { trigger: 'USER_REGISTERED', subject: '', body: '' };
  * TODO(api): POST /api/admin/notification-templates · PUT·DELETE /api/admin/notification-templates/{id}
  */
 export function TemplatesTable({ initialTemplates }: { initialTemplates: NotificationTemplate[] }) {
-  const [rows, setRows] = useState<NotificationTemplate[]>(initialTemplates);
+  const { state, dispatch } = useEventWorkspace();
+  const storedRows = state?.notificationTemplates;
+  const rows = mergeNotificationTemplates(storedRows ?? [], initialTemplates, state?.deletedTemplateTriggers);
+  const [saveError, setSaveError] = useState('');
+  function changeRows(next: NotificationTemplate[]) {
+    const error = dispatch({
+      type: 'TEMPLATES', templates: next,
+      deletedTriggers: rows.filter((row) => !next.some((item) => item.trigger === row.trigger)).map((row) => row.trigger),
+    });
+    setSaveError(error ?? '');
+    if (error) return false;
+    return true;
+  }
   /** null = 닫힘, 'new' = 추가, 숫자 = 그 id 편집 */
   const [target, setTarget] = useState<'new' | number | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -45,6 +59,7 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
   const blocked = !draft.subject.trim() || !draft.body.trim();
 
   function openAdd() {
+    setSaveError('');
     setDraft(EMPTY);
     setBodyTab('edit');
     setConfirmDelete(false);
@@ -52,6 +67,7 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
   }
 
   function openEdit(t: NotificationTemplate) {
+    setSaveError('');
     setDraft({ trigger: t.trigger, subject: t.subject, body: t.body });
     setBodyTab('edit');
     setConfirmDelete(false);
@@ -67,22 +83,14 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
     if (blocked) return;
     // 등록·수정한 때가 곧 마지막 수정이다 — 비어 있는 경우를 만들지 않는다
     const now = new Date().toISOString();
-    if (editing) {
-      setRows((prev) => prev.map((r) => (r.id === target ? { ...r, ...draft, updatedAt: now } : r)));
-    } else {
-      setRows((prev) => [
-        // 채널은 메일 하나뿐이라 고르게 하지 않는다 — 고를 것이 하나면 묻지 않는다
-        { id: Math.max(0, ...prev.map((r) => r.id)) + 1, ...draft, channel: 'EMAIL', updatedAt: now },
-        ...prev,
-      ]);
-    }
-    close();
+    const next: NotificationTemplate[] = editing
+      ? rows.map((r) => (r.id === target ? { ...r, ...draft, updatedAt: now } : r))
+      : [{ id: Math.max(0, ...rows.map((r) => r.id)) + 1, ...draft, channel: 'EMAIL', updatedAt: now }, ...rows];
+    if (changeRows(next)) close();
   }
 
   function remove() {
-    // 되돌리기는 없다 — 확인 단계가 막는다. 지난 발송 이력은 지우지 않는다
-    setRows((prev) => prev.filter((r) => r.id !== target));
-    close();
+    if (changeRows(rows.filter((r) => r.id !== target))) close();
   }
 
   return (
@@ -109,7 +117,7 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
           {rows.map((t) => (
             <tr key={t.id}>
               <td className='whitespace-nowrap'>
-                <Button variant='ghost' size='sm' className='-ml-2 font-semibold' onClick={() => openEdit(t)}>
+                <Button variant='tertiary' size='sm' className='-ml-2' onClick={() => openEdit(t)}>
                   {TRIGGER_LABEL[t.trigger] ?? t.trigger}
                 </Button>
               </td>
@@ -138,7 +146,8 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
           confirmDelete ? (
             <>
               {/* 결정을 묻는 단계 — 안전한 쪽이 기본 포커스 (POL-0008) */}
-              <Button variant='secondary' autoFocus data-autofocus onClick={() => setConfirmDelete(false)}>
+              {/* key 로 새로 붙인다 — 앞 단계의 「템플릿 삭제」 Button 자리를 물려받으면 autoFocus 가 돌지 않는다 */}
+              <Button key='confirm-cancel' variant='secondary' autoFocus data-autofocus onClick={() => setConfirmDelete(false)}>
                 취소
               </Button>
               <Button variant='destructive' onClick={remove}>
@@ -149,14 +158,15 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
             <>
               {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}
               {editing && (
-                <button
+                <Button
                   type='button'
+                  variant='danger'
                   data-anno='template:2-2'
                   onClick={() => setConfirmDelete(true)}
-                  className='mr-auto h-10 type-label-lg text-error-600 underline-offset-4 hover:underline'
+                  className='mr-auto'
                 >
                   템플릿 삭제
-                </button>
+                </Button>
               )}
               <Button onClick={save} disabled={blocked}>
                 {editing ? '저장' : '추가'}
@@ -165,6 +175,11 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
           )
         }
       >
+        {saveError && (
+          <p role='alert' className='mb-4 type-body-sm text-danger-fg'>
+            {saveError}
+          </p>
+        )}
         {confirmDelete && current ? (
           <div className='py-6 text-center'>
             <p className='type-label-lg text-fg'>
@@ -214,7 +229,19 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
                           value={draft.body}
                           onChange={(e) => setDraft({ ...draft, body: e.target.value })}
                           placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
-                          helper='{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                          helper={
+                            draft.trigger === 'EVENT_ANNOUNCEMENT'
+                              ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{participation}} 참여 안내, {{nickname}} 닉네임. 운영진이 작성한 내용은 {{notice}}에 들어갑니다. 본문에 {{notice}}를 포함해 주세요.'
+                              : draft.trigger === 'EVENT_CANCELLATION'
+                                ? '{{eventTitle}} 행사명, {{nickname}} 닉네임을 사용할 수 있습니다. 본문에 취소 안내 내용이 들어갈 {{notice}}를 포함해 주세요.'
+                                : draft.trigger === 'EVENT_REGISTRATION_CONFIRMED'
+                                  ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{channel}} 참여 방식, {{nickname}} 닉네임, {{participation}} 장소·링크를 사용할 수 있습니다.'
+                                  : draft.trigger.startsWith('EVENT_REGISTRATION_')
+                                    ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{channel}} 참여 방식, {{nickname}} 닉네임을 사용할 수 있습니다.'
+                                    : draft.trigger === 'FEEDBACK_REPLIED'
+                                      ? '{{nickname}} 으로 닉네임, {{feedbackUrl}} 로 답변 확인 링크 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                                      : '{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                          }
                         />
                       </div>
                     ),

@@ -9,7 +9,9 @@ import { Providers } from '@/app/providers';
 import { Footer } from '@/components/Footer';
 import { RegistrationNavigation } from '@/components/RegistrationNavigation';
 import { SiteHeader } from '@/components/SiteHeader';
-import { getSite } from '@/lib/content';
+import { TestLoginBanner } from '@/features/auth/TestLoginBanner';
+import { getSite } from '@/features/community/server';
+import { PlusPlusCombo } from '@/features/credits/PlusPlusCombo';
 import { LOCALES, isLocale, m } from '@/lib/i18n';
 import { JsonLd, organizationJsonLd, webSiteJsonLd } from '@/lib/jsonld';
 import { IS_INDEXABLE, SITE_NAME, SITE_URL, alternatesFor } from '@/lib/seo';
@@ -81,6 +83,7 @@ export default async function LocaleLayout({
         <JsonLd data={[organizationJsonLd(locale, site), webSiteJsonLd(locale)]} />
         <Providers>
           <div className='flex min-h-screen flex-col'>
+            <TestLoginBanner />
             <Suspense fallback={<div className='h-16 border-b border-border' />}>
               <RegistrationNavigation locale={locale}>
                 <SiteHeader locale={locale} discordUrl={site.discord_invite} mentoringUrl={site.mentoring_url} />
@@ -90,6 +93,7 @@ export default async function LocaleLayout({
             <main className='flex-1 overflow-x-clip'>{children}</main>
             <Footer locale={locale} site={site} />
             <Toaster position='bottom-center' />
+            <PlusPlusCombo locale={locale} />
           </div>
         </Providers>
       </body>

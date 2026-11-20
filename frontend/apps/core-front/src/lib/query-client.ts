@@ -2,7 +2,7 @@
 // 서버에서 하나를 공유하면 사용자 A 의 캐시가 B 에게 보인다 (TanStack Advanced SSR 가이드).
 import { QueryCache, QueryClient } from '@tanstack/react-query';
 
-import { clearSession } from '@/lib/auth';
+import { clearSession } from '@/features/auth/auth';
 import { ApiError } from '@/lib/http';
 
 function makeQueryClient(): QueryClient {
