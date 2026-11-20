@@ -403,10 +403,7 @@ public class StudyService {
     public void unpublish(Long accountId, Long studyId) {
         studyCaptainGuard.assertCaptain(accountId, "스터디 공개 취소 권한이 없습니다.");
         Study study = findStudy(studyId);
-        if (study.getStatus() != StudyStatus.OPEN) {
-            throw new BusinessException(ErrorCode.CONFLICT, "공개 중인 스터디만 공개 취소할 수 있습니다.");
-        }
-        study.unpublish();
+        study.unpublish(Instant.now());
         // 모집 시작 전으로 되돌린다 — 신청서가 없으면 신청 폼을 다시 고칠 수 있다
         studyRecruitmentRepository
                 .findFirstByStudyIdOrderByIdDesc(studyId)
