@@ -26,6 +26,13 @@ public enum ErrorCode {
     SIGNUP_REQUIRED(403, "먼저 서비스에서 로그인해 계정을 만들어 주세요."),
     /** 디스코드 연동인데 스터디클럽 디스코드 서버(길드) 멤버가 아님. 온보딩은 「나중에 연동하기」로, 신청은 가입 안내로 화면이 분기 */
     DISCORD_NOT_IN_GUILD(403, "스터디클럽 디스코드 서버에 먼저 들어와 주세요."),
+    /**
+     * 최고 관리자(env SUPER_ADMIN_EMAILS)인 캡틴을 내리려 함 — env 를 고쳐야만 바뀐다 (specs/admin-users/spec.md 「최고
+     * 관리자」)
+     */
+    SUPER_ADMIN_LOCKED(403, "최고 관리자입니다. 서버 설정(SUPER_ADMIN_EMAILS)을 고쳐야 바뀝니다."),
+    /** 최고 관리자가 아닌 캡틴이 다른 캡틴을 내리려 함 */
+    NOT_SUPER_ADMIN(403, "캡틴을 크루로 내리는 것은 최고 관리자만 할 수 있습니다."),
     /** 리소스 없음 */
     NOT_FOUND(404, "요청한 리소스를 찾을 수 없습니다."),
     /** 비즈니스 규칙 위반 (중복, 마감된 스터디에 신청 등) */
@@ -70,6 +77,8 @@ public enum ErrorCode {
     PRESENTER_NOT_ME(409, "내가 신청한 칸이 아닙니다."),
     /** 스터디가 끝났다(ENDED·CLOSED) — 명부를 더 바꾸지 않는다 */
     STUDY_ENDED(409, "끝난 스터디입니다."),
+    /** 시작일(START_AT)이 지난 스터디를 비공개로 내리려 함 — 저장된 STATUS 가 OPEN 이어도 */
+    STUDY_ALREADY_STARTED(409, "시작한 스터디는 비공개로 바꿀 수 없습니다."),
     /** 스터디 공지를 너무 자주 보냈다 — 같은 반 직전 발송 1분 안, 또는 하루 한도 (specs/study-notice). 화면은 보내기를 끄고 사유를 보여 준다 */
     STUDY_NOTICE_RATE_LIMITED(429, "공지를 너무 자주 보냈습니다. 잠시 뒤에 다시 보내 주세요."),
     /** 회신 없이 문의를 완료로 바꾸려 함 — 완료는 회신으로만 된다. 화면은 「완료」를 막고 같은 문구를 보인다 (specs/feedback/spec.md) */
@@ -90,6 +99,10 @@ public enum ErrorCode {
     CHANNEL_IN_USE(409, "신청자가 있는 참여 방식은 없앨 수 없습니다."),
     /** 새 정원이 그 방식의 확인 대기 + 참가 확정 수보다 작다. 화면은 정원 입력란에 안내한다 */
     CAPACITY_BELOW_OCCUPIED(409, "정원을 현재 신청 인원보다 작게 바꿀 수 없습니다."),
+    /** stage 테스트 로그인 — 코드가 틀림. 메시지에 남은 횟수가 있다. 화면은 코드 칸에 빨간 테두리 (specs/stage-email-login) */
+    EMAIL_CODE_WRONG(400, "코드가 맞지 않아요."),
+    /** stage 테스트 로그인 — 코드가 만료 · 이미 씀 · 5번 틀림 · 없음. 화면은 확인 버튼을 끄고 「코드 다시 받기」 만 남긴다 */
+    EMAIL_CODE_EXPIRED(400, "코드가 만료됐어요. 새 코드를 받아 주세요."),
     /** 짧은 시간에 같은 요청을 반복함 (문의 제출 rate limit). 화면은 입력을 남긴 채 같은 문구를 보인다 */
     TOO_MANY_REQUESTS(429, "잠시 후 다시 시도해 주세요."),
     /** 외부 연동 실패 (구글 OAuth 미설정 등) */

@@ -97,9 +97,10 @@ class AdminStudyParticipantListIntegrationTest {
         insertAccountIfAbsent(WITHDRAWN_ID, "명단하차", "withdrawn@list-test.com", SystemRole.MEMBER);
         insertAccountIfAbsent(DELETED_ID, "명단탈퇴", "deleted@list-test.com", SystemRole.MEMBER);
         jdbcTemplate.update(
-                "UPDATE ACCOUNT SET DISCORD_NICKNAME = ?, REGION_GROUP = ? WHERE ID = ?",
+                "UPDATE ACCOUNT SET DISCORD_NICKNAME = ?, REGION_GROUP = ?, TIME_ZONE = ? WHERE ID = ?",
                 "다/BE/서울",
                 "KR",
+                "America/Vancouver",
                 CREW_A_ID);
         joinedAt = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
@@ -226,6 +227,7 @@ class AdminStudyParticipantListIntegrationTest {
                 .containsEntry("discordNickname", "다/BE/서울")
                 .containsEntry("email", "crew-a@list-test.com")
                 .containsEntry("regionGroup", "KR")
+                .containsEntry("timeZone", "America/Vancouver")
                 .containsEntry("participantRole", "MEMBER")
                 .containsEntry("status", "ACTIVE")
                 .containsEntry("captain", false);

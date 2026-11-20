@@ -3,6 +3,8 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
+
 import {
   appleRedirectUri,
   buildAppleAuthUrl,
@@ -20,6 +22,7 @@ import {
   loginErrorFromOAuthPopup,
 } from '@/features/auth/login-errors';
 import { exchangeSocialLogin } from '@/features/auth/repository';
+import { returnPath } from '@/features/onboarding/model';
 import { track } from '@/lib/analytics';
 import { afterAnalyticsReady } from '@/lib/analytics-privacy-state';
 
@@ -40,7 +43,7 @@ function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const locale = (params?.locale as string) ?? 'ko';
-  const next = search.get('next') ?? `/${locale}/my`;
+  const next = returnPath(search.get('next'), locale as Locale);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

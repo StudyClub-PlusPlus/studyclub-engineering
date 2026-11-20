@@ -44,6 +44,8 @@ cd backend && ./gradlew check           # 테스트 + 포맷 검사 (CI 와 같�
 
 ## 주석
 
+> 주석 규칙의 정본은 [`AGENT.md`](../../AGENT.md) §개발 규칙 1번이다. 아래는 백엔드 예시다.
+
 - **코드가 말하는 것을 주석으로 반복하지 않는다.**
   - ❌ `/** 페이지네이션 목록 응답 — endpoint-convention.md: { items, total, offset, limit }. */`
   - ❌ `// 1. 리포지토리에서 공개 스터디 조회` — 바로 아래 코드가 그 내용이다

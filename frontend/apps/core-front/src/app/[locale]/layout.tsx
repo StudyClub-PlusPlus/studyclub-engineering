@@ -9,6 +9,7 @@ import { Providers } from '@/app/providers';
 import { Footer } from '@/components/Footer';
 import { RegistrationNavigation } from '@/components/RegistrationNavigation';
 import { SiteHeader } from '@/components/SiteHeader';
+import { TestLoginBanner } from '@/features/auth/TestLoginBanner';
 import { getSite } from '@/features/community/server';
 import { PlusPlusCombo } from '@/features/credits/PlusPlusCombo';
 import { LOCALES, isLocale, m } from '@/lib/i18n';
@@ -82,6 +83,7 @@ export default async function LocaleLayout({
         <JsonLd data={[organizationJsonLd(locale, site), webSiteJsonLd(locale)]} />
         <Providers>
           <div className='flex min-h-screen flex-col'>
+            <TestLoginBanner />
             <Suspense fallback={<div className='h-16 border-b border-border' />}>
               <RegistrationNavigation locale={locale}>
                 <SiteHeader locale={locale} discordUrl={site.discord_invite} mentoringUrl={site.mentoring_url} />

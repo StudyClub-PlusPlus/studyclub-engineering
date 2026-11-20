@@ -42,7 +42,7 @@ class DiscordRoleSyncServiceTest {
     void 웹_기준() {
         when(bot.isConfigured()).thenReturn(true);
         when(bot.systemUserId()).thenReturn(SYSTEM_ID);
-        when(participants.findNavigatorDiscordIds()).thenReturn(List.of(NAVIGATOR));
+        when(participants.findNavigatorDiscordIds(any())).thenReturn(List.of(NAVIGATOR));
         when(accounts.findCaptainDiscordIds()).thenReturn(List.of(CAPTAIN));
         when(bot.assignNavigatorRole(anyString(), anyString(), anyList())).thenReturn(OK);
         when(bot.removeNavigatorRole(anyString(), anyString(), anyList())).thenReturn(OK);
@@ -152,7 +152,7 @@ class DiscordRoleSyncServiceTest {
     @Test
     void 명단을_처리하는_사이_네비게이터가_된_사람은_떼지_않는다() {
         // 처음 읽을 때는 STRANGER 가 웹 navigator 가 아니었고, 회수 직전에 다시 읽으니 지정돼 있다
-        when(participants.findNavigatorDiscordIds())
+        when(participants.findNavigatorDiscordIds(any()))
                 .thenReturn(List.of(NAVIGATOR))
                 .thenReturn(List.of(NAVIGATOR, STRANGER));
 
@@ -174,7 +174,8 @@ class DiscordRoleSyncServiceTest {
 
     @Test
     void 비동기_진입점은_어떻게_실패해도_던지지_않는다() {
-        when(participants.findNavigatorDiscordIds()).thenThrow(new IllegalStateException("db"));
+        when(participants.findNavigatorDiscordIds(any()))
+                .thenThrow(new IllegalStateException("db"));
 
         assertThatCode(
                         () ->

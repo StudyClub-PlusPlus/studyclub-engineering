@@ -21,6 +21,8 @@ export type MeetingPatch = {
   date: string;
   time: string;
   title: string;
+  /** 고치기 전 예정 시각(UTC ISO). 일자 · 시각이 그대로면 이 값을 그대로 보낸다. */
+  scheduledAt?: string;
   presenter1?: string | null;
   presenter2?: string | null;
 };

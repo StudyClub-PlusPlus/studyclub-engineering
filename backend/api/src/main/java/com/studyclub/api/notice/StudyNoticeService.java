@@ -259,7 +259,7 @@ public class StudyNoticeService {
                         .findFirstByStudyGroupIdOrderByCreatedAtDescIdDesc(groupId)
                         .map(StudyNotice::getCreatedAt)
                         .orElse(null);
-        return StudyNotice.sendBlock(study.isEnded(), lastSentAt, todayCount(groupId, now), now);
+        return StudyNotice.sendBlock(study.isEnded(now), lastSentAt, todayCount(groupId, now), now);
     }
 
     private long todayCount(Long groupId, Instant now) {
