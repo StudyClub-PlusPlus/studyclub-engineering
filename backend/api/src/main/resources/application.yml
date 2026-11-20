@@ -135,10 +135,14 @@ scalar:
   # UI 가 Scalar 로 사용량을 보내는 기본값을 끈다
   telemetry: false
 
-# 운영자 알림 (specs/ops-alerts/spec.md). 웹훅이 비면 아무것도 보내지 않는다 — 로컬·테스트 기본값.
+# 운영자 알림 (specs/ops-alerts/spec.md). 등급별 목적지 — info → info + team, warn·error → warn. 빈 웹훅은 건너뛴다 — 로컬·테스트 기본값.
+# team 은 prod 만 넣는다. 비면 옛 이름 OPS_DISCORD_WEBHOOK_URL 을 읽는다.
 # APP_ENV 는 제목 접두어용: production → 없음, stage → [Stage], beta → [Beta], 그 밖 → [Local].
 # 웹훅 URL 은 토큰이다 — 레포에 적지 않고 env 로만 주입한다.
 ops:
+  info-webhook-url: ${OPS_INFO_WEBHOOK_URL:}
+  warn-webhook-url: ${OPS_WARN_WEBHOOK_URL:}
+  team-webhook-url: ${OPS_TEAM_WEBHOOK_URL:}
   discord-webhook-url: ${OPS_DISCORD_WEBHOOK_URL:}
   env: ${APP_ENV:local}
 
