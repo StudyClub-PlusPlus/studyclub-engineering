@@ -12,7 +12,10 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
-/** 한 회원의 소셜 로그인 수단. 식별은 {@code (issuer, providerAccountId)} — 이메일이 아니라 OAuth {@code sub}. */
+/**
+ * 한 회원의 로그인 수단. 식별은 {@code (issuer, providerAccountId)} — 구글은 OAuth {@code sub}, stage 테스트
+ * 로그인(EMAIL)은 소문자 정규화한 이메일.
+ */
 @Entity
 @Table(
         name = "ACCOUNT_IDENTITY",
@@ -47,6 +50,10 @@ public class AccountIdentity extends BaseEntity {
 
     @Column(name = "LAST_LOGIN_AT")
     private Instant lastLoginAt;
+
+    /** EMAIL 수단의 비밀번호 해시(DelegatingPasswordEncoder 형식). 구글은 null */
+    @Column(name = "PASSWORD_HASH", length = 255)
+    private String passwordHash;
 
     /** 제공자 refresh token — 탈퇴 때 제공자 쪽 연결을 끊는 데만 쓴다. 지금은 애플만 채운다(심사 5.1.1(v)). 응답·로그에 내지 않는다. */
     @Column(name = "PROVIDER_REFRESH_TOKEN", length = 1024)
@@ -116,5 +123,17 @@ public class AccountIdentity extends BaseEntity {
 
     public void recordLogin(Instant at) {
         recordLogin(at, null);
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    /** EMAIL 수단만 — 코드로 메일을 확인한 뒤에만 부른다 */
+    public void changePassword(String passwordHash) {
+        if (issuer != Issuer.EMAIL) {
+            throw new IllegalStateException("비밀번호는 EMAIL 로그인 수단에만 있다");
+        }
+        this.passwordHash = passwordHash;
     }
 }
