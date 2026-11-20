@@ -72,13 +72,6 @@ export function setUser(user: SessionUser): void {
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-/** 세션 user 의 시간대만 바꾼다. 같은 사람이라 조회 캐시는 비우지 않는다. */
-export function setUserTimeZone(timeZone: string | null): void {
-  const user = getUser();
-  if (!user || typeof window === 'undefined') return;
-  window.localStorage.setItem(USER_KEY, JSON.stringify({ ...user, timeZone }));
-}
-
 export function clearSession(): void {
   if (typeof window === 'undefined') return;
   getQueryClient().clear();
