@@ -171,10 +171,11 @@ erDiagram
   ACCOUNT_IDENTITY {
     bigint   ID                PK
     bigint   ACCOUNT_ID           FK
-    varchar  ISSUER               "GOOGLE / APPLE"
-    varchar  PROVIDER_ACCOUNT_ID     "OAuth sub"
+    varchar  ISSUER               "GOOGLE / APPLE / EMAIL(테스트 로그인)"
+    varchar  PROVIDER_ACCOUNT_ID     "OAuth sub (EMAIL 은 정규화 메일)"
     varchar  PROVIDER_EMAIL       "OAuth 제공자 이메일. ACCOUNT.EMAIL 과 다를 수 있음"
     datetime LAST_LOGIN_AT
+    varchar  PASSWORD_HASH        "EMAIL 수단만"
   }
 
   ACCOUNT_CONSENT {
@@ -478,6 +479,7 @@ erDiagram
 | --- | ------------------------------------------------------- | ---------------------- | ------------------------------------ |
 | 회원  | [ACCOUNT](./ACCOUNT.md)                                    | 회원 프로필                 | `SYSTEM_ROLE`                        |
 | 회원  | [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
+| 회원  | [EMAIL_SIGNUP_CODE](./EMAIL_SIGNUP_CODE.md) | 테스트 로그인 가입 코드 | — |
 | 회원  | [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)                                  | 회원 동의                 | —                                    |
 | 회원  | [ACCOUNT_LEAVE_REASON](./ACCOUNT_LEAVE_REASON.md)                        | 탈퇴 사유 집계 (계정과 잇지 않음) | —                              |
 | 회원  | [ADMIN_AUDIT_LOG](./ADMIN_AUDIT_LOG.md)                                  | 운영 감사 로그 — 이메일 보기·권한 변경 (ID 만) | —                              |

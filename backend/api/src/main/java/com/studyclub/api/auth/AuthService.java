@@ -128,7 +128,8 @@ public class AuthService {
         refreshTokenRepository.deleteByTokenHash(JwtService.tokenHash(refreshToken));
     }
 
-    private AuthResponse issueFor(Account account, String suggestedNickname) {
+    /** 토큰 발급 — stage 테스트 로그인(StageEmailLoginService)도 같은 길로 */
+    AuthResponse issueFor(Account account, String suggestedNickname) {
         String sub = String.valueOf(account.getId());
         String refreshToken = jwtService.issueRefresh(sub, account.getEmail());
         Instant expiresAt = Instant.now().plusSeconds(jwtService.refreshTtlSeconds());
