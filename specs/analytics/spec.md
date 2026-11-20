@@ -46,8 +46,8 @@
 | 행동 | Amplitude | GA4 | 속성 | 보내는 곳 | 지점 |
 |---|---|---|---|---|---|
 | 페이지 조회 | `Page Viewed` (수동, `page_name`) | `page_view` (수동, 허용 확인 후 SPA 이동 포함) | page_name, locale | front | `PageViewTracker` |
-| 가입 | `User Signed Up` | `sign_up` | method=`google`·`apple`, signup_surface=`onboarding` | **server 정본** (GA4: server(MP)) + front 퍼널 사본 (Amplitude 만) | 온보딩 최초 완료 (`user.registered`) |
-| 로그인 | `User Logged In` | `login` | method=`google`·`apple` | front | 온보딩을 마친 회원의 로그인 완료 |
+| 가입 | `User Signed Up` | `sign_up` | method=`google`·`apple`·`email`(테스트 로그인), signup_surface=`onboarding` | **server 정본** (GA4: server(MP)) + front 퍼널 사본 (Amplitude 만) | 온보딩 최초 완료 (`user.registered`) |
+| 로그인 | `User Logged In` | `login` | method=`google`·`apple`·`email`(테스트 로그인) | front | 온보딩을 마친 회원의 로그인 완료 |
 | 활성화 | `Activated` | `activated` | activation_action=`study_applied`, study_id (GA4 는 activation_action 만) | server (GA4: server(MP)) | 계정의 **첫** 스터디 신청 저장 (`study_application.submitted`) |
 
 - `page_name` 값 (경로 → 이름, `PageViewTracker` 의 `pathToPageName`): `landing` · `studies_list` · `study_detail` · `events_list` · `event_detail` · `notices_list` · `notice_detail` · `about` · `guide` · `terms` · `privacy` · `login` · `onboarding` · `my_page` · `my_studies`(`/my/joined`) · `saved_studies`(`/my/saved`) · `account_leave`(`/my/leave`) · `study_room_schedule` · `study_room_attendance` · `study_room_notice`(`/my/joined/{id}/schedule[/attendance|/notice]`). `study_detail` · `study_room_*` 는 `study_id` 를 함께 보낸다. 곧장 다른 화면으로 넘기는 경로(`/my/joined/{id}`, `/my/joined/{id}/attendance`)는 세지 않는다

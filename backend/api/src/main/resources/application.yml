@@ -107,6 +107,14 @@ auth:
   cookie-env: ${AUTH_COOKIE_ENV:}
   back-office-origins: ${BACK_OFFICE_ORIGINS:http://localhost:4701}
 
+# stage 테스트 로그인 (specs/stage-email-login) — 메뉴에 없는 이메일 가입 · 비밀번호 로그인.
+# enabled 가 꺼져 있거나 APP_ENV=production 이면 /auth/email/** 가 404. code-copy 는 stage 에서만 —
+# 운영에서 켜면 서버가 뜨지 않는다.
+stage-login:
+  enabled: ${EMAIL_LOGIN_ENABLED:false}
+  code-copy: ${EMAIL_CODE_COPY:false}
+  app-env: ${APP_ENV:local}
+
 # JWT 서명키 (운영은 내부 시크릿 SSOT → env 주입, 레포 평문 금지)
 jwt:
   secret: ${JWT_SECRET:local-dev-jwt-secret-change-me}
