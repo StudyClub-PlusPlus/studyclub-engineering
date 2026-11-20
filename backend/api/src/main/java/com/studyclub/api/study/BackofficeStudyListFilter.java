@@ -5,7 +5,10 @@ import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyStatus;
 
-/** 백오피스 스터디 목록 조건. null 이면 그 조건을 걸지 않는다. */
+/**
+ * 백오피스 스터디 목록 조건. null 이면 그 조건을 걸지 않는다. {@code status} 는 저장값이 아니라 날짜까지 읽은 지금 상태({@code
+ * Study#statusAsOf})로 거른다.
+ */
 public record BackofficeStudyListFilter(
         StudyCategory category,
         StudyKind studyKind,
@@ -16,9 +19,7 @@ public record BackofficeStudyListFilter(
         BackofficeStudySort sort,
         String keyword,
         Boolean hasApplicationForm,
-        AdminStudyRecruitFilter recruitFilter,
-        /** true 이면 START_AT 이 asOf 이하인 행만 — 대시보드 진행 중 보드에서 사용 (결정 5). */
-        Boolean startedOnly) {
+        AdminStudyRecruitFilter recruitFilter) {
 
     public BackofficeStudyListFilter(
             StudyCategory category,
@@ -36,7 +37,6 @@ public record BackofficeStudyListFilter(
                 visibility,
                 recruitStatus,
                 sort,
-                null,
                 null,
                 null,
                 null);

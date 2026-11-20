@@ -168,7 +168,7 @@ sequenceDiagram
 | 401 | UNAUTHORIZED | 로그인 아님 |
 | 403 | FORBIDDEN | compose 와 같음 |
 | 404 | NOT_FOUND | 스터디·반 없음 |
-| 409 | STUDY_ENDED | 끝난 스터디 |
+| 409 | STUDY_ENDED | 끝난 스터디 — `Study.isEnded(now)`: `STATUS ∈ {ENDED, CLOSED}` 이거나 `END_AT` 경과 (2026-11-18 bug-37) |
 | 429 | STUDY_NOTICE_RATE_LIMITED | 직전 발송 1분 안(`COOLDOWN`) 또는 오늘 30회 초과(`DAILY_LIMIT`). 메시지에 사유와 `nextAvailableAt` |
 
 > `ErrorCode.STUDY_NOTICE_RATE_LIMITED(429)` 를 새로 두었다. `ErrorCode.fromStatus(429)` 도 이 코드를 돌려준다 (프레임워크가 던진 429 가 따로 없다).

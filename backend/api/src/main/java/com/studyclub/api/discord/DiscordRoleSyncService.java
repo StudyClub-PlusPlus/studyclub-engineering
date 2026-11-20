@@ -2,6 +2,7 @@ package com.studyclub.api.discord;
 
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -76,7 +77,9 @@ public class DiscordRoleSyncService {
                 switch (request.role()) {
                     case CAPTAIN -> accountRepository.findCaptainDiscordIds().contains(userId);
                     case NAVIGATOR ->
-                            studyParticipantRepository.findNavigatorDiscordIds().contains(userId);
+                            studyParticipantRepository
+                                    .findNavigatorDiscordIds(Instant.now())
+                                    .contains(userId);
                 };
         if (has == should) {
             return;
@@ -94,7 +97,8 @@ public class DiscordRoleSyncService {
 
     /** 명단과 웹 기준을 양쪽으로 비교한다. navigator 는 맞추고, captain 은 어긋난 사람을 남긴다. */
     void reconcileMembers(DiscordRoleMembersRequest request) {
-        Set<String> expected = new HashSet<>(studyParticipantRepository.findNavigatorDiscordIds());
+        Set<String> expected =
+                new HashSet<>(studyParticipantRepository.findNavigatorDiscordIds(Instant.now()));
         Set<String> actual = new LinkedHashSet<>(request.navigators());
         changeNavigators(minus(expected, actual), true);
         changeNavigators(minus(actual, expected), false);
@@ -135,7 +139,9 @@ public class DiscordRoleSyncService {
         String requesterId = discordBotClient.systemUserId();
         for (int from = 0; from < users.size(); from += BATCH) {
             // 부르기 직전에 웹 기준을 다시 읽는다 — 앞 묶음을 처리하는 사이 네비게이터로 지정 · 해제된 사람을 낡은 기준으로 건드리지 않게
-            Set<String> now = new HashSet<>(studyParticipantRepository.findNavigatorDiscordIds());
+            Set<String> now =
+                    new HashSet<>(
+                            studyParticipantRepository.findNavigatorDiscordIds(Instant.now()));
             List<String> batch =
                     users.subList(from, Math.min(from + BATCH, users.size())).stream()
                             .filter(id -> now.contains(id) == assign)

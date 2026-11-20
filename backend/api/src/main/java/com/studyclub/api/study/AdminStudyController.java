@@ -100,8 +100,7 @@ public class AdminStudyController {
                         sort,
                         keyword,
                         hasApplicationForm,
-                        recruitFilter,
-                        null),
+                        recruitFilter),
                 offset,
                 limit);
     }
