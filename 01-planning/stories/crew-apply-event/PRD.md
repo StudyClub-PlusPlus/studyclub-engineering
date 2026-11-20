@@ -152,7 +152,7 @@ flowchart LR
 |---|---|---|---|
 | 기획 | 행사 신청 흐름 | 플레이그라운드와 화면 설명 | 시안 검토 |
 | FE | core-front 행사 | 과거 행사 콘텐츠·외부 링크 표시 | 자체 신청·상태·취소 연결 |
-| BE | 행사 조회·본인 신청 API ([event-registration 스펙](../../../specs/event-registration/spec.md)) | 스펙작성중. 남은 확인 사항은 스펙 「미확정」 R1~R6. 신청 테이블 `CLUB_EVENT_REGISTRATION` 은 ST-037 참가자 스펙(PR #479)과 공동 정의 | 스펙 확정 · 공통 신청 PR 머지 후 구현 |
+| BE | 행사 조회·본인 신청 API ([event-registration 스펙](../../../specs/event-registration/spec.md)) | 스펙작성중. PR #508 리뷰 결정(R1~R6) 반영, 미확정 없음. 신청 테이블 `CLUB_EVENT_REGISTRATION` 은 ST-037 참가자 스펙(PR #479)과 공동 정의 | 스펙 확정 · 공통 신청 PR 머지 후 구현 |
 
 ### 데이터와 처리 규칙
 

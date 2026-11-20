@@ -1,8 +1,8 @@
 # 행사 신청 API Spec: 크루가 사이트에서 행사를 보고 신청·취소한다
 
 > ERD: [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md) · [CLUB_EVENT_CHANNEL](../../docs/erd/CLUB_EVENT_CHANNEL.md) · [CLUB_EVENT_QUESTION](../../docs/erd/CLUB_EVENT_QUESTION.md) (`V59__create_club_event.sql`). 신청 테이블 `CLUB_EVENT_REGISTRATION` 은 아직 없다 — 아래 [데이터 모델](#데이터-모델-club_event_registration-공동-정의) (PR #479 제안과 같은 정의)
-> 생성일: 2026-11-18
-> 상태: 스펙작성중
+> 생성일: 2026-11-18 · 리뷰 반영: 2026-11-20 (PR #508 리뷰 — 본인 취소 대상 고정 · 신청 재시도 키 · 탈퇴 계정 토큰, R1~R6 결정. R4 는 PR #509 PRD 「활성화와 행동 분석」)
+> 상태: 스펙작성중 — 미확정 없음. 리뷰 승인 뒤 `스펙확정`
 >
 > Story PRD:
 > - [크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다](../../01-planning/stories/crew-apply-event/PRD.md) (ST-038)
@@ -22,9 +22,9 @@
 |--------|------|------|------|------|
 | GET | /api/events | 행사 목록: 예정된 행사 · 지난 행사 묶음, 표시 상태, 내 신청 상태 | X (로그인하면 내 신청 상태를 싣는다) | 스펙작성중 |
 | GET | /api/events/{eventId} | 행사 상세: 모집 상세 · 일정 · 장소 · 방식별 잔여석 · 현재 질문 · 신청 가능 여부 · 내 신청 요약 | X (로그인하면 내 신청을 싣는다) | 스펙작성중 |
-| POST | /api/events/{eventId}/registrations | 신청 제출: 행사 잠금 뒤 정원 · 중복 · 질문 버전을 다시 확인하고 접수 | O (`@RequireOnboarding`) | 스펙작성중 |
+| POST | /api/events/{eventId}/registrations | 신청 제출: `Idempotency-Key` 로 재시도를 막고, 행사 잠금 뒤 정원 · 중복 · 질문 버전을 다시 확인하고 접수 | O (`@RequireOnboarding`) | 스펙작성중 |
 | GET | /api/events/{eventId}/registrations/me | 내 신청서: 이 행사의 최신 신청 한 건과 신청 당시 질문 · 답 | O (`@RequireOnboarding`) | 스펙작성중 |
-| DELETE | /api/events/{eventId}/registrations/me | 본인 취소: 신청 마감 시각 전까지. 행은 지우지 않고 `CANCELLED` 로 남긴다 | O (`@RequireOnboarding`) | 스펙작성중 |
+| DELETE | /api/events/{eventId}/registrations/me?registrationId={id} | 본인 취소: 화면이 보고 있던 그 신청만, 신청 마감 시각 전까지. 행은 지우지 않고 `CANCELLED` 로 남긴다 | O (`@RequireOnboarding`) | 스펙작성중 |
 
 **마이페이지: `/api/me/events` (`MyClubEventController`)**
 
@@ -52,6 +52,14 @@
 
 - `GET /api/events` · `GET /api/events/{eventId}` 는 **비로그인도 읽는다.** 보안 설정의 공개 GET 목록에 `/api/events` · `/api/events/*` 두 패턴만 올린다. `/api/events/**` 를 열지 않는다 — `…/registrations/me` 까지 열리면 안 된다 ([site-notice](../site-notice/spec.md#인가) 와 같은 방식)
 - 공개 GET 이라도 **토큰이 있으면 읽어서** 내 신청 상태를 싣는다. 토큰이 없거나 무효면 오류 없이 비로그인 응답을 준다 ([study](../study/spec.md) `getDetail(studyId, accountId)` — 「비로그인이면 null」과 같은 방식)
+- **토큰만 믿지 않는다** (PR #508 리뷰). 발급된 토큰은 탈퇴 뒤에도 만료 전까지 서명 검증을 통과한다([user-leave](../user-leave/spec.md) 「발급된 토큰은 서버가 무효화하지 못한다」). 그래서 공개 GET 은 토큰의 계정 ID 로 **`ACCOUNT` 행을 읽어** 아래처럼 나눈다. 신청 기록은 그 뒤에만 읽는다
+
+| 토큰의 계정 | 응답 | `applyBlockedReason` |
+|---|---|---|
+| 토큰 없음 · 무효 · **계정 행 없음(탈퇴)** | 비로그인과 같다. `myRegistration = null`, 참여 링크 없음 | `LOGIN_REQUIRED` |
+| 계정 있음 · 온보딩 전 | 공개 정보만. `myRegistration = null` | `ONBOARDING_REQUIRED` |
+| 계정 있음 · 온보딩 완료 | 내 신청 정보 · (확정된 온라인 신청자면) 참여 링크 | 판정대로 |
+
 - 신청 · 내 신청서 · 본인 취소 · 내 행사는 `@RequireOnboarding`. 토큰이 없으면 401, 온보딩 전이면 403 `ONBOARDING_REQUIRED` ([user-onboarding 「회원 전용 API 공통 규칙」](../user-onboarding/spec.md)). 온보딩은 약관 · 개인정보 동의 단계라 그 전 계정의 신청을 받지 않는다
 - 본인 것만 다룬다: 내 신청서 · 본인 취소 · 내 행사는 경로에 신청 ID 를 받지 않고 **토큰의 계정**으로 찾는다. 다른 사람 신청을 가리킬 방법이 없다 (crew-apply-event §3 「본인 신청 조회·취소 권한을 서버에서 검증」)
 - 온라인 참여 링크는 **그 행사에 참가 확정된 온라인 신청자에게만** 응답에 싣는다 (§4 「참가가 확정된 온라인 신청자만 온라인 참여 링크를 볼 수 있음」). 공개 상세에는 링크가 있는지조차 싣지 않는다 (아래 「행사 상세」)
@@ -113,7 +121,7 @@
 
 ### 본인 취소할 수 있나: `canCancel` · `cancelBlockedReason`
 
-계산: `ClubEventRegistration.selfCancelBlockedReason(event, now)` (제안). 상세의 `myRegistration` 과 내 신청서 응답이 이 값을 싣고, 본인 취소가 같은 값으로 거절한다.
+계산: `ClubEventRegistration.selfCancelBlockedReason(event, now)` (제안). 상세의 `myRegistration` 과 내 신청서 응답이 이 값을 싣고, 본인 취소가 같은 값으로 거절한다. 본인 취소는 **화면이 보고 있던 신청 번호**(`registrationId`)의 신청만 바꾼다 (아래 「본인 취소」).
 
 | `cancelBlockedReason` | 조건 | 화면 |
 |---|---|---|
@@ -139,7 +147,7 @@
 | 행사 수정 · 상태 전환 · 운영진 참가 처리 · 종료 자동 전환 · 메일 예약 (event · PR #479) | — | 그 행사 `CLUB_EVENT` 쓰기 잠금 | `ACCOUNT` 는 **잠그지 않고** 읽는다. 없으면(탈퇴) 그 사람 메일은 만들지 않는다 |
 
 - 신청 제출이 행사보다 계정을 먼저 잠그는 이유: 탈퇴는 「그 계정의 신청이 걸린 행사」를 계정 잠금 뒤에 고른다. 신청 제출이 같은 계정 잠금을 먼저 잡아야, 탈퇴가 행사 목록을 고른 뒤에 새 신청이 생기지 않는다. 잠금 순서가 탈퇴와 같아 교착도 생기지 않는다
-- 이것은 [event](../event/spec.md) 의 「트랜잭션의 첫 조회로 `CLUB_EVENT` 행」 규칙의 예외다. 그 규칙의 목적(잠금 전에 행사 · 신청을 일반 `SELECT` 로 읽지 않는다)은 그대로 지킨다 — 계정 잠금은 행사 · 신청을 읽지 않는다. event 스펙의 잠금 표에 「신청 제출: `ACCOUNT` → `CLUB_EVENT`」 · 「회원 탈퇴」 행을 더한다 (미확정 R1)
+- 이것은 [event](../event/spec.md) 의 「트랜잭션의 첫 조회로 `CLUB_EVENT` 행」 규칙의 예외다. 그 규칙의 목적(잠금 전에 행사 · 신청을 일반 `SELECT` 로 읽지 않는다)은 그대로 지킨다 — 계정 잠금은 행사 · 신청을 읽지 않는다. event 스펙의 잠금 표에 「신청 제출: `ACCOUNT` → `CLUB_EVENT`」 · 「회원 탈퇴」 행을 더한다 (R1 결정 — event 스펙 담당(효승님)에게 공유해 그 스펙에도 반영)
 - 본인 취소는 계정을 잠그지 않는다. 탈퇴와 겹쳐도 둘 다 같은 신청을 `WHERE STATUS IN ('PENDING','CONFIRMED')` 조건부 갱신으로 바꾸므로 한쪽만 바꾼다
 - 잠금은 짧게 끝낸다. 같은 트랜잭션에서는 `NOTIFICATION` 아웃박스 행 저장(`BEFORE_COMMIT`)까지만 하고 실제 발송은 커밋 뒤 폴러가 맡는다 ([event](../event/spec.md))
 
@@ -152,6 +160,8 @@
 | 신청 ↔ 정원 축소 · 방식 제거 · `REVIEW → AUTO` | [event 「같은 행사에 쓰는 요청의 처리 순서」](../event/spec.md#같은-행사에-쓰는-요청의-처리-순서) 표와 같다 | 같다 |
 | 신청 ↔ 모집 마감 · 행사 취소 | 신청이 접수된다. 행사 취소면 그 신청도 함께 취소된다 (event-status) | 신청은 잠금 뒤 바뀐 상태를 읽고 409 `EVENT_REGISTRATION_CLOSED` · `EVENT_CANCELLED` |
 | 신청 ↔ 탈퇴 (같은 계정) | 신청이 접수된 뒤 탈퇴가 그 신청까지 `ACCOUNT_DELETED` 로 취소한다 | 신청은 계정 잠금 뒤 계정이 없어 401 `UNAUTHORIZED` |
+| 같은 사람의 신청 재시도 (응답을 못 받음) ↔ 다른 탭의 취소 | 첫 요청이 접수된다. 재시도는 같은 `Idempotency-Key` 라 계정 잠금 뒤 그 신청을 그대로 돌려준다 — 다른 탭에서 취소했어도 새 신청을 만들지 않는다 (PR #508 리뷰) | — |
+| 예전 탭의 취소 ↔ 다른 탭에서 취소 뒤 재신청 | 예전 탭은 자기가 보던 `registrationId` 를 보낸다. 그 신청은 이미 `CANCELLED` 라 409 `EVENT_REGISTRATION_STATUS_NOT_ALLOWED`. 새 신청은 건드리지 않는다 (PR #508 리뷰) | — |
 | 본인 취소 ↔ 운영진 개별 취소 · 참가 불가 | 본인 취소가 반영된다. 운영진 쪽은 409 (event-participant `EVENT_REGISTRATION_STATUS_NOT_ALLOWED`) | 본인 취소는 409 `EVENT_REGISTRATION_STATUS_NOT_ALLOWED`. 화면은 내 신청을 다시 읽는다 |
 
 ### 신청 질문과 질문 버전
@@ -209,8 +219,8 @@
 
 없음
 
-- 페이지를 나누지 않는다. 행사는 운영진이 하나씩 등록하는 수(한 해 수십 건)라 한 번에 준다. 화면은 탭마다 개수를 보여 줘야 해서(§1 「예정된 행사·지난 행사 탭과 각 행사 수」) 전체가 필요하다 (미확정 R2)
-- 정렬: `listGroup = UPCOMING` 은 `STARTS_AT ASC, ID ASC`(가까운 행사가 위), `PAST` 는 `STARTS_AT DESC, ID DESC`(§1 「날짜 최신순」). 응답은 UPCOMING 묶음 다음 PAST 묶음이다 (UPCOMING 정렬은 미확정 R2)
+- 페이지를 나누지 않는다. 행사는 운영진이 하나씩 등록하는 수(한 해 수십 건)라 한 번에 준다. 화면은 탭마다 개수를 보여 줘야 해서(§1 「예정된 행사·지난 행사 탭과 각 행사 수」) 전체가 필요하다 (R2 결정. 기록이 많이 쌓이면 페이지 나누기 · 더 보기를 다시 검토)
+- 정렬: `listGroup = UPCOMING` 은 `STARTS_AT ASC, ID ASC`(시작이 가까운 순), `PAST` 는 `STARTS_AT DESC, ID DESC`(§1 「날짜 최신순」). 응답은 UPCOMING 묶음 다음 PAST 묶음이다 (R2 결정)
 
 ### Request Body
 
@@ -385,7 +395,7 @@
 | myRegistration.createdAt | String | N | 신청 시각 | CLUB_EVENT_REGISTRATION.CREATED_AT |
 | myRegistration.canCancel | Boolean | N | 본인 취소 버튼을 그릴까 | 계산: `cancelBlockedReason == null` |
 | myRegistration.cancelBlockedReason | String | Y | `NOT_ACTIVE` · `DEADLINE_PASSED` · null | 계산: `ClubEventRegistration.selfCancelBlockedReason(event, now)` |
-| myRegistration.onlineLinkVisible | Boolean | N | 참여 링크 자리를 그릴까. `STATUS = CONFIRMED` ∧ `CHANNEL = ONLINE` ∧ 행사 취소 아님 | 계산: `ClubEventRegistration.canSeeOnlineLink(event)` (제안) |
+| myRegistration.onlineLinkVisible | Boolean | N | 참여 링크 자리를 그릴까. `STATUS = CONFIRMED` ∧ `CHANNEL = ONLINE` ∧ 행사 취소 아님. 행사 종료 뒤에도 보인다 (R5 결정). 비로그인 · 탈퇴 계정은 `myRegistration` 자체가 null 이라 링크가 나가지 않는다 | 계산: `ClubEventRegistration.canSeeOnlineLink(event)` (제안) |
 | myRegistration.onlineUrl | String | Y | `onlineLinkVisible = true` 일 때만 값이 있다. 캡틴이 아직 링크를 넣지 않았으면 null — 화면은 「추후 안내」 (§3 데이터 규칙 「링크 미입력 시 추후 안내 문구」) | CLUB_EVENT_CHANNEL.ONLINE_URL |
 
 - 「신청서 보기」(§4)의 질문 · 답은 이 응답에 싣지 않는다. 상세를 열 때마다 답변을 실어 보내지 않도록 [내 신청서](#내-신청서) 로 따로 읽는다
@@ -424,6 +434,18 @@
 
 없음
 
+### Request Headers
+
+| 헤더 | 필수 | 설명 |
+|---|---|---|
+| Idempotency-Key | Y | 화면이 **신청 시도마다 새로 만드는 UUID v4**. 같은 시도의 재시도(네트워크 오류 · 타임아웃)는 같은 키를 보낸다. 사용자가 취소 뒤 **의도적으로 다시 신청**할 때만 새 키를 만든다. 없거나 UUID 형식이 아니면 400 `INVALID_INPUT` (`Idempotency-Key`) |
+
+- PR #508 리뷰: 중복 검사(처리 순서 7)는 유효 신청이 있을 때만 막는다. 「신청 저장 성공 → 응답을 못 받음 → 다른 탭에서 취소 → 원래 요청 재시도」 순서면 취소한 신청이 다시 접수되고 메일도 생긴다. 그래서 키로 재시도를 알아본다
+- 서버는 계정 잠금(처리 순서 1) 뒤 **같은 계정 · 같은 키**의 신청이 있으면 새로 만들지 않고 그 신청의 지금 상태를 돌려준다(201, 같은 `Location`). 그 사이 취소됐으면 취소된 상태 그대로다. 행사 상태 · 정원 · 질문 버전은 다시 보지 않는다 — 이미 처리된 요청이다
+- 같은 키가 **다른 행사** 경로로 오면 400 `INVALID_INPUT` (`Idempotency-Key`). 다른 행사의 신청을 돌려주지 않는다
+- 키는 신청 행에 함께 저장하고(`SUBMIT_IDEMPOTENCY_KEY`) `UNIQUE(ACCOUNT_ID, SUBMIT_IDEMPOTENCY_KEY)` 로 지킨다 ([event](../event/spec.md) 등록의 `CREATE_IDEMPOTENCY_KEY` 와 같은 방식). 같은 계정의 요청은 계정 잠금으로 한 줄로 서므로 확인 후 삽입이 안전하고, 제약은 마지막 방어선이다
+- 400 · 409 로 실패한 요청은 행을 만들지 않으므로 키도 남지 않는다. 같은 키로 고쳐 보내면 새로 처리한다
+
 ### Request Body
 
 ```json
@@ -446,19 +468,18 @@
 
 답의 모양은 질문 타입마다 이렇다 (값은 언제나 배열 — 저장 · 내 신청서 · 운영진 신청서(PR #479)가 같은 모양을 쓴다).
 
-| type | 원소 수 | 원소 | 글자 수 (제안, 미확정 R3) |
+| type | 원소 수 | 원소 | 글자 수 (R3 결정, 스터디 신청과 같다) |
 |---|---|---|---|
 | TEXT | 0 또는 1 | 앞뒤 공백을 제거한 글 | 1~200자 |
 | TEXTAREA | 0 또는 1 | 같은 곳. 줄바꿈 유지 | 1~2,000자 |
 | RADIO | 0 또는 1 | 그 질문 `options` 중 하나 | — |
 | CHECKBOX | 0 이상 | 그 질문 `options` 중에서, 서로 다르게 | — |
 
-- 필수 질문은 원소가 하나 이상이어야 한다. 공백만 있는 글은 답이 없는 것으로 본다 (프로토 `transition` APPLY 「‘질문’에 답변해 주세요」)
+- 필수 질문은 원소가 하나 이상이어야 한다. 공백만 있는 글은 답이 없는 것으로 본다 (프로토 `transition` APPLY 「‘질문’에 답변해 주세요」). 화면과 서버가 같은 기준(앞뒤 공백 제거 뒤 길이 · 장문 줄바꿈 유지)으로 검증한다 (R3)
 - 선택 질문은 키를 빼거나 `[]` 를 보낸다. 저장할 때 빈 답은 키째 뺀다
 - 현재 질문에 없는 키 · `options` 에 없는 선택지는 400 이다. 질문 버전이 맞는데 이런 값이 오면 화면 오류이므로 409 가 아니라 400 으로 둔다
 - 글자 수는 [event](../event/spec.md) 와 같은 UTF-16 단위, 앞뒤 공백을 지운 뒤 센다
 - 닉네임 · 이메일 · 시간대는 받지 않는다. 서버가 계정에서 읽는다 (§5 「닉네임·이메일 입력란은 표시하지 않음」)
-- `Idempotency-Key` 를 받지 않는다. 같은 사람의 두 번째 신청은 처리 순서 7 에서 409 `EVENT_ALREADY_REGISTERED` 로 막히고 새 행을 만들지 않는다. 응답을 못 받은 재시도는 그 409 를 받고 상세를 다시 읽으면 된다 ([event](../event/spec.md) 의 등록은 같은 행사를 두 번 만들 수 있어 키가 필요했다)
 
 ### 처리 순서
 
@@ -467,6 +488,7 @@
 | # | 단계 | 실패 | 근거 |
 |---|---|---|---|
 | 1 | 요청자 `ACCOUNT` 행을 쓰기 잠금으로 읽는다 (트랜잭션의 첫 조회). 없으면(탈퇴) | 401 `UNAUTHORIZED` | 「같은 행사 · 같은 계정에 쓰는 요청의 처리 순서」 |
+| 1-1 | 같은 계정 · 같은 `Idempotency-Key` 의 신청이 있으면 — 이 행사의 신청이면 그 신청을 201 로 돌려주고 끝. 다른 행사의 신청이면 400 | 400 `INVALID_INPUT` (`Idempotency-Key`) | PR #508 리뷰 |
 | 2 | `CLUB_EVENT` 행을 쓰기 잠금으로 읽는다. 없으면 | 404 `NOT_FOUND` | [event](../event/spec.md) Q8 |
 | 3 | `STATUS = CANCELLED` | 409 `EVENT_CANCELLED` | §1-1 |
 | 4 | `now ≥ effectiveEndsAt` | 409 `EVENT_ENDED` | §1-1 |
@@ -478,8 +500,9 @@
 | 10 | 그 방식의 잔여석 0 (잠금 뒤 센 확인 대기 + 참가 확정 ≥ 정원) | 409 `EVENT_CHANNEL_FULL` | §5 「신청 시 선택 방식의 정원 재확인」, [event](../event/spec.md) Q8 |
 | 11 | `questionVersion` ≠ 잠금 뒤 계산한 `ClubEvent.questionVersion()` | 409 `EVENT_QUESTIONS_CHANGED` | §5 |
 | 12 | 답 검증 (위 표) | 400 `INVALID_INPUT` (`answers.{questionId}`) | §5 「필수 응답 검증」 |
-| 13 | 신청 행을 넣는다: `STATUS` = 행사 `CONFIRMATION` 이 `AUTO` 면 `CONFIRMED`, `REVIEW` 면 `PENDING`. 질문 사본 · 답 사본 · `APPLICANT_TIME_ZONE = ACCOUNT.TIME_ZONE` | — | §4 · §5 |
-| 14 | `ClubEventRegistrationSubmittedEvent` 를 트랜잭션 안에서 낸다 | — | 「도메인 이벤트와 자동 메일」 |
+| 13 | 신청 행을 넣는다: `STATUS` = 행사 `CONFIRMATION` 이 `AUTO` 면 `CONFIRMED`, `REVIEW` 면 `PENDING`. 질문 사본 · 답 사본 · `APPLICANT_TIME_ZONE = ACCOUNT.TIME_ZONE` · `SUBMIT_IDEMPOTENCY_KEY` | — | §4 · §5 |
+| 13-1 | 계정의 첫 활성화면 기록한다 (`ACCOUNT.ACTIVATED_AT IS NULL` 일 때만 조건부 갱신) | — | 「퍼널·계측」, R4 |
+| 14 | `ClubEventRegistrationSubmittedEvent` 를 트랜잭션 안에서 낸다. 13-1 에서 활성화했으면 `AccountActivatedEvent` 도 | — | 「도메인 이벤트와 자동 메일」 |
 | 15 | 커밋 직전 `BEFORE_COMMIT` 구독자(event-mail)가 자동 메일 `NOTIFICATION` 행을 같은 트랜잭션에 만든다. 템플릿이 없으면 메일만 건너뛴다(M2). 행 저장 실패는 전체 롤백. 그 다음 커밋 | — | [domain-events](../domain-events/spec.md) |
 
 - 3~8 은 상세의 `applyBlockedReason` 과 **같은 메서드**로 판정한다. 10 은 고른 방식만 본다
@@ -494,7 +517,7 @@
 
 | 상태 | errorCode | 조건 | 화면 (§5 「실패 시 입력값 유지」) |
 |------|-----------|------|------|
-| 400 | INVALID_INPUT | 본문 모양 · 처리 순서 9 · 12. 실패한 필드 이름을 `errorMessage` 에 담는다 | 해당 질문 아래 사유 |
+| 400 | INVALID_INPUT | `Idempotency-Key` 누락 · 형식 오류 · 다른 행사의 키 · 본문 모양 · 처리 순서 9 · 12. 실패한 필드 이름을 `errorMessage` 에 담는다 | 해당 입력란 아래 사유 |
 | 401 | UNAUTHORIZED | 토큰 없음 · 계정 없음 | 로그인 |
 | 403 | ONBOARDING_REQUIRED | 온보딩 전 | 온보딩 |
 | 404 | NOT_FOUND | 없는 행사 | 목록으로 |
@@ -588,7 +611,7 @@
 - **Method**: DELETE
 - **Path**: `/api/events/{eventId}/registrations/me`
 - **인증**: 필요 (`@RequireOnboarding`)
-- **설명**: 이 행사에서 내 유효 신청(`PENDING` · `CONFIRMED`)을 취소한다. **행은 지우지 않고** `STATUS = CANCELLED`, `CANCEL_REASON = SELF_CANCELLED` 로 남긴다 — 「내 참여를 거둔다」는 뜻이라 `DELETE …/me` 로 둔다 (선례: 발표자 칸 본인 해제 `DELETE …/presenters/{slot}/me`). 자리를 반환하고, 모집 중이면 다시 신청할 수 있다 (§4 「취소 시 자리 반환」)
+- **설명**: 화면이 보고 있던 내 신청(`registrationId`)을 취소한다. **행은 지우지 않고** `STATUS = CANCELLED`, `CANCEL_REASON = SELF_CANCELLED` 로 남긴다 — 「내 참여를 거둔다」는 뜻이라 `DELETE …/me` 로 둔다 (R6 결정, 선례: 발표자 칸 본인 해제 `DELETE …/presenters/{slot}/me`). 자리를 반환하고, 모집 중이면 다시 신청할 수 있다 (§4 「취소 시 자리 반환」)
 
 ### Path Parameters
 
@@ -596,7 +619,16 @@
 |------|------|------|
 | eventId | Long | 행사 ID |
 
-### Query Parameters · Request Body
+### Query Parameters
+
+| 이름 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| registrationId | Long | Y | 화면이 보고 있던 신청 번호 (상세의 `myRegistration.registrationId` · 내 신청서의 `registrationId`). 없으면 400 |
+
+- PR #508 리뷰: 「지금 유효한 내 신청」을 찾아 취소하면, 탭 두 개를 연 상태에서 한쪽이 취소 뒤 재신청했을 때 예전 탭의 취소가 **새 신청**까지 취소한다. 그래서 화면이 보던 신청 번호를 받아 **그 신청만** 바꾼다. 이미 취소 · 처리된 신청이면 새 신청은 건드리지 않고 최신 내역을 다시 읽게 한다
+- 경로는 R6 결정대로 `/me` 를 유지하고 신청 번호는 쿼리로 받는다. 본인 확인은 경로가 아니라 「그 신청의 `ACCOUNT_ID` = 토큰의 계정 ∧ `CLUB_EVENT_ID` = 경로의 행사」로 한다
+
+### Request Body
 
 없음
 
@@ -606,10 +638,11 @@
 |---|---|---|---|
 | 1 | `CLUB_EVENT` 행을 쓰기 잠금으로 읽는다. 없으면 | 404 `NOT_FOUND` | [event](../event/spec.md) Q8 |
 | 2 | `STATUS = CANCELLED` (행사 취소 — 신청은 이미 함께 취소됐다) | 409 `EVENT_CANCELLED` | event-status |
-| 3 | 잠금 뒤 이 행사의 내 `PENDING` · `CONFIRMED` 신청을 읽는다. 없으면 | 409 `EVENT_REGISTRATION_STATUS_NOT_ALLOWED` | PR #479 와 같은 코드. 다른 탭에서 이미 취소했거나 운영진이 먼저 처리했다 |
-| 4 | `now ≥ DEADLINE_AT` | 409 `EVENT_SELF_CANCEL_CLOSED` (새 코드) | §4 「신청 마감 시각 이후에는 운영진 문의 안내」, S3 |
-| 5 | `UPDATE … SET STATUS = 'CANCELLED', CANCEL_REASON = 'SELF_CANCELLED', STATUS_CHANGED_AT = now, STATUS_CHANGED_BY = 나 WHERE ID = ? AND STATUS IN ('PENDING','CONFIRMED')`. 바뀐 행이 0 이면 3 과 같은 409 | — | event 「조건부 갱신」 |
-| 6 | `ClubEventRegistrationsCancelledEvent(cause = SELF)` 를 낸다. `BEFORE_COMMIT` 구독자가 취소 메일 행을 만든다 (템플릿 없으면 건너뜀, M2) | — | 「도메인 이벤트와 자동 메일」 |
+| 3 | 잠금 뒤 `registrationId` 의 신청을 읽는다. 없거나 · 내 것이 아니거나 · 이 행사의 것이 아니면 | 404 `NOT_FOUND` | 남의 신청이 있는지 알리지 않는다 |
+| 4 | 그 신청이 `PENDING` · `CONFIRMED` 가 아님 (다른 탭에서 이미 취소 · 운영진이 먼저 처리) | 409 `EVENT_REGISTRATION_STATUS_NOT_ALLOWED` | PR #479 와 같은 코드. 화면은 최신 내역을 다시 읽는다 |
+| 5 | `now ≥ DEADLINE_AT` | 409 `EVENT_SELF_CANCEL_CLOSED` (새 코드) | §4 「신청 마감 시각 이후에는 운영진 문의 안내」, S3 |
+| 6 | `UPDATE … SET STATUS = 'CANCELLED', CANCEL_REASON = 'SELF_CANCELLED', STATUS_CHANGED_AT = now, STATUS_CHANGED_BY = 나 WHERE ID = ? AND STATUS IN ('PENDING','CONFIRMED')`. 바뀐 행이 0 이면 4 와 같은 409 | — | event 「조건부 갱신」 |
+| 7 | `ClubEventRegistrationsCancelledEvent(cause = SELF)` 를 낸다. `BEFORE_COMMIT` 구독자가 취소 메일 행을 만든다 (템플릿 없으면 건너뜀, M2). 분석 구독자는 커밋 뒤 「신청 취소 완료」를 보낸다 | — | 「도메인 이벤트와 자동 메일」 · 「퍼널·계측」 |
 
 - 모집 마감(`STATUS = CLOSED`)은 보지 않는다 (S3)
 - 계정은 잠그지 않는다 (위 「처리 순서」). 행사 `VERSION` 도 올리지 않는다
@@ -624,9 +657,10 @@
 |------|-----------|------|------|
 | 401 | UNAUTHORIZED | 토큰 없음 | |
 | 403 | ONBOARDING_REQUIRED | 온보딩 전 | |
-| 404 | NOT_FOUND | 없는 행사 | |
+| 400 | INVALID_INPUT | `registrationId` 누락 · 숫자 아님 | |
+| 404 | NOT_FOUND | 없는 행사 · 그 신청이 없거나 내 것이 아니거나 이 행사의 것이 아님 | 상세 다시 읽기 |
 | 409 | EVENT_CANCELLED | 취소된 행사 | 상세 다시 읽기 |
-| 409 | EVENT_REGISTRATION_STATUS_NOT_ALLOWED | 취소할 유효 신청이 없음 | 내 신청 내역 다시 읽기 |
+| 409 | EVENT_REGISTRATION_STATUS_NOT_ALLOWED | 그 신청이 이미 취소 · 처리됨 | 「이미 처리된 신청입니다」 + 최신 내역 다시 읽기 |
 | 409 | EVENT_SELF_CANCEL_CLOSED | 신청 마감 시각이 지남 | 「신청 마감 후에는 운영진에게 문의해 주세요」 |
 
 ### 프론트엔드 사용처
@@ -714,7 +748,7 @@ P3 결정을 user-leave 처리 순서에 더한다 (crew-apply-event §5 「탈�
 
 ## 데이터 모델: CLUB_EVENT_REGISTRATION (공동 정의)
 
-PR #479 event-participant 의 「데이터 모델 제안」과 **같은 테이블 · 같은 컬럼**을 쓴다. 이 스펙은 크루 쪽에 필요한 것만 확정하고, 다른 칸은 그 제안을 따른다. 마이그레이션 · ERD · 신청 엔티티 · 실제 `ClubEventRegistrationPort` 어댑터는 **공통 신청 PR 하나**로 먼저 머지한다 (P5 결정 — 효승님이 맡고, 동일님이 먼저 시작하면 동일님).
+PR #479 event-participant 의 「데이터 모델 제안」과 **같은 테이블 · 같은 컬럼**을 쓴다. 이 스펙은 크루 쪽에 필요한 것만 확정하고, 다른 칸은 그 제안을 따른다. 마이그레이션 · ERD · 신청 엔티티 · 실제 `ClubEventRegistrationPort` 어댑터 · 탈퇴 단계는 **공통 신청 PR 하나**로 먼저 머지한다 (P5 결정. 동일님이 먼저 구현을 시작해 동일님이 쓰고 효승님이 리뷰한다).
 
 | 컬럼 | 이 스펙에서의 뜻 |
 |---|---|
@@ -724,6 +758,7 @@ PR #479 event-participant 의 「데이터 모델 제안」과 **같은 테이�
 | APPLICANT_TIME_ZONE | 신청 때 `ACCOUNT.TIME_ZONE` 사본 (화면 값이 아니다) |
 | QUESTIONS_SNAPSHOT | 신청 때 현재 질문 `[{questionId, label, type, required, options}]` (SORT_ORDER 순) |
 | ANSWERS_SNAPSHOT | `{"<questionId>": ["…"]}`. 빈 답은 키째 뺀다 |
+| SUBMIT_IDEMPOTENCY_KEY | **이 스펙이 더하는 칸** (PR #508 리뷰). VARCHAR(36), NOT NULL. 신청 제출의 `Idempotency-Key`. `UNIQUE(ACCOUNT_ID, SUBMIT_IDEMPOTENCY_KEY)` — 이름 `uk_club_event_registration_account_submit_key` |
 | CREATED_AT | 신청 시각 · 내 행사 정렬 · 최신 신청 고르기 |
 
 인덱스는 PR #479 제안 그대로다. 이 스펙이 쓰는 것:
@@ -755,9 +790,28 @@ PR #479 event-participant 의 「데이터 모델 제안」과 **같은 테이�
 
 ## 퍼널·계측
 
-- 단계: 활성화 근처. 다만 [analytics](../analytics/spec.md) 의 활성화는 「첫 **스터디** 신청」이고 이 스펙은 바꾸지 않는다 (제안, 미확정 R4)
-- 이벤트: 새 서버 · 프론트 분석 이벤트를 넣지 않는다 (제안). 기존 `events_list` · `event_detail` 페이지 이름과 `Event Card Clicked` 는 그대로다
-- 기대: 외부 신청 링크 대신 사이트 안에서 신청이 끝난다. 측정 방식은 R4 결정 뒤
+R4 결정 · [crew-apply-event 「활성화와 행동 분석」](../../01-planning/stories/crew-apply-event/PRD.md) (PR #509). [analytics](../analytics/spec.md) 스펙 표는 구현 PR 에서 함께 고친다.
+
+### 활성화: 첫 스터디 신청 **또는** 첫 행사 신청
+
+- 계정의 **처음으로 성공한 신청 한 번**이 활성화다. 행사 신청은 `PENDING` · `CONFIRMED` 모두 접수 순간에 센다. 이후 참가 확정 · 취소 · 재신청 · 다른 신청은 활성화를 다시 만들거나 되돌리지 않는다
+- **판정을 DB 한 곳에 둔다**: `ACCOUNT.ACTIVATED_AT` (DATETIME(6), NULL) · `ACCOUNT.ACTIVATION_ACTION` (`STUDY_APPLIED` · `EVENT_APPLIED`). 신청 트랜잭션 안에서 `UPDATE ACCOUNT SET ACTIVATED_AT = now, ACTIVATION_ACTION = ? WHERE ID = ? AND ACTIVATED_AT IS NULL` — 바뀐 행이 1 이면 첫 활성화다. 스터디 신청 · 행사 신청이 동시에 와도 행 잠금으로 한쪽만 1 을 받는다. 재시도는 이미 값이 있어 0 이다
+- 바뀐 행이 1 이면 `AccountActivatedEvent(accountId, action, studyId | eventId)` 를 낸다. 분석 구독자가 커밋 뒤 Amplitude · GA4 `Activated` 를 보낸다
+- **기존 스터디 활성화도 같은 판정으로 바꾼다.** 지금은 「그 계정의 스터디 신청이 1건이면」(`AnalyticsEventListener`)이라 동시 신청 · 재전송에 약하고 행사를 모른다. 마이그레이션이 이미 스터디 신청이 있는 계정의 `ACTIVATED_AT` 을 첫 신청 시각으로 채워(`STUDY_APPLIED`), 기존 회원이 행사 신청으로 다시 활성화되지 않게 한다
+- 탈퇴하면 `ACCOUNT` 행과 함께 사라진다. 분석 기록은 [analytics](../analytics/spec.md) 의 탈퇴 · 수집 중단 규칙을 따른다
+
+| 행동 | Amplitude | GA4 | 속성 | 보내는 곳 · 시점 | 중복 방지 |
+|---|---|---|---|---|---|
+| 활성화 | `Activated` | `activated` | `activation_action` = `study_applied` · `event_applied`, `study_id` 또는 `event_id` (GA4 는 `activation_action` 만) | server, 첫 활성화 커밋 뒤 | `insert_id = activated_{analyticsId}` (기존과 같다) |
+| 행사 신청 완료 | `Event Registration Completed` | — | `event_id` · `registration_id` · `channel`(`online` · `offline`) · `status`(`pending` · `confirmed`) | server, 신청 커밋 뒤 | `insert_id = event_registration_completed_{registrationId}`. 같은 키의 재시도는 새 신청을 만들지 않아 이벤트도 다시 나지 않는다 |
+| 행사 신청 취소 완료 | `Event Registration Cancelled` | — | `event_id` · `registration_id` · `channel` · `cancel_type` = `self` (이 스펙) · `admin` (event-participant) · `event_cancelled` (event-status) | server, 취소 커밋 뒤 | `insert_id = event_registration_cancelled_{registrationId}` |
+| 신청 폼 열기 | `Event Apply Form Opened` | — | `event_id` | front, 신청 창이 실제로 열렸을 때 | — |
+
+- 서버 이벤트는 커밋 뒤 · 비동기로 보내고 실패는 삼킨다. 전송 실패가 신청 · 취소 · 메일 예약을 되돌리지 않는다. 롤백된 처리는 커밋이 없어 보내지 않는다 ([domain-events](../domain-events/spec.md))
+- 승인(참가 확정)은 새 신청으로 세지 않는다. 탈퇴 취소(`ACCOUNT_DELETED`)는 보내지 않는다
+- 이메일 · 이름 · 닉네임 · 신청 답변은 보내지 않는다. 분석 ID · 수집 중단 규칙은 기존과 같다
+- 기존 `events_list` · `event_detail` 페이지 조회와 `Event Card Clicked` 는 그대로다. 「신청 폼 열기」는 core-front 연결(FE) PR 에서 넣는다
+- 이름 · 속성은 PR #479 event-participant 「퍼널·계측」의 `Event Registration Cancelled` · `cancel_type` 과 맞췄다
 
 ## 근거와 PRD·프로토의 차이
 
@@ -770,13 +824,29 @@ PR #479 event-participant 의 「데이터 모델 제안」과 **같은 테이�
 | 중복 신청 | 프로토는 `CANCELLED` 가 아닌 행이 있으면 막는다 | 같다 (`PENDING` · `CONFIRMED` · `DECLINED`) |
 | 본인 취소 마감 | 프로토 CANCEL 은 `deadlineAt ≤ now` 면 막는다 | 같다. 모집 마감(수동)은 막지 않는다 (S3) |
 | 온라인 링크 | 프로토는 확정 온라인 신청자에게만 그린다 | 서버가 그 사람에게만 응답에 싣는다 |
-| 잠금 순서 | event 스펙: 「첫 조회로 `CLUB_EVENT` 행」 | 신청 제출만 `ACCOUNT` → `CLUB_EVENT` (탈퇴와 순서를 맞춤, R1) |
+| 잠금 순서 | event 스펙: 「첫 조회로 `CLUB_EVENT` 행」 | 신청 제출만 `ACCOUNT` → `CLUB_EVENT` (탈퇴와 순서를 맞춤, R1 결정) |
+| 신청 재시도 | 프로토는 재시도 개념이 없다 | `Idempotency-Key` 로 같은 시도의 재시도를 알아본다 (PR #508 리뷰) |
+| 본인 취소 대상 | 프로토 CANCEL 은 `registrationId` 를 받는다 | 같다. 경로는 `…/registrations/me`, 신청 번호는 쿼리 (PR #508 리뷰 · R6) |
+
+## 결정 기록 (PR #508 리뷰, 2026-11-18)
+
+| 항목 | 결정 | 반영한 곳 |
+|---|---|---|
+| R1 | 잠금은 `ACCOUNT` → `CLUB_EVENT`. 신청이 먼저면 탈퇴가 그 신청까지 정리, 탈퇴가 먼저면 새 신청을 받지 않는다. event 스펙(효승님)에도 공유해 반영 | 「같은 행사 · 같은 계정에 쓰는 요청의 처리 순서」, 「탈퇴할 때」, 신청 제출 처리 순서 1 |
+| R2 | 예정은 시작이 가까운 순, 지난 행사는 최근 순. 탭 유지, 페이지 없이 전체 | 「행사 목록」 |
+| R3 | 단답 200자 · 장문 2,000자. 앞뒤 공백 제거 뒤 길이, 필수 질문의 공백만 입력은 미응답, 선택 질문은 비워도 됨, 장문 줄바꿈 유지. 화면 · 서버 같은 기준 | 신청 제출 답 표 |
+| R4 | 활성화 = 첫 스터디 신청 또는 첫 행사 신청 중 먼저 성공한 한 번(재시도 · 동시 요청에도 한 번). 기존 스터디 활성화도 같은 판정. 행사 신청 완료 · 취소 완료(서버) · 신청 폼 열기(프론트) 기록. 상세는 PR #509 PRD | 「퍼널·계측」, 신청 제출 처리 순서 13-1 · 14 |
+| R5 | 종료된 행사도 온라인 참가 확정자에게 링크를 계속 보인다. 비로그인 · 탈퇴 계정에는 나가지 않는다 | 행사 상세 `onlineLinkVisible`, 「인가」 |
+| R6 | 본인 취소는 `DELETE /api/events/{eventId}/registrations/me`. 행은 남기고 `CANCELLED` · `SELF_CANCELLED` | 「본인 취소」 |
+
+개별 리뷰 세 건:
+
+| 리뷰 | 반영한 곳 |
+|---|---|
+| 본인 취소에 화면이 보던 신청 번호를 함께 보내 그 신청만 취소 | 「본인 취소」 Query Parameters · 처리 순서 3 · 4, 겹친 요청 표 |
+| 신청 제출에 `Idempotency-Key` — 같은 시도의 재시도가 새 신청을 만들지 않게 | 「신청 제출」 Request Headers · 처리 순서 1-1, 데이터 모델 `SUBMIT_IDEMPOTENCY_KEY`, 겹친 요청 표 |
+| 공개 목록 · 상세에서 토큰의 계정이 지금 있고 온보딩을 마쳤는지 확인 | 「인가」 표, `applyBlockedReason`, 상세 `onlineLinkVisible` |
 
 ## 미확정
 
-- [NEEDS CLARIFICATION] **R1. 신청 제출의 잠금 순서 (`ACCOUNT` → `CLUB_EVENT`).** 탈퇴와의 교착 · 탈퇴 뒤 새 신청을 막으려고 신청 제출만 계정을 먼저 잠근다. event 스펙의 「첫 조회로 `CLUB_EVENT`」 규칙에 예외를 하나 두는 것이라 event · PR #479(메일 예약은 계정을 잠그지 않는다는 규칙 포함)와 합의가 필요하다. 권장: 이 순서로 확정하고 event 스펙 잠금 표에 「신청 제출」 · 「회원 탈퇴」 행을 고친다
-- [NEEDS CLARIFICATION] **R2. 사이트 행사 목록의 정렬과 페이지.** 예정된 행사를 가까운 순(`STARTS_AT ASC`)으로 둘지, 페이지 없이 전체를 줄지. 권장: 가까운 순 · 전체 (행사 수가 적고 탭 개수가 필요하다)
-- [NEEDS CLARIFICATION] **R3. 단답 · 장문 답의 글자 수.** PRD 에 없다. 권장: [study-application](../study-application/spec.md) 과 같은 200자 · 2,000자
-- [NEEDS CLARIFICATION] **R4. 행사 신청을 활성화 · 분석에 넣을지.** 권장: 이번에는 넣지 않고, 행사 신청 수는 운영 화면 집계로 본다
-- [NEEDS CLARIFICATION] **R5. 종료된 행사의 온라인 링크.** 확정된 온라인 신청자에게 종료 뒤에도 링크를 보일지. 권장: 보인다 (행사 취소일 때만 숨긴다 — 프로토와 같다)
-- [NEEDS CLARIFICATION] **R6. 본인 취소의 경로.** `DELETE /api/events/{eventId}/registrations/me` (행은 남는다) 대신 `POST …/registrations/me/cancellation` 같은 명시 경로를 원하는지. 권장: `DELETE …/me` (발표자 본인 해제 선례)
+없음.
