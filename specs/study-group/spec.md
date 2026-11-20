@@ -3,6 +3,7 @@
 > ERD: [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md)
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
+> 갱신: 2026-11-19 — 반 이동 때 [STUDY_PARTICIPANT_GROUP_MOVE](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md) 에 한 줄 남긴다 (서버 동작 5-5). 「시작 뒤 반 이동」 미결을 반별 구간 출석률로 닫았다 ([share 11-19](../../docs/share/2026-11-19-group-move-log.md)). 상태: 반 이동 기록은 구현 전
 > 갱신: 2026-11-16 — 담당 캡틴 바꾸기 `PATCH …/owner-captain` 추가, 참여 명단에 `ownerCaptain`. 담당 캡틴 판정을 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
 > 갱신: 2026-11-01 — `PATCH /{groupId}` 구현완료 — daysOfWeek · startTime · timezone 추가 (V54 마이그레이션)
 > 갱신: 2026-10-23 — 참여 명단 `groups[].isDefault` 추가 (기본 반 칩을 서버 판정으로)
@@ -18,7 +19,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 구현완료 |
-| PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 |
+| PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 · 반 이동 기록 스펙확정 (11-19) |
 | PATCH | /api/admin/studies/{studyId}/owner-captain | 담당 캡틴 바꾸기 (신청자 탭 맨 위 「담당 캡틴」 칸) | O (ADMIN) | 구현완료 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현완료 |
@@ -158,6 +159,9 @@
    3. **옛 반의 지난 회차(시작한 회차) 출석은 그대로 둔다.** 이미 일어난 사실이다
    4. 옛 반에서 맡은 **예정** 회차의 발표자 칸은 비운다 — [회차 스펙](../study-meeting/spec.md)
    5. 명부 행의 반을 바꾼다 (`STUDY_PARTICIPANT.STUDY_GROUP_ID = groupId`). `STUDY_ID` · `JOINED_AT` 은 그대로
+      - **반 이동 기록 한 줄을 남긴다** — [STUDY_PARTICIPANT_GROUP_MOVE](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md): 옛 반 · 새 반의 ID 와 **이름**(1단계에서 잠근 반 행에서 읽는다), `MOVED_AT` = 1단계 잠금 뒤의 `now`(2단계 「예정 회차」 판정과 같은 값), `MOVED_BY_ACCOUNT_ID` = 요청한 캡틴. 반이 실제로 바뀐 행만 (→ [share 11-19](../../docs/share/2026-11-19-group-move-log.md))
+      - 이름을 복사해 두는 이유: 반을 지우면 반 행이 사라진다. 네비게이터 출석부는 그 뒤에도 「A반에서 이동」을 보여 준다
+      - 옮긴 캡틴은 기록만 한다. 어느 응답에도 내지 않는다
    6. **새 반의 예정 회차마다 출석 행을 `ABSENT` 로 만든다** — 회차 생성 규칙과 같다. 이미 행이 있으면(그 반에 있다가 나갔다 돌아온 경우) 건드리지 않는다 (`UNIQUE(STUDY_MEETING_ID, ACCOUNT_ID)`)
    7. 새 반의 지난 회차에는 출석 행을 만들지 않는다 — 그때 그 반에 없었다
 
@@ -405,7 +409,7 @@
 - ~~한 사람씩 바꾸는 `PATCH …/{participantId}/role` · `…/group`~~ → 일괄 `PATCH …/participants` 로 합쳤다. 화면이 「저장」으로 한 번에 반영하는데 API 가 한 사람씩이면 중간 실패 때 일부만 바뀐다 (2026-10-21)
 - ~~신청자를 명부(`STUDY_PARTICIPANT`)에 넣는 시점~~ → **신청 제출 때, 기본 반으로**. 기본 반은 스터디를 만들 때 생기는 첫 반(「기본반」)이고 지울 수 없다. 다른 반으로는 「반 · 역할 한 번에 바꾸기」(`PATCH …/participants`)로 옮긴다 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md))
 - ~~반 일정을 바꿀 때 지워지는 회차에 걸린 휴가 신청 처리~~ → 스터디 시간 수정이 회차를 지우지 않아 없어졌다 (2026-10-14)
-- [NEEDS CLARIFICATION · 기획 미정] **스터디 시작 뒤 반 이동** — 시작 뒤에도 반을 옮길 수 있다(2026-10-20 확인). 그런데 출석률 계산기(`AttendanceRateCalculator`)는 **지금 반의 회차**만 본다. 그래서 옮기면 (1) 옛 반 지난 출석은 남지만 출석률에서 빠지고, (2) 새 반의 지난 회차는 `JOINED_AT` 이후면 출석 행 없이 분모에 들어가 결석처럼 센다. 「옮긴 시각」을 기록해 반별로 나눠 셀지 등 기획이 필요하다. 위 「서버 동작」의 지난 출석 · 예정 출석 처리는 이 결정과 별개로 유지한다
+- ~~스터디 시작 뒤 반 이동의 출석률~~ → **반 평균은 반별 구간, 개인 출석률은 모든 구간 합산.** 구간은 옛 반에서 참여 중단처럼 이동 시각까지, 새 반에서 들어온 시각부터. 새 반 출석부는 옛 반 기록을 회차 번호로 맞춰 「A반」 표시와 함께 보여 준다 — 출석 행은 옮기지 않는다. 이동 시각은 반 이동 기록에 남긴다 (2026-11-19, → [share 11-19](../../docs/share/2026-11-19-group-move-log.md) · [attendance 출석률 산식](../attendance/spec.md#출석률-산식)). 위 「서버 동작」의 지난 출석 · 예정 출석 처리는 그대로다
 - [NEEDS CLARIFICATION · 기획 미정] **다른 반 출석** — A반 참여자가 B반 회차에 나와 출석할 수 있다(2026-10-20 확인). 어느 반 회차에 어떤 상태로 기록하고 출석률에 어떻게 셀지 정해지지 않았다. 지금 임시 규칙: 대시보드는 다른 반 참석을 **소속 반 회차의 `EXCUSED`** 로 인정한다([대시보드 스펙](../dashboard/spec.md)), 디스코드 출석은 다른 반 회차에 찍지 않고 `noMeeting[]` 으로 돌려준다([디스코드 출석 스펙](../discord-attendance/spec.md)). ERD 의 `STUDY_ATTENDANCE.STUDY_GROUP_ID` 는 「실제 참석한 반」을 가정했지만 코드는 소속 반으로 쓴다
   - 검토 중인 안 (2026-10-20, 미결정) — 두 항목을 한 규칙으로 묶는다: **출석은 언제나 소속 반 회차에 적고, 다른 반에서 한 출석은 같은 회차 번호의 소속 반 회차로 옮겨 적는다.** 반 이동은 지난 회차 전부를 새 반 같은 번호 회차로 옮겨 적는다. 함께 검토: (a) 출석 행에 실제 참석한 회차 표시 (b) 반 이동 이력 (c) 크루별 출석 기록 목록. (a)(b)는 나중에 채울 수 없으니 옮겨 적기와 같이 넣어야 한다
 - [NEEDS CLARIFICATION] 명단 열람을 그 스터디의 네비게이터에게도 열지 (PRD 는 허용) — 연다면 사용자 사이트 경로를 따로 두고 이메일을 빼야 한다

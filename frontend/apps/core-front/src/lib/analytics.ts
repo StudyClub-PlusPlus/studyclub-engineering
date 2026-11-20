@@ -71,8 +71,8 @@ export type AnalyticsEvent =
   | { name: 'Auth Login Failed'; props: { error_message: string; http_status: number } }
   // 공통 규약 이벤트 — 서비스마다 같은 이름이라 서비스끼리 퍼널을 겹쳐 볼 수 있다.
   // 가입 정본은 서버(user.registered)가 같은 이름으로 보낸다. 여기 것은 퍼널용 프론트 사본.
-  | { name: 'User Signed Up'; props: { method: 'google' | 'apple'; signup_surface: 'onboarding' } }
-  | { name: 'User Logged In'; props: { method: 'google' | 'apple' } }
+  | { name: 'User Signed Up'; props: { method: 'google' | 'apple' | 'email'; signup_surface: 'onboarding' } }
+  | { name: 'User Logged In'; props: { method: 'google' | 'apple' | 'email' } }
 
   // ── Onboarding ───────────────────────────────────────────────────────────────
   | { name: 'Onboarding Started'; props: { suggested_nickname: boolean } }
@@ -248,7 +248,7 @@ export function readGaClientId(
 }
 
 /** 가입 완료 지점 — 첫 유입을 유저 속성에 setOnce 로 남기고 `User Signed Up` 을 보낸다. */
-export function trackSignUp(method: 'google' | 'apple' = 'google'): void {
+export function trackSignUp(method: 'google' | 'apple' | 'email' = 'google'): void {
   if (typeof window === 'undefined' || !analyticsAllowed()) return;
   if (analyticsEnabled) {
     const identifyObj = new amplitude.Identify();

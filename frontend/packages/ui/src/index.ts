@@ -101,3 +101,6 @@ export type { ButtonLinkProps } from './ButtonLink';
 
 export { HelpPopover } from './HelpPopover';
 export type { HelpPopoverProps } from './HelpPopover';
+
+export { TimeSelect } from './TimeSelect';
+export type { TimeSelectProps } from './TimeSelect';

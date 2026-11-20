@@ -52,3 +52,8 @@ analytics:
     enabled: false
 cleanup:
   enabled: false
+
+# 최고 관리자 (specs/admin-users 「최고 관리자」) — 캡틴을 크루로 내리는 통합 테스트의 요청자들.
+# 클래스마다 @SpringBootTest(properties) 로 주면 컨텍스트가 늘어 같은 H2 를 쓰는 다른 컨텍스트가 닫히며 스키마를 지운다. 여기 한 곳에 둔다
+super-admin:
+  emails: acctlist-9901@example.com,rolechange-9921@example.com,concurrency-9961@example.com,other@owner-test.com
