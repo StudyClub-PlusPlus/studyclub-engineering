@@ -3,6 +3,7 @@
 import { TableCard } from '@/components/ui';
 import { formatStamp } from '@/features/notifications/labels';
 import type { ApiSiteNotice, SiteNoticeOrder, SiteNoticeSort } from '@/features/site-notices/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /**
  * 정렬하는 컬럼 머리 — 이름을 누른다. 처음 누르면 오름차순, 다시 누르면 내림차순.
@@ -54,6 +55,7 @@ export function SiteNoticesTable({
   onSort: (sort: SiteNoticeSort, order: SiteNoticeOrder) => void;
   onOpen: (noticeId: number) => void;
 }) {
+  const tz = useDisplayTimeZone();
   function activeOf(key: SiteNoticeSort): SiteNoticeOrder | null {
     if (sort === key) return order;
     return null;
@@ -92,8 +94,8 @@ export function SiteNoticesTable({
               </button>
             </td>
             <td className='whitespace-nowrap text-fg-secondary'>{n.author}</td>
-            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(n.publishedAt)}</td>
-            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(n.updatedAt)}</td>
+            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(n.publishedAt, tz)}</td>
+            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(n.updatedAt, tz)}</td>
           </tr>
         ))}
         {rows.length === 0 && (

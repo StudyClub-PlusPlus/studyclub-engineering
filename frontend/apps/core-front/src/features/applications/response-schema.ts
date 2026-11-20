@@ -9,6 +9,7 @@ export const apiMyApplicationSchema = z.object({
   applied: z.boolean(),
   applicationId: z.union([z.number(), z.null()]),
   submittedAt: z.union([z.string(), z.null()]),
+  withdrawn: z.boolean().default(false),
 });
 
 export const apiStudyApplicationFormSchema = z.object({

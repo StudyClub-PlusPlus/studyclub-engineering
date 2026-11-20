@@ -57,6 +57,7 @@
 | `NOT_FOUND` | 404 | 리소스 없음 |
 | `CONFLICT` | 409 | 비즈니스 규칙 위반 (중복 신청, 마감된 스터디 등) |
 | `MEETING_ALREADY_STARTED` | 409 | 시작한 회차를 고치거나 지우려 함 ([회차 스펙](../../specs/study-meeting/spec.md)) |
+| `STUDY_ALREADY_STARTED` | 409 | 시작일이 지난 스터디를 비공개로 내리려 함 ([스터디 스펙](../../specs/study/spec.md)) |
 | `MEETING_DATE_CONFLICT` | 409 | 분반의 다른 회차와 같은 날 |
 | `CANNOT_CHANGE_OWN_ROLE` | 409 | 캡틴이 자기 계정 권한을 바꾸려 함 ([백오피스 회원 스펙](../../specs/admin-users/spec.md)) |
 | `LAST_ADMIN_REQUIRED` | 409 | 남은 마지막 캡틴을 크루로 내리려 함 |

@@ -41,6 +41,11 @@ export const studiesHandlers = mockClient.createHandlerGroup('/api/studies', [
         response: { errorCode: 'CONFLICT', errorMessage: '이미 참여 중인 스터디입니다.' },
       },
       {
+        label: '참여 중단됨',
+        status: 409,
+        response: { errorCode: 'STUDY_WITHDRAWN', errorMessage: '참여 중단된 스터디는 다시 신청할 수 없어요.' },
+      },
+      {
         label: '서버 오류',
         status: 500,
         response: { errorCode: 'INTERNAL_ERROR', errorMessage: '서버 오류가 발생했습니다.' },
@@ -54,12 +59,17 @@ export const studiesHandlers = mockClient.createHandlerGroup('/api/studies', [
       {
         label: '신청 안 함',
         status: 200,
-        response: { applied: false, applicationId: null, submittedAt: null },
+        response: { applied: false, applicationId: null, submittedAt: null, withdrawn: false },
       },
       {
         label: '신청함',
         status: 200,
-        response: { applied: true, applicationId: 1, submittedAt: '2026-10-01T12:00:00Z' },
+        response: { applied: true, applicationId: 1, submittedAt: '2026-10-01T12:00:00Z', withdrawn: false },
+      },
+      {
+        label: '참여 중단됨',
+        status: 200,
+        response: { applied: true, applicationId: 1, submittedAt: '2026-10-01T12:00:00Z', withdrawn: true },
       },
       {
         label: '서버 오류',

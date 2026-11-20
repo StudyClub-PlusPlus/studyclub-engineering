@@ -31,11 +31,19 @@
 
 | role | 가져야 하는 사람 | 어긋나면 |
 |---|---|---|
-| navigator | 디스코드를 연동했고, 진행 중 스터디(`STUDY.STATUS` `OPEN` · `ONGOING`) 어디서든 명부가 `LEADER` · (`ACTIVE` · `PAUSED`) 인 계정 | 봇 navigator 창구로 붙이거나 뗀다 |
+| navigator | 디스코드를 연동했고, 안 끝난 스터디(`STUDY.STATUS` `OPEN` · `ONGOING` 이고 `Study.isEnded` 가 아님 — `END_AT` 이 지나면 빠진다, 2026-11-18 bug-37) 어디서든 명부가 `LEADER` · (`ACTIVE` · `PAUSED`) 인 계정 | 봇 navigator 창구로 붙이거나 뗀다 |
 | captain | 디스코드를 연동한 `SYSTEM_ROLE = ADMIN` 계정 | **경고 로그만** 남긴다. 봇에 captain role 창구가 없다 (준희 10-26) |
 
 - navigator 판정은 DSC-08 의 회수 조건(「다른 진행 중 스터디 어디에서도 활성 `LEADER` 가 아닐 때만 뗀다」)과 같은 식이다. 같은 조회(`StudyParticipantRepository.findNavigatorDiscordIds`)를 쓴다.
 - 디스코드 ID 로 계정을 못 찾는 사람(미연동 · 회원 아님)은 「가져야 하지 않는 사람」이다.
+
+### 끝난 스터디의 navigator role 은 지금은 둔다 (2026-11-19)
+
+스터디가 끝나도(`STUDY.END_AT` 이 지나도) navigator role 을 떼지 않는다. 다음 기수에 같은 사람이 다시 네비게이터를 맡는 일이 많고, 남아 있어서 생기는 권한 문제는 없다 — 웹 권한은 role 이 아니라 명부(`LEADER` · `ACTIVE` · `PAUSED`)로 준다.
+
+- 참여 중단으로 떼는 것(DSC-09)은 그대로다. 끝남만 예외다
+- 위 「웹 기준」 표대로 맞추면 끝난 스터디의 네비게이터가 「가져야 하지 않는 사람」이 되어 떨어진다. 그래서 이 결정이 유지되는 동안 `DISCORD_ROLE_SYNC_ENFORCE` 는 켜지 않는다 (어긋남은 경고 로그로만 남는다)
+- 나중에 정리한다면 후보는 「끝나고 N일 뒤 회수」 또는 「다음 기수 시작 때 한 번에 정리」다. 정하면 이 절과 위 표를 같이 고친다
 
 ### 처음에는 기록만 한다 — `DISCORD_ROLE_SYNC_ENFORCE`
 

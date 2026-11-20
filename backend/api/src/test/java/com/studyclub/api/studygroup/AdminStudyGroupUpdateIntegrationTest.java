@@ -10,6 +10,8 @@ import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroup;
 import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyKind;
+import com.studyclub.domain.study.StudyMeeting;
+import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRepository;
@@ -58,6 +60,7 @@ class AdminStudyGroupUpdateIntegrationTest {
     @Autowired StudyProgramRepository studyProgramRepo;
     @Autowired StudyRepository studyRepo;
     @Autowired StudyGroupRepository studyGroupRepo;
+    @Autowired StudyMeetingRepository studyMeetingRepo;
 
     private Study study;
     private StudyGroup group;
@@ -316,6 +319,136 @@ class AdminStudyGroupUpdateIntegrationTest {
         var anonymous = patch(Map.of("name", "새이름"), null, study.getId(), group.getId());
         assertThat(anonymous.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(anonymous.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
+
+    @Test
+    @DisplayName("성공 - 회차도 옮기기를 고르면 시작 전 회차만 같은 날짜의 새 시간대 · 시각으로 옮기고, 시작한 회차는 그대로 둔다")
+    void movesUpcomingMeetings() {
+        ZoneId seoul = ZoneId.of("Asia/Seoul");
+        ZoneId newYork = ZoneId.of("America/New_York");
+        LocalDate nextWeek = LocalDate.now(seoul).plusDays(7);
+        Meetings m = seedSeoulGroupWithMeetings(nextWeek);
+
+        var response =
+                patch(
+                        Map.of(
+                                "startTime", "21:00",
+                                "timezone", "America/New_York",
+                                "moveUpcomingMeetings", true),
+                        ADMIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(scheduledAt(m.upcoming()))
+                .isEqualTo(nextWeek.atTime(21, 0).atZone(newYork).toInstant());
+        assertThat(scheduledAt(m.upcomingLater()))
+                .isEqualTo(nextWeek.plusDays(7).atTime(21, 0).atZone(newYork).toInstant());
+        assertThat(scheduledAt(m.past())).isEqualTo(m.past().getScheduledAt());
+        assertThat(scheduledAt(m.startedEarly())).isEqualTo(m.startedEarly().getScheduledAt());
+    }
+
+    @Test
+    @DisplayName("성공 - 시간대만 바꾸고 회차도 옮기면 회차마다 벽시계 시각을 그대로 둔다")
+    void movesUpcomingMeetingsKeepingWallClock() {
+        ZoneId seoul = ZoneId.of("Asia/Seoul");
+        LocalDate nextWeek = LocalDate.now(seoul).plusDays(7);
+        Meetings m = seedSeoulGroupWithMeetings(nextWeek);
+
+        var response =
+                patch(
+                        Map.of("timezone", "America/Los_Angeles", "moveUpcomingMeetings", true),
+                        ADMIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(scheduledAt(m.upcoming()))
+                .isEqualTo(
+                        nextWeek.atTime(20, 0)
+                                .atZone(ZoneId.of("America/Los_Angeles"))
+                                .toInstant());
+        assertThat(scheduledAt(m.past())).isEqualTo(m.past().getScheduledAt());
+    }
+
+    @Test
+    @DisplayName("성공 - 회차 옮기기를 고르지 않으면 반 시각만 바뀌고 회차는 그대로다")
+    void keepsMeetingsWithoutMoveFlag() {
+        LocalDate nextWeek = LocalDate.now(ZoneId.of("Asia/Seoul")).plusDays(7);
+        Meetings m = seedSeoulGroupWithMeetings(nextWeek);
+
+        var response =
+                patch(
+                        Map.of("startTime", "21:00", "timezone", "America/New_York"),
+                        ADMIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("startTime", "21:00");
+        assertThat(scheduledAt(m.upcoming())).isEqualTo(m.upcoming().getScheduledAt());
+        assertThat(scheduledAt(m.upcomingLater())).isEqualTo(m.upcomingLater().getScheduledAt());
+    }
+
+    @Test
+    @DisplayName("실패 - 옮기면 지난 시각이 되는 회차가 있으면 400 이고 반 시각도 바뀌지 않는다")
+    void rejectsMoveIntoPast() {
+        ZoneId seoul = ZoneId.of("Asia/Seoul");
+        group.changeTimezone("Asia/Seoul");
+        group.changeStartAt(LocalTime.of(20, 0).atDate(LocalDate.EPOCH).atZone(seoul).toInstant());
+        studyGroupRepo.saveAndFlush(group);
+        // 오늘 안의 곧 올 회차 — 같은 날 00:00 으로 옮기면 지난 시각이 된다
+        StudyMeeting soon =
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(group.getId(), Instant.now().plusSeconds(60), null));
+
+        var response =
+                patch(
+                        Map.of("startTime", "00:00", "moveUpcomingMeetings", true),
+                        ADMIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        assertThat(scheduledAt(soon)).isEqualTo(soon.getScheduledAt());
+        assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getStartAt())
+                .isEqualTo(group.getStartAt());
+    }
+
+    private record Meetings(
+            StudyMeeting past,
+            StudyMeeting startedEarly,
+            StudyMeeting upcoming,
+            StudyMeeting upcomingLater) {}
+
+    /** 서울 20:00 반 — 지난 회차 · 디스코드가 일찍 연 회차 · 예정 회차 둘. */
+    private Meetings seedSeoulGroupWithMeetings(LocalDate nextWeek) {
+        ZoneId seoul = ZoneId.of("Asia/Seoul");
+        group.changeTimezone("Asia/Seoul");
+        group.changeStartAt(LocalTime.of(20, 0).atDate(LocalDate.EPOCH).atZone(seoul).toInstant());
+        studyGroupRepo.saveAndFlush(group);
+        Instant lastWeek = nextWeek.minusDays(14).atTime(20, 0).atZone(seoul).toInstant();
+        Instant tomorrow = LocalDate.now(seoul).plusDays(1).atTime(20, 0).atZone(seoul).toInstant();
+        return new Meetings(
+                studyMeetingRepo.save(
+                        new StudyMeeting(group.getId(), lastWeek, lastWeek, lastWeek)),
+                studyMeetingRepo.save(
+                        new StudyMeeting(group.getId(), tomorrow, Instant.now(), null)),
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(
+                                group.getId(),
+                                nextWeek.atTime(20, 0).atZone(seoul).toInstant(),
+                                null)),
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(
+                                group.getId(),
+                                nextWeek.plusDays(7).atTime(20, 0).atZone(seoul).toInstant(),
+                                null)));
+    }
+
+    private Instant scheduledAt(StudyMeeting meeting) {
+        return studyMeetingRepo.findById(meeting.getId()).orElseThrow().getScheduledAt();
     }
 
     @SuppressWarnings({"rawtypes"})

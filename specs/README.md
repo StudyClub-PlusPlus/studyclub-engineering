@@ -11,6 +11,7 @@
 | 스터디 | [study/](./study/) | 구현중 | 스터디 목록·상세·등록 |
 | 스터디 신청 | [study-application/](./study-application/) | 스펙작성중 | 신청 폼 설계·제출·결과·디스코드 연동. 기획: [폼 제작](../01-planning/stories/captain-application-form/PRD.md) · [제출](../01-planning/stories/crew-submit-application/PRD.md) · [결과](../01-planning/stories/captain-application-results/PRD.md) |
 | 회원 | [account/](./account/) | — | 인증·프로필·온보딩 |
+| 테스트 로그인 | [stage-email-login/](./stage-email-login/) | 구현완료 | `/auth/email/{signup,verify,login}` — 메뉴에 없는 이메일 가입(메일 코드) · 비밀번호 로그인. 스위치(`EMAIL_LOGIN_ENABLED`)로 열고, 운영도 스위치로 연다(2026-11-20 결정, 테스트 뒤 끈다) |
 | 제안 | [proposal/](./proposal/) | — | 스터디 제안·관심 표시 |
 | 알림 | [notification/](./notification/) | 구현중 | 이벤트 기반 알림 발송 (첫 구현: 회원가입 웰컴메일) · 백오피스 템플릿·발송 이력 조회 · 실패 건 재발송(`POST /api/admin/notifications/resend`). 기획: [알림 템플릿](../01-planning/stories/notification-template/PRD.md) · [발송 이력](../01-planning/stories/notification-history/PRD.md) |
 | 대시보드 | [dashboard/](./dashboard/) | 스펙작성중 | 운영 대시보드 화면·집계·API 및 미정 사항. 기획: [운영 현황](../01-planning/stories/console-dashboard/PRD.md) |

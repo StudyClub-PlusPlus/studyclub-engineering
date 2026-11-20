@@ -189,11 +189,12 @@ export function ScheduleTab({
       {timeOpen && (
         <GroupTimeDialog
           group={group}
+          upcomingCount={meetings.filter((m) => !m.started).length}
           onClose={() => setTimeOpen(false)}
-          onSave={(time) => {
+          onSave={(time, moveUpcomingMeetings) => {
             setTimeOpen(false);
             updateGroupTime.mutate(
-              { weekdays: time.weekdays, time: time.time, tz: time.tz },
+              { weekdays: time.weekdays, time: time.time, tz: time.tz, moveUpcomingMeetings },
               { onError: onError('스터디 시간을 저장하지 못했습니다.') },
             );
           }}

@@ -90,8 +90,11 @@ export function useAddMeetings(studyId: number, groupId: number, tz: string) {
 /** 표의 고친 줄 → 수정 본문. 발표자 칸은 넘긴 것만 싣는다 — 그 사이 크루가 신청한 칸을 덮지 않는다. */
 export function toUpdateBody(patch: MeetingPatch, tz: string): MeetingUpdatePayload {
   const presenter = (v: string | null) => (v ? Number(v) : null);
+  // 두 번 오는 벽시계(서머타임 끝나는 날 01:30)를 다시 계산하면 첫 순간이 골라져 제목만 고쳐도 1시간 당겨진다
+  const original = patch.scheduledAt ? wallParts(new Date(patch.scheduledAt), tz) : undefined;
+  const unchanged = original?.date === patch.date && original.time === patch.time;
   return {
-    scheduledAt: zonedInstant(patch.date, patch.time, tz).toISOString(),
+    scheduledAt: unchanged ? patch.scheduledAt! : zonedInstant(patch.date, patch.time, tz).toISOString(),
     title: patch.title.trim() || null,
     ...(patch.presenter1 !== undefined && { presenter1ParticipantId: presenter(patch.presenter1) }),
     ...(patch.presenter2 !== undefined && { presenter2ParticipantId: presenter(patch.presenter2) }),
@@ -141,16 +144,27 @@ export function useDeleteMeetings(studyId: number, groupId: number) {
 
 /**
  * 반 스터디 시간 저장 — daysOfWeek(0=일…6=토 → 서버 형식 mon…sun) · timezone 을 PATCH 로 보낸다.
- * 성공 후 회차 목록을 다시 읽는다 — 시간대가 바뀌면 표의 벽시계가 달라진다.
+ * 성공 후 회차 목록을 다시 읽는다 — 시간대가 바뀌거나 회차를 옮기면 표의 벽시계가 달라진다.
  */
 export function useUpdateGroupTime(studyId: number, groupId: number) {
   const refetch = useRefetchMeetings(studyId, groupId);
   return useMutation({
-    mutationFn: ({ weekdays, time, tz }: { weekdays: number[]; time: string; tz: StudyTz }) =>
+    mutationFn: ({
+      weekdays,
+      time,
+      tz,
+      moveUpcomingMeetings,
+    }: {
+      weekdays: number[];
+      time: string;
+      tz: StudyTz;
+      moveUpcomingMeetings: boolean;
+    }) =>
       scheduleRepository.updateGroupTime(studyId, groupId, {
         daysOfWeek: weekdays.map((d) => DOW_KEYS[d]!),
         startTime: time || null,
         timezone: tz,
+        moveUpcomingMeetings,
       }),
     onSettled: refetch,
   });

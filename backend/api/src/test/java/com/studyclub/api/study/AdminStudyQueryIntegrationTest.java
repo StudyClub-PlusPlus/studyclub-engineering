@@ -88,6 +88,45 @@ class AdminStudyQueryIntegrationTest {
     }
 
     @Test
+    @DisplayName("상태 필터·응답 상태는 저장값이 아니라 날짜까지 읽은 Study#statusAsOf 와 같다 (bug-37)")
+    void statusFilterMatchesDomain() {
+        Map<StudyStatus, List<Long>> expected = new java.util.EnumMap<>(StudyStatus.class);
+        Instant[] dates = {null, AS_OF.minusSeconds(1), AS_OF, AS_OF.plusSeconds(1)};
+        long id = 1;
+        for (StudyStatus status : StudyStatus.values()) {
+            for (Instant startAt : dates) {
+                for (Instant endAt : dates) {
+                    study(id, "상태 " + id, "", status, null);
+                    jdbc.update(
+                            "UPDATE STUDY SET START_AT=?, END_AT=? WHERE ID=?",
+                            startAt == null ? null : Timestamp.from(startAt),
+                            endAt == null ? null : Timestamp.from(endAt),
+                            id);
+                    StudyStatus current =
+                            Study.builder()
+                                    .status(status)
+                                    .startAt(startAt)
+                                    .endAt(endAt)
+                                    .build()
+                                    .statusAsOf(AS_OF);
+                    expected.computeIfAbsent(current, k -> new ArrayList<>()).add(id);
+                    id++;
+                }
+            }
+        }
+        for (StudyStatus status : StudyStatus.values()) {
+            var result = page(null, null, null, BackofficeStudySort.STATUS_ASC, status);
+            assertThat(ids(result))
+                    .as(status.name())
+                    .containsExactlyInAnyOrderElementsOf(expected.getOrDefault(status, List.of()));
+            assertThat(result.items())
+                    .allSatisfy(item -> assertThat(item.status()).isEqualTo(status));
+        }
+        var sorted = page(null, null, null, BackofficeStudySort.STATUS_ASC, null).items();
+        assertThat(sorted.stream().map(item -> item.status().ordinal()).toList()).isSorted();
+    }
+
+    @Test
     @DisplayName("SQL 모집 필터는 공통 엔티티의 상태·마감 경계·정원 판정과 일치한다")
     void recruitmentMatchesDomain() {
         List<Long> recruiting = new ArrayList<>();
@@ -360,17 +399,7 @@ class AdminStudyQueryIntegrationTest {
             BackofficeStudySort sort,
             StudyStatus status) {
         return new BackofficeStudyListFilter(
-                StudyCategory.OTHER,
-                null,
-                status,
-                null,
-                null,
-                null,
-                sort,
-                keyword,
-                form,
-                recruit,
-                null);
+                StudyCategory.OTHER, null, status, null, null, null, sort, keyword, form, recruit);
     }
 
     private List<Long> ids(BackofficeStudyListResponse response) {

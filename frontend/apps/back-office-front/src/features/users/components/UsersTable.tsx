@@ -6,12 +6,8 @@ import { DiscordCell } from '@/features/users/components/DiscordCell';
 import { EmailCell } from '@/features/users/components/EmailCell';
 import { DORMANCY_DESCRIPTION, displayName } from '@/features/users/labels';
 import type { ApiAdminAccount } from '@/features/users/types';
-
-/** 가입일 — 서버는 UTC ISO 8601 로 준다. */
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('ko-KR');
-}
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
+import { zonedDate } from '@/lib/zoned-date';
 
 /**
  * 네비게이터 칸 — 맡은 스터디 이름.
@@ -52,6 +48,7 @@ export function UsersTable({
   onRevealDiscord: (accountId: number, handle: string) => void;
   onHideDiscord: (accountId: number) => void;
 }) {
+  const tz = useDisplayTimeZone();
   return (
     <>
       <p id='user-dormancy-description' className='mb-3 type-label-sm text-fg-muted'>
@@ -110,7 +107,7 @@ export function UsersTable({
               <td className='whitespace-nowrap type-label-sm text-fg-secondary'>
                 <NavigatorCell studies={a.navigatorOf} />
               </td>
-              <td className='tnum whitespace-nowrap type-label-sm text-fg-muted'>{fmtDate(a.joinedAt)}</td>
+              <td className='tnum whitespace-nowrap type-label-sm text-fg-muted'>{zonedDate(a.joinedAt, tz) ?? '-'}</td>
             </tr>
           ))}
           {rows.length === 0 && (

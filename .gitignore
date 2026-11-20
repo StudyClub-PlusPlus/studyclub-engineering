@@ -32,8 +32,10 @@ serviceAccount*.json
 .vscode/
 .gstack/
 
-# local dev tooling
-.claude/
+# local dev tooling — 팀이 같이 쓰는 Claude 설정(Stop 훅)만 올린다
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
 .envrc
 .pnpm-store/
 

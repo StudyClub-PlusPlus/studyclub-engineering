@@ -3,8 +3,7 @@
  * 날짜만 있는 값(`2026-10-15`)은 그대로 반환한다.
  * 파싱 실패 시 undefined.
  *
- * POL-0006: 날짜 표시는 프로필 → 브라우저 → 서울 순서의 시간대로 한다.
- * 이 함수는 시간대를 직접 받으므로 호출 측이 `useDisplayTimeZone()` 결과를 넘긴다.
+ * 백오피스는 운영자 프로필 시간대로 보인다 — 호출 측이 `useDisplayTimeZone()` 결과를 넘긴다.
  */
 export function zonedDate(raw: string | undefined | null, tz: string): string | undefined {
   if (!raw) return undefined;

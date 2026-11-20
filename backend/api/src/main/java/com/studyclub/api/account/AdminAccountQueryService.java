@@ -39,14 +39,17 @@ public class AdminAccountQueryService {
     private final AdminAccountDao adminAccountDao;
     private final AccountRepository accountRepository;
     private final StudyRepository studyRepository;
+    private final SuperAdmins superAdmins;
 
     public AdminAccountQueryService(
             AdminAccountDao adminAccountDao,
             AccountRepository accountRepository,
-            StudyRepository studyRepository) {
+            StudyRepository studyRepository,
+            SuperAdmins superAdmins) {
         this.adminAccountDao = adminAccountDao;
         this.accountRepository = accountRepository;
         this.studyRepository = studyRepository;
+        this.superAdmins = superAdmins;
     }
 
     public AdminAccountListResponse getAccounts(
@@ -87,6 +90,8 @@ public class AdminAccountQueryService {
                                                                 row.studyId(), row.title()),
                                                 Collectors.toList())));
         long adminCount = accountRepository.countBySystemRole(SystemRole.ADMIN);
+        boolean requesterIsSuperAdmin =
+                superAdmins.includes(accountRepository.findById(requesterId).orElse(null));
         // 진행 중 담당 스터디가 있는 계정 — 한 페이지분을 한 번에 본다 (OWNS_STUDY)
         Set<Long> owners =
                 new HashSet<>(
@@ -102,6 +107,7 @@ public class AdminAccountQueryService {
                                                 navigatorOf.getOrDefault(
                                                         row.account().getId(), List.of()),
                                                 requesterId,
+                                                requesterIsSuperAdmin,
                                                 adminCount,
                                                 owners.contains(row.account().getId()),
                                                 participationPeriods.getOrDefault(
@@ -121,10 +127,11 @@ public class AdminAccountQueryService {
         return new AdminAccountListFilter(role, q == null || q.isEmpty() ? null : q);
     }
 
-    private static AccountSummary toSummary(
+    private AccountSummary toSummary(
             AccountRow row,
             List<NavigatorStudy> navigatorOf,
             Long requesterId,
+            boolean requesterIsSuperAdmin,
             long adminCount,
             boolean ownsOngoingStudy,
             List<ParticipationPeriod> participationPeriods,
@@ -140,7 +147,13 @@ public class AdminAccountQueryService {
                 account.isDormant(row.lastLoginAt(), participationPeriods, asOf),
                 account.getCreatedAt(),
                 // 판정은 엔티티 한 곳 — 권한 변경 API 가 거절할 때도 같은 메서드를 부른다
-                account.roleChangeBlockedReason(requesterId, adminCount, ownsOngoingStudy),
-                account.isDiscordLinked());
+                account.roleChangeBlockedReason(
+                        requesterId,
+                        adminCount,
+                        ownsOngoingStudy,
+                        superAdmins.includes(account),
+                        requesterIsSuperAdmin),
+                account.isDiscordLinked(),
+                superAdmins.includes(account));
     }
 }
