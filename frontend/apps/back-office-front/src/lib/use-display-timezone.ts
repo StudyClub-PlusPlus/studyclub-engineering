@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
+
 import { z } from 'zod';
 
 import { getUser, setUserTimeZone } from '@/features/auth/auth';

@@ -1,8 +1,8 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { USER_KEY } from '@/features/auth/auth';
 import { syncProfileTimeZone, useDisplayTimeZone } from './use-display-timezone';
+import { USER_KEY } from '@/features/auth/auth';
 
 const session = (timeZone: string | null) =>
   window.localStorage.setItem(

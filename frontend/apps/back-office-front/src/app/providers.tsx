@@ -9,9 +9,9 @@ import { QueryClientProvider } from '@tanstack/react-query';
 
 import { USER_KEY } from '@/features/auth/auth';
 import { trackHistoryNavigation } from '@/lib/history-guard';
-import { ProfileTimeZoneSync } from '@/lib/use-display-timezone';
 import { isMockApiEnabled } from '@/lib/mock-api';
 import { getQueryClient } from '@/lib/query-client';
+import { ProfileTimeZoneSync } from '@/lib/use-display-timezone';
 
 const MSWProvider = dynamic(() => import('@studyclub/mock/msw').then((m) => m.MSWProvider), { ssr: false });
 
