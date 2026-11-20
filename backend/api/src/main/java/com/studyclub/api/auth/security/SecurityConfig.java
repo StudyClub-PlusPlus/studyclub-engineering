@@ -120,6 +120,7 @@ public class SecurityConfig {
                                                 "/scalar/**",
                                                 "/auth/social-login",
                                                 "/auth/refresh",
+                                                "/auth/email/**",
                                                 "/auth/logout")
                                         .permitAll()
                                         .requestMatchers(
