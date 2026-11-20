@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Modal } from '@studyclub/ui';
+import { Button, Input, Modal, TimeSelect } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import { kickoffSchema, type KickoffValues } from '@/features/schedule/form-schemas';
@@ -81,13 +81,12 @@ export function KickoffDialog({
             error={shown.date?.message}
             onChange={(ev) => change('date', ev.target.value)}
           />
-          <Input
-            type='time'
+          <TimeSelect
             label={`시작 시각 (${zoneLabel(tz)})`}
             required
             value={time}
             error={shown.time?.message}
-            onChange={(ev) => change('time', ev.target.value)}
+            onChange={(value) => change('time', value)}
           />
         </div>
       </div>

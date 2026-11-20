@@ -1,6 +1,6 @@
 # 운영자 알림 (ops alerts)
 
-> 상태: 1단계 구현 · 코드: `backend/api/src/main/java/com/studyclub/api/ops/` (`OpsAlertListener` 구독 → `OpsAlertNotifier` 전송)
+> 상태: 2단계 구현(등급별 라우팅, 2026-11-20) · 코드: `backend/api/src/main/java/com/studyclub/api/ops/` (`OpsAlertListener` 구독 → `OpsAlertNotifier` 전송)
 >
 > 이벤트 정의·발행 규칙은 [domain-events](../domain-events/spec.md)
 
@@ -9,15 +9,38 @@
 서비스 초반에는 가입·신청이 한 건 한 건 의미가 있다. 운영자가 DB 나 백오피스를 열어 보지 않아도
 "방금 누가 가입했고 어떤 스터디에 신청이 들어왔는지" 를 운영 디스코드 채널에서 바로 보게 한다.
 
+제품 소식(info)과 고장(warn·error)은 읽는 사람도 급한 정도도 달라 채널을 나눈다. stage 알림은 팀 채널로 가지 않는다.
+
+## 등급과 목적지
+
+| 등급 | 무엇 | 운영 | stage · beta |
+|---|---|---|---|
+| `INFO` | 제품 이벤트 (가입 · 신청 · 탈퇴) | 운영자 모음 채널(제품 소식) **+** 팀 운영 채널 | 운영자 모음 채널(제품 소식)만, 제목 `[Stage] ` |
+| `WARN` | 사람이 그날 볼 것 (재시도 소진 · 외부 연동 거절) | 운영자 모음 채널(장애) | 〃 |
+| `ERROR` | 사용자 피해 (배치 실패 등) | 운영자 모음 채널(장애), 색으로 WARN 과 구분 | 〃 |
+
+판정 한 문장: 못 보면 무엇이 깨지나. 아무것도 안 깨지면 INFO, 오늘 사람이 손대야 하면 WARN, 사용자가 이미 피해를 보면 ERROR.
+
+| env | 운영 | stage · beta | 비면 |
+|---|---|---|---|
+| `OPS_INFO_WEBHOOK_URL` | 제품 소식 채널 | 같은 값 | INFO 안 보냄 |
+| `OPS_WARN_WEBHOOK_URL` | 장애 채널 | 같은 값 | WARN · ERROR 안 보냄 |
+| `OPS_TEAM_WEBHOOK_URL` | 팀 운영 채널 | **넣지 않는다** | 팀 채널 안 보냄 |
+| `OPS_DISCORD_WEBHOOK_URL` | 옛 이름. `OPS_TEAM_WEBHOOK_URL` 이 없을 때만 팀 채널로 읽는다 | 넣지 않는다 | — |
+
+- 라우팅 표는 `OpsAlertNotifier.ROUTES` 한 곳. stage 를 팀 채널에서 빼는 건 배포 env 로 한다(코드에 환경 분기 없음)
+- 팀 채널은 조용시간(KST 23:00–10:00)에 보내지 않고 버린다. 이 서비스엔 알림 큐가 없다. 운영자 모음 채널 둘은 언제든 보낸다
+- 목적지마다 따로 보낸다. 한 곳이 실패해도 나머지는 간다
+
 ## 계약
 
 | 항목 | 값 |
 |---|---|
-| 설정 | `OPS_DISCORD_WEBHOOK_URL` (→ `ops.discord-webhook-url`). **비어 있으면 아무것도 하지 않는다** |
+| 설정 | 위 env 표 (→ `ops.info-webhook-url` · `ops.warn-webhook-url` · `ops.team-webhook-url` · `ops.discord-webhook-url`). **전부 비어 있으면 아무것도 하지 않는다** |
 | 환경 표시 | `APP_ENV` (→ `ops.env`, 기본 `local`). 제목 접두어 — `production` 없음 · `stage` `[Stage] ` · `beta` `[Beta] ` · 그 밖 `[Local] ` |
-| 채널 | 모든 환경이 같은 채널. 접두어로 구분한다 |
-| 페이로드 | 임베드 한 장 `{"embeds":[{"title":"<접두어>[StudyClub] <제목>","color":<int>,"fields":[{"name","value","inline":false}],"timestamp":<ISO>}],"allowed_mentions":{"parse":[]}}` |
-| 색 | INFO `0x2ECC71` · WARN `0xE67E22` · ERROR `0xE74C3C` |
+| 채널 | 운영자 모음 채널은 모든 환경이 같다. 접두어 `[Stage] ` · `[Beta] ` 와 서비스 표시 `[StudyClub]` 로 구분한다 |
+| 페이로드 | 임베드 한 장 `{"embeds":[{"title":"<접두어>[StudyClub] <제목>","color":<int>,"fields":[{"name","value","inline":false}],"footer":{"text":"info|warn|error"},"timestamp":<ISO>}],"allowed_mentions":{"parse":[]}}` |
+| 색 | INFO `0x2ECC71` · WARN `0xE67E22` · ERROR `0xE74C3C`. footer 에 등급 글자 |
 | 한도 | 필드 값 1000자, 필드 10개 (넘치면 자르고 버린다) |
 | 전송 | `OpsAlertListener` 가 커밋 뒤(`AFTER_COMMIT`)·`@Async` 스레드에서 부른다. 3초 타임아웃, 예외를 던지지 않는다. 실패는 warn 로그(예외 종류만 — URL 은 토큰이라 로그에 남기지 않는다) |
 | 트랜잭션 | 롤백된 가입·신청은 이벤트가 전달되지 않아 알리지 않는다 |
@@ -25,7 +48,7 @@
 
 ## 이벤트
 
-| 알림 | 구독 이벤트 | 레벨 | 필드 |
+| 알림 | 구독 이벤트 | 등급 | 필드 |
 |---|---|---|---|
 | 신규 가입 | `UserRegisteredEvent` (온보딩 최초 완료) | INFO | 닉네임 · 이메일(마스킹) — 커밋된 계정 행에서 읽는다 |
 | 스터디 신청 접수 | `StudyApplicationSubmitted` | INFO | 스터디(제목 #id) · 신청자 닉네임 · 신청 ID |
@@ -48,12 +71,12 @@
 
 ## 배포
 
-`OPS_DISCORD_WEBHOOK_URL` 과 `APP_ENV` 를 **API 서버**(core-api) 배포 env 에 넣는다. 값은 레포 밖 시크릿 저장소에서 주입한다.
+위 env 표의 웹훅과 `APP_ENV` 를 **API 서버**(core-api) 배포 env 에 넣는다. 운영은 INFO · WARN · TEAM, stage 는 INFO · WARN 만. 값은 레포 밖 시크릿 저장소에서 주입한다.
 로컬·CI 는 비워 둔다 (→ 보내지 않음).
 
 ## 검증
 
-- `OpsAlertNotifierTest` — 로컬 HTTP 서버를 웹훅 자리에 세워 페이로드 모양·접두어·마스킹·자르기와, 웹훅이 비거나 죽어 있어도 던지지 않는 것을 본다
+- `OpsAlertNotifierTest` — 로컬 HTTP 서버를 웹훅 자리에 세워 등급별 목적지(INFO 는 두 곳 · WARN/ERROR 는 한 곳 · TEAM 이 없으면 팀 0건 · 옛 env 대체 · 조용시간 팀 버림 · env 전부 비면 0건 · 한 목적지가 죽어도 나머지 전송)와 페이로드 모양·접두어·footer·마스킹·자르기를 본다
 - `OpsAlertListenerTest` — 발행 → 리스너(`event-` 스레드) → notifier, notifier 가 던져도 발행자에게 새지 않는 것을 본다 (notifier 는 목)
 
 실제 디스코드로는 보내지 않는다.

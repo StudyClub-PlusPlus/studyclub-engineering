@@ -1,6 +1,6 @@
 # ACCOUNT_IDENTITY — 로그인 수단
 
-한 회원이 가진 소셜 로그인 연결. 구글·애플(iOS 앱). **이메일 자동 병합 없음** — 로그인된 상태에서 명시적으로 연결한다.
+한 회원이 가진 로그인 연결. 구글·애플(iOS 앱), 그리고 테스트 로그인(`EMAIL`, [stage-email-login](../../specs/stage-email-login/spec.md)). **이메일 자동 병합 없음** — 로그인된 상태에서 명시적으로 연결한다.
 
 ## 컬럼
 
@@ -8,10 +8,11 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
-| ISSUER | VARCHAR(20) | N | `GOOGLE` / `APPLE` |
-| PROVIDER_ACCOUNT_ID | VARCHAR(255) | N | OAuth `sub` |
+| ISSUER | VARCHAR(20) | N | `GOOGLE` / `APPLE` / `EMAIL`(테스트 로그인) |
+| PROVIDER_ACCOUNT_ID | VARCHAR(255) | N | OAuth `sub`. `EMAIL` 은 소문자 정규화한 이메일 |
 | PROVIDER_EMAIL | VARCHAR(255) | N | OAuth 제공자가 전달한 이메일 원본. ACCOUNT.EMAIL 과 다를 수 있음 |
 | LAST_LOGIN_AT | DATETIME | Y | |
+| PASSWORD_HASH | VARCHAR(255) | Y | `EMAIL` 수단의 비밀번호 해시(`{bcrypt}…`). 소셜은 NULL. 응답·로그 금지 |
 | PROVIDER_REFRESH_TOKEN | VARCHAR(1024) | Y | 제공자 refresh token. 애플만 채운다 — 탈퇴 때 `/auth/revoke` 로 애플 쪽 연결을 끊는 데 쓴다. 로그인마다 새 값으로 바뀐다. 응답·로그 금지 |
 
 ## 관계

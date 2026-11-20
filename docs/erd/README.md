@@ -171,10 +171,11 @@ erDiagram
   ACCOUNT_IDENTITY {
     bigint   ID                PK
     bigint   ACCOUNT_ID           FK
-    varchar  ISSUER               "GOOGLE / APPLE"
-    varchar  PROVIDER_ACCOUNT_ID     "OAuth sub"
+    varchar  ISSUER               "GOOGLE / APPLE / EMAIL(테스트 로그인)"
+    varchar  PROVIDER_ACCOUNT_ID     "OAuth sub (EMAIL 은 정규화 메일)"
     varchar  PROVIDER_EMAIL       "OAuth 제공자 이메일. ACCOUNT.EMAIL 과 다를 수 있음"
     datetime LAST_LOGIN_AT
+    varchar  PASSWORD_HASH        "EMAIL 수단만"
   }
 
   ACCOUNT_CONSENT {
@@ -382,6 +383,17 @@ erDiagram
     datetime LEFT_AT               "참여 종료 시각. WITHDRAWN·DELETED 일 때만"
   }
 
+  STUDY_PARTICIPANT_GROUP_MOVE {
+    bigint   ID                 PK
+    bigint   PARTICIPANT_ID        "→ STUDY_PARTICIPANT (FK 없음)"
+    bigint   FROM_GROUP_ID         "옛 반 (FK 없음 — 반을 지워도 남김)"
+    varchar  FROM_GROUP_NAME       "그때 이름"
+    bigint   TO_GROUP_ID           "새 반 (FK 없음)"
+    varchar  TO_GROUP_NAME         "그때 이름"
+    bigint   MOVED_BY_ACCOUNT_ID   "옮긴 캡틴 — 응답에 안 냄"
+    datetime MOVED_AT
+  }
+
   STUDY_ATTENDANCE {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
@@ -454,6 +466,7 @@ erDiagram
   STUDY_PROPOSAL        ||--o{ STUDY_PROPOSAL_INTEREST : "나도"
 
   STUDY_APPLICATION     ||..o| STUDY_PARTICIPANT       : "승인 시 생성"
+  STUDY_PARTICIPANT     ||--o{ STUDY_PARTICIPANT_GROUP_MOVE : "반 이동 기록"
   STUDY_PROPOSAL        ||..o| STUDY_PROGRAM           : "채택 시 승격"
 ```
 
@@ -466,6 +479,7 @@ erDiagram
 | --- | ------------------------------------------------------- | ---------------------- | ------------------------------------ |
 | 회원  | [ACCOUNT](./ACCOUNT.md)                                    | 회원 프로필                 | `SYSTEM_ROLE`                        |
 | 회원  | [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
+| 회원  | [EMAIL_SIGNUP_CODE](./EMAIL_SIGNUP_CODE.md) | 테스트 로그인 가입 코드 | — |
 | 회원  | [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)                                  | 회원 동의                 | —                                    |
 | 회원  | [ACCOUNT_LEAVE_REASON](./ACCOUNT_LEAVE_REASON.md)                        | 탈퇴 사유 집계 (계정과 잇지 않음) | —                              |
 | 회원  | [ADMIN_AUDIT_LOG](./ADMIN_AUDIT_LOG.md)                                  | 운영 감사 로그 — 이메일 보기·권한 변경 (ID 만) | —                              |
@@ -478,6 +492,7 @@ erDiagram
 | 모집  | [STUDY_RECRUITMENT](./STUDY_RECRUITMENT.md)             | 모집 회차 — 기수의 모집 기간/조건   | —                                    |
 | 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
 | 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 분반에 소속된 사람        | `STATUS`, `PARTICIPANT_ROLE`         |
+| 모집  | [STUDY_PARTICIPANT_GROUP_MOVE](./STUDY_PARTICIPANT_GROUP_MOVE.md) | 반 이동 기록 — 옛 반 · 새 반 이름과 시각 | —                                    |
 | 운영  | [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |
 | 운영  | [STUDY_DISCORD_LINK](./STUDY_DISCORD_LINK.md)           | 스터디 ↔ 디스코드 카테고리·역할 ID  | —                                    |
 | 반응  | [STUDY_REVIEW](./STUDY_REVIEW.md)                       | 후기                     | —                                    |

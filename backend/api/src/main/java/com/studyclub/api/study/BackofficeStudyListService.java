@@ -161,7 +161,7 @@ public class BackofficeStudyListService {
                                     study.getId(),
                                     study.getProgramId(),
                                     study.getTitle(),
-                                    study.getStatus(),
+                                    study.statusAsOf(asOf),
                                     study.getCategory(),
                                     program.getStudyKind(),
                                     capacity,

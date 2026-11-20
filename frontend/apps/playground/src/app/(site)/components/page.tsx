@@ -36,6 +36,7 @@ import {
   toast,
   ButtonLink,
   HelpPopover,
+  TimeSelect,
 } from '@studyclub/ui';
 import type { BadgeTone, ButtonSize, ButtonVariant } from '@studyclub/ui';
 import { BookOpen, CalendarClock, CalendarDays, Globe, LayoutDashboard, Rocket, Search, Users } from 'lucide-react';
@@ -194,6 +195,7 @@ function CatalogNav() {
 
 export default function ComponentsCatalog() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [time, setTime] = useState('20:30');
   const [chip, setChip] = useState('all');
   const [checked, setChecked] = useState(true);
   const [countedText, setCountedText] = useState('');
@@ -757,6 +759,17 @@ export default function ComponentsCatalog() {
             출석
             <HelpPopover label='발표 표시 설명'>칸 왼쪽 위 마이크는 그 회차 발표자예요.</HelpPopover>
           </p>
+        </Case>
+
+        <Case
+          title='TimeSelect'
+          note='시각 입력. 브라우저 기본 time 칸 대신 시(00~23) · 분(5분 간격) 두 칸으로 고른다. 값은 HH:mm.'
+        >
+          <div className='grid max-w-2xl gap-4 sm:grid-cols-3'>
+            <TimeSelect label='기본' required value={time} onChange={setTime} />
+            <TimeSelect label='오류' value='' error='시작 시각을 입력해 주세요.' onChange={() => {}} />
+            <TimeSelect label='비활성' value='09:00' disabled onChange={() => {}} />
+          </div>
         </Case>
 
         {/* new-component: pnpm --filter @studyclub/ui new-component 이 새 부품 칸을 이 줄 위에 넣는다 */}
