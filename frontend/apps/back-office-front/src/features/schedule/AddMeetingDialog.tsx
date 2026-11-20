@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Modal, FilterChip } from '@studyclub/ui';
+import { Button, Input, Modal, FilterChip, TimeSelect } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import { meetingSchema, type MeetingValues } from '@/features/schedule/form-schemas';
@@ -135,13 +135,12 @@ export function AddMeetingDialog({
             error={errors.date?.message}
             onChange={(ev) => change({ date: ev.target.value })}
           />
-          <Input
-            type='time'
+          <TimeSelect
             label={`시작 시각 (${zoneLabel(tz)})`}
             required
             value={draft.time}
             error={errors.time?.message}
-            onChange={(ev) => change({ time: ev.target.value })}
+            onChange={(time) => change({ time })}
           />
         </div>
 
