@@ -9,6 +9,8 @@ import java.util.List;
  * 반 수정 요청. 보낸 필드만 반영한다. null 이면 바꾸지 않는다 — "키 없음"과 "null 전송"을 모두 "변경 없음"으로 처리한다.
  *
  * <p>name — 값이 있으면 1~20자 규칙은 도메인({@code StudyGroup#changeName})이 본다.
+ *
+ * <p>moveUpcomingMeetings — 시간대·시각을 바꿀 때 시작 전 회차도 옮길지. 없거나 null 이면 false.
  */
 public class StudyGroupUpdateRequest {
 
@@ -20,6 +22,8 @@ public class StudyGroupUpdateRequest {
     private String startTime;
 
     @ValidTimeZone private String timezone;
+
+    private boolean moveUpcomingMeetings;
 
     @JsonCreator
     public StudyGroupUpdateRequest() {}
@@ -40,6 +44,10 @@ public class StudyGroupUpdateRequest {
         return timezone;
     }
 
+    public boolean moveUpcomingMeetings() {
+        return moveUpcomingMeetings;
+    }
+
     public void setName(String name) {
         this.name = name;
     }
@@ -54,5 +62,9 @@ public class StudyGroupUpdateRequest {
 
     public void setTimezone(String timezone) {
         this.timezone = timezone;
+    }
+
+    public void setMoveUpcomingMeetings(Boolean moveUpcomingMeetings) {
+        this.moveUpcomingMeetings = Boolean.TRUE.equals(moveUpcomingMeetings);
     }
 }
