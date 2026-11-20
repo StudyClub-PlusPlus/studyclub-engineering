@@ -15,6 +15,7 @@ public record AdminAccountListResponse(
      * @param dormant 최근 180일간 명부 참여와 로그인 기록이 모두 없다 (신규·기록 미확인 제외)
      * @param roleChangeBlockedReason 지금 이 행의 권한을 바꿀 수 없는 이유. 바꿀 수 있으면 null
      * @param discordLinked 디스코드 연동 여부. username과 숫자 ID는 목록에 내보내지 않는다
+     * @param superAdmin 최고 관리자(env SUPER_ADMIN_EMAILS)인가. 이메일 원문은 내보내지 않는다
      */
     public record AccountSummary(
             Long id,
@@ -25,7 +26,8 @@ public record AdminAccountListResponse(
             boolean dormant,
             Instant joinedAt,
             RoleChangeBlockedReason roleChangeBlockedReason,
-            boolean discordLinked) {}
+            boolean discordLinked,
+            boolean superAdmin) {}
 
     public record NavigatorStudy(Long studyId, String title) {}
 }
