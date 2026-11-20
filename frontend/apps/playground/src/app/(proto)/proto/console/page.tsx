@@ -75,7 +75,7 @@ export default function Dashboard() {
 
       <div className='mt-6 grid items-start gap-6 lg:grid-cols-10'>
         <div className='flex flex-col gap-6 lg:col-span-4'>
-          <Card title='크루 지역 분포' anno='4'>
+          <Card title='크루 시간대 분포' anno='4'>
             <RegionDonut data={regions} />
           </Card>
           <Card title='평균 출석률 추세' anno='5'>

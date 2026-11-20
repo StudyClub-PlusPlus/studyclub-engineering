@@ -1,5 +1,6 @@
 'use client';
 
+
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
@@ -20,11 +21,12 @@ import { type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
 import { studyAuthor } from '@console/lib/users';
 import { ScheduleManager } from '@core/components/ScheduleManager';
-import { SegmentTabs } from '@core/components/SegmentTabs';
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
+import { TimeZonePicker } from '@core/components/TimeZonePicker';
 import { discordUrl, driveUrl } from '@core/lib/joined';
-import { DISPLAY_ZONES, wallParts, zonedInstant, type ProtoMeeting } from '@core/lib/meetings';
+import { wallParts, zonedInstant, type ProtoMeeting } from '@core/lib/meetings';
 import { dropPresenters } from '@core/lib/schedule-source';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew } from '@studyclub/mock';
 import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
 import { Badge, Button, Modal, Switch, Tabs } from '@studyclub/ui';
@@ -110,7 +112,9 @@ export function StudyConsole({ study }: { study: Study }) {
   // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT
   const [left, setLeft] = useState<Record<string, { at: string }>>({});
   // 출석부 회차 머리의 시간대 — 사용자 사이트 출석부 · 일정 표와 같은 KST/PDT 전환
-  const [zone, setZone] = useState<string>(DISPLAY_ZONES[0]!.iana);
+  const viewerZone = useDisplayTimeZone();
+  const [selectedZone, setZone] = useState<string>();
+  const zone = selectedZone ?? viewerZone;
   // 일정 탭의 「스터디 시간 정하기 · 수정」 창
   const [ruleOpen, setRuleOpen] = useState(false);
 
@@ -223,6 +227,13 @@ export function StudyConsole({ study }: { study: Study }) {
 
   /** 반의 스터디 시간(요일 · 시각 · 시간대)을 정하거나 고친다. 회차는 건드리지 않는다 — 회차는 일정 표에서만 만든다. */
   function saveRule(id: string, rule: ScheduleRule) {
+    const previous = classView({ study, cls: classes.find((c) => c.id === id), base: meetings[id] ?? [], crew: [], navigators: [] });
+    if (previous && (previous.cls.rule.tz !== rule.tz || previous.cls.rule.time !== rule.time)) {
+      // 옛 mock 회차에도 UTC를 먼저 확정해, 기준 시간대만 바꿔도 기존 일정이 이동하지 않게 한다.
+      for (const meeting of previous.meetings) {
+        if (!meeting.scheduledAt) previous.source.patch(meeting.id, { scheduledAt: previous.source.startOf(meeting).toISOString() });
+      }
+    }
     setClasses((list) => list.map((c) => (c.id === id ? { ...c, rule } : c)));
   }
 
@@ -618,13 +629,9 @@ export function StudyConsole({ study }: { study: Study }) {
                   // 제목 줄 — 「출석」 · 「전체 N」 · 오른쪽 KST/PDT (사용자 사이트 출석부와 같은 줄). 반 이름은 위 칩이 말한다
                   title='출석'
                   toolbar={
-                    <SegmentTabs
-                      anno='attendance:11'
-                      label='회차 표시 시간대'
-                      value={zone}
-                      options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
-                      onChange={setZone}
-                    />
+                    <div className='w-60' data-anno='attendance:11'>
+                      <TimeZonePicker label='회차 표시 시간대' locale='ko' value={zone} onChange={setZone} hideLabel compact annotation={false} />
+                    </div>
                   }
                   whenOf={(m) => wallParts(instantOf(m as ProtoMeeting), zone)}
                 />

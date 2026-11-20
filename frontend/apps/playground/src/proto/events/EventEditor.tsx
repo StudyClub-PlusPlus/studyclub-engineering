@@ -2,11 +2,15 @@
 
 import { useState } from 'react';
 
+import { TimeZonePicker } from '@core/components/TimeZonePicker';
+import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
+import { localDateTime } from '@core/lib/time-zone-preview';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { PreviewEvent } from '@studyclub/types';
 import { Button, Input, Select, Textarea } from '@studyclub/ui';
 
 import { EventQuestionEditor } from './EventQuestionEditor';
-import { EVENT_LIMITS, ZONES, resolveEventInput, wallTime } from './model';
+import { EVENT_LIMITS, resolveEventInput, wallTime } from './model';
 
 type DateField = 'startsAt' | 'endsAt' | 'deadlineAt';
 
@@ -24,6 +28,7 @@ export function EventEditor({
   onCancel: () => void;
 }) {
   const [draft, setDraft] = useState(event);
+  const viewerZone = useDisplayTimeZone();
   const [dates, setDates] = useState({
     startsAt: wallTime(event.startsAt, event.timeZone),
     endsAt: wallTime(event.endsAt, event.timeZone),
@@ -40,6 +45,20 @@ export function EventEditor({
     endsAt: resolveDate('endsAt'),
     deadlineAt: resolveDate('deadlineAt'),
   };
+
+  const dateFields: DateField[] = ['startsAt', 'endsAt', 'deadlineAt'];
+  const unresolvedDate = dateFields.some((field) => dates[field] && !resolvedDates[field].iso);
+  function changeTimeZone(timeZone: string) {
+    if (unresolvedDate) return;
+    // 시간대만 바꾸면 입력된 실제 행사 시각을 유지한다.
+    setDates({
+      startsAt: wallTime(resolvedDates.startsAt.iso ?? '', timeZone),
+      endsAt: wallTime(resolvedDates.endsAt.iso ?? '', timeZone),
+      deadlineAt: wallTime(resolvedDates.deadlineAt.iso ?? '', timeZone),
+    });
+    setOccurrences(Object.fromEntries(dateFields.map((field) => [field, resolvedDates[field].iso])));
+    set('timeZone', timeZone);
+  }
 
   function renderDate(field: DateField, label: string, required: boolean, helper?: string) {
     const { choices, errors, iso } = resolvedDates[field];
@@ -60,6 +79,11 @@ export function EventEditor({
             setOccurrences({ ...occurrences, [field]: undefined });
           }}
         />
+        {iso && viewerZone !== draft.timeZone && (
+          <p className='type-label-sm text-fg-muted' aria-live='polite'>
+            내 시간 · {scheduleZoneTitle(viewerZone)} {localDateTime(new Date(iso), viewerZone)}
+          </p>
+        )}
         {!readOnly && ambiguous && (
           <Select
             label={`${label} 시각 구분`}
@@ -133,20 +157,11 @@ export function EventEditor({
             value={draft.description}
             onChange={(e) => set('description', e.target.value)}
           />
-          <Select
-            label='기준 시간대'
-            value={draft.timeZone}
-            onChange={(e) => {
-              set('timeZone', e.target.value);
-              setOccurrences({});
-            }}
-          >
-            {ZONES.map((z) => (
-              <option key={z.value} value={z.value}>
-                {z.label}
-              </option>
-            ))}
-          </Select>
+          <TimeZonePicker
+            label='기준 시간대' locale='ko' compact required={false} annotation={false}
+            value={draft.timeZone} disabled={readOnly || unresolvedDate} onChange={changeTimeZone}
+            error={!readOnly && unresolvedDate ? '날짜·시각 입력을 완료한 뒤 시간대를 변경해 주세요.' : undefined}
+          />
           <div className='grid gap-4 sm:grid-cols-2'>
             {renderDate('startsAt', '행사 시작', true)}
             {renderDate('endsAt', '행사 종료 (선택)', false)}

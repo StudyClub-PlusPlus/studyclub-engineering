@@ -1,4 +1,5 @@
-import { WEEKDAY_LABELS, tzAbbr, wallToInstant, type ScheduleRule } from '@console/lib/schedule';
+import { WEEKDAY_LABELS, type ScheduleRule } from '@console/lib/schedule';
+import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
 
 /**
  * 반 (ERD `STUDY_GROUP`).
@@ -41,6 +42,5 @@ export function hasSchedule(cls: StudyClass): boolean {
 export function classTime(rule: ScheduleRule): string {
   const days = rule.weekdays.map((d) => `${WEEKDAY_LABELS[d]}요일`).join(' · ');
   if (!days) return '미정';
-  const at = rule.startDate ? wallToInstant(rule.startDate, rule.time, rule.tz) : new Date();
-  return `매주 ${days}${rule.time ? ` ${rule.time} ${tzAbbr(rule.tz, at)}` : ''}`;
+  return `매주 ${days}${rule.time ? ` ${rule.time} ${scheduleZoneTitle(rule.tz)}` : ''}`;
 }

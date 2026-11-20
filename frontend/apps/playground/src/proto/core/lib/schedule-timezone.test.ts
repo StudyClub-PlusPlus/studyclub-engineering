@@ -1,6 +1,7 @@
+import { countCrewTimeZones, groupTimeZones } from '@console/lib/crew-timezones';
 import { meetingWindow, meetingsOf } from '@core/lib/attendance';
 import { weekDays, ymdInTz } from '@core/lib/joined';
-import { getTimeZone, setTimeZone } from '@core/lib/me';
+import { getRegion, getTimeZone, setRegion, setTimeZone } from '@core/lib/me';
 import {
   addMeetings,
   initialMeetingDraft,
@@ -22,6 +23,11 @@ import { zoneOffset } from '@core/lib/time-zones';
 import { studies } from '@studyclub/mock';
 import assert from 'node:assert/strict';
 
+import { snapToOnboardingZone, isOnboardingTimeZone } from './onboarding';
+import { relativeTimeChanges } from './time-zone-preview';
+import { availableZones, zoneSearchText } from './time-zones';
+import { resolveEventInput, wallTime } from '../../events/model';
+
 const seoul = 'Asia/Seoul';
 const east = 'America/New_York';
 const west = 'America/Los_Angeles';
@@ -32,7 +38,7 @@ assert.equal(resolveDisplayZone('invalid', west), west);
 assert.equal(resolveDisplayZone(undefined, 'invalid'), seoul);
 assert.equal(SCHEDULE_ZONES.length, 4);
 assert(SCHEDULE_ZONES.some((z) => z.iana === 'America/Vancouver'));
-assert.equal(scheduleZoneTitle(east), '뉴욕·토론토(ET)');
+assert.equal(scheduleZoneTitle(east), '뉴욕(ET)');
 assert.equal(scheduleZoneTitle(vancouver), '밴쿠버(PCT)');
 
 const october = zonedInstant('2026-10-28', '20:30', seoul);
@@ -102,7 +108,7 @@ const regularTime = regularScheduleDisplay(
   fixtureNow,
 );
 assert.deepEqual(regularTime, {
-  label: '매주 수요일 06:30 · 뉴욕·토론토(EST)',
+  label: '매주 수요일 06:30 · 뉴욕(EST)',
   original: '매주 수요일 20:30 · 서울(KST)',
   referenceDate: '2026-11-04',
 });
@@ -113,7 +119,7 @@ assert.equal(
 assert.equal(regularScheduleDisplay(seoulGroup, regularDates, west, fixtureNow).label, '매주 수요일 03:30 · LA(PST)');
 assert.equal(
   regularScheduleDisplay({ ...seoulGroup, startAt: '10:00', weekdays: [6] }, [], east, fixtureNow).label,
-  '매주 금요일 21:00 · 뉴욕·토론토(EDT)',
+  '매주 금요일 21:00 · 뉴욕(EDT)',
 );
 // 종료한 반은 마지막 회차의 계절, 요일이 없는 반은 임의의 매주 요일을 만들지 않는다.
 assert.equal(
@@ -122,7 +128,7 @@ assert.equal(
 );
 assert.equal(
   regularScheduleDisplay({ ...seoulGroup, weekdays: [] }, [], east, fixtureNow).label,
-  '07:30 · 뉴욕·토론토(EDT)',
+  '07:30 · 뉴욕(EDT)',
 );
 // 개별 회차가 목요일 늦은 시각으로 옮겨져도 정규 수요일 20:30 자체는 유지한다.
 const movedTime = regularScheduleDisplay(
@@ -209,8 +215,10 @@ Object.defineProperty(globalThis, 'localStorage', {
   },
 });
 Object.defineProperty(globalThis, 'window', { configurable: true, value: { dispatchEvent: () => true } });
+setRegion('ETC');
 setTimeZone(east);
 assert.equal(getTimeZone(), east);
+assert.equal(getRegion(), 'ETC', '표시 시간대 변경은 기존 모집 권역을 바꾸지 않는다');
 const ambiguousSource = classSource({ key: 'ambiguous-repeat', base: [], timeZone: east, time: '01:30', people: [] });
 ambiguousSource.add({
   dates: chosenRepeat.dates,
@@ -280,7 +288,7 @@ assert.equal(confirmedRecruitSchedule({ ...recruit, startAt: '2027-01-07', timez
 const example = withConfirmedScheduleExample(recruit);
 assert.deepEqual(confirmedRecruitSchedule(example, 'ko', east), {
   label: '2027-01-07 (목) 06:00',
-  zone: '뉴욕·토론토(EST)',
+  zone: '뉴욕(EST)',
 });
 assert.deepEqual(confirmedRecruitSchedule(example, 'ko', vancouver), {
   label: '2027-01-07 (목) 04:00',
@@ -309,3 +317,50 @@ assert.equal(
 console.log(
   '시간대 회귀 검사 통과: 프로필 우선, 날짜 이동, DST, 밴쿠버 PCT·LA 겨울 시차, 지역 전환, UTC 저장, 반복 기준, 확정 일정만 변환',
 );
+
+// 전 세계 입력과 반복 회차의 현지 시각 유지.
+const london = 'Europe/London';
+const kathmandu = 'Asia/Kathmandu';
+assert.equal(snapToOnboardingZone(london), london);
+assert.equal(snapToOnboardingZone('America/Toronto'), 'America/Toronto');
+assert.equal(snapToOnboardingZone('invalid'), '');
+assert(isOnboardingTimeZone(kathmandu));
+assert(availableZones('').length > 300);
+assert(!availableZones('invalid').includes('invalid'));
+assert(zoneSearchText(london).includes('런던'));
+assert(zoneSearchText(london).includes('united kingdom'));
+assert.equal(zonedInstant('2027-03-31', '19:00', kathmandu).toISOString(), '2027-03-31T13:15:00.000Z');
+const londonWeekly = planDraft(
+  { date: '2027-03-24', time: '19:00', title: '', repeat: 'weekly', until: '2027-03-31', weekdays: [3] },
+  [], london, new Date('2027-03-01T00:00:00Z'), london,
+).plan!;
+assert.deepEqual(londonWeekly.scheduledAts, ['2027-03-24T19:00:00.000Z', '2027-03-31T18:00:00.000Z']);
+assert.deepEqual(londonWeekly.scheduledAts.map((at) => wallParts(new Date(at), london).time), ['19:00', '19:00']);
+assert.deepEqual(relativeTimeChanges(londonWeekly.scheduledAts, london, seoul), [{ at: '2027-03-31T18:00:00.000Z', before: '04:00', after: '03:00' }]);
+assert.deepEqual(relativeTimeChanges(londonWeekly.scheduledAts, london, london), []);
+assert.deepEqual(relativeTimeChanges(['2027-03-07T19:00:00Z', '2027-03-21T18:00:00Z'], east, west), []);
+
+// 대시보드는 고유 회원을 집계하고, 미설정은 Others와 분리한다.
+const counts = countCrewTimeZones([
+  { email: 'a@test', timeZone: london }, { email: 'a@test', timeZone: london },
+  { email: 'b@test', timeZone: null }, { email: 'c@test', timeZone: kathmandu },
+]);
+assert.equal(counts.reduce((sum, row) => sum + row.count, 0), 3);
+assert.equal(counts.find((row) => row.key === 'unknown')?.count, 1);
+const manyZones = [seoul, east, west, london, kathmandu, 'Asia/Tokyo'].map((key, index) => ({ key, count: 10 - index }));
+assert.equal(groupTimeZones(manyZones.slice(0, 5)).rest.length, 0);
+assert.equal(groupTimeZones(manyZones).rows.length, 5);
+assert.equal(groupTimeZones(manyZones).rest.length, 2);
+const withMissing = groupTimeZones([...manyZones, { key: 'unknown', count: 1 }]);
+assert.equal(withMissing.rows.length, 5);
+assert.equal(withMissing.rest.length, 3);
+assert(!withMissing.rest.some((row) => row.key === 'unknown'));
+assert.equal(withMissing.rows.reduce((sum, row) => sum + row.count, 0), manyZones.reduce((sum, row) => sum + row.count, 1));
+
+// 행사 시간대 변경은 초 단위와 중복 시각의 실제 순간까지 보존한다.
+const originalEvent = '2027-11-07T06:30:45.123Z';
+for (const zone of [london, kathmandu, east, vancouver]) {
+  assert.equal(resolveEventInput(wallTime(originalEvent, zone), zone, undefined, originalEvent).iso, originalEvent);
+}
+assert.equal(wallTime('2027-01-07T07:30:00Z', vancouver), '2027-01-07T00:30');
+console.log('전 세계 시간대·반 기준 반복·조건부 서머타임 안내·Others·행사 시각 보존 검사 통과');

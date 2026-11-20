@@ -54,6 +54,7 @@ export function availableZones(selected: string): string[] {
       }
     });
   }
+  try { if (selected) new Intl.DateTimeFormat('en', { timeZone: selected }); } catch { selected = ''; }
   return [...new Set([...POPULAR_ZONES, ...(selected ? [selected] : []), ...supported, 'UTC'])];
 }
 

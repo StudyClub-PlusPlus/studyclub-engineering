@@ -1,7 +1,9 @@
 import { tx } from '@console/lib/l10n';
 import { getStudyCrew, site, studies } from '@studyclub/mock';
-import { type MemberRegion, type Study } from '@studyclub/types';
-import { CATEGORY_DISPLAY, MEMBER_REGIONS, attendancePoint, categoriesOf, recruitState, toISODate, todayISO } from '@studyclub/utils';
+import { type Crew, type Study } from '@studyclub/types';
+import { CATEGORY_DISPLAY, attendancePoint, categoriesOf, recruitState, toISODate, todayISO } from '@studyclub/utils';
+
+import { countCrewTimeZones } from './crew-timezones';
 
 /**
  * 대시보드 집계.
@@ -66,7 +68,7 @@ export function categoryCode(label: string): string {
 }
 
 export function aggregate(today = todayISO(), studyList: Study[] = studies) {
-  const regionCount: Record<MemberRegion, number> = { KR: 0, NA: 0, ETC: 0 };
+  const activeMembers: Crew[] = [];
   // 규모는 사람 수가 아니라 **스터디 수**로 센다 — 사람으로 세면 한 사람이 여러 줄에 잡혀
   // 합계가 총원을 넘고, 같은 화면의 「활성 크루」와 어긋나 보인다.
   const byCategory = new Map<string, { running: number; total: number }>();
@@ -103,7 +105,7 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
         // 같은 사람이 같은 스터디에 두 번 잡혀 있어도 참여는 한 건이다.
         activePeople.add(c.email);
         enrollments.add(`${c.email}|${study.id}`);
-        regionCount[c.region] += 1;
+        activeMembers.push(c);
       }
       for (const [meetingId, v] of Object.entries(attendance[c.id] ?? {})) {
         // 휴가는 분모에서 빠진다 — 미리 알리고 빠진 것을 결석과 같이 세면 성실한 사람이 손해를 본다
@@ -166,7 +168,7 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
           (a.deadline ? daysUntil(a.deadline, today) : 9999) - (b.deadline ? daysUntil(b.deadline, today) : 9999),
       ),
     },
-    regions: MEMBER_REGIONS.map((r) => ({ key: r.key, count: regionCount[r.key] })),
+    regions: countCrewTimeZones(activeMembers),
     categories: [...byCategory.entries()].map(([category, v]) => ({
       category,
       code: categoryCode(category),
