@@ -1,4 +1,4 @@
--- V60 — stage 테스트 로그인 (specs/stage-email-login).
+-- V61 — stage 테스트 로그인 (specs/stage-email-login).
 -- 운영에도 테이블·컬럼은 생기지만 기능 스위치(EMAIL_LOGIN_ENABLED)가 꺼져 있어 쓰이지 않는다.
 
 CREATE TABLE EMAIL_SIGNUP_CODE (
