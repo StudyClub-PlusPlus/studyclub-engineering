@@ -77,6 +77,8 @@ public enum ErrorCode {
     PRESENTER_NOT_ME(409, "내가 신청한 칸이 아닙니다."),
     /** 스터디가 끝났다(ENDED·CLOSED) — 명부를 더 바꾸지 않는다 */
     STUDY_ENDED(409, "끝난 스터디입니다."),
+    /** 시작일(START_AT)이 지난 스터디를 비공개로 내리려 함 — 저장된 STATUS 가 OPEN 이어도 */
+    STUDY_ALREADY_STARTED(409, "시작한 스터디는 비공개로 바꿀 수 없습니다."),
     /** 스터디 공지를 너무 자주 보냈다 — 같은 반 직전 발송 1분 안, 또는 하루 한도 (specs/study-notice). 화면은 보내기를 끄고 사유를 보여 준다 */
     STUDY_NOTICE_RATE_LIMITED(429, "공지를 너무 자주 보냈습니다. 잠시 뒤에 다시 보내 주세요."),
     /** 회신 없이 문의를 완료로 바꾸려 함 — 완료는 회신으로만 된다. 화면은 「완료」를 막고 같은 문구를 보인다 (specs/feedback/spec.md) */

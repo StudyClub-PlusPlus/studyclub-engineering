@@ -6,6 +6,7 @@ import { RotateCw } from 'lucide-react';
 import { TableCard } from '@/components/ui';
 import { channelLabel, eventLabel, formatStamp, statusLabel, statusTone } from '@/features/notifications/labels';
 import { NOTIFICATION_PAGE_SIZE, type ApiNotification } from '@/features/notifications/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 const COLUMNS = 6;
 
@@ -26,13 +27,14 @@ export function HistoryTable({
   resending: ReadonlySet<number>;
   onResend: (id: number) => void;
 }) {
+  const tz = useDisplayTimeZone();
   return (
     <TableCard>
       <HistoryHead />
       <tbody>
         {rows.map((row) => (
           <tr key={row.id}>
-            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(row.createdAt)}</td>
+            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(row.createdAt, tz)}</td>
             <td className='whitespace-nowrap'>{eventLabel(row.eventType)}</td>
             <td className='whitespace-nowrap text-fg-secondary'>{channelLabel(row.recipientType)}</td>
             <td className='max-w-0 truncate text-fg-secondary'>{row.recipientValue}</td>
@@ -40,7 +42,7 @@ export function HistoryTable({
               <StatusCell row={row} spinning={resending.has(row.id)} onResend={onResend} />
             </td>
             <td className='tnum whitespace-nowrap text-fg-secondary'>
-              {row.sentAt ? formatStamp(row.sentAt) : <span className='text-fg-muted'>—</span>}
+              {row.sentAt ? formatStamp(row.sentAt, tz) : <span className='text-fg-muted'>—</span>}
             </td>
           </tr>
         ))}
