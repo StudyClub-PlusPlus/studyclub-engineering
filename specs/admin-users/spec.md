@@ -61,6 +61,18 @@
 - `PATCH …/system-role` 은 authz-guards 표 A 의 「역할 변경」 행(구현 시 `@RequireAdmin`)이 가리키는 엔드포인트다.
 - `PATCH` 안에서 `ADMIN` 행을 잠그는 것은 권한 검사가 아니라 **캡틴 수 판정의 동시성 장치**다 ([처리 규칙](#처리-규칙)).
 
+### 최고 관리자 (2026-11-20, 청사진 super-admin)
+
+캡틴 위에 **최고 관리자** 층이 하나 있다. 정본은 env `SUPER_ADMIN_EMAILS`(콤마 목록) 하나다 (`SuperAdmins`, 설정 키 `super-admin.emails`).
+
+- 읽기: 콤마로 나누고 trim · 소문자 · 빈 칸 · 중복 제거. 비면 최고 관리자 없음(부팅 경고 한 줄). **코드에 기본 이메일을 두지 않는다**
+- 판정은 DB 가 아니라 **계정 이메일이 목록에 있는가**다. DB 는 부팅마다 채우는 사본이다
+- 부팅 동기화: 목록의 계정이 크루면 캡틴으로 올린다(멱등). 가입 전인 사람은 건너뛰고 가입 뒤 다음 부팅에 올라간다. 첫 캡틴 · 잠금 복구가 DB 직접 수정 대신 env 수정 + 재배포가 된다
+- 최고 관리자인 캡틴은 화면 · API 로 못 내린다 → `403 SUPER_ADMIN_LOCKED`
+- 캡틴을 크루로 내리는 것은 **최고 관리자만** 한다 → 아니면 `403 NOT_SUPER_ADMIN`. 크루를 캡틴으로 올리는 것은 지금처럼 캡틴 누구나
+- 이건 `@RequireAdmin` 을 서비스에서 다시 보는 것이 아니라 내림의 도메인 규칙이라 `roleChangeBlockedReason` 한 곳에서 판정한다
+- 목록 행마다 `superAdmin`(Boolean) 을 준다. 이메일 원문은 내보내지 않는다
+
 ### 기획 문서와 다른 곳
 
 **이름은 PRD 를 따른다.** [회원 목록](../../01-planning/stories/captain-list-users/PRD.md) · [역할 부여](../../01-planning/stories/captain-grant-roles/PRD.md) PRD 의 API 절이 적은 경로 · 파라미터 · 에러 코드를 그대로 쓴다. PRD 이후 리뷰(PR #163)에서 운영진·리드 회의 결정으로 더해진 동작은 이 스펙이 정한다 — 기획 반영은 기획 쪽에서 한다.
@@ -191,8 +203,9 @@
 | items[].navigatorOf[].title | String | N | | STUDY.TITLE |
 | items[].dormant | Boolean | N | 「휴면」 표기. 최근 180일간 명부 참여와 로그인이 모두 없을 때만 true | 계산: `Account.isDormant` — 아래 휴면 판정 기준 |
 | items[].joinedAt | String | N | 가입일. UTC ISO 8601 | ACCOUNT.CREATED_AT |
-| items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: `Account.roleChangeBlockedReason(요청자 ID, ADMIN 수, 진행 중 담당 스터디 수)` — 권한 변경 API 의 거절도 같은 메서드 |
+| items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: `Account.roleChangeBlockedReason(요청자 ID, ADMIN 수, 진행 중 담당 스터디 유무, 이 행이 최고 관리자, 요청자가 최고 관리자)` — 권한 변경 API 의 거절도 같은 메서드 |
 | items[].discordLinked | Boolean | N | 디스코드 계정 연동 여부 — 목록 「디스코드」 칸 (2026-10-27) | 계산: `ACCOUNT.DISCORD_ID` 있음 |
+| items[].superAdmin | Boolean | N | 최고 관리자인가 — 화면이 「최고 관리자」 배지를 붙인다 (2026-11-20) | 계산: ACCOUNT.EMAIL ∈ env `SUPER_ADMIN_EMAILS` |
 | total | Long | N | 걸러진 뒤 전체 수 — 화면의 「총 N명」 | 계산: COUNT |
 | offset | Integer | N | 요청 값 그대로 | |
 | limit | Integer | N | 요청 값 그대로 | |
@@ -221,6 +234,8 @@
 |---|---|---|
 | `CANNOT_CHANGE_OWN_ROLE` | 이 행이 요청자 본인 | 자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요. |
 | `LAST_ADMIN_REQUIRED` | 이 행이 `ADMIN` 이고 `ADMIN` 이 1명뿐 | 마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요. |
+| `SUPER_ADMIN_LOCKED` | 이 행이 `ADMIN` 이고 최고 관리자 (2026-11-20) | 최고 관리자입니다. 서버 설정(SUPER_ADMIN_EMAILS)을 고쳐야 바뀝니다. |
+| `NOT_SUPER_ADMIN` | 이 행이 `ADMIN` 이고 요청자가 최고 관리자가 아님 (2026-11-20) | 캡틴을 크루로 내리는 것은 최고 관리자만 할 수 있습니다. |
 | `OWNS_STUDY` | 이 행이 `ADMIN` 이고 진행 중인 스터디(`STATUS` 가 `ENDED` · `CLOSED` 가 아님 — `DRAFT` 포함)의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`) (2026-11-16) | 담당 중인 스터디가 있습니다. 스터디 신청자 탭에서 담당 캡틴을 먼저 바꿔 주세요. |
 | `null` | 위 모두 아님 | — |
 
@@ -412,6 +427,7 @@ Query Parameters / Request Body 없음.
 4. 대상의 현재 값과 요청 값이 같으면 **아무것도 바꾸지 않고 200**. 감사 기록도 남기지 않는다 (중복 클릭·재시도에 안전).
 5. `ADMIN → MEMBER` 이고 1 에서 센 `ADMIN` 수가 1 이하이면 `409 LAST_ADMIN_REQUIRED`.
    - 디스코드 연동 여부는 보지 않는다 — 올림도 내림도 (2026-10-27, 그전에는 미연동 크루를 올리면 `409 DISCORD_LINK_REQUIRED`).
+5-0. `ADMIN → MEMBER` 이고 대상이 최고 관리자면 `403 SUPER_ADMIN_LOCKED`, 요청자가 최고 관리자가 아니면 `403 NOT_SUPER_ADMIN` (2026-11-20, [최고 관리자](#최고-관리자-2026-11-20-청사진-super-admin)). 5 뒤에 두는 것은 캡틴 둘이 동시에 서로를 내릴 때 잠금 판정(`LAST_ADMIN_REQUIRED`)이 먼저 보이게 하려는 것이다
 5-1. `ADMIN → MEMBER` 이고 대상이 **진행 중인 스터디**(`ENDED` · `CLOSED` 밖, `DRAFT` 포함)의 담당 캡틴이면 `409 OWNS_STUDY` (2026-11-16). `errorMessage` 에 그 스터디 제목을 적는다 — 「담당 중인 스터디가 있습니다: ○○, △△. 스터디 신청자 탭에서 담당 캡틴을 먼저 바꿔 주세요.」
    - 1 의 잠금이 동시성을 막는다 — [담당 캡틴 바꾸기](../study-group/spec.md#담당-캡틴-바꾸기)는 대상 계정 행을 잠그고 `ADMIN` 인지 본다. 두 요청이 같은 계정 행을 기다리므로 「검사 통과 직후 담당 지정」이 끼어들지 못한다
 5-2. `ADMIN → MEMBER` 로 바꿀 때, 대상이 담당 캡틴인 **끝난 스터디**(`ENDED` · `CLOSED`)의 `OWNER_CAPTAIN_ID` 를 같은 트랜잭션에서 NULL 로 비운다 — 크루 계정이 담당 캡틴으로 남지 않게. 비운 스터디는 「캡틴 누구나」가 담당 일을 한다. 따로 감사 기록을 남기지 않는다 — 7 의 `ROLE_CHANGE` 가 원인 기록이다
@@ -468,12 +484,14 @@ Query Parameters / Request Body 없음.
 | 400 | INVALID_INPUT | `systemRole` 없음, 또는 `ADMIN`·`MEMBER` 가 아님 |
 | 401 | UNAUTHORIZED | 토큰 없음·무효, 또는 토큰의 계정이 없음(탈퇴) |
 | 403 | FORBIDDEN | 요청자가 `ADMIN` 이 아님 (`@RequireAdmin`) |
+| 403 | SUPER_ADMIN_LOCKED | 최고 관리자인 캡틴을 `MEMBER` 로 내리려 함 (2026-11-20) — 「최고 관리자입니다. 서버 설정(SUPER_ADMIN_EMAILS)을 고쳐야 바뀝니다.」 |
+| 403 | NOT_SUPER_ADMIN | 최고 관리자가 아닌 캡틴이 다른 캡틴을 내리려 함 (2026-11-20) — 「캡틴을 크루로 내리는 것은 최고 관리자만 할 수 있습니다.」 |
 | 404 | NOT_FOUND | `accountId` 에 해당하는 계정 없음 (탈퇴 등) |
 | 409 | CANNOT_CHANGE_OWN_ROLE | **신규.** 대상이 요청자 본인 — 「자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요.」 |
 | 409 | LAST_ADMIN_REQUIRED | **신규.** 마지막 `ADMIN` 을 `MEMBER` 로 내리려 함 — 「마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요.」 |
 | 409 | OWNS_STUDY | 진행 중인 스터디의 담당 캡틴을 `MEMBER` 로 내리려 함 (2026-11-16) — 「담당 중인 스터디가 있습니다: {제목들}. 스터디 신청자 탭에서 담당 캡틴을 먼저 바꿔 주세요.」 |
 
-- 두 신규 코드는 `ErrorCode` 에 `CONFLICT` 뒤로 추가한다 (`fromStatus(409)` 는 첫 409 인 `CONFLICT` 를 써야 한다).
+- 두 신규 코드는 `ErrorCode` 에 `CONFLICT` 뒤로 추가한다 (`fromStatus(409)` 는 첫 409 인 `CONFLICT` 를 써야 한다). 403 두 코드는 같은 이유로 `FORBIDDEN` 뒤에 둔다.
 - 이름이 목록의 `roleChangeBlockedReason` 값과 같은 사유를 가리킨다 — 화면이 잠그는 이유와 서버가 거절하는 이유가 하나의 어휘다.
 
 ### 프론트엔드 사용처
@@ -672,6 +690,7 @@ Query Parameters / Request Body 없음.
 | 2026-10-04 | 권한이 바뀌어도 디스코드 역할은 자동으로 바꾸지 않는다. 성공 시 화면이 운영자 문의 안내를 띄운다 | 리드 회의 — 디스코드 스쿼드 합의. PR #163 리뷰로 전달 |
 | 2026-10-08 | **API 이름은 기획 문서(PRD)를 따른다** — `/api/admin/users`, `…/system-role`, 필터 `role`, 409 `CANNOT_CHANGE_OWN_ROLE`·`LAST_ADMIN_REQUIRED`, 스펙 위치 `specs/admin-users/`. PR #163 에서 정한 `accounts`·`systemRole`+`navigator`·`CANNOT_CHANGE_OWN_ROLE`·`LAST_ADMIN_REQUIRED` 을 대체한다 | 개발은 기획을 따른다. PRD 의 API 절(#206)과 맞춤 |
 | 2026-10-10 | **마지막 캡틴의 탈퇴는 막지 않는다.** 권한 변경은 캡틴 0명을 막지만(`LAST_ADMIN_REQUIRED`), 탈퇴는 회원 데이터 정책대로 막는 조건이 없다. 캡틴이 0명이 되면 백오피스에 아무도 못 들어가므로 **DB 에서 직접 `SYSTEM_ROLE=ADMIN` 을 넣어 복구한다** — 드문 일이라 화면·API 를 두지 않는다 | 리드 결정 (PR #219 리뷰). [POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md) |
+| 2026-11-20 | **최고 관리자 층** — env `SUPER_ADMIN_EMAILS` 의 사람은 부팅 때 캡틴이 되고 화면 · API 로 못 내린다(403). 캡틴 내리기는 최고 관리자만(403). 2026-10-10 의 「캡틴 0명이면 DB 직접 수정」 복구 길이 env 수정 + 재배포로 바뀐다 | 청사진 super-admin, 유니버스 백오피스 공통 계약 (사용자 지시) |
 
 ## 미확정
 
