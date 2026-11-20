@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { USER_KEY } from '@/features/auth/auth';
 import { useStudyDetail } from '@/features/studies/queries';
 import { StudyInfoTab } from '@/features/studies/StudyInfoTab';
 import type { ApiStudyDetail } from '@/features/studies/types';
@@ -64,6 +65,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  localStorage.removeItem(USER_KEY);
   client.clear();
   vi.unstubAllGlobals();
 });
@@ -137,6 +139,27 @@ describe('스터디 수정·삭제 API 연결', () => {
     expect(client.getQueryData(['studies', 'detail', 7])).toMatchObject({ title: '새 제목' });
     expect(router.refresh).toHaveBeenCalledOnce();
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  it('프로필 시간대가 밴쿠버면 마감일을 밴쿠버 날짜로 보여 주고, 고친 날짜를 밴쿠버 그날 끝으로 보낸다', async () => {
+    localStorage.setItem(
+      USER_KEY,
+      JSON.stringify({
+        id: 1,
+        email: 'captain@example.com',
+        nickname: '캡틴',
+        picture: null,
+        role: 'ADMIN',
+        timeZone: 'America/Vancouver',
+      }),
+    );
+    detail = { ...original, recruitDeadlineAt: '2027-07-02T06:59:59Z' };
+    const user = await open();
+    const deadline = await screen.findByDisplayValue('2027-07-01');
+    fireEvent.change(deadline, { target: { value: '2027-07-10' } });
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(mutations()).toHaveLength(1));
+    expect(JSON.parse(mutations()[0][1].body)).toEqual({ recruitDeadline: '2027-07-11T06:59:59.000Z' });
   });
 
   it('저장된 시간대를 골라 둔 채 열고, 바꾼 시간대만 PATCH 한다', async () => {
