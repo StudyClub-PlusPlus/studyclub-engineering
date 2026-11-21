@@ -6,7 +6,7 @@
   - specs/study-group/spec.md — 됨
   - playground 신청자 탭 프로토 — 됨
   - back-office-front 신청자 탭 — 됨
-  - 백엔드 참여 명단 `availableDays` — 안 됨
+  - 백엔드 참여 명단 `availableDays` — 됨
 ---
 
 # 참여 가능 요일을 시간대별로 겹쳐 본다 — 신청자 탭 「참여 가능 시간」

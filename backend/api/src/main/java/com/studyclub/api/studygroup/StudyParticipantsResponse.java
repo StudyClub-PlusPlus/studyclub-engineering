@@ -25,6 +25,8 @@ public record StudyParticipantsResponse(
             String email,
             String regionGroup,
             String timeZone,
+            /** 이 스터디 신청서의 참여 가능 요일 키, 월 → 일 순서. 신청서가 없으면 빈 목록. */
+            List<String> availableDays,
             Long groupId,
             ParticipantRole participantRole,
             ParticipantStatus status,
