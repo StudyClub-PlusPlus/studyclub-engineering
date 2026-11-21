@@ -137,11 +137,12 @@ ACCOUNT_IDENTITY
 
 ### `POST /auth/social-login`
 
-기존에 구현된 엔드포인트다. 요청은 그대로 `{code, provider, platform, redirectUri}` (`provider=GOOGLE`). 로그인 응답의 회원 정보 필드는 `user`에서 `account`로 변경하고, 로그인 전용 View를 사용한다:
+기존에 구현된 엔드포인트다. 요청은 그대로 `{code, provider, platform, redirectUri}` (`provider=GOOGLE`). 로그인 응답의 회원 정보 필드는 `user`에서 `account`로 변경하고, 본인 View(`AccountSelfView`)를 사용한다:
 
 - `nickname` — 신규 가입 직후엔 임시값(`account_<랜덤>`) 그대로 내려간다. 화면에는 보여주지 않는다.
 - `onboardingCompletedAt` — `string | null` (ISO-8601 UTC). `null`이면 프론트가 `/[locale]/onboarding`으로 보낸다.
 - `timeZone` — `string | null`.
+- `discordNickname` · `discordLinked` · `discordHandle` — `GET /api/me` 와 같은 `AccountSelfView` 칸이다. 신청 폼의 디스코드 서버 별명 기본값이 로그인 때 세션에 캐시된 이 값을 쓴다.
 - `suggestedNickname` — 구글이 이번 로그인에 제공한 `name`. 온보딩 닉네임 입력칸의 초기값으로만 사용하고 DB에는 저장하지 않는다.
 
 에러:
