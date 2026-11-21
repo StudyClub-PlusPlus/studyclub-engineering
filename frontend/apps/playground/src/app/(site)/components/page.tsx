@@ -37,7 +37,9 @@ import {
   ButtonLink,
   HelpPopover,
   TimeSelect,
+  HeatGrid,
 } from '@studyclub/ui';
+import type { HeatGridCell } from '@studyclub/ui';
 import type { BadgeTone, ButtonSize, ButtonVariant } from '@studyclub/ui';
 import { BookOpen, CalendarClock, CalendarDays, Globe, LayoutDashboard, Rocket, Search, Users } from 'lucide-react';
 
@@ -772,8 +774,50 @@ export default function ComponentsCatalog() {
           </div>
         </Case>
 
+        <Case title='HeatGrid' note='행 × 열 칸(요일 × 시각)의 많고 적음을 히트 단계로 칠한다. 칸을 누르면 고르고, 다시 누르면 풀린다.'>
+          <HeatGridDemo />
+        </Case>
+
         {/* new-component: pnpm --filter @studyclub/ui new-component 이 새 부품 칸을 이 줄 위에 넣는다 */}
       </div>
     </div>
   );
 }
+
+const HEAT_DAYS = ['월', '화', '수', '목', '금', '토', '일'];
+
+function heatSample(row: number, col: number): number {
+  const evening = col >= 19 && col <= 22 ? 4 : col >= 9 && col <= 18 ? 2 : col >= 7 ? 1 : 0;
+  return Math.max(0, evening + (row >= 5 ? 3 : 0) - (col < 7 ? 2 : 0));
+}
+
+function HeatGridDemo() {
+  const [cell, setCell] = useState<HeatGridCell | null>(null);
+  return (
+    <div className='flex w-full flex-col gap-6'>
+      <HeatGrid
+        aria-label='참여 가능 인원 · 요일 × 시각'
+        rows={HEAT_DAYS.map((d) => ({ key: d, label: d }))}
+        columns={Array.from({ length: 24 }, (_, h) => ({ key: String(h), label: h % 3 === 0 ? String(h) : undefined }))}
+        value={heatSample}
+        max={7}
+        unit='명'
+        describe={(r, c) => `${HEAT_DAYS[r]} ${c}시 · ${heatSample(r, c)}명`}
+        hint='칸에 올리면 인원이 보입니다'
+        selected={cell}
+        onSelect={setCell}
+      />
+      <HeatGrid
+        aria-label='빈 격자'
+        rows={HEAT_DAYS.map((d) => ({ key: d, label: d }))}
+        columns={Array.from({ length: 24 }, (_, h) => ({ key: String(h), label: h % 6 === 0 ? String(h) : undefined }))}
+        value={() => 0}
+        max={0}
+        unit='명'
+        describe={(r, c) => `${HEAT_DAYS[r]} ${c}시 · 0명`}
+        hint='값이 없으면 모든 칸이 빈 칸 색이다'
+      />
+    </div>
+  );
+}
+

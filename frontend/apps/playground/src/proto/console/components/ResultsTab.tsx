@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { Card } from '@console/components/DashboardCharts';
 import { TableCard } from '@console/components/ui';
+import { dummyDays } from '@console/lib/availability';
 import { TYPE_LABEL } from '@core/components/ApplicationFormUi';
 import type { ApplicationQuestion, Crew, Study } from '@studyclub/types';
 import { Segmented } from '@studyclub/ui';
@@ -37,7 +38,7 @@ function answerText(value: string | string[] | undefined): string {
 /* ── 참여 가능한 요일 (기본 문항) — 프로토 더미 ─────────────────────────────
  * 신청 폼은 모든 신청서에 「참여 가능한 요일」을 받는다(`FORM_ANSWER.availableDays`). 그런데 콘솔 어디에도
  * 그 답을 보여 주는 자리가 없어서, 캡틴이 시간을 정할 근거를 볼 수 없다.
- * mock 크루에는 이 값이 없으므로 크루 id 로 고정된 더미를 만든다 — 새로고침해도 같다.
+ * mock 크루에는 이 값이 없어 신청자 탭과 같은 더미(`dummyDays`)를 쓴다.
  * TODO(api): 신청 목록 응답의 availableDays
  */
 const DAYS = [
@@ -49,21 +50,6 @@ const DAYS = [
   { key: 'sat', label: '토' },
   { key: 'sun', label: '일' },
 ] as const;
-
-function seedOf(id: string): number {
-  let h = 0;
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return h;
-}
-
-/** 크루마다 고정된 더미 요일 — 평일 저녁형·주말형이 섞이게 */
-function dummyDays(c: Crew): string[] {
-  const h = seedOf(c.id);
-  // 8 중 몇의 확률로 그 요일이 되는지 — 한국은 주말·화목, 북미는 토·목이 많게
-  const weights = c.region === 'NA' ? [2, 2, 1, 4, 1, 5, 3] : [2, 4, 2, 4, 1, 5, 6];
-  const picked = DAYS.filter((_, i) => ((h >> i) & 7) < weights[i]).map((d) => d.key);
-  return picked.length > 0 ? picked : [DAYS[h % 7].key];
-}
 
 const REGION_LABEL: Record<string, string> = { KR: '한국', NA: '북미', ETC: '기타' };
 

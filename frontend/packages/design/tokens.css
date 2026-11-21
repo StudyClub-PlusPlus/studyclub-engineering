@@ -236,8 +236,15 @@
   --color-inprogress-bg:  var(--color-info-bg);    --color-inprogress-fg:  var(--color-info-fg);    --color-inprogress-dot:  var(--color-info-fg);
   --color-ended-bg:       var(--color-neutral-bg); --color-ended-fg:       var(--color-neutral-fg); --color-ended-dot:       var(--color-neutral-fg);
 
+  /* Heat — 칸의 많고 적음(순차). 한 색상의 밝기 단계라 카테고리 · 상태 색과 섞지 않는다 (§2-7) */
+  --color-heat-0: var(--color-cloud);
+  --color-heat-1: var(--color-primary-200);
+  --color-heat-2: var(--color-primary-400);
+  --color-heat-3: var(--color-primary-600);
+  --color-heat-4: var(--color-primary-900);
+
   /* Role */
-  --color-captain-bg:   var(--color-primary-light); --color-captain-fg:   var(--color-primary-dark);
+  --color-captain-bg:  var(--color-primary-light); --color-captain-fg:   var(--color-primary-dark);
   --color-navigator-bg: var(--color-info-bg);       --color-navigator-fg: var(--color-info-fg);
   --color-member-bg:    var(--color-neutral-bg);    --color-member-fg:    var(--color-neutral-fg);
 
