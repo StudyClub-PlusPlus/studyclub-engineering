@@ -31,6 +31,7 @@
 - [ ] 스키마 변경 시 `V{n}__*.sql` 마이그레이션을 같이 넣었다
 - [ ] 관련 문서(ERD, 스펙)를 업데이트했다
 - [ ] `01-planning/stories/**` 또는 `frontend/apps/playground/**/spec.ts` 를 건드렸다면 `pnpm --filter playground export-specs --check` 통과 확인
+- [ ] playground 프로토 화면을 바꿨다면 `capture-screens` 로 찍은 캡처를 `01-planning/stories/{story}/screens/` 에 넣고 본문 「화면」 절에 붙였다
 
 <!-- repo-kit:start -->
 ## 팀 공유
