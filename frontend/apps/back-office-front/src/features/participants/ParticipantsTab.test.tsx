@@ -61,6 +61,7 @@ const data: ParticipantsResponse = {
       discordNickname: null,
       email: 'crew@example.com',
       timeZone: 'Asia/Seoul',
+      availableDays: ['mon', 'thu'],
       groupId: 1,
       participantRole: 'MEMBER',
       status: 'ACTIVE',
@@ -74,6 +75,7 @@ const data: ParticipantsResponse = {
       discordNickname: 'captain',
       email: 'captain@example.com',
       timeZone: 'America/Vancouver',
+      availableDays: ['mon'],
       groupId: 1,
       participantRole: 'LEADER',
       status: 'PAUSED',
@@ -519,6 +521,105 @@ describe('참여자 반 편성', () => {
       link.remove();
     }
     await waitFor(() => expect(screen.getByRole('button', { name: '변경 취소 후 이동' })).toBeEnabled());
+  });
+});
+
+describe('참여 가능 시간', () => {
+  const withDays: ParticipantsResponse = {
+    ...data,
+    participants: [
+      ...data.participants,
+      {
+        ...data.participants[0]!,
+        participantId: 43,
+        accountId: 3,
+        nickname: '신청서없음',
+        availableDays: [],
+      },
+    ],
+  };
+
+  it('명단에 크루가 고른 현지 요일을 월 → 일 순서로 보이고, 없으면 「-」', async () => {
+    mount({
+      ...withDays,
+      participants: withDays.participants.map((p) =>
+        p.participantId === 41 ? { ...p, availableDays: ['thu', 'mon', 'sun'] } : p,
+      ),
+    });
+    const table = within(await screen.findByRole('table'));
+    expect(table.getByRole('columnheader', { name: '참여 가능 요일' })).toBeVisible();
+    const col = table.getAllByRole('columnheader').findIndex((h) => h.textContent === '참여 가능 요일');
+    const daysOf = (nickname: string) => table.getByText(nickname).closest('tr')!.querySelectorAll('td')[col];
+    expect(daysOf('한국크루')).toHaveTextContent(/^월 · 목 · 일$/);
+    expect(daysOf('북미캡틴')).toHaveTextContent(/^월$/);
+    expect(daysOf('신청서없음')).toHaveTextContent(/^-$/);
+  });
+
+  it('응답에 availableDays 가 없으면 빈 요일로 읽는다', async () => {
+    mount({
+      ...data,
+      participants: data.participants.map((p) =>
+        Object.fromEntries(Object.entries(p).filter(([k]) => k !== 'availableDays')),
+      ),
+    } as unknown as ParticipantsResponse);
+    const table = within(await screen.findByRole('table'));
+    const col = table.getAllByRole('columnheader').findIndex((h) => h.textContent === '참여 가능 요일');
+    expect(table.getByText('한국크루').closest('tr')!.querySelectorAll('td')[col]).toHaveTextContent(/^-$/);
+  });
+
+  it('크루 현지 요일을 기준 시간대로 옮겨 세고, 칸을 누르면 그 시각에 되는 크루만 명단에 남는다', async () => {
+    mount(withDays);
+    // KST 월 12시 = 밴쿠버 일요일 저녁 → 한국크루만. KST 화 12시 = 밴쿠버 월요일 저녁 → 북미캡틴만
+    const mon = await screen.findByRole('button', { name: '월 12시 KST · 1명' });
+    expect(screen.getByRole('button', { name: '화 12시 KST · 1명' })).toBeVisible();
+    // 요일이 없는 사람은 세지 않는다
+    expect(within(screen.getByRole('region', { name: '참여 가능 시간' })).getByText('2명')).toBeVisible();
+
+    await userEvent.click(mon);
+    expect(mon).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('월 12시 KST에 되는 크루 1명')).toBeVisible();
+    const table = within(screen.getByRole('table'));
+    expect(table.getByText('한국크루')).toBeVisible();
+    expect(table.queryByText('북미캡틴')).not.toBeInTheDocument();
+    expect(table.queryByText('신청서없음')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '시각 필터 풀기' }));
+    expect(table.getByText('북미캡틴')).toBeVisible();
+    expect(mon).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('기준 시간대를 바꾸면 칸이 그 시간대로 다시 그려지고 고른 칸은 풀린다', async () => {
+    mount(withDays);
+    await userEvent.click(await screen.findByRole('button', { name: '월 12시 KST · 1명' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'PCT' }));
+    expect(screen.queryByText(/에 되는 크루 \d+명/)).not.toBeInTheDocument();
+    expect(screen.getByRole('grid', { name: '참여 가능 인원 · 요일 × 시각 (PCT)' })).toBeVisible();
+    expect(within(screen.getByRole('table')).getByText('북미캡틴')).toBeVisible();
+  });
+
+  it('현지 밤 빼기를 끄면 크루 현지 새벽 칸도 센다', async () => {
+    mount(withDays);
+    // KST 월 3시 — 한국크루 현지 새벽
+    expect(await screen.findByRole('button', { name: '월 3시 KST · 0명' })).toBeVisible();
+    await userEvent.click(screen.getByRole('switch', { name: '현지 밤(0~7시) 빼기' }));
+    expect(screen.getByRole('button', { name: '월 3시 KST · 1명' })).toBeVisible();
+  });
+
+  it('반 · 시간대 필터를 바꾸면 고른 시각을 푼다', async () => {
+    mount(withDays);
+    await userEvent.click(await screen.findByRole('button', { name: '월 12시 KST · 1명' }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'Asia/Seoul');
+    expect(screen.queryByText(/에 되는 크루 \d+명/)).not.toBeInTheDocument();
+  });
+
+  it('시간대가 없는 크루는 세지 않고 그 수를 알린다', async () => {
+    mount({
+      ...withDays,
+      participants: withDays.participants.map((p) => (p.participantId === 42 ? { ...p, timeZone: null } : p)),
+    });
+    expect(
+      await screen.findByText('시간대가 없는 1명은 빼고 셌습니다 — 프로필에서 시간대를 정하지 않은 크루입니다.'),
+    ).toBeVisible();
   });
 });
 

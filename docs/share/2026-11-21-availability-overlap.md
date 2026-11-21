@@ -5,7 +5,7 @@
   - 01-planning/stories/captain-assign-classes/PRD.md — 됨
   - specs/study-group/spec.md — 됨
   - playground 신청자 탭 프로토 — 됨
-  - back-office-front 신청자 탭 — 안 됨
+  - back-office-front 신청자 탭 — 됨
   - 백엔드 참여 명단 `availableDays` — 안 됨
 ---
 

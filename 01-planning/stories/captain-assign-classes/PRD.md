@@ -330,7 +330,7 @@ erDiagram
 | FE | back-office-front 신청자 탭의 반 만들기 · 반 목록 · 크루의 반 | 있음 (#302) — 반 만들기 · 이름 바꾸기 · 삭제 · 크루 반 지정 (`features/participants`). 명단은 `GET …/participants` (#324) | 없음 |
 | FE | back-office-front 일정 탭의 반 일정 · 킥오프 정하기 | 있음 (2026-10-24) — 반 칩 · 회차 표 · 회차 추가 · 수정 · 삭제 · 킥오프 · 규칙을 아래 백오피스 API 에 연결 (`features/schedule`). 스터디 시간(요일 · 시각)만 브라우저에 남는다 | 스터디 시간 — 반 `PATCH` 가 받으면 연결 |
 | BE | 반 `POST` · `PATCH` · `DELETE` · 크루 반 지정 | 반 `POST` · `DELETE` 구현완료. `PATCH` 는 제목만. 반 지정 일괄 `PATCH …/participants` 구현완료 (#303). 명단 `GET …/participants` 구현완료 (#324) | `PATCH` 스터디 시간 ([study-group 스펙](../../../specs/study-group/spec.md)) |
-| FE | back-office-front 신청자 탭의 참여 가능 시간 · 참여 가능 요일 열 | 없음 | `HeatGrid`(@studyclub/ui) · `availabilityOverlap`(@studyclub/utils) 로 그리고 칸 고르기로 명단 거르기 |
+| FE | back-office-front 신청자 탭의 참여 가능 시간 · 참여 가능 요일 열 | 있음 (2026-11-21) — `features/participants/AvailabilitySection.tsx` · 명단 열. `GET …/participants` 의 `availableDays` 를 읽는다 | 없음 |
 | BE | 참여 명단 `GET …/participants` 의 `participants[].availableDays` | 스펙 있음 · 미구현 (2026-11-21) | 이 기수 신청서의 `FORM_ANSWER.availableDays` 를 싣는다 ([study-group 스펙](../../../specs/study-group/spec.md#참여-명단)) |
 | BE | `PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff` · 반 회차 목록 `GET …/groups/{groupId}/meetings` | 구현완료 (#312) | 없음 |
 | BE | 백오피스 회차 추가 · 수정 · 삭제 `POST · PUT · DELETE …/groups/{groupId}/meetings` · 규칙 `PUT …/groups/{groupId}/rules` | 구현완료 (2026-10-24) — 사이트 회차 API 와 같은 규칙, 캡틴이면 어느 반이든 ([회차 스펙](../../../specs/study-meeting/spec.md#백오피스-회차-쓰기--규칙)) | 없음 |

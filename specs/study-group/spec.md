@@ -411,6 +411,7 @@
 
 ## 프론트엔드 사용처
 
+- back-office-front 스터디 상세 · `/studies/{id}/applicants` — `features/participants/AvailabilitySection.tsx`: `participants[].availableDays` · `timeZone` 으로 「참여 가능 시간」 칸판을 그리고 칸을 고르면 명단을 거른다. 명단 「참여 가능 요일」 열. 응답에 `availableDays` 가 없으면 빈 배열로 읽는다
 - back-office-front 스터디 상세 · `/studies/{id}/applicants` — `features/participants/ParticipantsTab.tsx`: 명단 · 반 생성/제목 수정/삭제 · 개별/일괄 반 · 역할(크루 · 네비게이터) 변경 후 한 번에 저장 — 한 줄에 `groupId` · `participantRole` 중 바뀐 것만 싣는다. 참여 명단 GET · 일괄 PATCH는 위 계약에 연결했으며 BE 구현 후 실제 연동 검증이 필요하다.
 - back-office-front 일정 탭 — 스터디 시간 정하기 · 수정(`GroupTimeDialog`)이 이 PATCH 로 `daysOfWeek` · `startTime` · `timezone` 을 저장한다. 시각이나 시간대가 바뀌고 시작 전 회차(서버 `started` 가 false)가 있으면 「아직 시작 안 한 회차 N개도 새 시각으로 옮길까요?」 를 묻고 「옮기기」면 `moveUpcomingMeetings: true`, 「반 정보만 바꾸기」면 false 를 보낸다. 요일(`weekdays`)은 참여 명단 GET 응답에 없어 브라우저 저장소에도 함께 남긴다 — 해당 GET 이 `daysOfWeek` 를 반환하면 제거 예정
 - 역할 변경 프로토: playground `console/studies/{id}` 신청자 탭
