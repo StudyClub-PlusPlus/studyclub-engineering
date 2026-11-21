@@ -157,6 +157,7 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 1. 에픽: `save_initiative` (없을 때만 생성, `stage: 'screens'`, note 에 PR 링크)
 2. 스토리: `create_issue(type: 'STORY', initiativeId)` — 이미 있으면 `update_issue` 로 본문에 PRD · PR 링크만 더한다
 3. 작업: `create_issue(type: 'TASK', parentId: 스토리, discipline)` — `status: 'BACKLOG'`. 마감 · 담당은 사람이 정한다 (비운다)
+   - 기획 기능명세와 잇는다: 이슈를 기능명세 항목에 직접 거는 도구는 없다(`prdId` 는 옛 기능 스펙용). 스토리 · 작업 본문 끝에 `기능명세: F-01 · S-01 …` 줄과 기획 링크를 적는다. 승인 전 신규 항목은 제목으로 적고, 승인되어 코드가 붙으면 코드로 바꾼다
 4. 승인받았으면: `propose_plan_items`(늘 제안 — 사람이 기능명세 탭에서 승인) · `link_artifact`(디자인 아티팩트 → 스토리)
 5. 만든 것의 링크를 채팅에 표로 남기고, PR 본문 끝에 「ZAPP」 한 줄(에픽 · 스토리 링크)을 더한다
 
