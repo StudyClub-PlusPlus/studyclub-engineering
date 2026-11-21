@@ -352,6 +352,8 @@ export type RetroRow = {
   meetingDate: string;
   authorId: string;
   authorName: string;
+  /** 작성 기한이 지났는가 — 작성률은 기한 지난 줄만 센다. 기한 전 미작성은 아직 쓸 수 있다. */
+  closed: boolean;
   /** 없으면 미작성. */
   retro?: Retro;
 };
@@ -374,6 +376,7 @@ export function retroRowsOf(study: Study, now = new Date()): RetroRow[] {
         authorId: p.id,
         // 표 칸이 좁아 디스코드 구분 없는 닉네임 — 줄은 회차 · 스터디와 함께 보여 동명이인을 가린다
         authorName: p.nickname ?? p.name,
+        closed: !s.open,
         retro: byAuthor.get(p.id),
       });
     }

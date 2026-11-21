@@ -152,7 +152,10 @@ export function RetrosTable() {
 
   const written = filtered.filter((r) => r.retro);
   const count = (s: RetroSection) => written.filter((r) => r.retro![s]).length;
-  const rate = filtered.length ? Math.round((written.length / filtered.length) * 100) : 0;
+  // 작성률은 기한이 지난 줄만 센다 — 기한 전 미작성은 아직 쓸 수 있어 빠진 게 아니다.
+  const closed = filtered.filter((r) => r.closed);
+  const closedWritten = closed.filter((r) => r.retro).length;
+  const rate = closed.length ? Math.round((closedWritten / closed.length) * 100) : null;
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const download = () => {
@@ -235,9 +238,11 @@ export function RetrosTable() {
       <div data-anno='retros:2' className='mb-3 grid grid-cols-2 gap-3 md:grid-cols-4'>
         <div className='card px-4 py-3'>
           <p className='type-label-sm text-fg-muted'>작성률</p>
-          <p className='tnum mt-1 type-headline-md'>{rate}%</p>
+          <p className='tnum mt-1 type-headline-md'>{rate === null ? '-' : `${rate}%`}</p>
           <p className='tnum type-label-sm text-fg-muted'>
-            회고 쓸 차례 {filtered.length}건 중 {written.length}건
+            {rate === null
+              ? '기한이 지난 회차가 아직 없어요'
+              : `기한 지난 회고 ${closed.length}건 중 ${closedWritten}건 작성`}
           </p>
         </div>
         {RETRO_SECTIONS.map((s) => (

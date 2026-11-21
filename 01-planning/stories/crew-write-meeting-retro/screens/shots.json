@@ -50,7 +50,7 @@
     {
       "story": "navigator-view-meeting-retros",
       "name": "schedule-navigator",
-      "title": "스터디 일정 — 회고 열 (네비게이터, 작성 현황)",
+      "title": "스터디 일정 — 회고 열 (네비게이터)",
       "path": "/proto/core/ko/my/joined/20/schedule",
       "scrollTo": "table"
     },

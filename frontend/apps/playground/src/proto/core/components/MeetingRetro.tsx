@@ -51,7 +51,6 @@ export function RetroCell({
   useEffect(() => setStatus(retroStatusOf(study, meeting.id)), [study, meeting.id]);
   if (!status?.ended) return <span className='inline-block py-1.5 text-fg-muted'>-</span>;
 
-  const lead = role !== 'crew';
   const canWrite = role !== 'captain' && status.open && !status.mine;
   return (
     <span className='inline-flex flex-col items-center gap-1 py-0.5'>
@@ -74,11 +73,6 @@ export function RetroCell({
         >
           회고 보기
         </ButtonLink>
-      )}
-      {lead && (
-        <span data-anno='retro-lead:1' className='tnum type-label-sm text-fg-muted'>
-          {status.written}/{status.targets} 작성
-        </span>
       )}
     </span>
   );
@@ -358,7 +352,7 @@ function QuestionCard({
           {answered.length}개{skipped.length > 0 ? ` · ${skipped.join(', ')} 님은 남기지 않았어요` : ''}
         </span>
         {lead && (
-          <span data-anno='retro-lead:3' className='ml-auto type-label-sm text-fg-muted'>
+          <span data-anno='retro-lead:2' className='ml-auto type-label-sm text-fg-muted'>
             👍 많은 순
           </span>
         )}
@@ -388,7 +382,7 @@ function QuestionCard({
 function WritingStatus({ retros, missing }: { retros: Retro[]; missing: { id: string; name: string }[] }) {
   return (
     <aside
-      data-anno='retro-lead:2'
+      data-anno='retro-lead:1'
       className='h-fit rounded-card border border-border bg-surface-raised p-4 shadow-sm'
       aria-label='작성 현황'
     >

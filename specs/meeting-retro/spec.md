@@ -135,7 +135,7 @@ erDiagram
 
 ```json
 {
-  "summary": { "rows": 31, "written": 21, "good": 21, "improve": 21, "feeling": 15 },
+  "summary": { "rows": 31, "written": 21, "closedRows": 24, "closedWritten": 18, "good": 21, "improve": 21, "feeling": 15 },
   "total": 31,
   "items": [
     {
@@ -145,6 +145,7 @@ erDiagram
       "meetingId": 301,
       "meetingNo": 3,
       "participantName": "하늘",
+      "closed": true,
       "retro": {
         "good": "…",
         "improve": "…",
@@ -159,6 +160,7 @@ erDiagram
 
 - 진행 중인 스터디의 끝난 회차 × 쓸 사람. 안 쓴 사람은 `retro: null`
 - `summary` 는 좁힌 조건 전체로 센다
+- `closed` = 작성 기한이 지났다. 작성률은 `closedWritten ÷ closedRows` — 기한 전 회차는 아직 쓸 수 있어 세지 않는다 (`closedRows` 가 0 이면 작성률 없음)
 - 정렬: 스터디 이름 → (PARTICIPANT) 이름 → 회차 번호 / (MEETING) 회차 번호 → 이름
 
 ## GET /api/admin/retros/export.csv
