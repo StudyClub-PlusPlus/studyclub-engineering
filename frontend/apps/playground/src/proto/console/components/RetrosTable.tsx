@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { PageHeader } from '@console/components/ui';
+import { PageHeader, SortLabel, type SortDir } from '@console/components/ui';
 import { useTopScroll } from '@console/lib/use-top-scroll';
 import { t } from '@core/lib/i18n';
 import { scheduleAccessOf } from '@core/lib/meetings';
@@ -102,6 +102,8 @@ export function RetrosTable() {
   const [input, setInput] = useState('');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('participant');
+  // 문항 열 머리를 누르면 그 문항의 👍 수로 줄을 세운다. 참여자별 · 회차별을 다시 고르면 풀린다.
+  const [likeSort, setLikeSort] = useState<{ section: RetroSection; dir: SortDir } | null>(null);
   const [page, setPage] = useState(1);
   // 가로 스크롤바를 표 위에도 둔다 — 스터디 표와 같다. 20줄이면 아래 스크롤바가 화면 밖이다.
   const scroll = useTopScroll();
@@ -146,13 +148,22 @@ export function RetrosTable() {
         (!q || r.authorName.includes(q)),
     );
     return rows.sort((a, b) => {
+      if (likeSort) {
+        // 그 문항을 비운 회고(소감)는 방향과 상관없이 맨 뒤
+        const la = a.retro?.[likeSort.section] ? a.retro.likes[likeSort.section] : -1;
+        const lb = b.retro?.[likeSort.section] ? b.retro.likes[likeSort.section] : -1;
+        if (la !== lb) {
+          if (la < 0 || lb < 0) return lb - la;
+          return likeSort.dir === 'desc' ? lb - la : la - lb;
+        }
+      }
       const byStudy = a.studyTitle.localeCompare(b.studyTitle, 'ko');
       if (byStudy) return byStudy;
       const byName = a.authorName.localeCompare(b.authorName, 'ko');
       const byMeeting = a.meetingNo - b.meetingNo;
       return sort === 'participant' ? byName || byMeeting : byMeeting || byName;
     });
-  }, [all, studyId, meetingId, q, sort]);
+  }, [all, studyId, meetingId, q, sort, likeSort]);
 
   // 표 · CSV 에는 쓴 회고만 — 안 쓴 사람은 줄로 보이지 않고 작성률로만 센다.
   const written = filtered.filter((r) => r.retro);
@@ -229,6 +240,7 @@ export function RetrosTable() {
             value={sort}
             onChange={(v) => {
               setSort(v);
+              setLikeSort(null);
               setPage(1);
             }}
             options={[
@@ -244,9 +256,7 @@ export function RetrosTable() {
           <p className='type-label-sm text-fg-muted'>작성률</p>
           <p className='tnum mt-1 type-headline-md'>{rate === null ? '-' : `${rate}%`}</p>
           <p className='tnum type-label-sm text-fg-muted'>
-            {rate === null
-              ? '기한이 지난 회차가 아직 없어요'
-              : `기한 지난 회고 ${closedWritten}/${closed.length} 작성`}
+            {rate === null ? '기한이 지난 회차가 아직 없어요' : `기한 지난 회고 ${closedWritten}/${closed.length} 작성`}
           </p>
         </div>
         {RETRO_SECTIONS.map((s) => (
@@ -257,6 +267,10 @@ export function RetrosTable() {
         ))}
       </div>
 
+      {/* 좁힌 뒤의 건수 — 스터디 · 유저 표처럼 표 오른쪽 위. 무엇을 세는지 표와 붙어 있어야 분명하다 */}
+      <div data-anno='retros:4' className='mb-2 flex justify-end'>
+        <span className='tnum type-body-sm text-fg-muted'>총 {written.length}건</span>
+      </div>
       <div className='card'>
         <div
           ref={scroll.topRef}
@@ -287,9 +301,23 @@ export function RetrosTable() {
                 </th>
                 <th>반</th>
                 <th>회차</th>
-                {RETRO_SECTIONS.map((s) => (
-                  <th key={s.key}>{s.label}</th>
-                ))}
+                {RETRO_SECTIONS.map((s) => {
+                  const active = likeSort?.section === s.key ? likeSort.dir : null;
+                  return (
+                    <th key={s.key} aria-sort={active ? (active === 'asc' ? 'ascending' : 'descending') : undefined}>
+                      <SortLabel
+                        label={s.label}
+                        anno={s.key === 'good' ? 'retros:3-2' : undefined}
+                        first='desc'
+                        active={active}
+                        onChange={(dir) => {
+                          setLikeSort({ section: s.key, dir });
+                          setPage(1);
+                        }}
+                      />
+                    </th>
+                  );
+                })}
                 <th>작성일</th>
               </tr>
             </thead>
@@ -335,9 +363,6 @@ export function RetrosTable() {
             </tbody>
           </table>
         </div>
-      </div>
-      <div data-anno='retros:4' className='mt-3 flex items-center justify-end gap-3'>
-        <span className='tnum type-label-sm text-fg-muted'>총 {written.length}건</span>
       </div>
       {written.length > PAGE_SIZE && (
         <div className='mt-4 flex justify-center'>

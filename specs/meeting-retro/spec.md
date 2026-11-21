@@ -131,7 +131,7 @@ erDiagram
 
 ## GET /api/admin/retros
 
-쿼리: `studyId` · `meetingId`(studyId 가 있을 때만) · `q`(참여자 이름 부분 일치) · `sort=PARTICIPANT|MEETING` · `offset` · `limit`(기본 20)
+쿼리: `studyId` · `meetingId`(studyId 가 있을 때만) · `q`(참여자 이름 부분 일치) · `sort=PARTICIPANT|MEETING` · `likeSort=GOOD|IMPROVE|FEELING`(선택, 그 문항 👍 수로 먼저 세운다) · `likeDir=DESC|ASC`(기본 DESC) · `offset` · `limit`(기본 20)
 
 ```json
 {
