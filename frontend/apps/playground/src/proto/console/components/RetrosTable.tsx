@@ -62,12 +62,13 @@ function AnswerCell({ row, section }: { row: Row; section: RetroSection }) {
   if (!r) return null;
   if (!r[section]) return <span className='text-fg-muted'>-</span>;
   return (
-    <>
-      <span className='whitespace-pre-wrap break-words'>{r[section]}</span>
-      <span className='tnum mt-1 flex items-center gap-1 type-label-sm text-fg-muted'>
+    // 👍 는 답 아래가 아니라 칸 오른쪽 첫 줄 높이 — 줄 높이를 덜 쓰고, 세로로 훑을 때 수가 한 줄로 맞는다
+    <span className='flex items-start gap-3'>
+      <span className='min-w-0 flex-1 whitespace-pre-wrap break-words'>{r[section]}</span>
+      <span className='tnum flex shrink-0 items-center gap-1 type-label-sm text-fg-muted'>
         <ThumbsUp size={12} aria-hidden /> {r.likes[section]}
       </span>
-    </>
+    </span>
   );
 }
 

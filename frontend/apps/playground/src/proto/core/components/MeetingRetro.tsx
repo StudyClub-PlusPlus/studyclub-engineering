@@ -307,17 +307,17 @@ function AuthorCard({
       </header>
       {RETRO_SECTIONS.map((s, i) =>
         retro[s.key] ? (
-          <section key={s.key} className='mt-3 border-t border-dashed border-border pt-3'>
-            <SectionTag index={i + 1} section={s.key} />
-            {/* 👍 는 글 오른쪽 첫 줄 높이 — 문항별 보기와 같은 자리, 문항마다 한 줄을 덜 쓴다 */}
-            <div className='mt-1.5 flex items-start gap-3'>
-              <p className='min-w-0 flex-1 whitespace-pre-wrap break-words pt-1.5 type-body-sm text-fg'>
-                {retro[s.key]}
-              </p>
-              <span className='shrink-0'>
-                <LikeChip retro={retro} section={s.key} onToggle={() => onLike(s.key)} />
-              </span>
-            </div>
+          // 넓은 화면은 「문항 · 글 · 👍」 한 줄(문항 칸 폭 고정 — 글 시작이 세로로 맞는다), 좁은 화면은 문항 아래에 「글 · 👍」.
+          // 제목 · 👍 는 글 첫 줄 높이에 두고 긴 글만 아래로 꺾인다. 문항별 보기의 「이름 · 글 · 👍」 줄과 같은 틀.
+          <section
+            key={s.key}
+            className='mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 border-t border-dashed border-border pt-3 md:grid-cols-[5.75rem_minmax(0,1fr)_auto]'
+          >
+            <span className='col-span-2 md:col-span-1 md:pt-1'>
+              <SectionTag index={i + 1} section={s.key} />
+            </span>
+            <p className='whitespace-pre-wrap break-words pt-1.5 type-body-sm text-fg'>{retro[s.key]}</p>
+            <LikeChip retro={retro} section={s.key} onToggle={() => onLike(s.key)} />
           </section>
         ) : (
           <p key={s.key} className='mt-3 border-t border-dashed border-border pt-3 type-label-sm text-fg-muted'>
