@@ -65,7 +65,7 @@ export const SPEC: ScreenSpec = {
     {
       n: '4',
       title: '표 아래 줄',
-      display: ['고정 열 안내 · 「총 n건」'],
+      display: ['「총 n건」(쓴 회고 수)'],
     },
     {
       n: '5',

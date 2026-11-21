@@ -336,10 +336,7 @@ export function RetrosTable() {
           </table>
         </div>
       </div>
-      <div data-anno='retros:4' className='mt-3 flex items-center justify-between gap-3'>
-        <span className='type-label-sm text-fg-muted'>
-          스터디 · 참여자 열은 고정돼요. 표를 옆으로 밀어 문항을 봐요.
-        </span>
+      <div data-anno='retros:4' className='mt-3 flex items-center justify-end gap-3'>
         <span className='tnum type-label-sm text-fg-muted'>총 {written.length}건</span>
       </div>
       {written.length > PAGE_SIZE && (
