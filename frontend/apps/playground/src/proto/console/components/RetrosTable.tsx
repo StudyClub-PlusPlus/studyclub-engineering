@@ -246,7 +246,7 @@ export function RetrosTable() {
           <p className='tnum type-label-sm text-fg-muted'>
             {rate === null
               ? '기한이 지난 회차가 아직 없어요'
-              : `기한 지난 회고 ${closed.length}건 중 ${closedWritten}건 작성`}
+              : `기한 지난 회고 ${closedWritten}/${closed.length} 작성`}
           </p>
         </div>
         {RETRO_SECTIONS.map((s) => (
