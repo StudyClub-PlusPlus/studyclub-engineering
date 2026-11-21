@@ -1,6 +1,8 @@
 package com.studyclub.notification;
 
 import com.studyclub.notification.mail.MailSendException;
+import com.studyclub.notification.webpush.WebPushDispatcher;
+import com.studyclub.notification.webpush.WebPushSendException;
 import java.time.Instant;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -18,17 +20,20 @@ public class NotificationPollingScheduler {
 
     private final NotificationClaimService notificationClaimService;
     private final WelcomeEmailDispatcher welcomeEmailDispatcher;
+    private final WebPushDispatcher webPushDispatcher;
     private final int batchSize;
     private final long reclaimTimeoutMinutes;
 
     public NotificationPollingScheduler(
             NotificationClaimService notificationClaimService,
             WelcomeEmailDispatcher welcomeEmailDispatcher,
+            WebPushDispatcher webPushDispatcher,
             @Value("${notification.polling.batch-size:100}") int batchSize,
             @Value("${notification.polling.reclaim-timeout-minutes:5}")
                     long reclaimTimeoutMinutes) {
         this.notificationClaimService = notificationClaimService;
         this.welcomeEmailDispatcher = welcomeEmailDispatcher;
+        this.webPushDispatcher = webPushDispatcher;
         this.batchSize = batchSize;
         this.reclaimTimeoutMinutes = reclaimTimeoutMinutes;
     }
@@ -44,8 +49,19 @@ public class NotificationPollingScheduler {
             // markSent/markFailed 가 조용히 스킵한다(NotificationClaimService 참고).
             Instant claimToken = notification.getLockedAt();
             try {
-                welcomeEmailDispatcher.dispatch(notification);
+                if (notification.getRecipientType() == NotificationChannel.WEB_PUSH) {
+                    webPushDispatcher.dispatch(notification);
+                } else {
+                    welcomeEmailDispatcher.dispatch(notification);
+                }
                 notificationClaimService.markSent(notification.getId(), claimToken);
+            } catch (WebPushSendException e) {
+                log.warn(
+                        "웹 푸시 발송 실패. notificationId={}, errorType={}",
+                        notification.getId(),
+                        e.errorType());
+                notificationClaimService.markFailed(
+                        notification.getId(), e.errorType(), claimToken);
             } catch (MailSendException e) {
                 log.error(
                         "알림 발송 실패. notificationId={}, errorType={}",

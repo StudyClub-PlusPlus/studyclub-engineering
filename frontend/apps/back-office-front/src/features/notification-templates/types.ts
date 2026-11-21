@@ -99,6 +99,11 @@ const CONDITION_GUIDE: Record<string, { bodyHelp: string; stopEffect: string }> 
     stopEffect:
       '메일을 포함한 스터디 공지를 보낼 수 없습니다. 메일과 디스코드를 함께 보내는 공지는 디스코드에도 올라가지 않으며, 디스코드만 보내는 공지는 영향이 없습니다.',
   },
+  // 웹 푸시 틀 (specs/web-push). 고를 수 있는 조건에는 두지 않는다 — 화면에서 만들면 메일 채널로 생겨 푸시에 쓰이지 않는다
+  ADMIN_PUSH: {
+    bodyHelp: '{{title}} 에 푸시 제목, {{body}} 에 푸시 본문이 들어갑니다. 웹 푸시는 HTML 을 쓰지 않습니다.',
+    stopEffect: '푸시 보내기를 쓸 수 없습니다. 이 화면에서는 다시 만들 수 없으니 개발자에게 요청해 주세요.',
+  },
 };
 
 /** 본문 칸 아래 안내. 그 조건에서 쓸 수 있는 치환 변수를 알려 준다. */

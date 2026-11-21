@@ -6,5 +6,10 @@ public enum NotificationEventType {
     /** 네비게이터가 반 팀원에게 보낸 공지 메일. {@code NOTIFICATION.REFERENCE_ID} 가 {@code STUDY_NOTICE.ID} 다. */
     STUDY_NOTICE,
     /** 첫 문의 회신 알림. REFERENCE_ID 는 FEEDBACK.ID 이고 답변 본문은 싣지 않는다. */
-    FEEDBACK_REPLIED
+    FEEDBACK_REPLIED,
+    /**
+     * 캡틴이 백오피스에서 직접 보낸 웹 푸시. 템플릿은 {@code {{title}}}·{@code {{body}}} 를 그대로 옮긴다
+     * (specs/web-push/spec.md).
+     */
+    ADMIN_PUSH
 }
