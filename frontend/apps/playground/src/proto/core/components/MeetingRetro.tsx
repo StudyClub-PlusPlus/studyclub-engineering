@@ -305,26 +305,30 @@ function AuthorCard({
           </span>
         )}
       </header>
-      {RETRO_SECTIONS.map((s, i) =>
-        retro[s.key] ? (
-          // 넓은 화면은 「문항 · 글 · 👍」 한 줄(문항 칸 폭 고정 — 글 시작이 세로로 맞는다), 좁은 화면은 문항 아래에 「글 · 👍」.
-          // 제목 · 👍 는 글 첫 줄 높이에 두고 긴 글만 아래로 꺾인다. 문항별 보기의 「이름 · 글 · 👍」 줄과 같은 틀.
-          <section
-            key={s.key}
-            className='mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 border-t border-dashed border-border pt-3 md:grid-cols-[5.75rem_minmax(0,1fr)_auto]'
-          >
-            <span className='col-span-2 md:col-span-1 md:pt-1'>
-              <SectionTag index={i + 1} section={s.key} />
-            </span>
-            <p className='whitespace-pre-wrap break-words pt-1.5 type-body-sm text-fg'>{retro[s.key]}</p>
-            <LikeChip retro={retro} section={s.key} onToggle={() => onLike(s.key)} />
-          </section>
-        ) : (
-          <p key={s.key} className='mt-3 border-t border-dashed border-border pt-3 type-label-sm text-fg-muted'>
-            {s.label}을 남기지 않았어요
-          </p>
-        ),
-      )}
+      {/* 넓은 화면은 「문항 · 글 · 👍」 한 줄(문항 칸 폭 고정 — 글 시작이 세로로 맞는다), 좁은 화면은 문항 아래에 「글 · 👍」.
+          제목 · 👍 는 글 첫 줄 높이에 두고 긴 글만 아래로 꺾인다. 문항별 보기의 「이름 · 글 · 👍」 줄과 같은 틀.
+          비운 문항(소감)은 백오피스 표처럼 제목과 「-」만 — 👍 할 답이 없다. */}
+      {RETRO_SECTIONS.map((s, i) => (
+        <section
+          key={s.key}
+          className='mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 border-t border-dashed border-border pt-3 md:grid-cols-[5.75rem_minmax(0,1fr)_auto]'
+        >
+          <span className='col-span-2 md:col-span-1 md:pt-1'>
+            <SectionTag index={i + 1} section={s.key} />
+          </span>
+          {retro[s.key] ? (
+            <>
+              <p className='whitespace-pre-wrap break-words pt-1.5 type-body-sm text-fg'>{retro[s.key]}</p>
+              <LikeChip retro={retro} section={s.key} onToggle={() => onLike(s.key)} />
+            </>
+          ) : (
+            <p className='pt-1.5 type-body-sm text-fg-muted'>
+              <span aria-hidden>-</span>
+              <span className='sr-only'>{s.label}을 남기지 않았어요</span>
+            </p>
+          )}
+        </section>
+      ))}
     </article>
   );
 }
