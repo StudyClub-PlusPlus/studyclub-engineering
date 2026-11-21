@@ -139,6 +139,25 @@ class SocialLoginIntegrationTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("성공 - 다시 로그인하면 계정에 남은 디스코드 서버 별명이 응답에 실린다 (신청 폼 사전 입력)")
+    void loginReturnsSavedDiscordNickname() {
+        // given — 전에 신청하면서 서버 별명을 남긴 회원
+        Account account = seedAccount(SystemRole.MEMBER, Instant.now());
+        account.changeDiscordNickname("길동/SWE/서울");
+        accounts.save(account);
+        googleReturns(SUB, RAW_EMAIL, "홍길동");
+
+        // when
+        var response = login();
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<String, Object> body = (Map<String, Object>) response.getBody().get("account");
+        assertThat(body.get("discordNickname")).isEqualTo("길동/SWE/서울");
+    }
+
+    @Test
     @DisplayName("성공 - 같은 sub 로 다시 오면 새 행 없이 같은 계정, LAST_LOGIN_AT 만 갱신")
     void secondLoginReusesAccount() {
         // given — 한 번 가입해 둔다

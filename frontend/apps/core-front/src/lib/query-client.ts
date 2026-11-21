@@ -15,7 +15,9 @@ function makeQueryClient(): QueryClient {
       },
     }),
     defaultOptions: {
-      queries: { staleTime: 60 * 1000, retry: 0, refetchOnWindowFocus: false },
+      // 탭을 옮기거나 화면에 다시 들어오면(다시 마운트) 새로 읽는다. 서버가 심어 준 initialData 를
+      // 곧바로 다시 부르지 않아야 하는 조회는 그 훅에서 staleTime 을 따로 둔다(studies/queries.ts)
+      queries: { staleTime: 0, retry: 0, refetchOnWindowFocus: false },
       mutations: { retry: 0 },
     },
   });
