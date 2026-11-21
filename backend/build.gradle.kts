@@ -33,7 +33,13 @@ subprojects {
         mavenCentral()
     }
 
+    // Windows 기본 인코딩(cp949)에 휘둘리지 않도록 컴파일 · 테스트 JVM 을 UTF-8 로 고정한다.
+    tasks.withType<JavaCompile> {
+        options.encoding = "UTF-8"
+    }
+
     tasks.withType<Test> {
         useJUnitPlatform()
+        jvmArgs("-Dfile.encoding=UTF-8", "-Dsun.jnu.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8")
     }
 }

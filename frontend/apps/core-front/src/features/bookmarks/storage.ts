@@ -3,8 +3,10 @@
 import { readJSON, writeJSON } from '@studyclub/utils';
 import { z } from 'zod';
 
-
-/** 관심 스터디는 저장 API가 없어 이 브라우저에만 남긴다. */
+/**
+ * 로그인 전 관심 스터디 — 이 브라우저에만 남기고 로그아웃할 때 지운다(`clearSession`).
+ * 로그인(온보딩 완료)하면 서버에 저장한다 → `features/bookmarks/queries.ts`.
+ */
 export const BOOKMARK_KEY = 'sc_bookmarks';
 
 export function getBookmarks(): string[] {

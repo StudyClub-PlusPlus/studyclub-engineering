@@ -192,12 +192,12 @@ export function NotificationsTable() {
           실패만 걸렀을 때만 선다 — 다른 조건에서는 성공한 건까지 묶여 같은 메일이 두 번 간다.
           누르는 즉시 보내지 않고 몇 건인지 알린 뒤 다시 묻는다 (POL-0008).
         */}
+        <div className='ml-auto flex items-center gap-1.5'>
         {filter === 'FAILED' && allFailed.length > 0 && (
           <Button
             data-anno='history:1-2'
             size='sm'
             variant='secondary'
-            className='ml-auto'
             leadingIcon={bulkBusy ? <Loader2 size={13} className='animate-spin' /> : <RotateCw size={13} />}
             disabled={phase === 'loading' || bulkBusy}
             onClick={() => setAsking(true)}
@@ -205,9 +205,8 @@ export function NotificationsTable() {
             전체 재발송
           </Button>
         )}
+        </div>
       </div>
-
-      <TimezoneNote />
 
       <TableCard anno='history:2'>
         <thead>
@@ -334,23 +333,6 @@ export function NotificationsTable() {
   );
 }
 
-/**
- * 표의 시각이 **어느 시간대 기준인지** 한 번만 밝힌다 (POL-0006). 줄마다 약칭을 달면 같은 말이 스무 번 반복된다 —
- * 기준은 위에서 한 번 말하고 각 줄에는 시각만 적는다.
- */
-function TimezoneNote() {
-  const [zone, setZone] = useState('');
-  // 시간대는 브라우저만 안다 — 서버에서 그린 화면과 어긋나지 않게 마운트 뒤에 채운다(한 줄 높이는 미리 지킨다)
-  useEffect(() => {
-    const id = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const offset = new Intl.DateTimeFormat('ko-KR', { timeZoneName: 'short' })
-      .formatToParts(new Date())
-      .find((part) => part.type === 'timeZoneName')?.value;
-    setZone(offset ? `${id} · ${offset}` : id);
-  }, []);
-  return <p className='min-h-5 type-label-sm text-fg-muted'>{zone && `표의 시각은 내 시간대 기준입니다 (${zone})`}</p>;
-}
-
 /** 거르는 칸 하나. 고르기 전에는 축 이름이 보이고, 고른 뒤에는 「전체」로 되돌릴 수 있다. */
 function FilterSelect<T extends string>({
   label,
@@ -373,7 +355,7 @@ function FilterSelect<T extends string>({
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as 'all' | T)}
       className={cx(
-        'w-auto shrink-0',
+        'w-auto shrink-0 disabled:bg-surface-2',
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
       )}
     >

@@ -2,6 +2,7 @@
 import type { BadgeTone } from '@studyclub/ui';
 
 import type { ApiFeedbackPerson, ApiAdminFeedbackDetail, FeedbackStatus, FeedbackType } from '@/features/feedbacks/types';
+import { wallParts } from '@/features/schedule/time';
 
 /** 고르는 순서 — 문의 · 개선 의견 · 오류 신고 (프로토 `FEEDBACK_TYPES`). */
 export const TYPE_OPTIONS: { value: FeedbackType; label: string }[] = [
@@ -56,14 +57,14 @@ export function viewportLabel(viewport: ApiAdminFeedbackDetail['viewport']): str
 }
 
 /**
- * 보는 사람의 시간대로, 24시간제 — 「26.10.18 14:02」 (프로토 `stamp`).
+ * `tz`(`useDisplayTimeZone()`)로, 24시간제 — 「26.10.18 14:02」 (프로토 `stamp`).
  * 읽을 수 없는 값이면 원문을 그대로 둔다 — 비우면 값이 없는 것으로 읽힌다.
  */
-export function formatStamp(iso: string): string {
+export function formatStamp(iso: string, tz: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${String(at.getFullYear()).slice(2)}.${p(at.getMonth() + 1)}.${p(at.getDate())} ${p(at.getHours())}:${p(at.getMinutes())}`;
+  const { date, time } = wallParts(at, tz);
+  return `${date.slice(2).replaceAll('-', '.')} ${time}`;
 }
 
 // ── 안내 문구 (PRD 「상태별 화면」)

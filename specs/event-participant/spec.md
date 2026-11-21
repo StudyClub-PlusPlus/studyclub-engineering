@@ -168,11 +168,11 @@ stateDiagram-v2
       "accountDeleted": true,
       "maskedEmail": null,
       "channel": "OFFLINE",
-      "status": "CONFIRMED",
+      "status": "CANCELLED",
       "createdAt": "2026-11-18T09:40:00Z",
       "canConfirm": false,
       "canDecline": false,
-      "canCancel": true
+      "canCancel": false
     }
   ],
   "total": 3,
@@ -181,7 +181,7 @@ stateDiagram-v2
 }
 ```
 
-같은 크루(`accountId = 48`)가 오프라인으로 신청했다가 취소하고 온라인으로 다시 신청한 경우다. 세 번째 행은 신청 뒤 탈퇴한 크루다 (아래 「탈퇴한 크루의 신청」).
+같은 크루(`accountId = 48`)가 오프라인으로 신청했다가 취소하고 온라인으로 다시 신청한 경우다. 세 번째 행(`registrationId: 251`)은 종료 전 행사에서 신청한 뒤 탈퇴해 자동 취소된 크루다 (아래 「탈퇴한 크루의 신청」). 종료 뒤 탈퇴한 경우라면 기존 상태를 유지하지만, 종료된 행사라 `canCancel` 은 `false` 다.
 
 | 필드 | 타입 | NULL | 설명 | 소스 |
 |------|------|------|------|------|

@@ -9,6 +9,7 @@ import { Badge, Input, Pagination, Select, cx, type BadgeTone } from '@studyclub
 import { applyFormUrl, publishState, toISODate } from '@studyclub/utils';
 import { Search } from 'lucide-react';
 
+import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
 import {
   CATEGORY_OPTIONS,
   FORM_OPTIONS,
@@ -453,6 +454,8 @@ export function StudiesTable({ list }: { list: StudyListData }) {
         <FilterSelect value={form} onChange={(v) => setFilters({ form: v, page: '1' })} options={FORM_OPTIONS} />
         <span className='ml-auto shrink-0 whitespace-nowrap type-label-sm text-fg-muted'>{total}개</span>
       </div>
+
+      <TimezoneNote subject='모집·시작 날짜는' />
 
       <div className='card'>
         <div

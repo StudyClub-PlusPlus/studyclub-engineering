@@ -100,7 +100,7 @@ function LeavePageInner() {
         <h1 className='type-headline-lg'>회원 탈퇴</h1>
         <ul className='mt-3 flex flex-col gap-1.5 type-body-sm text-fg-secondary'>
           <li>· 탈퇴는 즉시 처리되며 되돌릴 수 없습니다.</li>
-          <li>· 같은 구글 계정으로 다시 가입할 수 있지만, 지난 기록은 돌아오지 않습니다.</li>
+          <li>· 재가입은 가능하지만 이전 기록은 복구되지 않습니다.</li>
           <li>· 회원 탈퇴 시 홈페이지에 저장된 디스코드 연동 정보도 삭제됩니다.</li>
         </ul>
       </header>

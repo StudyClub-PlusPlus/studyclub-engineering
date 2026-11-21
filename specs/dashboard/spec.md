@@ -32,7 +32,7 @@
 | 프로그램 | 기수의 상위 묶음인 `STUDY_PROGRAM` |
 | 반 | 기수 안의 `STUDY_GROUP`. 반을 나눠도 기수 수는 늘지 않는다 |
 | 참여 명부 | `STUDY_PARTICIPANT`. `STUDY_ID`로 기수, `STUDY_GROUP_ID`로 반에 연결한다 |
-| 진행 중 기수 | `STATUS = OPEN`이고 `START_AT ≤ asOf`인 기수. 회차 스펙 결정 5에 따라 `OPEN → ONGOING` 전환을 당분간 일으키지 않으므로 `START_AT` 경과로 판정한다 (`Study.phase()` 와 같은 기준). |
+| 진행 중 기수 | `Study.isOngoing(asOf)` — `STATUS ∈ {OPEN, ONGOING}`이고 `START_AT ≤ asOf`이며 `END_AT`이 없거나 `END_AT > asOf`인 기수. 회차 스펙 결정 5에 따라 `OPEN → ONGOING → ENDED` 전환을 일으키지 않으므로 `START_AT`·`END_AT` 경과로 판정한다 (`Study.phase()` 와 같은 날짜 규칙). 쿼리판은 `StudyLifecycleQuery` (2026-11-18 bug-37: `END_AT` 조건 추가) |
 | `asOf` | 서버가 정한 응답의 집계 기준 시각 |
 | 조회자 시간대 | 갱신 시각·모집 날짜·주간 집계에 적용하는 시간대. 응답의 `timeZone` 값 |
 
@@ -147,7 +147,7 @@
 
 신청 시에는 신청서만 저장한다. 캡틴이 반을 배정할 때 참여 명부를 생성한다. 대시보드는 실제 명부를 조회하며 별도 반 배정 필터를 추가하지 않는다.
 
-진행 중 판정에는 `STATUS = OPEN`이고 `STUDY.START_AT ≤ asOf`인 기수를 사용한다. 회차 스펙 결정 5에 따라 `OPEN → ONGOING` 전환을 당분간 일으키지 않으므로 시작일 경과로 판정한다 (2026-11-07 변경).
+진행 중 판정은 1절 용어의 「진행 중 기수」(`Study.isOngoing`, 시작일 경과 · 종료일 전)를 쓴다 (2026-11-07 시작일 기준으로 변경, 2026-11-18 종료일 조건 추가).
 
 **논의 중 — 활성 크루 카드의 목록 이동**
 
@@ -181,6 +181,7 @@
 - 합류 전·집계 상한 이후 회차는 제외한다. 실제 시작·종료나 출석 입력 완료를 조건으로 추가하지 않는다.
 - 회원 탈퇴 후에도 보존된 참여 명부의 탈퇴 전 출석·결석을 포함한다. 현재 계정 존재 여부로 출석 대상을 제한하지 않는다.
 - 이미 하차한 회원은 기존 `LEFT_AT`을 유지한다. 떠난 이후 회차는 집계 대상에서 제외한다.
+- 반을 옮긴 크루는 반별 구간마다 그 반에서 센다 — 옛 반은 이동 시각까지, 새 반은 들어온 시각부터 ([attendance 출석률 산식](../attendance/spec.md#출석률-산식), [share 11-19](../../docs/share/2026-11-19-group-move-log.md)).
 - 다른 반 참석은 소속 반에 `EXCUSED` 로 남는다 — 출석률에서는 빠진다(분모에서 뺌). 다른 반의 출석 기록을 별도로 더하지 않는다.
 - 취소·미개최 회차에 별도 제외 조건을 추가하지 않는다. 위 회차 조건을 만족하면 공통 출석 계산에 포함한다.
 
@@ -239,7 +240,7 @@
 
 ### 3-1. 진행중 스터디
 
-- `STATUS = OPEN`이고 `START_AT ≤ asOf`인 모든 기수를 표시한다. 참여자가 없어도 포함한다.
+- 진행 중 기수(1절 용어, 종료일이 지난 기수는 빠진다)를 모두 표시한다. 참여자가 없어도 포함한다. 4.4절 목록의 `status=ONGOING`과 같은 조건이라 보드 건수와 「전체 보기」 목록 건수가 같다.
 - 이름만 표시한다. 출석률·회차 수는 추가하지 않는다.
 - 제목 오름차순으로 정렬한다. 제목이 같으면 기수 ID 오름차순으로 정렬한다.
 - 대상이 없으면 ‘진행중 스터디가 없습니다.’를 표시한다.
@@ -248,7 +249,7 @@
 
 ### 3-2. 모집중 스터디
 
-대상은 `STUDY.STATUS = OPEN`이며 모집 판정이 `RECRUITING / RECRUIT_CLOSED`인 기수다. 마감 후에도 `OPEN`인 동안 포함한다. 별도 일수 제한은 없다. 제목 옆 건수에는 두 모집 상태를 모두 포함한다.
+대상은 지금 상태(`Study.statusAsOf(asOf)`, 4.4절)가 `OPEN` — 공개했고 아직 시작 전 — 이며 모집 판정이 `RECRUITING / RECRUIT_CLOSED`인 기수다. 모집이 마감돼도 시작 전까지는 포함하고, `START_AT` 이 지나면 진행중 보드로 넘어간다 (2026-11-18 bug-37 — 전에는 저장된 `STATUS = OPEN` 이라 시작한 기수도 계속 남았다). 별도 일수 제한은 없다. 제목 옆 건수에는 두 모집 상태를 모두 포함한다.
 
 #### 모집 판정
 
@@ -346,7 +347,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | 항목 | 규칙 |
 |---|---|
 | 기본 범위 | ‘진행중’. 새로고침하면 기본값 적용 |
-| 진행중 | `STATUS = OPEN`이고 `START_AT ≤ asOf`. 결정 5에 따라 `OPEN → ONGOING` 전환 없이 시작일 경과로 판정 |
+| 진행중 | 진행 중 기수(1절 용어 — 시작일 경과 · 종료일 전) |
 | 누적 | 조회 시점의 `OPEN / ONGOING / ENDED / CLOSED`. `DRAFT` 제외 |
 | 집계 단위 | `STUDY.CATEGORY` 하나에 기수당 1개. `STUDY.ID`로 중복 제거 |
 | 표시 | 카테고리 이름·개수·가로 막대. 선택 범위에서 0개인 카테고리는 숨김 |
@@ -580,7 +581,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 |---|---|---|
 | category | Enum | `StudyCategory` 코드. 생략 시 전체 |
 | studyKind | Enum | `STUDY / CLUB`. 생략 시 전체 |
-| status | Enum | `DRAFT / OPEN / ONGOING / ENDED / CLOSED` 중 하나. 생략 시 전체 |
+| status | Enum | `DRAFT / OPEN / ONGOING / ENDED / CLOSED` 중 하나. 저장값이 아니라 날짜까지 읽은 지금 상태(`Study.statusAsOf(asOf)`)로 거른다. 생략 시 전체 |
 | studyId | Long | 특정 `STUDY.ID`. 생략 시 제한 없음 |
 | visibility | Enum | `PUBLIC / PRIVATE`. 생략 시 전체 |
 | recruitStatus | Enum | `RECRUITING / RECRUIT_CLOSED`. 생략 시 모집 조건 없음 |
@@ -592,6 +593,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | limit | Integer | 기본 20. 1 이상 100 이하 |
 
 - `PUBLIC`은 `STATUS != DRAFT`, `PRIVATE`는 `STATUS = DRAFT`다.
+- `status` 와 응답 `items[].status` 는 `Study.statusAsOf(asOf)` 다 (2026-11-18 bug-37). 저장된 `STATUS` 는 공개(`DRAFT → OPEN`)와 운영 종료(`CLOSED`)만 바뀌므로, `DRAFT`·`CLOSED` 는 그대로, `ENDED` 이거나 `END_AT ≤ asOf` 면 `ENDED`, `START_AT ≤ asOf` 면 `ONGOING`, 나머지는 저장값(`OPEN`)이다. 그래서 `status=OPEN` 은 시작 전인 공개 기수만이고, 모집 보드(`status=OPEN&sort=RECRUITMENT`)에서도 이미 시작한 기수는 빠진다. 열 정렬 `STATUS_*` 도 같은 값으로 비교한다.
 - `recruitStatus`를 지정하면 `OPEN`인 기수에 화면 3-2의 모집 판정을 적용한다.
 - `recruitFilter=RECRUITING`은 공통 모집 판정이 `RECRUITING`인 기수다. `NOT_RECRUITING`은 그 외 전부다. `OPEN`의 `RECRUIT_CLOSED`와 `DRAFT / ONGOING / ENDED / CLOSED`를 포함한다. 응답의 `recruitStatus` 의미는 변경하지 않는다.
 - `recruitStatus`와 `recruitFilter`는 동시에 지정할 수 없다. 함께 보내면 400이다. 상태·공개·검색 등 나머지 조건은 모집 필터와 함께 적용한다.
@@ -615,7 +617,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 |---|---|---|
 | P-ID | `PROGRAM` | 프로그램 ID |
 | 스터디 | `TITLE` | 제목 |
-| 상태 | `STATUS` | `DRAFT → OPEN → ONGOING → ENDED → CLOSED` |
+| 상태 | `Study.statusAsOf(asOf)` | `DRAFT → OPEN → ONGOING → ENDED → CLOSED` |
 | 주제 | `CATEGORY` | 주제의 한국어 표시명 |
 | 시간대 | `TIMEZONE` | `KST → PST → BOTH` |
 | 모집 시작일 | `RECRUIT_START` | 최신 모집 회차 시작 시각 |
@@ -634,9 +636,9 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | 프론트 주소의 진입 조건 | 목록 API Query |
 |---|---|
 | 일반 목록 `/studies` | `sort=RECRUITMENT_FIRST` |
-| `view=ongoing` | `status=OPEN&sort=TITLE_ASC` (전체 OPEN 목록 — 보드보다 많을 수 있음) |
+| `view=ongoing` | `status=ONGOING&sort=TITLE_ASC` (진행 중 보드와 같은 조건 · 같은 건수) |
 | `view=recruitment` | `status=OPEN&sort=RECRUITMENT` |
-| `view=ongoing&category={code}` | `category={code}&status=OPEN&visibility=PUBLIC&sort=TITLE_ASC` |
+| `view=ongoing&category={code}` | `category={code}&status=ONGOING&visibility=PUBLIC&sort=TITLE_ASC` |
 | `view=cumulative&category={code}` | `category={code}&visibility=PUBLIC&sort=ID_DESC` |
 
 - 진입 시 나머지 검색·종류·신청 폼 조건을 초기화한다. 적용한 필터를 화면에 선택된 상태로 표시한다.
@@ -790,7 +792,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | asOf | Datetime | N | 공통 규칙 |
 | categories | Array | N | 카테고리별 집계. 없으면 [] |
 | categories[].code | String | N | `STUDY.CATEGORY`의 StudyCategory 코드. 화면 라벨·목록 필터에 사용 |
-| categories[].ongoingCount | Long | N | 해당 카테고리에서 진행 중(`STATUS = OPEN`이고 `START_AT ≤ asOf`)인 고유 `STUDY.ID` 수 |
+| categories[].ongoingCount | Long | N | 해당 카테고리에서 진행 중(`Study.isOngoing(asOf)`)인 고유 `STUDY.ID` 수 |
 | categories[].totalCount | Long | N | 해당 카테고리에서 상태가 `OPEN / ONGOING / ENDED / CLOSED`인 고유 `STUDY.ID` 수 |
 
 두 범위 모두 0인 카테고리는 생략할 수 있다. 두 범위 모두 대상이 없으면 `categories=[]`다. 일부 카테고리의 실패를 0으로 바꾸지 않는다. 프론트는 선택 범위에 따라 정렬·막대·숨김을 적용한다.
@@ -801,7 +803,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 |---|---|
 | 권한·입력 | 미로그인·계정 없음 401, 일반 회원 403, 잘못된 Query 400 |
 | 집계 단위 | 회원은 `ACCOUNT_ID`, 참여는 `(ACCOUNT_ID, STUDY_ID)`, 기수는 `STUDY.ID`로 중복 제거 |
-| 진행 상태·명부 | `STATUS = OPEN`이고 `START_AT ≤ asOf`인 기수의 실제 `ACTIVE` 명부만 활성 집계. 신청만 한 회원(`STUDY_PARTICIPANT` 없음) 제외. `START_AT` 없는 `OPEN` 기수는 제외 |
+| 진행 상태·명부 | 진행 중 기수(`Study.isOngoing(asOf)`)의 실제 `ACTIVE` 명부만 활성 집계. 신청만 한 회원(`STUDY_PARTICIPANT` 없음) 제외. `START_AT` 없는 `OPEN` 기수 · `END_AT` 이 지난 기수는 제외 |
 | 출석 참여 기간 | `JOINED_AT`·집계 상한 경계 포함. 탈퇴·하차 전 기록 보존. `LEFT_AT` 누락 시 해당 참여자 제외 |
 | 출석 점수·빈 값 | 모두 `EXCUSED` 거나 미입력이면 분모 0 → `null`. 결석만 있으면 0% |
 | 공통 계산 | 같은 대상·시각이면 기존 출석 계산과 분자·분모 일치. 백분율 변환은 서버에서 한 번만 수행 |

@@ -11,7 +11,7 @@
 | FN | 1 |
 | IA | 40 |
 | SRC | 1 |
-| POL | 11 |
+| POL | 12 |
 
 <!--
 발급 절차: next 값을 읽어 ID 를 만들고, 같은 커밋에서 next 를 +1 한다.
@@ -69,4 +69,4 @@
 | ST-035 | 크루는 캡틴에게 문의/오류신고를 제출할 수 있다. | 크루 | [PRD](../stories/crew-submit-feedback/PRD.md) | [사이트 › 내 문의](https://playground.studyclub.life/proto/core/ko/my/feedbacks) | | | 로그인 필수. 스펙 없음 — API·테이블부터 |
 | ST-036 | 캡틴은 유저가 제출한 문의/오류신고를 조회할 수 있다. | 캡틴 | [PRD](../stories/captain-view-feedbacks/PRD.md) | [콘솔 › 문의·오류 신고](https://playground.studyclub.life/proto/console/feedbacks) | | | 상태 · 회신 · 캡틴 전용 메모. 회신 알림은 알림 조건 「문의 회신」 |
 | ST-037 | 캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다. | 캡틴 | [PRD](../stories/captain-manage-events/PRD.md) | 행사 목록·운영 시안 | [event](../../specs/event/spec.md) · [event-status](../../specs/event-status/spec.md) · [event-participant](../../specs/event-participant/spec.md) · [event-mail](../../specs/event-mail/spec.md) | | 플레이그라운드 검토 단계. event 는 등록·수정·목록·상세, event-status 는 모집 마감·재모집·행사 취소, event-participant 는 참가자 처리·종료 자동 전환·탈퇴 처리·신청 테이블 제안(ST-038 과 공통 PR), event-mail 은 안내·취소 안내 메일·이력·행사 알림 템플릿·재발송 검증. 후속 셋은 스펙작성중(PR #479 리뷰 결정 반영) |
-| ST-038 | 크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다. | 크루 | [PRD](../stories/crew-apply-event/PRD.md) | 행사 목록·신청 시안 | | | 플레이그라운드 검토 단계 |
+| ST-038 | 크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다. | 크루 | [PRD](../stories/crew-apply-event/PRD.md) | 행사 목록·신청 시안 | [event-registration](../../specs/event-registration/spec.md) | | 플레이그라운드 검토 단계. 스펙은 사이트 목록·상세·신청·본인 취소·내 행사(스펙작성중, PR #508 리뷰 반영) |

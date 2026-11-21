@@ -9,6 +9,7 @@ import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -162,6 +163,51 @@ class AdminStudyPublishIntegrationTest {
         assertThat(response.getBody()).containsEntry("errorCode", "CONFLICT");
     }
 
+    @Test
+    @DisplayName("성공(unpublish) - 시작일 전인 OPEN 은 비공개로 바꿀 수 있다")
+    void unpublish_beforeStart() {
+        Long studyId = publishedStudy("시작 전 공개 취소");
+        setPeriod(studyId, Instant.now().plus(7, ChronoUnit.DAYS), null);
+
+        var response = postNoBody("/api/admin/studies/" + studyId + "/unpublish", ADMIN_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(studyRepository.findById(studyId).orElseThrow().getStatus())
+                .isEqualTo(StudyStatus.DRAFT);
+    }
+
+    @Test
+    @DisplayName("실패(unpublish) - 저장값이 OPEN 이어도 시작일이 지났으면 409 STUDY_ALREADY_STARTED")
+    void unpublish_afterStart() {
+        Long studyId = publishedStudy("진행 중 공개 취소");
+        setPeriod(
+                studyId,
+                Instant.now().minus(1, ChronoUnit.DAYS),
+                Instant.now().plus(30, ChronoUnit.DAYS));
+
+        var response = postNoBody("/api/admin/studies/" + studyId + "/unpublish", ADMIN_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorCode", "STUDY_ALREADY_STARTED");
+        assertThat(studyRepository.findById(studyId).orElseThrow().getStatus())
+                .isEqualTo(StudyStatus.OPEN);
+    }
+
+    @Test
+    @DisplayName("실패(unpublish) - 종료일이 지난 OPEN 도 409 STUDY_ALREADY_STARTED")
+    void unpublish_afterEnd() {
+        Long studyId = publishedStudy("종료 공개 취소");
+        setPeriod(
+                studyId,
+                Instant.now().minus(30, ChronoUnit.DAYS),
+                Instant.now().minus(1, ChronoUnit.DAYS));
+
+        var response = postNoBody("/api/admin/studies/" + studyId + "/unpublish", ADMIN_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorCode", "STUDY_ALREADY_STARTED");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private Long createStudy(String title) {
@@ -175,6 +221,22 @@ class AdminStudyPublishIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String path = response.getHeaders().getLocation().getPath();
         return Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
+    }
+
+    private Long publishedStudy(String title) {
+        Long studyId = createStudy(title);
+        setApplicationFormJson(
+                studyId, "{\"questions\":[{\"id\":\"q1\",\"label\":\"intro\",\"type\":\"TEXT\"}]}");
+        postNoBody("/api/admin/studies/" + studyId + "/publish", ADMIN_ID);
+        return studyId;
+    }
+
+    private void setPeriod(Long studyId, Instant startAt, Instant endAt) {
+        jdbcTemplate.update(
+                "UPDATE STUDY SET START_AT = ?, END_AT = ? WHERE ID = ?",
+                Timestamp.from(startAt),
+                endAt == null ? null : Timestamp.from(endAt),
+                studyId);
     }
 
     private Instant latestStartAt(Long studyId) {

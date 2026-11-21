@@ -426,6 +426,7 @@ IconButton 만 xs 24px/radius8/아이콘14 가 있다 — 표 칸 · 글줄 안�
 - 앞 아이콘(`leadingIcon`): 검색 돋보기 등 장식 아이콘을 왼쪽 12px 에 두고 입력값은 pl 36px 에서 시작. 색 text-placeholder, aria-hidden.
 - Console 툴바(검색·필터)는 `size="sm"`(h32, type-body-sm). 값을 고른 필터 Select 는 border-brand + font-semibold 로 「걸려 있음」을 보인다(전체일 때는 border-strong · text-secondary).
 - **Checkbox / Radio**: 16px, accent brand, 포커스 링은 입력과 같은 `--shadow-focus-ring`. 라벨 type-label-lg ink, 라벨 클릭으로도 토글. Radio 는 같은 `name` 묶음에서 하나만 고르고, 묶음 제목은 `fieldset`+`legend` 로 단다. 설명(`description`)은 라벨 아래 type-label-sm text-muted. 표의 행 선택처럼 라벨이 안 보이는 자리는 `hideLabel`(라벨은 스크린리더용으로 남긴다).
+- **Time Select**: 시각 입력은 브라우저 기본 `<input type="time">` 대신 Select 두 칸(시 00~23 · 분 기본 5분 간격)을 가운데 `:`(text-muted)로 잇는다. 브라우저 기본 칸은 OS · 언어마다 모양이 달라 오전/오후 칸이 초처럼 보였다(bug-10). 값은 `HH:mm`(24시간). 시를 비우면 값이 비고 분 칸은 막힌다. 지금 값의 분이 간격에 안 맞아도 그 분은 목록에 남긴다. 두 칸은 `role="group"` 으로 묶고 각각 「… 시」 · 「… 분」 으로 읽힌다. 크기 · 오류 · 비활성은 Select 와 같다.
 - **Switch**: 누르는 즉시 반영되는 설정(사이트 공개 등). 트랙 36×20 radius-full, 꺼짐 surface-3, 켜짐 brand(기본) 또는 success-600(「공개됨」처럼 켜진 상태가 좋은 소식일 때). 손잡이 16px surface-raised + shadow-sm, 이동은 duration-base ease-out. 이름은 트랙 왼쪽 type-label-lg text-secondary. 막힌 상태는 `aria-disabled` + opacity 60% 로 포커스는 남겨 막힌 이유(`aria-describedby`)를 읽게 한다. 제출하는 폼 안의 예/아니오는 Checkbox.
 
 ### 9-3. Card

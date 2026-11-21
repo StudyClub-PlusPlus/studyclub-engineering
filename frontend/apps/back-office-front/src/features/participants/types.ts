@@ -11,7 +11,8 @@ export interface Participant {
   nickname: string;
   discordNickname: string | null;
   email: string;
-  regionGroup: 'KR' | 'NA' | 'ETC' | null;
+  /** 계정 프로필의 IANA 시간대. 온보딩 전이면 null */
+  timeZone: string | null;
   groupId: number;
   participantRole: 'LEADER' | 'MEMBER';
   status: 'ACTIVE' | 'PAUSED' | 'WITHDRAWN' | 'COMPLETED';
