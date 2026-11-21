@@ -22,7 +22,7 @@
 | PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/me | 내 회고 작성 · 수정 | 필요 (그 회차의 쓸 사람) | 스펙작성중 |
 | PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 누르기 | 필요 (반 참여자, 자기 회고 제외) | 스펙작성중 |
 | DELETE | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 취소 | 필요 (같음) | 스펙작성중 |
-| GET | /api/admin/retros | 회고 모아보기 (미작성 줄 포함) | 필요 (ADMIN) | 스펙작성중 |
+| GET | /api/admin/retros | 회고 모아보기 (쓴 회고만) | 필요 (ADMIN) | 스펙작성중 |
 | GET | /api/admin/retros/export.csv | 같은 조건 CSV | 필요 (ADMIN) | 스펙작성중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -158,7 +158,8 @@ erDiagram
 }
 ```
 
-- 진행 중인 스터디의 끝난 회차 × 쓸 사람. 안 쓴 사람은 `retro: null`
+- `items` 는 진행 중인 스터디의 끝난 회차에서 **쓴 회고만**. 안 쓴 사람은 줄로 내려주지 않는다
+- `summary` 의 `rows` · `closedRows` 는 작성률 분모라 쓸 사람 전체(끝난 회차 × 쓸 사람)로 센다. `total` 은 `items` 건수(쓴 회고)
 - `summary` 는 좁힌 조건 전체로 센다
 - `closed` = 작성 기한이 지났다. 작성률은 `closedWritten ÷ closedRows` — 기한 전 회차는 아직 쓸 수 있어 세지 않는다 (`closedRows` 가 0 이면 작성률 없음)
 - 정렬: 스터디 이름 → (PARTICIPANT) 이름 → 회차 번호 / (MEETING) 회차 번호 → 이름
@@ -166,4 +167,4 @@ erDiagram
 ## GET /api/admin/retros/export.csv
 
 `GET /api/admin/retros` 와 같은 조건(페이지 없음). UTF-8 BOM.
-열: 스터디 · 반 · 회차 · 참여자 · 좋았던 점 · 좋았던 점 👍 · 개선할 점 · 개선할 점 👍 · 소감 · 소감 👍 · 작성일(미작성이면 「미작성」).
+쓴 회고만. 열: 스터디 · 반 · 회차 · 참여자 · 좋았던 점 · 좋았던 점 👍 · 개선할 점 · 개선할 점 👍 · 소감 · 소감 👍 · 작성일.

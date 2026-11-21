@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { PageHeader } from '@console/components/ui';
+import { useTopScroll } from '@console/lib/use-top-scroll';
 import { t } from '@core/lib/i18n';
 import { scheduleAccessOf } from '@core/lib/meetings';
 import { RETRO_SECTIONS, retroRowsOf, shortDateTime, type RetroRow, type RetroSection } from '@core/lib/retros';
 import type { Study } from '@studyclub/types';
-import { Badge, Button, Input, Pagination, Segmented, Select, cx } from '@studyclub/ui';
+import { Button, Input, Pagination, Segmented, Select, cx } from '@studyclub/ui';
 import { Download, Search, ThumbsUp } from 'lucide-react';
 
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
@@ -88,7 +89,7 @@ function csvOf(rows: Row[]): string {
     r.meetingLabel,
     r.authorName,
     ...RETRO_SECTIONS.flatMap((s) => [r.retro?.[s.key] ?? '', r.retro?.[s.key] ? r.retro.likes[s.key] : '']),
-    r.retro ? shortDateTime(r.retro.writtenAt) : '미작성',
+    r.retro ? shortDateTime(r.retro.writtenAt) : '',
   ]);
   return '﻿' + [head, ...body].map((line) => line.map(esc).join(',')).join('\n');
 }
@@ -102,6 +103,8 @@ export function RetrosTable() {
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('participant');
   const [page, setPage] = useState(1);
+  // 가로 스크롤바를 표 위에도 둔다 — 스터디 표와 같다. 20줄이면 아래 스크롤바가 화면 밖이다.
+  const scroll = useTopScroll();
 
   useEffect(() => {
     const ongoing = studies.filter((s) => s.status === 'ongoing');
@@ -151,16 +154,17 @@ export function RetrosTable() {
     });
   }, [all, studyId, meetingId, q, sort]);
 
+  // 표 · CSV 에는 쓴 회고만 — 안 쓴 사람은 줄로 보이지 않고 작성률로만 센다.
   const written = filtered.filter((r) => r.retro);
   const count = (s: RetroSection) => written.filter((r) => r.retro![s]).length;
   // 작성률은 기한이 지난 줄만 센다 — 기한 전 미작성은 아직 쓸 수 있어 빠진 게 아니다.
   const closed = filtered.filter((r) => r.closed);
   const closedWritten = closed.filter((r) => r.retro).length;
   const rate = closed.length ? Math.round((closedWritten / closed.length) * 100) : null;
-  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageRows = written.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const download = () => {
-    const url = URL.createObjectURL(new Blob([csvOf(filtered)], { type: 'text/csv;charset=utf-8' }));
+    const url = URL.createObjectURL(new Blob([csvOf(written)], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = '회고.csv';
@@ -181,7 +185,7 @@ export function RetrosTable() {
             variant='secondary'
             leadingIcon={<Download size={15} />}
             onClick={download}
-            disabled={filtered.length === 0}
+            disabled={written.length === 0}
           >
             CSV 내려받기
           </Button>
@@ -254,87 +258,94 @@ export function RetrosTable() {
         ))}
       </div>
 
-      <div data-anno='retros:3' className='card overflow-x-auto'>
-        <table className='bo-table min-w-[105rem] table-fixed border-separate border-spacing-0'>
-          <colgroup>
-            <col className='w-[200px]' />
-            <col className='w-[110px]' />
-            <col className='w-[90px]' />
-            <col className='w-[80px]' />
-            <col className='w-[380px]' />
-            <col className='w-[380px]' />
-            <col className='w-[380px]' />
-            <col className='w-[110px]' />
-          </colgroup>
-          <thead>
-            <tr>
-              <th className={cx(sticky, 'left-0')}>스터디</th>
-              <th className={cx(sticky, 'left-[200px] shadow-[4px_0_6px_-4px_var(--color-border-strong)]')}>참여자</th>
-              <th>반</th>
-              <th>회차</th>
-              {RETRO_SECTIONS.map((s) => (
-                <th key={s.key}>{s.label}</th>
-              ))}
-              <th>작성일</th>
-            </tr>
-          </thead>
-          <tbody>
-            {all === null &&
-              Array.from({ length: 6 }, (_, i) => (
-                <tr key={i}>
-                  <td colSpan={8}>
-                    <span className='block h-4 animate-pulse rounded bg-surface-2' />
+      <div className='card'>
+        <div
+          ref={scroll.topRef}
+          onScroll={scroll.onTopScroll}
+          aria-hidden='true'
+          data-anno='retros:3-1'
+          className='overflow-x-auto overflow-y-hidden border-b border-border'
+        >
+          <div style={{ width: scroll.width, height: 1 }} />
+        </div>
+        <div ref={scroll.bodyRef} onScroll={scroll.onBodyScroll} data-anno='retros:3' className='overflow-x-auto'>
+          <table className='bo-table min-w-[105rem] table-fixed border-separate border-spacing-0'>
+            <colgroup>
+              <col className='w-[200px]' />
+              <col className='w-[110px]' />
+              <col className='w-[90px]' />
+              <col className='w-[80px]' />
+              <col className='w-[380px]' />
+              <col className='w-[380px]' />
+              <col className='w-[380px]' />
+              <col className='w-[110px]' />
+            </colgroup>
+            <thead>
+              <tr>
+                <th className={cx(sticky, 'left-0')}>스터디</th>
+                <th className={cx(sticky, 'left-[200px] shadow-[4px_0_6px_-4px_var(--color-border-strong)]')}>
+                  참여자
+                </th>
+                <th>반</th>
+                <th>회차</th>
+                {RETRO_SECTIONS.map((s) => (
+                  <th key={s.key}>{s.label}</th>
+                ))}
+                <th>작성일</th>
+              </tr>
+            </thead>
+            <tbody>
+              {all === null &&
+                Array.from({ length: 6 }, (_, i) => (
+                  <tr key={i}>
+                    <td colSpan={8}>
+                      <span className='block h-4 animate-pulse rounded bg-surface-2' />
+                    </td>
+                  </tr>
+                ))}
+              {all !== null && written.length === 0 && (
+                <tr>
+                  <td colSpan={8} className='py-12 text-center text-fg-muted'>
+                    조건에 맞는 회고가 없어요.
                   </td>
                 </tr>
-              ))}
-            {all !== null && filtered.length === 0 && (
-              <tr>
-                <td colSpan={8} className='py-12 text-center text-fg-muted'>
-                  조건에 맞는 회고가 없어요.
-                </td>
-              </tr>
-            )}
-            {pageRows.map((r) => (
-              <tr key={`${r.studyId}-${r.meetingId}-${r.authorId}`} className='align-top'>
-                <td className={cx(sticky, 'left-0')}>{r.studyTitle}</td>
-                <td
-                  className={cx(
-                    sticky,
-                    'left-[200px] font-semibold shadow-[4px_0_6px_-4px_var(--color-border-strong)]',
-                  )}
-                >
-                  {r.authorName}
-                </td>
-                <td className='whitespace-nowrap'>{r.group}</td>
-                <td className='tnum whitespace-nowrap'>{r.meetingLabel}</td>
-                {r.retro ? (
-                  RETRO_SECTIONS.map((s) => (
+              )}
+              {pageRows.map((r) => (
+                <tr key={`${r.studyId}-${r.meetingId}-${r.authorId}`} className='align-top'>
+                  <td className={cx(sticky, 'left-0')}>{r.studyTitle}</td>
+                  <td
+                    className={cx(
+                      sticky,
+                      'left-[200px] font-semibold shadow-[4px_0_6px_-4px_var(--color-border-strong)]',
+                    )}
+                  >
+                    {r.authorName}
+                  </td>
+                  <td className='whitespace-nowrap'>{r.group}</td>
+                  <td className='tnum whitespace-nowrap'>{r.meetingLabel}</td>
+                  {RETRO_SECTIONS.map((s) => (
                     <td key={s.key}>
                       <AnswerCell row={r} section={s.key} />
                     </td>
-                  ))
-                ) : (
-                  <td colSpan={3} data-anno='retros:3-1'>
-                    <Badge tone='neutral'>미작성</Badge>
+                  ))}
+                  <td className='tnum whitespace-nowrap text-fg-secondary'>
+                    {r.retro ? shortDateTime(r.retro.writtenAt) : '-'}
                   </td>
-                )}
-                <td className='tnum whitespace-nowrap text-fg-secondary'>
-                  {r.retro ? shortDateTime(r.retro.writtenAt) : '-'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       <div data-anno='retros:4' className='mt-3 flex items-center justify-between gap-3'>
         <span className='type-label-sm text-fg-muted'>
           스터디 · 참여자 열은 고정돼요. 표를 옆으로 밀어 문항을 봐요.
         </span>
-        <span className='tnum type-label-sm text-fg-muted'>총 {filtered.length}건</span>
+        <span className='tnum type-label-sm text-fg-muted'>총 {written.length}건</span>
       </div>
-      {filtered.length > PAGE_SIZE && (
+      {written.length > PAGE_SIZE && (
         <div className='mt-4 flex justify-center'>
-          <Pagination page={page} total={Math.ceil(filtered.length / PAGE_SIZE)} onChange={setPage} />
+          <Pagination page={page} total={Math.ceil(written.length / PAGE_SIZE)} onChange={setPage} />
         </div>
       )}
     </div>

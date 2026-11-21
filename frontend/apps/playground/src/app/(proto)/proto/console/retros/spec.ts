@@ -58,10 +58,9 @@ export const SPEC: ScreenSpec = {
     },
     {
       n: '3-1',
-      title: '미작성',
-      when: '쓸 사람이 아직 안 썼을 때',
-      display: ['문항 세 칸 자리에 「미작성」, 작성일 「-」'],
-      policy: ['쓸 사람 = 그 회차 시작 때 반에 있던 참여자. 그전에 참여를 중단한 사람은 뺀다'],
+      title: '위 가로 스크롤바',
+      display: ['표 위에 가로 스크롤바가 하나 더 있다. 아래 스크롤바와 함께 움직인다 (스터디 표와 같다)'],
+      policy: ['20줄을 보이면 아래 스크롤바가 화면 밖이다 — 위에서도 넘길 수 있게 한다'],
     },
     {
       n: '4',
@@ -71,7 +70,7 @@ export const SPEC: ScreenSpec = {
     {
       n: '5',
       title: 'CSV 내려받기',
-      behavior: ['지금 좁힌 조건의 모든 줄을 CSV 로 내려받는다 — 미작성 줄 포함, 문항마다 👍 수 열'],
+      behavior: ['지금 좁힌 조건의 모든 줄을 CSV 로 내려받는다 — 쓴 회고만, 문항마다 👍 수 열'],
       policy: ['줄이 없으면 누를 수 없다'],
       data: ['GET /api/admin/retros/export.csv — 1 과 같은 조건'],
     },
