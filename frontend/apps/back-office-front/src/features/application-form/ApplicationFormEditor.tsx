@@ -26,6 +26,13 @@ const DISCORD_QUESTION: ApplicationQuestion = {
   required: true,
   placeholder: '홍길동/SWE/산호세/시스템디자인',
 };
+const AVAILABLE_DAYS_QUESTION: ApplicationQuestion = {
+  id: 'availableDays',
+  label: '참여 가능한 요일',
+  type: 'checkbox',
+  required: true,
+  options: ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'],
+};
 
 export function ApplicationFormEditor({
   initialValues,
@@ -137,6 +144,9 @@ export function ApplicationFormEditor({
         )}
         <section className={formCardClass()}>
           <QuestionFillView q={DISCORD_QUESTION} disabled />
+        </section>
+        <section className={formCardClass()}>
+          <QuestionFillView q={AVAILABLE_DAYS_QUESTION} disabled />
         </section>
         {!readOnly && (
           <div className='flex justify-end'>
