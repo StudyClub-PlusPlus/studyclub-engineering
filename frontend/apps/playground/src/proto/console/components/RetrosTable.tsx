@@ -177,7 +177,6 @@ export function RetrosTable() {
     <div>
       <PageHeader
         title='회고 모아보기'
-        subtitle='참여자가 미팅마다 남긴 회고를 모아서 봐요.'
         action={
           <Button
             data-anno='retros:5'
