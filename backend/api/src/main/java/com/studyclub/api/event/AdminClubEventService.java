@@ -156,7 +156,7 @@ public class AdminClubEventService {
         boolean switchedToAuto = event.edit(draft, expectedVersion, Instant.now(), counts);
         // 13
         if (switchedToAuto) {
-            List<Long> confirmed = registrationPort.confirmPendingRegistrations(eventId);
+            List<Long> confirmed = registrationPort.confirmPendingRegistrations(eventId, accountId);
             if (!confirmed.isEmpty()) {
                 // TODO(event-mail): 15 — 신청·메일 스펙이 확정되면 BEFORE_COMMIT 구독자가 신청마다 확정 안내 NOTIFICATION
                 // 행을
