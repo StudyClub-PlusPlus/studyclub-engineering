@@ -57,7 +57,7 @@
     {
       "story": "navigator-view-meeting-retros",
       "name": "retro-navigator",
-      "title": "회고 탭 — 네비게이터 (작성 현황 · 👍 많은 순)",
+      "title": "회고 탭 — 네비게이터 (작성 현황 · 문항별)",
       "path": "/proto/core/ko/my/joined/20/schedule/retro",
       "click": ["문항별"],
       "scrollTo": "[data-anno~=\"retro:2-1\"]"

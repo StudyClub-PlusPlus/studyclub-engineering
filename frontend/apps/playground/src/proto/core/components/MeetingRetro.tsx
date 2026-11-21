@@ -347,7 +347,6 @@ function QuestionCard({
   onLike: (r: Retro, s: RetroSection) => void;
 }) {
   const answered = retros.filter((r) => r[section]);
-  const skipped = retros.filter((r) => !r[section]).map((r) => r.authorName);
   // 네비게이터·캡틴은 👍 많은 순 — 공감이 많은 개선점부터 다음 미팅에 반영한다. 크루는 내 답이 맨 앞, 나머지는 쓴 순서.
   const list = lead ? [...answered].sort((a, b) => b.likes[section] - a.likes[section]) : answered;
   return (
@@ -357,16 +356,9 @@ function QuestionCard({
     >
       <header className='flex flex-wrap items-center gap-2'>
         <SectionTag index={index} section={section} />
-        <span className='type-label-sm text-fg-muted'>
-          {answered.length}개{skipped.length > 0 ? ` · ${skipped.join(', ')} 님은 남기지 않았어요` : ''}
-        </span>
-        {lead && (
-          <span data-anno='retro-lead:2' className='ml-auto type-label-sm text-fg-muted'>
-            👍 많은 순
-          </span>
-        )}
+        <span className='type-label-sm text-fg-muted'>{answered.length}개</span>
       </header>
-      <ul className='mt-2'>
+      <ul data-anno={lead ? 'retro-lead:2' : undefined} className='mt-2'>
         {list.map((r) => (
           <li
             key={r.authorId}
