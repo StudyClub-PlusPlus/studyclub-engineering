@@ -33,8 +33,9 @@ function makeQueryClient(): QueryClient {
     mutationCache: new MutationCache({ onError: handleUnauthorized }),
     defaultOptions: {
       queries: {
-        // 0(기본값)이면 하이드레이션 직후 곧바로 다시 부른다. 운영 화면의 데이터는 1분 정도 묵어도 된다.
-        staleTime: 60 * 1000,
+        // 탭을 옮기거나 화면에 다시 들어오면(다시 마운트) 새로 읽는다. 1분을 두었더니 등록·수정 직후
+        // 다른 탭에 옛 값이 남았다. 이 앱은 하이드레이션을 쓰지 않아 첫 화면에서 두 번 부르지 않는다.
+        staleTime: 0,
         // BFF 가 이미 상태 코드를 그대로 넘긴다. 401·403 을 세 번 더 시도해 봐야 결과가 같다.
         retry: 0,
         refetchOnWindowFocus: false,

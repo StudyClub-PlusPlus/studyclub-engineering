@@ -68,6 +68,8 @@ export function StudyCreateDialog({
     setFailure(null);
     setDone(false);
     onClose();
+    // 등록이 끝났으면 「확인」이든 X·Esc 든 닫는 길과 상관없이 목록을 다시 받는다
+    if (done) onConfirmed?.();
   }
 
   const handleSubmit = submitForm(async (form) => {
@@ -94,14 +96,7 @@ export function StudyCreateDialog({
       size='lg'
       footer={
         done ? (
-          <Button
-            onClick={() => {
-              close();
-              onConfirmed?.();
-            }}
-          >
-            확인
-          </Button>
+          <Button onClick={close}>확인</Button>
         ) : (
           <>
             <Button variant='secondary' onClick={close} disabled={busy}>
