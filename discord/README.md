@@ -24,6 +24,7 @@ app/
     client.py            # Discord bot factory
     bulletin.py          # the one-message 공부방 board, refreshed daily at 20:00 PT
     voice_monitor.py     # records joins/leaves, reports 3-week-quiet 공부방 daily
+    role_watch.py        # reports hand changes to captain/navigator to the backend
     commands/command_channel.py    # the DISCORD_CONFIG_BOT_CHANNEL_ID gate every command passes
     commands/test_cmd.py           # testCmd command
     commands/bulletin_cmd.py       # updateBulletin command
@@ -63,12 +64,16 @@ tests/                 # pytest unit tests
   that new studies go right below. Leave it empty and new studies go to the top
   of the sidebar, while the bulletin and the activity monitor stop and say so in
   the alert channel.
-- **Calling the backend** — `!출석체크` is the only thing here that calls *out*.
-  It reads `API_BASE_URL` (the same key the frontends use; `docker-compose.yml`
+- **Calling the backend** — `!출석체크` and the role watcher are the only things here that call *out*.
+  The role watcher posts every captain/navigator role someone adds or removes by
+  hand to `POST /api/discord/role-changes` (changes the role endpoints made
+  themselves are skipped) — see [discord-role-sync](../specs/discord-role-sync/spec.md).
+  Both read `API_BASE_URL` (the same key the frontends use; `docker-compose.yml`
   overrides it to the internal `http://api:8080` for this service too) and
   sends `DISCORD_API_KEY` as `X-API-Key`. That one key serves both directions:
   Spring reads it as `discord.api-key` for the calls coming the other way.
-  With either unset the command refuses and says so; nothing else is affected.
+  With either unset the command refuses and says so, and the role watcher
+  stays off (logged at startup); nothing else is affected.
   `command_prefix` and `log_level` are fixed per deployment — change
   their defaults in `app/config.py`. The API binds `0.0.0.0:4800` (fixed to
   match the container).
