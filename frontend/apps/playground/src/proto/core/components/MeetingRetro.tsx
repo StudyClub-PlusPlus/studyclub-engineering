@@ -290,7 +290,7 @@ function AuthorCard({
       data-anno={retro.me ? 'retro:3 retro:3-1' : 'retro:3'}
       className={cx(
         'rounded-card border bg-surface-raised p-5 shadow-sm',
-        retro.me ? 'border-border-strong md:col-span-2' : 'border-border',
+        retro.me ? 'border-border-strong' : 'border-border',
       )}
     >
       <header className='flex items-center gap-2'>
@@ -309,9 +309,14 @@ function AuthorCard({
         retro[s.key] ? (
           <section key={s.key} className='mt-3 border-t border-dashed border-border pt-3'>
             <SectionTag index={i + 1} section={s.key} />
-            <p className='mt-1.5 whitespace-pre-wrap break-words type-body-sm text-fg'>{retro[s.key]}</p>
-            <div className='mt-2'>
-              <LikeChip retro={retro} section={s.key} onToggle={() => onLike(s.key)} />
+            {/* 👍 는 글 오른쪽 첫 줄 높이 — 문항별 보기와 같은 자리, 문항마다 한 줄을 덜 쓴다 */}
+            <div className='mt-1.5 flex items-start gap-3'>
+              <p className='min-w-0 flex-1 whitespace-pre-wrap break-words pt-1.5 type-body-sm text-fg'>
+                {retro[s.key]}
+              </p>
+              <span className='shrink-0'>
+                <LikeChip retro={retro} section={s.key} onToggle={() => onLike(s.key)} />
+              </span>
             </div>
           </section>
         ) : (
