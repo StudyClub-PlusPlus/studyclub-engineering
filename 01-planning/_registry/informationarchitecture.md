@@ -88,6 +88,9 @@
 | | | ST-011 크루는 발표자를 신청할 수 있다. | [crew-apply-presenter](../stories/crew-apply-presenter/PRD.md) |
 | IA-011 | 스터디 일정 — 출석 탭 | ST-017 네비게이터는 스터디별 출석 상태를 수정할 수 있다. | [navigator-edit-attendance](../stories/navigator-edit-attendance/PRD.md) |
 | IA-038 | 스터디 일정 — 공지 탭 | ST-016 네비게이터는 스터디별 공지를 등록할 수 있다. | [navigator-study-notice](../stories/navigator-study-notice/PRD.md) |
+| IA-040 | 스터디 일정 — 회고 탭 | ST-039 크루는 미팅이 끝나면 회고를 남기고 같은 반 회고에 공감할 수 있다. | [crew-write-meeting-retro](../stories/crew-write-meeting-retro/PRD.md) |
+| | | ST-040 네비게이터는 반의 회차별 회고 작성 현황을 볼 수 있다. | [navigator-view-meeting-retros](../stories/navigator-view-meeting-retros/PRD.md) |
+| IA-041 | 스터디 일정 — 회고 작성 | ST-039 크루는 미팅이 끝나면 회고를 남기고 같은 반 회고에 공감할 수 있다. | [crew-write-meeting-retro](../stories/crew-write-meeting-retro/PRD.md) |
 | | | ST-010 크루는 스터디별 출석 기록을 볼 수 있다. | [crew-view-attendance-record](../stories/crew-view-attendance-record/PRD.md) |
 | | | ST-018 네비게이터는 참여자를 스터디에서 제명할 수 있다. | [navigator-withdraw-participant](../stories/navigator-withdraw-participant/PRD.md) |
 | IA-014 | 이용약관 | ST-014 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | [crew-view-terms-privacy](../stories/crew-view-terms-privacy/PRD.md) |
@@ -118,6 +121,7 @@
 | | | ST-029 캡틴은 유저에게 서로 다른 역할과 권한을 줄 수 있다. | [captain-grant-roles](../stories/captain-grant-roles/PRD.md) |
 | IA-035 | 공지 관리 | ST-033 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | [captain-post-notice](../stories/captain-post-notice/PRD.md) |
 | IA-037 | 문의·오류 신고 | ST-036 캡틴은 유저가 제출한 문의/오류신고를 조회할 수 있다. | [captain-view-feedbacks](../stories/captain-view-feedbacks/PRD.md) |
+| IA-042 | 회고 모아보기 | ST-041 캡틴은 백오피스에서 스터디 미팅 회고를 모아 볼 수 있다. | [captain-collect-meeting-retros](../stories/captain-collect-meeting-retros/PRD.md) |
 | IA-033 | 알림 발송 이력 | ST-032 캡틴은 알림 발송 이력을 조회할 수 있다. | [notification-history](../stories/notification-history/PRD.md) |
 | IA-034 | 알림 템플릿 | ST-030 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다. | [notification-template](../stories/notification-template/PRD.md) |
 
@@ -137,6 +141,8 @@ IA-001 홈 /
 │  │  └─ IA-010 스터디 일정 — 일정 /my/joined/{id}/schedule
 │  │     └─ IA-011 스터디 일정 — 출석 …/schedule/attendance
 │  │     └─ IA-038 스터디 일정 — 공지 …/schedule/notice
+│  │     └─ IA-040 스터디 일정 — 회고 …/schedule/retro       (ST-039 · ST-040)
+│  │        └─ IA-041 회고 작성 …/schedule/retro/write     (ST-039)
 │  ├─ IA-012 찜한 스터디 /my/saved            (고아)
 │  └─ IA-036 내 문의 /my/feedbacks
 ├─ IA-014 이용약관 /terms
@@ -159,6 +165,7 @@ IA-021 대시보드 /
 │     ├─ IA-032 일정
 │     └─ IA-029 출석
 ├─ IA-030 유저 /users
+├─ IA-042 회고 모아보기 /retros               (ST-041)
 ├─ IA-035 공지 관리 /notices
 ├─ IA-037 문의·오류 신고 /feedbacks
 ├─ IA-033 알림 발송 이력 /notifications
