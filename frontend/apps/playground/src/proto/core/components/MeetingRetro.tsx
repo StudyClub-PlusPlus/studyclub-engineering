@@ -303,11 +303,12 @@ function AuthorCard({
         <b className='type-label-lg text-fg'>{retro.authorName}</b>
         {retro.me && <Badge tone='member'>내 회고</Badge>}
         {retro.navigator && <Badge tone='navigator'>네비게이터</Badge>}
-        <span className='tnum ml-auto type-label-sm text-fg-muted'>{shortDateTime(retro.writtenAt)}</span>
         {canEdit && (
-          <ButtonLink data-anno='retro:3-2' size='sm' variant='tertiary' linkAs={Link} href={editHref}>
-            수정
-          </ButtonLink>
+          <span className='ml-auto'>
+            <ButtonLink data-anno='retro:3-2' size='sm' variant='tertiary' linkAs={Link} href={editHref}>
+              수정
+            </ButtonLink>
+          </span>
         )}
       </header>
       {RETRO_SECTIONS.map((s, i) =>
