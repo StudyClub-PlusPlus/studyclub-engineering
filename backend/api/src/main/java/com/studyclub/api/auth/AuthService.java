@@ -1,7 +1,7 @@
 package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
-import com.studyclub.api.auth.dto.AuthDtos.AccountView;
+import com.studyclub.api.auth.dto.AuthDtos.AccountSelfView;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
@@ -140,11 +140,7 @@ public class AuthService {
                 refreshToken,
                 jwtService.accessTtlSeconds(),
                 jwtService.refreshTtlSeconds(),
-                toView(account),
+                AccountSelfView.from(account),
                 suggestedNickname);
-    }
-
-    private AccountView toView(Account account) {
-        return AccountView.from(account);
     }
 }
