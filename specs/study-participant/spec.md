@@ -86,7 +86,7 @@
 - **분반**: 담당 캡틴이라 요청의 `studyGroupId` 와 다른 분반의 행도 중단한다(사용자 사이트의 담당 캡틴과 같다)
 - **대상**: 네비게이터(`LEADER`) 행도 된다. 나머지 제한은 그대로 — 나 자신 400 · 담당 캡틴의 명부 행 403(호출자가 담당 캡틴이라 실제로는 「나 자신」이 먼저 걸린다. `OWNER_CAPTAIN_ID` NULL 이면 해당 없음) · `DELETED`·`COMPLETED` 409 · 끝난 스터디 409 · 이미 `WITHDRAWN` 멱등
 - **판정 순서 · 잠금 · 감사 로그 · 이벤트**: 아래 그대로 (`ParticipantWithdrawalService.prepareForBackOffice`)
-- **디스코드**: 스터디 role 은 `study_participant.withdrawn` 구독자(DSC-09)가 뗀다. 중단된 사람이 네비게이터(`participantRole = LEADER`)면 같은 구독자가 navigator role 도 맞춘다 — 다른 진행 중 스터디에서 LEADER 면 유지, 아니면 회수 (DSC-09)
+- **디스코드**: 스터디 role 은 `study_participant.withdrawn` 구독자(DSC-09)가 뗀다. 중단된 사람이 네비게이터(`participantRole = LEADER`)면 같은 구독자가 navigator role 도 맞춘다 — 다른 진행 중 스터디에서 LEADER 면 유지, 아니면 회수 (DSC-09). 회수가 늦게 돌아 그사이 같은 디스코드 ID 를 다른 계정이 이어받았고 그 계정이 지금 네비게이터면 떼지 않는다 — 스터디 role 의 「다른 계정이 이 스터디에 참여 중이면 둔다」와 같은 확인 (bug-52)
 - 네비게이터를 중단하면 그 분반에 네비게이터가 없을 수 있다. 서버는 막지 않는다 — 새 네비게이터는 신청자 탭에서 캡틴이 정한다
 - **중단된 네비게이터의 권한**: 행은 `WITHDRAWN` · `LEADER` 로 남는다 — 역할을 `MEMBER` 로 내리지 않는다(이벤트가 중단 직전 역할을 실어야 DSC-09 가 네비게이터 role 을 뗀다). 대신 네비게이터 권한은 **살아 있는 명부 행(`ACTIVE` · `PAUSED`)의 `LEADER`** 에만 준다 — 사이트 출석 저장 · 출석부 · 회차 추가 · 수정 · 삭제 · 비공개 상세 모두 403 / 404 (`StudyCaptainGuard`, 2026-10-24 #325 리뷰)
 
