@@ -497,9 +497,6 @@ export function RetroWriteForm({
         </div>
         <Badge tone='ended'>미팅 종료 {shortDateTime(end.toISOString())}</Badge>
       </div>
-      <p className='mt-3 rounded-control bg-info-bg px-4 py-2.5 type-body-sm text-info-fg'>
-        쓴 회고는 같은 반 참여자와 네비게이터가 함께 봐요. 다른 참여자는 문항마다 👍 로 공감할 수 있어요.
-      </p>
 
       <form
         data-anno='retro:8'
