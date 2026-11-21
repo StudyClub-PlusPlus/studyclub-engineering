@@ -20,6 +20,7 @@ const participant = (
 ): Participant => ({
   participantId: id,
   accountId: id,
+  availableDays: [],
   nickname,
   discordNickname,
   email: `${id}@example.com`,

@@ -152,6 +152,18 @@
 
 > 상태별 차트(모집중/진행중/마감)는 카테고리 팔레트가 아니라 **2-5의 상태 색**을 그대로 사용. 그리드선 border, 축 텍스트 text-muted(sm).
 
+### 2-7. 히트 단계 (순차 — 많고 적음)
+
+한 색상(primary)의 밝기 4단계 + 빈 칸입니다. 값이 클수록 진합니다. 카테고리 · 상태 색과 섞지 않고, 숫자를 툴팁 · 범례로 함께 보입니다(색만으로 읽히게 두지 않는다). 이웃 단계 ΔE(OKLab×100)는 색각 이상에서도 16 이상입니다.
+
+| 토큰 | 값 | 쓰는 곳 |
+|---|---|---|
+| `--color-heat-0` | `cloud` | 0 — 빈 칸 |
+| `--color-heat-1` | `primary-200` | 최대의 1/4 이하 |
+| `--color-heat-2` | `primary-400` | 1/2 이하 |
+| `--color-heat-3` | `primary-600` | 3/4 이하. 숫자는 `on-primary` |
+| `--color-heat-4` | `primary-900` | 최대. 숫자는 `on-primary` |
+
 ---
 
 ## 3. Typography
@@ -504,6 +516,7 @@ IconButton 만 xs 24px/radius8/아이콘14 가 있다 — 표 칸 · 글줄 안�
 | Nav | 사이트=상단 가로 네비(surface-raised + border 하단), 콘솔=좌측 사이드바(page-bg, active primary-light/primary-dark) |
 | Empty State | 일러스트/아이콘 + 안내 카피(~해요체) + 주요 CTA. 예: "아직 신청한 스터디가 없어요" |
 | Help Popover | 제목 · 값 옆 IconButton xs(「?」, 기준 안내는 ⓘ)를 누르면 아래 1.5 간격에 뜬다. surface-raised · border · radius-card · shadow-md · p-3, 폭 18rem(화면 폭 -2rem 상한), 글자 type-label-sm text-secondary. 바깥 클릭 · 포커스 이동 · Esc 로 닫고 Esc 는 단추로 포커스를 돌린다. align으로 선호 정렬을 정하고, 화면 양쪽에 최소 16px 여백이 남도록 위치를 자동 보정한다. 화면 크기 변경·스크롤에도 위치를 다시 맞춘다. 늘 펼쳐 두는 안내문 대신 쓴다 |
+| Heat Grid | 행 × 열 칸(예: 요일 × 시각)의 많고 적음을 §2-7 히트 단계로 칠한다. 칸 사이 2px 간격 · 칸 radius-xs(2px) · 행 머리 type-label-sm text-secondary · 열 머리는 몇 칸마다만 type-label-sm text-muted. 칸은 누르는 단추 — 고른 칸은 2px `fg` 테두리 + `aria-pressed`, 다시 누르면 풀린다. 마우스 · 포커스가 올라간 칸의 설명을 격자 아래 한 줄(aria-live)에 보이고, 화살표 키로 칸을 옮긴다(로빙 tabindex). 아래에 「적음 → 많음」 범례와 최대값. 좁은 화면은 격자만 가로 스크롤 |
 | Pagination / Segmented | segmented control은 track cloud, active surface-raised + shadow-xs |
 
 ---

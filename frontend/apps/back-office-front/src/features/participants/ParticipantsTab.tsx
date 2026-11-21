@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { Badge, Button, Checkbox, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { Badge, Button, Checkbox, IconButton, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { availableDaysText } from '@studyclub/utils';
 import { useIsMutating } from '@tanstack/react-query';
+import { X } from 'lucide-react';
 
 import { TableCard } from '@/components/ui';
+import { AvailabilitySection, pickLabel, type AvailabilityPick } from '@/features/participants/AvailabilitySection';
 import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupChangesDialog';
 import { GroupsSection } from '@/features/participants/GroupsSection';
 import { OwnerCaptainSection } from '@/features/participants/OwnerCaptainSection';
@@ -61,7 +64,13 @@ function ParticipantAssignment({
   data: ParticipantsResponse;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
-  const [filters, setFilters] = useUrlState(FILTER_DEFAULTS, FILTER_ALLOWED);
+  const [filters, setUrlFilters] = useUrlState(FILTER_DEFAULTS, FILTER_ALLOWED);
+  const [timePick, setTimePick] = useState<AvailabilityPick | null>(null);
+  // 반 · 시간대 필터를 바꾸면 센 사람이 달라진다 — 고른 시각은 푼다
+  const setFilters = (next: Partial<typeof FILTER_DEFAULTS>) => {
+    setUrlFilters(next);
+    setTimePick(null);
+  };
   const tz = filters.tz;
   const group = data.groups.some((g) => String(g.groupId) === filters.group) ? filters.group : 'all';
   const [selected, setSelected] = useState<number[]>([]);
@@ -80,9 +89,18 @@ function ParticipantAssignment({
   // 반 생성·수정·삭제 중에도 배정은 잠근다(지워지는 반으로 옮기지 않게). 이동 차단은 배정 저장만 본다.
   const groupSaving = useIsMutating({ mutationKey: participantKeys.groups(studyId) }) > 0;
   const busy = saving || groupSaving;
-  const rows = data.participants.filter(
+  const filtered = data.participants.filter(
     (p) => (tz === 'all' || p.timeZone === tz) && (group === 'all' || String(p.groupId) === group),
   );
+  // 참여 가능 시간은 반 · 시간대 필터로 좁힌 명단 중 지금 참여 중인 사람을 센다
+  const people = useMemo(
+    () =>
+      filtered
+        .filter((p) => p.status === 'ACTIVE' || p.status === 'PAUSED')
+        .map((p) => ({ id: p.participantId, days: p.availableDays, timeZone: p.timeZone })),
+    [filtered],
+  );
+  const rows = timePick ? filtered.filter((p) => timePick.ids.includes(p.participantId)) : filtered;
   const editable = rows.filter((p) => p.status === 'ACTIVE' || p.status === 'PAUSED');
   const picked = editable.filter((p) => selected.includes(p.participantId));
   // 스펙: 배정 실패 응답의 errorMessage 에 걸린 participantId 를 적는다.
@@ -101,6 +119,7 @@ function ParticipantAssignment({
       />
       <OwnerCaptainSection studyId={studyId} owner={data.ownerCaptain} />
       <GroupsSection studyId={studyId} data={data} disabled={busy || dirty} />
+      {data.participants.length > 0 && <AvailabilitySection people={people} pick={timePick} onPick={setTimePick} />}
       <section aria-label='참여 크루' className='space-y-3'>
         <div className='space-y-2'>
           <h2 className='font-semibold'>참여 크루 {data.participantCount}명</h2>
@@ -123,6 +142,18 @@ function ParticipantAssignment({
                 </option>
               ))}
             </Select>
+            {timePick && (
+              <span className='inline-flex items-center gap-1 rounded-pill border border-brand bg-brand-subtle pl-3 pr-1 type-label-lg text-fg'>
+                {pickLabel(timePick)}에 되는 크루 {rows.length}명
+                <IconButton
+                  size='xs'
+                  variant='tertiary'
+                  icon={<X />}
+                  aria-label='시각 필터 풀기'
+                  onClick={() => setTimePick(null)}
+                />
+              </span>
+            )}
           </div>
         </div>
         {mutation.error && (
@@ -233,6 +264,7 @@ function ParticipantAssignment({
               <th>디스코드 닉네임</th>
               <th>이메일</th>
               <th>시간대</th>
+              <th>참여 가능 요일</th>
               <th>반</th>
               <th>역할</th>
             </tr>
@@ -269,6 +301,8 @@ function ParticipantAssignment({
                   <td>{p.discordNickname ?? '-'}</td>
                   <td>{p.email}</td>
                   <td title={p.timeZone ?? undefined}>{p.timeZone ? zoneLabel(p.timeZone) : '-'}</td>
+                  {/* 크루가 고른 현지 요일 그대로 — 기준 시간대로 옮기면 하루가 이틀에 걸친다 */}
+                  <td className='whitespace-nowrap'>{availableDaysText(p.availableDays) || '-'}</td>
                   <td>
                     {data.groups.length > 1 ? (
                       // 칸 너비가 아니라 글자 너비로 — 화살표가 상자 안에 붙게 감싼다
@@ -321,7 +355,7 @@ function ParticipantAssignment({
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className='text-center text-fg-muted'>
+                <td colSpan={8} className='text-center text-fg-muted'>
                   {data.participants.length === 0 ? '아직 크루가 없습니다.' : '조건에 맞는 크루가 없습니다.'}
                 </td>
               </tr>

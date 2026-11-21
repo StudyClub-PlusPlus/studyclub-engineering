@@ -1,0 +1,40 @@
+{
+  "shots": [
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-board",
+      "title": "신청자 탭 — 참여 가능 시간 (KST 기준 · 현지 밤 빼기) · 참여 가능 요일 열",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": ["신청자"],
+      "scrollTo": "[data-anno~=\"class:3\"]"
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-picked",
+      "title": "칸을 고르면 그 시각에 되는 크루만 명단에 남는다",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": ["신청자", "목 21시 KST · 9명"],
+      "scrollTo": "[data-anno~=\"class:3\"]"
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-pt",
+      "title": "기준 시간대 PT — 같은 신청자가 PT 의 요일 · 시각으로 다시 놓인다",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": ["신청자", "PT"],
+      "scrollTo": "[data-anno~=\"class:3\"]"
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-mobile",
+      "title": "모바일 — 격자만 가로로 민다",
+      "path": "/proto/console/studies/1",
+      "viewport": "mobile",
+      "click": ["신청자"],
+      "scrollTo": "[data-anno~=\"class:3\"]"
+    }
+  ]
+}

@@ -104,3 +104,6 @@ export type { HelpPopoverProps } from './HelpPopover';
 
 export { TimeSelect } from './TimeSelect';
 export type { TimeSelectProps } from './TimeSelect';
+
+export { HeatGrid, heatLevel } from './HeatGrid';
+export type { HeatGridCell, HeatGridProps } from './HeatGrid';
