@@ -23,10 +23,12 @@ it.each([undefined, 'server-rejected-token'])('로그인은 쿠키(%s)가 남아
   expect(response.headers.get('x-middleware-next')).toBe('1');
 });
 
-it('쿠키가 없는 보호 화면은 여전히 로그인으로 보낸다', () => {
-  const response = middleware(new NextRequest('https://back-office-stage.studyclub.life/feedbacks'));
+it('액세스 쿠키가 만료된 보호 화면은 로그인 대신 갱신 라우트로 보낸다 (refresh 쿠키는 미들웨어에 안 보인다)', () => {
+  const response = middleware(new NextRequest('https://back-office-stage.studyclub.life/feedbacks?page=2'));
   expect(response.status).toBe(307);
-  expect(response.headers.get('location')).toBe('https://back-office-stage.studyclub.life/login?next=%2Ffeedbacks');
+  expect(response.headers.get('location')).toBe(
+    'https://back-office-stage.studyclub.life/api/auth/refresh?next=%2Ffeedbacks%3Fpage%3D2',
+  );
 });
 
 it('보호 화면의 쿠키는 해당 환경 이름으로만 확인한다', () => {
