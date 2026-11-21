@@ -112,6 +112,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const tabs = [
     { href: base, label: '일정' },
     { href: `${base}/attendance`, label: '출석' },
+    { href: `${base}/retro`, label: '회고', match: `${base}/retro` },
     // 공지는 보내는 사람(캡틴·네비게이터)만 쓴다. 반 멤버가 읽는 공지 목록은 없다 (POL-0010)
     ...(canEdit ? [{ href: `${base}/notice`, label: '공지' }] : []),
   ];
@@ -139,11 +140,13 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
 
         <nav data-anno='manage:2' className='mt-6 flex gap-1 border-b border-border'>
           {tabs.map((tb) => {
-            const on = pathname === tb.href;
+            // 회고 작성 페이지(…/retro/write)도 회고 탭에 머문다
+            const on = pathname === tb.href || ('match' in tb && pathname.startsWith(`${tb.match}/`));
             return (
               <Link
                 key={tb.href}
                 href={tb.href}
+                data-anno={tb.label === '회고' ? 'retro:2' : undefined}
                 aria-current={on ? 'page' : undefined}
                 className={cx(
                   '-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors',

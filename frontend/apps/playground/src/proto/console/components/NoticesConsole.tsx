@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { NoticeDialog } from '@console/components/NoticeDialog';
 import type { NoticeFormValues } from '@console/components/NoticeForm';
-import { PageHeader } from '@console/components/ui';
+import { PageHeader, SortLabel, type SortDir } from '@console/components/ui';
 import { getUser } from '@console/lib/auth';
 import { seedNotices, type Notice } from '@console/lib/notices';
 import { Button, Input, Pagination } from '@studyclub/ui';
@@ -21,38 +21,7 @@ import { Plus, Search } from 'lucide-react';
  */
 
 type SortKey = 'title' | 'postedAt' | 'updatedAt';
-type SortDir = 'asc' | 'desc';
 const PAGE_SIZE = 20;
-
-/**
- * 정렬하는 컬럼 머리 — **이름을 누른다.** 처음 누르면 오름차순, 다시 누르면 내림차순, 또 누르면 오름차순.
- * 화살표를 그리지 않는다 — 열마다 작은 화살표 두 개가 서면 머리 줄이 어수선하다.
- * 지금 정렬 중인 열은 이름이 강조색이다.
- */
-function SortLabel({
-  label,
-  active,
-  onChange,
-  anno,
-}: {
-  label: string;
-  active: SortDir | null;
-  onChange: (dir: SortDir) => void;
-  anno?: string;
-}) {
-  return (
-    <button
-      // ui-native: 표 머리 정렬 — 머리 글자 자체가 정렬 단추
-      type='button'
-      data-anno={anno}
-      onClick={() => onChange(active === 'asc' ? 'desc' : 'asc')}
-      aria-label={`${label} ${active === 'asc' ? '내림차순으로' : '오름차순으로'} 정렬`}
-      className={`whitespace-nowrap rounded-sm text-left underline-offset-4 hover:underline ${active ? 'text-brand' : ''}`}
-    >
-      {label}
-    </button>
-  );
-}
 
 export function NoticesConsole() {
   const [rows, setRows] = useState<Notice[]>(seedNotices);
@@ -101,7 +70,10 @@ export function NoticesConsole() {
     } else {
       // 작성자는 로그인한 캡틴 — TODO(api): 서버가 토큰에서 정한다
       const author = getUser()?.nickname ?? '나';
-      setRows((prev) => [{ id: `notice-${Date.now()}`, ...fields, author, postedAt: today, updatedAt: today }, ...prev]);
+      setRows((prev) => [
+        { id: `notice-${Date.now()}`, ...fields, author, postedAt: today, updatedAt: today },
+        ...prev,
+      ]);
     }
   }
 
@@ -143,15 +115,27 @@ export function NoticesConsole() {
           <thead>
             <tr>
               <th>
-                <SortLabel label='제목' active={sort?.key === 'title' ? sort.dir : null} onChange={(d) => applySort('title', d)} />
+                <SortLabel
+                  label='제목'
+                  active={sort?.key === 'title' ? sort.dir : null}
+                  onChange={(d) => applySort('title', d)}
+                />
               </th>
               <th className='whitespace-nowrap text-center'>작성자</th>
               {/* 제목만 왼쪽이다. 나머지는 값과 머리를 가운데로 맞춘다 — 날짜는 자릿수가 같아 가지런하다 */}
               <th className='whitespace-nowrap text-center'>
-                <SortLabel label='게시일' active={sort?.key === 'postedAt' ? sort.dir : null} onChange={(d) => applySort('postedAt', d)} />
+                <SortLabel
+                  label='게시일'
+                  active={sort?.key === 'postedAt' ? sort.dir : null}
+                  onChange={(d) => applySort('postedAt', d)}
+                />
               </th>
               <th className='whitespace-nowrap text-center'>
-                <SortLabel label='마지막 수정' active={sort?.key === 'updatedAt' ? sort.dir : null} onChange={(d) => applySort('updatedAt', d)} />
+                <SortLabel
+                  label='마지막 수정'
+                  active={sort?.key === 'updatedAt' ? sort.dir : null}
+                  onChange={(d) => applySort('updatedAt', d)}
+                />
               </th>
             </tr>
           </thead>
@@ -168,7 +152,9 @@ export function NoticesConsole() {
                     <span className='truncate'>{n.title}</span>
                   </button>
                 </td>
-                <td data-anno='notice:4' className='whitespace-nowrap text-center text-fg-secondary'>{n.author}</td>
+                <td data-anno='notice:4' className='whitespace-nowrap text-center text-fg-secondary'>
+                  {n.author}
+                </td>
                 <td className='tnum whitespace-nowrap text-center text-fg-secondary'>{n.postedAt}</td>
                 <td className='tnum whitespace-nowrap text-center text-fg-secondary'>{n.updatedAt}</td>
               </tr>
@@ -192,7 +178,6 @@ export function NoticesConsole() {
         onSave={save}
         onDelete={remove}
       />
-
     </div>
   );
 }

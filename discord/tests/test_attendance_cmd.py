@@ -177,6 +177,19 @@ def test_result_falls_back_to_the_id_for_an_unknown_name():
     assert "555" in message
 
 
+def test_no_meeting_says_why():
+    """Outside a session the reply alone has to explain why nobody was marked (zapp #114)."""
+    message = format_result(AttendanceResult(no_meeting=["1"]), {"1": "사람1"})
+
+    assert "예정 시각 2시간 안" in message
+
+
+def test_no_meeting_hint_is_absent_when_everyone_has_a_meeting():
+    message = format_result(AttendanceResult(unmatched=["1"]), {})
+
+    assert "예정 시각" not in message
+
+
 @pytest.mark.parametrize(
     "status, expected",
     [
