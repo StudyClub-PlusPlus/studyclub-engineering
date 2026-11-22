@@ -573,7 +573,7 @@ describe('참여 가능 시간', () => {
     const mon = await screen.findByRole('button', { name: '월 12시 KST · 1명' });
     expect(screen.getByRole('button', { name: '화 12시 KST · 1명' })).toBeVisible();
     // 요일이 없는 사람은 세지 않는다
-    expect(within(screen.getByRole('region', { name: '참여 가능 시간' })).getByText('2명')).toBeVisible();
+    expect(within(screen.getByRole('heading', { name: /^참여 가능 시간/ })).getByText('2명')).toBeVisible();
 
     await userEvent.click(mon);
     expect(mon).toHaveAttribute('aria-pressed', 'true');
@@ -612,17 +612,24 @@ describe('참여 가능 시간', () => {
   it('가장 많이 되는 시간을 누르면 그 구간 내내 되는 크루만 남기고, 「명단에서 보기」로 명단에 간다', async () => {
     const scroll = vi.fn();
     Element.prototype.scrollIntoView = scroll;
-    mount(withDays);
+    // 북미 시간대는 서머타임 규칙(Node 의 시간대 데이터 버전)에 따라 칸 경계가 달라진다 — 이 테스트는 둘 다 KST 로 둔다
+    mount({
+      ...withDays,
+      participants: withDays.participants.map((p) =>
+        p.participantId === 42 ? { ...p, timeZone: 'Asia/Seoul', availableDays: ['mon', 'tue'] } : p,
+      ),
+    });
     const best = within(await screen.findByRole('group', { name: '가장 많이 되는 시간' }));
-    // 둘 다 1명이면 긴 구간이 먼저 — 한국크루의 KST 월요일 7 ~ 23시
+    // 많이 되는 순 — 월은 둘, 화는 북미캡틴 하나
     const chips = best.getAllByRole('button');
-    expect(chips[0]).toHaveTextContent('월 7~23시 KST · 1명');
-    await userEvent.click(chips[0]!);
-    expect(chips[0]).toHaveAttribute('aria-pressed', 'true');
+    expect(chips[0]).toHaveTextContent('월 7~23시 KST · 2명');
+    expect(chips[1]).toHaveTextContent('화 7~23시 KST · 1명');
+    await userEvent.click(chips[1]!);
+    expect(chips[1]).toHaveAttribute('aria-pressed', 'true');
     const table = within(screen.getByRole('table'));
-    expect(table.getByText('한국크루')).toBeVisible();
-    expect(table.queryByText('북미캡틴')).not.toBeInTheDocument();
-    expect(screen.getByText('월 7~23시 KST에 되는 크루 1명')).toBeVisible();
+    expect(table.getByText('북미캡틴')).toBeVisible();
+    expect(table.queryByText('한국크루')).not.toBeInTheDocument();
+    expect(screen.getByText('화 7~23시 KST에 되는 크루 1명')).toBeVisible();
 
     await userEvent.click(screen.getByRole('button', { name: '명단에서 보기' }));
     expect(scroll).toHaveBeenCalled();

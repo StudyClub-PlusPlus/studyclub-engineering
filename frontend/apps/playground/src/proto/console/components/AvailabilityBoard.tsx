@@ -1,6 +1,5 @@
 'use client';
 
-import { ArrowDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { SCHEDULE_ZONES, zoneSymbol } from '@core/lib/schedule-timezone';
@@ -13,6 +12,7 @@ import {
   bestSlots,
   type AvailabilityPerson,
 } from '@studyclub/utils';
+import { ArrowDown } from 'lucide-react';
 
 /** 고른 시각 — 칸 하나면 `hour` 만, 「가장 많이 되는 시간」 구간이면 `endHour` 까지 */
 export type AvailabilityPick = { day: number; hour: number; endHour?: number; baseZone: string; ids: string[] };
