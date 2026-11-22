@@ -109,6 +109,14 @@ public interface StudyAttendanceRepository extends JpaRepository<StudyAttendance
     List<StudyAttendance> findByStudyMeetingIdInAndAccountIdIn(
             Collection<Long> studyMeetingIds, Collection<Long> accountIds);
 
+    /** 출석 한 행을 지운다 — 미체크로 되돌리기. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+            "DELETE FROM StudyAttendance a"
+                    + " WHERE a.studyMeetingId = :studyMeetingId AND a.accountId = :accountId")
+    int deleteByStudyMeetingIdAndAccountId(
+            @Param("studyMeetingId") Long studyMeetingId, @Param("accountId") Long accountId);
+
     /**
      * 반 이동 — 옛 반 예정 회차에서 떠나는 사람들의 출석 행을 상태와 상관없이 한 문장으로 지운다 (specs/study-group/spec.md 「반 · 역할 한 번에
      * 바꾸기」 5.2). 영속성 컨텍스트는 비우지 않는다 — 호출자가 잠가 둔 명부 · 회차를 이어서 고친다.

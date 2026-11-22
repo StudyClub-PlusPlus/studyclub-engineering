@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { site } from '@studyclub/mock';
+import type { Locale } from '@studyclub/types';
 import { Button, toast } from '@studyclub/ui';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 
-import { fetchAccount, profileKeys } from '@/features/profile/queries';
-import type { Locale } from '@/lib/content';
-import { DISCORD_LINK_READY, DiscordPopupError, linkDiscord, requestDiscordCode, unlinkDiscord } from '@/lib/discord';
+import { DISCORD_LINK_READY, DiscordPopupError, linkDiscord, requestDiscordCode, unlinkDiscord } from '@/features/profile/discord';
+import { profileKeys } from '@/features/profile/queries';
+import { fetchAccount } from '@/features/profile/repository';
 import { ApiError } from '@/lib/http';
 import { getQueryClient } from '@/lib/query-client';
 

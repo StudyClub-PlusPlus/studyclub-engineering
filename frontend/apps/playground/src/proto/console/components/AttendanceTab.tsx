@@ -4,9 +4,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { ClassPicker } from '@console/components/ClassPicker';
 import { hasSchedule, type StudyClass } from '@console/lib/classes';
-import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/mock';
-import { Badge, Button, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
-import { CalendarPlus, CircleHelp, Mic, Undo2 } from 'lucide-react';
+import { type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/types';
+import { Badge, Button, Checkbox, Modal, Select, SelectionCount, TableActionBar, HelpPopover } from '@studyclub/ui';
+import { attendanceRate } from '@studyclub/utils';
+import { CalendarPlus, Mic, Undo2 } from 'lucide-react';
 
 /**
  * 출석 탭 — 크루 × 회차 격자.
@@ -134,6 +135,7 @@ function Cell({
   }
   return (
     <button
+      // ui-native: 출석부 칸 — 칸 전체가 누르는 곳이고 누를 때마다 상태가 돈다
       type='button'
       onClick={readOnly ? undefined : onClick}
       disabled={disabled}
@@ -176,9 +178,6 @@ const BULK_OPTIONS: { value: AttendanceStatus | 'clear'; label: string }[] = [
   { value: 'clear', label: '미체크' },
 ];
 
-export const CHECKBOX =
-  'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
-
 /** 머리 칸의 전체 선택 — 일부만 골랐으면 「일부 선택」(indeterminate). */
 export function SelectAll({
   checked,
@@ -192,16 +191,7 @@ export function SelectAll({
   label?: string;
 }) {
   return (
-    <input
-      type='checkbox'
-      aria-label={label}
-      className={CHECKBOX}
-      checked={checked}
-      ref={(el) => {
-        if (el) el.indeterminate = partial;
-      }}
-      onChange={onChange}
-    />
+    <Checkbox label={label} hideLabel checked={checked} indeterminate={partial} onChange={onChange} />
   );
 }
 
@@ -222,57 +212,21 @@ const RATE_COL = 'w-14 sm:w-20';
  * 늘 펼쳐 두는 안내문은 두지 않는다(조작 안내 문구 없음) — 궁금한 사람만 연다.
  */
 function PresenterHelp() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
   return (
-    <span ref={ref} className='relative inline-flex align-middle'>
-      <button
-        type='button'
-        aria-label='발표 표시 설명'
-        aria-expanded={open}
-        aria-controls='presenter-help'
-        onClick={() => setOpen((v) => !v)}
-        className='grid h-6 w-6 place-items-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg'
-      >
-        <CircleHelp size={15} aria-hidden />
-      </button>
-      {open && (
-        <div
-          id='presenter-help'
-          role='dialog'
-          aria-label='발표 표시 설명'
-          className='absolute -left-24 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-2rem)] rounded-card sm:left-0 border border-border bg-surface-raised p-3 text-left type-label-sm text-fg-secondary shadow-md'
-        >
-          <p className='flex items-center gap-1.5 font-semibold text-fg'>
-            <span className='relative grid h-8 w-[3.6rem] shrink-0 place-items-center rounded-sm bg-success-100 type-label-sm text-success-700'>
-              <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
-              출석
-            </span>
-            칸 왼쪽 위 마이크 = 그 회차 발표자
-          </p>
-          <ul className='mt-2 list-disc space-y-1 pl-4'>
-            <li>일정 탭의 발표자1 · 발표자2에서 가져옵니다. 여기서 따로 입력하지 않습니다.</li>
-            <li>발표자를 바꾸면 마이크도 따라 바뀝니다.</li>
-            <li>「발표 횟수」는 발표자로 맡은 회차 수입니다. 아직 오지 않은 회차의 배정도 셉니다.</li>
-          </ul>
-        </div>
-      )}
-    </span>
+    <HelpPopover label='발표 표시 설명'>
+      <p className='flex items-center gap-1.5 font-semibold text-fg'>
+        <span className='relative grid h-8 w-[3.6rem] shrink-0 place-items-center rounded-sm bg-success-100 type-label-sm text-success-700'>
+          <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
+          출석
+        </span>
+        칸 왼쪽 위 마이크 = 그 회차 발표자
+      </p>
+      <ul className='mt-2 list-disc space-y-1 pl-4'>
+        <li>일정 탭의 발표자1 · 발표자2에서 가져옵니다. 여기서 따로 입력하지 않습니다.</li>
+        <li>발표자를 바꾸면 마이크도 따라 바뀝니다.</li>
+        <li>「발표 횟수」는 발표자로 맡은 회차 수입니다. 아직 오지 않은 회차의 배정도 셉니다.</li>
+      </ul>
+    </HelpPopover>
   );
 }
 
@@ -693,7 +647,8 @@ export function AttendanceTab({
                             />
                           </span>
                         )}
-                        닉네임
+                        {/* 열 이름은 따로 감싼다 — 전체 선택 체크박스의 스크린리더 라벨과 한 글자 덩어리가 되지 않게 */}
+                        <span>닉네임</span>
                       </span>
                     </th>
                     <th
@@ -765,10 +720,9 @@ export function AttendanceTab({
                               // 고를 수 없는 줄(중단한 사람)도 자리를 비워 이름 열을 맞춘다.
                               <span className='mr-1.5 flex w-4 shrink-0'>
                                 {c.manageable && !c.left && (
-                                  <input
-                                    type='checkbox'
-                                    aria-label={`${c.name} 선택`}
-                                    className={CHECKBOX}
+                                  <Checkbox
+                                    label={`${c.name} 선택`}
+                                    hideLabel
                                     checked={picked.has(c.id)}
                                     onChange={() => pick(c.id)}
                                     disabled={saving}
@@ -803,6 +757,7 @@ export function AttendanceTab({
                               // 저장 전이라 아직 중단이 아니다 — 칩 없이 되돌리기 아이콘만. 줄 색이 예정임을 말한다.
                               // 가리키면(키보드 포커스도) 바탕 · 아이콘이 진해지고 오른쪽에 「중단 예정 취소」 말풍선 — 브라우저 title 은 늦게 떠서 쓰지 않는다
                               <button
+                                // ui-native: 출석부 줄의 되돌리기 아이콘 — 옆으로 뜨는 고유 말풍선이 붙어 IconButton 으로 담지 못한다
                                 type='button'
                                 aria-label={`${c.name} 중단 예정 취소`}
                                 onClick={() => unmarkWithdraw(c.id)}

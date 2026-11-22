@@ -5,11 +5,12 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
+
+import { getUser, type SessionUser } from '@/features/auth/auth';
+import { IS_DEV, syncPreview } from '@/features/auth/preview';
 import { ProfileCard } from '@/features/profile/ProfileCard';
-import { getUser, type SessionUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
 import { PAGE } from '@/lib/layout';
-import { IS_DEV, syncPreview } from '@/lib/preview';
 
 /**
  * 마이페이지 — 내 정보만 다룬다.

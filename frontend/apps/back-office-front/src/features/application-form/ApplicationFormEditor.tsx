@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/mock';
-import { Button, Checkbox, Input, Select, Textarea } from '@studyclub/ui';
+import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/types';
+import { Button, Checkbox, Input, Select, Textarea, IconButton } from '@studyclub/ui';
 import { ArrowDown, ArrowUp, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useForm } from 'react-hook-form';
 
@@ -14,9 +14,9 @@ import {
   MARKDOWN_HINT,
   OptionEditor,
   QuestionFillView,
-} from './ApplicationFormUi';
-import { allowsOther, needsOptions, QUESTION_TYPES, TYPE_LABEL } from './question';
-import { applicationFormSchema, type ApplicationFormValues } from './schema';
+} from '@/features/application-form/ApplicationFormUi';
+import { allowsOther, needsOptions, QUESTION_TYPES, TYPE_LABEL } from '@/features/application-form/question';
+import { applicationFormSchema, type ApplicationFormValues } from '@/features/application-form/schema';
 
 const HEADER_ID = '__form-header__';
 const DISCORD_QUESTION: ApplicationQuestion = {
@@ -25,6 +25,13 @@ const DISCORD_QUESTION: ApplicationQuestion = {
   type: 'text',
   required: true,
   placeholder: '홍길동/SWE/산호세/시스템디자인',
+};
+const AVAILABLE_DAYS_QUESTION: ApplicationQuestion = {
+  id: 'availableDays',
+  label: '참여 가능한 요일',
+  type: 'checkbox',
+  required: true,
+  options: ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'],
 };
 
 export function ApplicationFormEditor({
@@ -137,6 +144,9 @@ export function ApplicationFormEditor({
         )}
         <section className={formCardClass()}>
           <QuestionFillView q={DISCORD_QUESTION} disabled />
+        </section>
+        <section className={formCardClass()}>
+          <QuestionFillView q={AVAILABLE_DAYS_QUESTION} disabled />
         </section>
         {!readOnly && (
           <div className='flex justify-end'>
@@ -292,41 +302,38 @@ export function ApplicationFormEditor({
                   </div>
                   {!readOnly && (
                     <div className='flex shrink-0 flex-col gap-1'>
-                      <button
-                        type='button'
+                      <IconButton
+                        variant='tertiary'
+                        size='xs'
                         aria-label={`질문 ${index + 1} 수정`}
                         onClick={(event) => {
                           event.stopPropagation();
                           setSelectedId(question.id);
                         }}
-                        className='p-1 text-fg-muted'
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        type='button'
+                        icon={<Pencil />}
+                      />
+                      <IconButton
+                        variant='tertiary'
+                        size='xs'
                         aria-label={`질문 ${index + 1} 위로`}
                         disabled={disabled || Boolean(selectedId) || index === 0}
                         onClick={(event) => {
                           event.stopPropagation();
                           reorder(index, index - 1);
                         }}
-                        className='p-1 text-fg-muted disabled:opacity-30'
-                      >
-                        <ArrowUp size={15} />
-                      </button>
-                      <button
-                        type='button'
+                        icon={<ArrowUp />}
+                      />
+                      <IconButton
+                        variant='tertiary'
+                        size='xs'
                         aria-label={`질문 ${index + 1} 아래로`}
                         disabled={disabled || Boolean(selectedId) || index === fields.length - 1}
                         onClick={(event) => {
                           event.stopPropagation();
                           reorder(index, index + 1);
                         }}
-                        className='p-1 text-fg-muted disabled:opacity-30'
-                      >
-                        <ArrowDown size={15} />
-                      </button>
+                        icon={<ArrowDown />}
+                      />
                     </div>
                   )}
                 </div>

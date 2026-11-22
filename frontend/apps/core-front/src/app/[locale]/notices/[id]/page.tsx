@@ -1,14 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import type { Locale } from '@studyclub/types';
+import { ButtonLink } from '@studyclub/ui';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Metadata } from 'next';
 
-import { NoticeDate } from '@/components/NoticeDate';
-import { NoticesLoadError } from '@/components/NoticesLoadError';
-import type { ApiSiteNoticeSummary } from '@/lib/api';
+import { NoticeDate } from '@/features/site-notices/NoticeDate';
+import { NoticesLoadError } from '@/features/site-notices/NoticesLoadError';
+import { getNotice } from '@/features/site-notices/server';
+import type { ApiSiteNoticeSummary } from '@/features/site-notices/types';
 import { autolink } from '@/lib/autolink';
-import { getNotice, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 import { PAGE, READ } from '@/lib/layout';
 import { pageMetadata } from '@/lib/seo';
@@ -93,12 +95,9 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
       </nav>
 
       <div className='mt-8 flex justify-end'>
-        <Link
-          href={base}
-          className='inline-flex items-center rounded-full border border-(--color-border) bg-(--color-bg) px-6 py-2.5 text-sm font-semibold hover:bg-(--color-surface-subtle)'
-        >
+        <ButtonLink linkAs={Link} href={base} variant='secondary'>
           {t({ ko: '목록으로', en: 'Back to list' }, locale)}
-        </Link>
+        </ButtonLink>
       </div>
     </div>
   );

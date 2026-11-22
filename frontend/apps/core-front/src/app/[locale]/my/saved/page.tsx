@@ -4,21 +4,21 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import { Button, Card, EmptyState, categoryGradient, categoryMeta } from '@studyclub/ui';
+import type { Locale, Study } from '@studyclub/types';
+import { Button, Card, EmptyState, IconButton, categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Heart } from 'lucide-react';
 
+import { getUser } from '@/features/auth/auth';
+import { useBookmarks } from '@/features/bookmarks/queries';
 import { useStudies } from '@/features/studies/queries';
 import { track } from '@/lib/analytics';
-import { getUser } from '@/lib/auth';
-import type { Locale, Study } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import { PAGE } from '@/lib/layout';
-import { getBookmarks, setBookmarked } from '@/lib/me';
 
 /**
  * 찜한 스터디 — 프로필 드롭다운의 「찜한 스터디」 목적지. 참여 목록과 섞지 않는다.
  *
- * 찜 목록은 하트 버튼이 남긴 브라우저 값이다 — 북마크 추가·해제 API 가 아직 없다 (specs/study-bookmark).
+ * 찜 목록은 서버(GET /api/me/bookmarks)에 저장된 값이다 — 다른 기기에서 담은 것도 보인다 (specs/study-bookmark).
  * 스터디 정보는 실제 목록 API(GET /api/studies)에서 찾는다. 목록에 없는 스터디(비공개 전환 등)는 보이지 않는다.
  */
 export default function SavedStudiesPage() {
@@ -26,7 +26,7 @@ export default function SavedStudiesPage() {
   const router = useRouter();
   const locale = ((params?.locale as string) ?? 'ko') as Locale;
   const [ready, setReady] = useState(false);
-  const [ids, setIds] = useState<string[]>([]);
+  const { ids, ready: bookmarksReady, toggle } = useBookmarks();
   const { data: studies = [], isPending } = useStudies({});
 
   useEffect(() => {
@@ -39,7 +39,6 @@ export default function SavedStudiesPage() {
       router.replace(`/${locale}/onboarding?next=${encodeURIComponent(`/${locale}/my/saved`)}`);
       return;
     }
-    setIds(getBookmarks());
     setReady(true);
   }, [locale, router]);
 
@@ -52,14 +51,13 @@ export default function SavedStudiesPage() {
       .reverse();
   }, [ids, studies]);
 
-  if (!ready || isPending) {
+  if (!ready || !bookmarksReady || isPending) {
     return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
   function unsave(studyId: string) {
     track({ name: 'Study Unbookmarked', props: { study_id: studyId, source: 'saved_page' } });
-    setBookmarked(studyId, false);
-    setIds(getBookmarks());
+    void toggle(studyId, false);
   }
 
   return (
@@ -103,14 +101,12 @@ export default function SavedStudiesPage() {
                     </Link>
                     <p className='mt-0.5 type-body-sm text-fg-muted'>{label}</p>
                   </div>
-                  <button
-                    type='button'
+                  <IconButton
+                    variant='tertiary'
                     aria-label='찜한 스터디에서 빼기'
-                    className='grid h-9 w-9 place-items-center rounded-full text-error-500 hover:bg-surface-2'
+                    icon={<Heart strokeWidth={2} className='fill-current text-error-500' />}
                     onClick={() => unsave(study.id)}
-                  >
-                    <Heart size={16} strokeWidth={2} className='fill-current' />
-                  </button>
+                  />
                 </Card>
               </li>
             );

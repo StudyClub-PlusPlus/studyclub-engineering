@@ -6,7 +6,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { clearSession, getUser, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { resetMemberData } from '@core/lib/me';
-import { Button } from '@studyclub/ui';
+import { Button, Select } from '@studyclub/ui';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
 import { SPEC } from './spec';
@@ -85,32 +85,33 @@ function LeavePageInner() {
     <div className='mx-auto w-full max-w-[640px] px-6 py-10'>
       <ScreenSpecRegistrar spec={SPEC} />
 
-      <button
+      <Button
         type='button'
+        variant='tertiary'
+        size='sm'
+        leadingIcon={<ArrowLeft size={15} />}
         onClick={() => { cancelLeave(); router.push(`/proto/core/${locale}/my`); }}
-        className='mb-6 inline-flex items-center gap-1.5 type-label-lg text-fg-muted hover:text-fg'
+        className='mb-6'
       >
-        <ArrowLeft size={15} /> 마이페이지
-      </button>
+        마이페이지
+      </Button>
 
       <header data-anno='leave:1'>
         <h1 className='type-headline-lg'>회원 탈퇴</h1>
         <ul className='mt-3 flex flex-col gap-1.5 type-body-sm text-fg-secondary'>
           <li>· 탈퇴는 즉시 처리되며 되돌릴 수 없습니다.</li>
-          <li>· 같은 구글 계정으로 다시 가입할 수 있지만, 지난 기록은 돌아오지 않습니다.</li>
+          <li>· 재가입은 가능하지만 이전 기록은 복구되지 않습니다.</li>
           <li>· 회원 탈퇴 시 홈페이지에 저장된 디스코드 연동 정보도 삭제됩니다.</li>
         </ul>
       </header>
 
       <section data-anno='leave:2' className='mt-7'>
-        <label htmlFor='leave-reason' className='type-label-lg'>
-          탈퇴 사유 <span className='font-semibold text-fg-muted'>(선택)</span>
-        </label>
-        <select
+        <Select
           id='leave-reason'
+          label='탈퇴 사유'
+          labelHint='선택'
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          className='mt-2 h-11 w-full rounded-control border border-border bg-surface px-3 type-body-md'
         >
           <option value=''>사유 선택</option>
           {REASONS.map((r) => (
@@ -118,7 +119,7 @@ function LeavePageInner() {
               {r}
             </option>
           ))}
-        </select>
+        </Select>
       </section>
 
       {isNavigator && (

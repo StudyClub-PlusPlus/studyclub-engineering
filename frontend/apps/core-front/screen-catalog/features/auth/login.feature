@@ -1,3 +1,5 @@
+# PRD 연결 정본: docs/frontend-development-guide/core-e2e-prd-map.md
+# 설명용 명세. 실제 실행 범위는 .meta.ts의 assertions·steps이며 전체 행동 완료를 뜻하지 않는다.
 Feature: 로그인
 
   Scenario: 로그인 페이지 — 기본
@@ -15,3 +17,7 @@ Feature: 로그인
     When 프로필 메뉴의 "찜한 스터디"로 들어간다
     Then 담은 스터디가 카드로 보이고 하트를 누르면 빠진다
     And 담은 것이 없으면 "찜한 스터디가 없습니다" 안내가 보인다
+
+  Scenario: 회원 탈퇴
+    Given 로그인한 회원이 마이페이지의 "회원 탈퇴"로 들어간다
+    Then 안내 두 줄과 탈퇴 사유(선택) · 탈퇴 버튼이 보인다

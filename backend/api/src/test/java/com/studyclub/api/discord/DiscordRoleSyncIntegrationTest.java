@@ -163,20 +163,27 @@ class DiscordRoleSyncIntegrationTest {
         Account withdrawn = linked(SystemRole.MEMBER);
         Account member = linked(SystemRole.MEMBER);
         Account endedStudy = linked(SystemRole.MEMBER);
+        Account pastEndAt = linked(SystemRole.MEMBER);
         Account unlinked = account(SystemRole.MEMBER);
         Study ongoing = study(StudyStatus.ONGOING);
         Study ended = study(StudyStatus.ENDED);
+        // STATUS 는 OPEN 에 머물러 있지만 END_AT 이 지났다 — 끝난 스터디다
+        Study openButOver = study(StudyStatus.OPEN, Instant.now().minusSeconds(60));
         participant(active, ongoing, ParticipantRole.LEADER, ParticipantStatus.ACTIVE);
         participant(paused, ongoing, ParticipantRole.LEADER, ParticipantStatus.PAUSED);
         participant(withdrawn, ongoing, ParticipantRole.LEADER, ParticipantStatus.WITHDRAWN);
         participant(member, ongoing, ParticipantRole.MEMBER, ParticipantStatus.ACTIVE);
         participant(endedStudy, ended, ParticipantRole.LEADER, ParticipantStatus.ACTIVE);
+        participant(pastEndAt, openButOver, ParticipantRole.LEADER, ParticipantStatus.ACTIVE);
         participant(unlinked, ongoing, ParticipantRole.LEADER, ParticipantStatus.ACTIVE);
 
-        assertThat(studyParticipantRepository.findNavigatorDiscordIds())
+        assertThat(studyParticipantRepository.findNavigatorDiscordIds(Instant.now()))
                 .contains(active.getDiscordId(), paused.getDiscordId())
                 .doesNotContain(
-                        withdrawn.getDiscordId(), member.getDiscordId(), endedStudy.getDiscordId())
+                        withdrawn.getDiscordId(),
+                        member.getDiscordId(),
+                        endedStudy.getDiscordId(),
+                        pastEndAt.getDiscordId())
                 .doesNotContainNull();
     }
 
@@ -205,6 +212,10 @@ class DiscordRoleSyncIntegrationTest {
     }
 
     private Study study(StudyStatus status) {
+        return study(status, null);
+    }
+
+    private Study study(StudyStatus status, Instant endAt) {
         StudyProgram program =
                 studyProgramRepository.save(
                         StudyProgram.builder()
@@ -219,7 +230,8 @@ class DiscordRoleSyncIntegrationTest {
                         .category(StudyCategory.ALGORITHM)
                         .description("설명")
                         .status(status)
-                        .startAt(Instant.now())
+                        .startAt(Instant.now().minusSeconds(3600))
+                        .endAt(endAt)
                         .build());
     }
 

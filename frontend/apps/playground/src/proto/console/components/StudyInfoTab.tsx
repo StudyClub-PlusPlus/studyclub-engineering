@@ -9,7 +9,7 @@ import {
   type StudyFormErrors,
   type StudyFormValues,
 } from '@console/components/StudyForm';
-import type { Study } from '@studyclub/mock';
+import type { Study } from '@studyclub/types';
 import { Button, Modal } from '@studyclub/ui';
 
 /**
@@ -60,15 +60,9 @@ export function StudyInfoTab({ study }: { study: Study }) {
 
       <div className='mt-6 flex items-center gap-3 border-t border-border pt-4'>
         {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}
-        <button
-          type='button'
-          data-anno='edit:3'
-          onClick={() => setConfirmDelete(true)}
-          disabled={saving}
-          className='h-10 type-label-lg text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
-        >
+        <Button type='button' variant='danger' data-anno='edit:3' onClick={() => setConfirmDelete(true)} disabled={saving}>
           스터디 삭제
-        </button>
+        </Button>
         <div className='ml-auto flex items-center gap-3'>
           {saved && <span className='type-label-lg text-success-700'>저장되었습니다.</span>}
           <span data-anno='edit:2'>

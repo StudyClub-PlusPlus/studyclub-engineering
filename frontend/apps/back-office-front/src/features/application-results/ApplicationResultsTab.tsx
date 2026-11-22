@@ -2,9 +2,9 @@
 
 import { Button, Segmented } from '@studyclub/ui';
 
-import { useApplicationResults } from './queries';
-import { QuestionSummary } from './QuestionSummary';
-import { RespondentsTable } from './RespondentsTable';
+import { useApplicationResults } from '@/features/application-results/queries';
+import { QuestionSummary } from '@/features/application-results/QuestionSummary';
+import { RespondentsTable } from '@/features/application-results/RespondentsTable';
 import { ApiError } from '@/lib/http';
 import { useUrlState } from '@/lib/use-url-state';
 

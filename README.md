@@ -21,15 +21,17 @@ frontend/                # Node 워크스페이스 (pnpm + turbo)
   packages/
     design/              # 디자인 토큰 & 정본 CSS (@studyclub/design — base.css, core.css, console.css)
     ui/                  # 공용 UI 컴포넌트 (@studyclub/ui — Storybook 포함)
-    mock/                # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티 (@studyclub/mock)
+    mock/                # mock 데이터 + MSW API 계층 (@studyclub/mock)
+    types/               # 공용 도메인·국제화 타입 (@studyclub/types)
+    utils/               # 공용 함수·상수 (@studyclub/utils)
 backend/                 # Spring Boot 4 멀티모듈 (Gradle Kotlin DSL, Java 25)
   api/                   # 실행 모듈 — REST API (:8080)
   domain/                # 도메인 모델
   common/                # 공통 (ApiResponse 등)
 ```
 
-현재 프론트는 `@studyclub/mock` 패키지의 MSW(Mock Service Worker) 계층을 통해 Mock API와 연동되어 동작하며(DevTool UI를 통해 정상/404/500/빈 목록 등 시나리오 제어 가능), 백엔드는 기본 스캐폴드 단계입니다.
-실 API 연동 지점은 코드에 `// TODO(api)` 로 표시돼 있습니다.
+core-front·back-office-front는 실제 백엔드 API를 사용하며, 개발 환경에서는 앱별 조건에 따라 MSW를 활성화합니다. playground는 mock 기반 프로토타입입니다. 공용 타입·함수는 mock과 분리된 `@studyclub/types`·`@studyclub/utils`에서 직접 참조합니다.
+앱별 기능 구조와 패키지 의존성은 [프론트 프로젝트 구조](docs/frontend-development-guide/project-structure.md)를 참고하세요.
 
 ## 실행
 

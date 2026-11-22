@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { useEffect, useRef } from 'react';
 
-import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/mock';
-import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
+import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/types';
+import { Checkbox, Input, Select, Textarea, Button, IconButton } from '@studyclub/ui';
 import { Pencil, X } from 'lucide-react';
 
-import { allowsOther } from './question';
+import { allowsOther } from '@/features/application-form/question';
 
 const TEXT_ANSWER_MAX = 200;
 const TEXTAREA_ANSWER_MAX = 2_000;
@@ -198,17 +198,17 @@ export function FormHeaderCard({
       className={`relative ${formCardClass(selected)} border-t-4 border-t-brand ${editable && !selected ? 'cursor-pointer' : ''}`}
     >
       {editable && !selected && (
-        <button
-          type='button'
+        <IconButton
+          variant='tertiary'
+          size='xs'
           aria-label='설문지 제목·설명 수정'
           onClick={(ev) => {
             ev.stopPropagation();
             onSelect?.();
           }}
-          className='absolute right-4 top-4 text-fg-muted transition-colors hover:text-fg'
-        >
-          <Pencil size={15} />
-        </button>
+          icon={<Pencil />}
+          className='absolute right-4 top-4'
+        />
       )}
 
       {editing ? (
@@ -253,7 +253,9 @@ export function FormHeaderCard({
 
 export function OptionMarker({ type, index }: { type: ApplicationQuestionType; index?: number }) {
   if (type === 'select') {
-    return <span className='w-5 shrink-0 text-center type-label-sm tabular-nums text-fg-muted'>{(index ?? 0) + 1}.</span>;
+    return (
+      <span className='w-5 shrink-0 text-center type-label-sm tabular-nums text-fg-muted'>{(index ?? 0) + 1}.</span>
+    );
   }
   if (type === 'checkbox') {
     return <span className='h-4 w-4 shrink-0 rounded-xs border border-border' aria-hidden />;
@@ -296,6 +298,7 @@ export function OptionEditor({
         <div key={i} className='flex items-center gap-2'>
           <OptionMarker type={type} index={i} />
           <input
+            // ui-native: 신청 폼 편집 — 선택지 이름을 그 자리에서 고치는 밑줄 칸(구글 폼 모양)
             ref={(el) => {
               inputRefs.current[i] = el;
             }}
@@ -312,15 +315,14 @@ export function OptionEditor({
             placeholder={`옵션 ${i + 1}`}
             className='h-9 min-w-0 flex-1 border-0 border-b border-transparent bg-transparent px-1 type-body-sm text-neutral-900 placeholder:text-fg-placeholder transition-[border-color] hover:border-border focus:border-brand focus:outline-none'
           />
-          <button
-            type='button'
+          <IconButton
+            variant='tertiary'
+            size='xs'
             aria-label={`${opt || `옵션 ${i + 1}`} 삭제`}
             onClick={() => onRemove(i)}
             disabled={options.length <= 1}
-            className='text-fg-muted transition-colors hover:text-fg disabled:opacity-30'
-          >
-            <X size={15} />
-          </button>
+            icon={<X />}
+          />
         </div>
       ))}
 
@@ -328,32 +330,21 @@ export function OptionEditor({
         <div className='flex items-center gap-2'>
           <OptionMarker type={type} />
           <span className='h-9 flex-1 px-1 type-body-sm text-fg-muted'>기타…</span>
-          <button
-            type='button'
-            aria-label='기타 삭제'
-            onClick={() => onToggleOther(false)}
-            className='text-fg-muted transition-colors hover:text-fg'
-          >
-            <X size={15} />
-          </button>
+          <IconButton variant='tertiary' size='xs' aria-label='기타 삭제' onClick={() => onToggleOther(false)} icon={<X />} />
         </div>
       )}
 
       <div className='flex items-center gap-2 pt-0.5'>
         <OptionMarker type={type} index={options.length} />
-        <button type='button' onClick={onAdd} className='type-label-lg text-brand hover:underline'>
+        <Button type='button' variant='tertiary' size='sm' onClick={onAdd}>
           옵션 추가
-        </button>
+        </Button>
         {showOther && !allowOther && (
           <>
             <span className='type-label-sm text-fg-muted'>또는</span>
-            <button
-              type='button'
-              onClick={() => onToggleOther(true)}
-              className='type-label-lg text-brand hover:underline'
-            >
+            <Button type='button' variant='tertiary' size='sm' onClick={() => onToggleOther(true)}>
               「기타」 추가
-            </button>
+            </Button>
           </>
         )}
       </div>
@@ -448,6 +439,7 @@ export function QuestionFillView({
               className={`inline-flex items-center gap-2 ${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             >
               <input
+                // ui-native: 신청 폼 객관식 — 구글 폼 모양을 그대로 따른 설문 라디오
                 type='radio'
                 name={q.id}
                 disabled={locked}
@@ -461,6 +453,7 @@ export function QuestionFillView({
           {q.allowOther && (
             <label className={`inline-flex items-center gap-2 ${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
               <input
+                // ui-native: 신청 폼 「기타」 라디오 — 구글 폼 모양을 그대로 따른 설문 라디오
                 type='radio'
                 name={q.id}
                 disabled={locked}
@@ -468,6 +461,7 @@ export function QuestionFillView({
               />
               <span className='type-body-sm text-neutral-800'>기타:</span>
               <input
+                // ui-native: 신청 폼 「기타」 답 — 선택지 줄 안의 밑줄 칸
                 disabled={locked}
                 maxLength={OTHER_ANSWER_MAX}
                 className='h-8 min-w-0 flex-1 border-0 border-b border-border bg-transparent px-1 type-body-sm'

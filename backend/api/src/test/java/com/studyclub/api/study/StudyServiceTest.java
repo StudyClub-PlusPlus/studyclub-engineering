@@ -66,6 +66,10 @@ class StudyServiceTest {
                         null,
                         null,
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null);
 
         assertThatThrownBy(() -> studyService.create(1L, request))
@@ -90,6 +94,10 @@ class StudyServiceTest {
                         null,
                         Instant.now().minusSeconds(3600),
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null);
 
         assertThat(request.studyKind()).isEqualTo(StudyKind.STUDY);
@@ -112,6 +120,10 @@ class StudyServiceTest {
                         "소개",
                         null,
                         StudyCategory.ALGORITHM,
+                        null,
+                        null,
+                        null,
+                        null,
                         null,
                         null,
                         null,
@@ -140,6 +152,10 @@ class StudyServiceTest {
                         "소개",
                         null,
                         StudyCategory.ALGORITHM,
+                        null,
+                        null,
+                        null,
+                        null,
                         null,
                         null,
                         null,
@@ -326,7 +342,20 @@ class StudyServiceTest {
 
     private StudyCreateRequest validCreateRequest() {
         return new StudyCreateRequest(
-                null, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null, null);
+                null,
+                null,
+                "스터디",
+                "소개",
+                null,
+                StudyCategory.ALGORITHM,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
     private StudyUpdateRequest validUpdateRequest() {

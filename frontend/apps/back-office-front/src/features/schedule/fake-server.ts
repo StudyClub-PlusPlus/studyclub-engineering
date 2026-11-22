@@ -1,8 +1,9 @@
-// 테스트용 가짜 서버 — 일정 · 출석 탭이 부르는 API 를 메모리로 흉내 낸다. 앱 코드는 import 하지 않는다.
-// 경로 · 본문 · 응답 모양은 백엔드 컨트롤러와 같다 (specs/study-meeting · specs/attendance · specs/study-group).
-import type { ApiGroupMeetings } from './repository';
 import type { ApiAttendance } from '@/features/attendance/repository';
 import type { ParticipantsResponse } from '@/features/participants/types';
+import type { ApiGroupMeetings } from '@/features/schedule/repository';
+
+// 테스트용 가짜 서버 — 일정 · 출석 탭이 부르는 API 를 메모리로 흉내 낸다. 앱 코드는 import 하지 않는다.
+// 경로 · 본문 · 응답 모양은 백엔드 컨트롤러와 같다 (specs/study-meeting · specs/attendance · specs/study-group).
 
 type Status = 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED';
 
@@ -21,6 +22,8 @@ export type FakeState = {
   meetings: FakeMeeting[];
   rules: Record<number, string | null>;
   timezone: Record<number, string>;
+  startTime: Record<number, string | null>;
+  daysOfWeek: Record<number, string[] | null>;
   /** `${participantId}:${meetingId}` → 상태 */
   attendance: Record<string, Status>;
   leftAt: Record<number, string>;
@@ -39,6 +42,8 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
     meetings: [],
     rules: {},
     timezone: {},
+    startTime: {},
+    daysOfWeek: {},
     attendance: {},
     leftAt: {},
     ...structuredClone(init),
@@ -64,9 +69,10 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
         id: groupId,
         name: group.name,
         timezone: state.timezone[groupId] ?? 'Asia/Seoul',
-        startTime: null,
+        startTime: state.startTime[groupId] ?? null,
         navigatorName: null,
         rules: state.rules[groupId] ?? null,
+        daysOfWeek: state.daysOfWeek[groupId] ?? null,
       },
       me: { participantId: null, canEdit: true },
       participants: active(groupId)
@@ -102,6 +108,7 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
       participants: people.map((p) => ({
         participantId: p.participantId,
         displayName: p.nickname,
+        discordNickname: p.discordNickname,
         participantRole: p.participantRole,
         captain: p.captain,
         participantStatus: p.status,
@@ -161,6 +168,21 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
       const gone = new Set(body.meetingIds as number[]);
       state.meetings = state.meetings.filter((x) => !gone.has(x.id));
       return noContent();
+    }
+    if (method === 'PATCH' && (m = path.match(/^\/api\/admin\/studies\/(\d+)\/groups\/(\d+)$/))) {
+      const groupId = Number(m[2]);
+      const group = state.participants.groups.find((g) => g.groupId === groupId);
+      if (!group) return fail(404, '반을 찾을 수 없습니다.');
+      if (body.timezone != null) state.timezone[groupId] = body.timezone as string;
+      if (body.startTime != null) state.startTime[groupId] = body.startTime as string;
+      if (body.daysOfWeek != null) state.daysOfWeek[groupId] = body.daysOfWeek as string[];
+      return ok({
+        groupId,
+        name: group.name,
+        daysOfWeek: state.daysOfWeek[groupId] ?? null,
+        startTime: state.startTime[groupId] ?? null,
+        timezone: state.timezone[groupId] ?? 'Asia/Seoul',
+      });
     }
     if (method === 'PUT' && (m = path.match(/^\/api\/admin\/studies\/\d+\/groups\/(\d+)\/rules$/))) {
       state.rules[Number(m[1])] = body.rules as string | null;

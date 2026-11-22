@@ -14,18 +14,19 @@ import {
   useGroupMeetings,
   useSaveRules,
   useSetKickoff,
+  useUpdateGroupTime,
   useUpdateMeetings,
-} from './api';
-import { distinctNames, useCrew } from './crew';
-import { GroupInfoCard } from './GroupInfoCard';
-import { GroupPicker } from './GroupPicker';
-import { useScheduleGroups, withServerTz } from './groups';
-import { GroupTimeDialog } from './GroupTimeDialog';
-import { groupTimeLabel, hasTime } from './meetings';
-import { ScheduleTable } from './ScheduleTable';
-import { saveGroupTime } from './store';
-import { zonedInstant } from './time';
+} from '@/features/schedule/api';
+import { distinctNames, useCrew } from '@/features/schedule/crew';
+import { GroupInfoCard } from '@/features/schedule/GroupInfoCard';
+import { GroupPicker } from '@/features/schedule/GroupPicker';
+import { useScheduleGroups, withServerTz } from '@/features/schedule/groups';
+import { GroupTimeDialog } from '@/features/schedule/GroupTimeDialog';
+import { groupTimeLabel, hasTime } from '@/features/schedule/meetings';
+import { ScheduleTable } from '@/features/schedule/ScheduleTable';
+import { zonedInstant } from '@/features/schedule/time';
 import type { ApiStudyDetail } from '@/features/studies/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /**
  * 일정 탭 — 반마다 회차를 만들고 고친다. 명세: playground `console/studies/[id]/spec.ts` 의 `SCHEDULE_SPEC`.
@@ -58,11 +59,8 @@ export function ScheduleTab({
   onStartedAdding?: () => void;
 }) {
   const studyId = detail.id;
-  /** 스터디 시간은 localStorage 라 렌더 트리거가 없다 — 바꿀 때마다 올려 다시 읽는다. */
-  const [rev, setRev] = useState(0);
-
   // 신청자 탭에서 만든 서버 반 — 둘 이상이면 반 칩이 선다
-  const { groups, error: groupsError } = useScheduleGroups(studyId, rev);
+  const { groups, error: groupsError } = useScheduleGroups(studyId);
   const picked = groups.find((g) => g.id === groupId) ?? groups[0];
   const serverGroupId = picked ? Number(picked.id) : undefined;
   const query = useGroupMeetings(studyId, serverGroupId);
@@ -101,13 +99,15 @@ export function ScheduleTab({
   const onTableDirty = useCallback((d: boolean) => setTableDirty(d), []);
   const onRulesDirty = useCallback((d: boolean) => setRulesDirty(d), []);
 
-  const tz = group?.time.tz ?? 'Asia/Seoul';
+  const displayTz = useDisplayTimeZone();
+  const tz = group?.time.tz ?? displayTz;
   const writeGroupId = serverGroupId ?? 0;
   const addMeetings = useAddMeetings(studyId, writeGroupId, tz);
   const updateMeetings = useUpdateMeetings(studyId, writeGroupId, tz);
   const deleteMeetings = useDeleteMeetings(studyId, writeGroupId);
   const saveRules = useSaveRules(studyId, writeGroupId);
   const setKickoff = useSetKickoff(studyId, writeGroupId);
+  const updateGroupTime = useUpdateGroupTime(studyId, writeGroupId);
   /** 서버가 막으면(403 · 409 · 400) 그 문구를 그대로 띄운다 — 표는 다시 읽어 서버 값으로 돌아간다. */
   const onError = (fallback: string) => (err: Error) => toast.error(err.message || fallback);
 
@@ -189,11 +189,14 @@ export function ScheduleTab({
       {timeOpen && (
         <GroupTimeDialog
           group={group}
+          upcomingCount={meetings.filter((m) => !m.started).length}
           onClose={() => setTimeOpen(false)}
-          onSave={(time) => {
-            saveGroupTime(studyId, group.id, time);
+          onSave={(time, moveUpcomingMeetings) => {
             setTimeOpen(false);
-            setRev((n) => n + 1);
+            updateGroupTime.mutate(
+              { weekdays: time.weekdays, time: time.time, tz: time.tz, moveUpcomingMeetings },
+              { onError: onError('스터디 시간을 저장하지 못했습니다.') },
+            );
           }}
         />
       )}

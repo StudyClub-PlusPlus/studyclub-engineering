@@ -18,7 +18,9 @@
 ## 개요
 
 `@studyclub/ui` 패키지에 Storybook 9 (react-vite) 이 세팅되어 있다.
-모든 UI 컴포넌트는 스토리 파일을 가져야 한다.
+모든 UI 컴포넌트는 스토리 파일을 가져야 한다 — 없으면 `scripts/check-component-drift.mjs`(PR 의 `design-drift` CI)가 막는다.
+새 부품은 `frontend/` 에서 `pnpm --filter @studyclub/ui new-component {Name}` 으로 만든다. 부품 · 스토리 · `index.ts` export · playground `/components` 카탈로그 칸이 함께 생긴다.
+PR 마다 `frontend-PR-CI` 가 Storybook 을 빌드한다 — 스토리가 부품 props 와 어긋나면 거기서 깨진다.
 
 ```
 packages/ui/
@@ -414,3 +416,11 @@ export const Controlled: Story = {
 - [ ] 주요 variant / 상태별 스토리 추가 (Default 포함 최소 2개)
 - [ ] 너비가 중요한 컴포넌트는 decorator로 너비 고정
 - [ ] `pnpm run storybook` 으로 로컬 확인 후 PR
+
+## 화면 카탈로그와의 구분
+
+현재 설정은 Storybook 9의 `@storybook/react-vite`이며 `main.ts`가 `src/**/*.stories.@(ts|tsx)`를 찾는다.
+`preview.tsx`는 autodocs와 공통 데코레이터를 적용하고, `index.css`는 `@studyclub/design/base.css`를 불러온다.
+
+Storybook은 공용 부품 단위의 표시·인터랙션 확인이다. 앱 인증, URL, API 응답별 화면, PRD 완료 기준은
+[E2E 카탈로그](e2e-guide.md)와 별도로 검증한다. Storybook 빌드만으로 앱 스크린샷이 갱신되지 않는다.

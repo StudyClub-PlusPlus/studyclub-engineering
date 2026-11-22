@@ -97,9 +97,10 @@ class AdminStudyParticipantListIntegrationTest {
         insertAccountIfAbsent(WITHDRAWN_ID, "명단하차", "withdrawn@list-test.com", SystemRole.MEMBER);
         insertAccountIfAbsent(DELETED_ID, "명단탈퇴", "deleted@list-test.com", SystemRole.MEMBER);
         jdbcTemplate.update(
-                "UPDATE ACCOUNT SET DISCORD_NICKNAME = ?, REGION_GROUP = ? WHERE ID = ?",
+                "UPDATE ACCOUNT SET DISCORD_NICKNAME = ?, REGION_GROUP = ?, TIME_ZONE = ? WHERE ID = ?",
                 "다/BE/서울",
                 "KR",
+                "America/Vancouver",
                 CREW_A_ID);
         joinedAt = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
@@ -116,6 +117,7 @@ class AdminStudyParticipantListIntegrationTest {
                                 .description("설명")
                                 .status(StudyStatus.ONGOING)
                                 .createdBy(ADMIN_ID)
+                                .ownerCaptainId(ADMIN_ID)
                                 .build());
         defaultGroup = studyGroupRepo.save(StudyGroup.create(study.getId(), "가반"));
         rosterGroup = studyGroupRepo.save(StudyGroup.create(study.getId(), "나반"));
@@ -200,7 +202,7 @@ class AdminStudyParticipantListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 필드 · 정렬(네비게이터 → 반 이름 → 닉네임) · 기본은 ACTIVE · PAUSED 만")
+    @DisplayName("성공 - 필드 · 정렬(캡틴 → 네비게이터 → 반 이름 → 닉네임) · 기본은 ACTIVE · PAUSED 만")
     @SuppressWarnings("unchecked")
     void listsCurrentParticipants() {
         var response = get(ADMIN_ID, study.getId(), null);
@@ -216,28 +218,29 @@ class AdminStudyParticipantListIntegrationTest {
                 (List<Map<String, Object>>) body.get("participants");
         assertThat(participants)
                 .extracting(p -> ((Number) p.get("participantId")).longValue())
-                .containsExactly(crewB.getId(), crewA.getId(), captainRow.getId(), crewC.getId());
+                .containsExactly(captainRow.getId(), crewB.getId(), crewA.getId(), crewC.getId());
 
-        Map<String, Object> a = participants.get(1);
+        Map<String, Object> a = participants.get(2);
         assertThat(((Number) a.get("accountId")).longValue()).isEqualTo(CREW_A_ID);
         assertThat(a)
                 .containsEntry("nickname", "명단다")
                 .containsEntry("discordNickname", "다/BE/서울")
                 .containsEntry("email", "crew-a@list-test.com")
                 .containsEntry("regionGroup", "KR")
+                .containsEntry("timeZone", "America/Vancouver")
                 .containsEntry("participantRole", "MEMBER")
                 .containsEntry("status", "ACTIVE")
                 .containsEntry("captain", false);
         assertThat(((Number) a.get("groupId")).longValue()).isEqualTo(defaultGroup.getId());
         assertThat(Instant.parse((String) a.get("joinedAt"))).isEqualTo(joinedAt);
 
-        assertThat(participants.get(0)).containsEntry("participantRole", "LEADER");
+        assertThat(participants.get(1)).containsEntry("participantRole", "LEADER");
         assertThat(participants.get(3)).containsEntry("status", "PAUSED");
         assertThat(participants.get(3)).containsEntry("discordNickname", null);
     }
 
     @Test
-    @DisplayName("성공 - 담당 캡틴(STUDY.CREATED_BY) 행만 captain=true")
+    @DisplayName("성공 - 담당 캡틴(STUDY.OWNER_CAPTAIN_ID) 행만 captain=true")
     @SuppressWarnings("unchecked")
     void marksCaptain() {
         var participants =
@@ -261,9 +264,9 @@ class AdminStudyParticipantListIntegrationTest {
         assertThat(participants)
                 .extracting(p -> ((Number) p.get("participantId")).longValue())
                 .containsExactly(
+                        captainRow.getId(),
                         crewB.getId(),
                         crewA.getId(),
-                        captainRow.getId(),
                         crewC.getId(),
                         withdrawnRow.getId())
                 .doesNotContain(deletedRow.getId());

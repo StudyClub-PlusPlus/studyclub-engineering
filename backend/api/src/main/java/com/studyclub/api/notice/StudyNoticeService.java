@@ -19,8 +19,8 @@ import com.studyclub.domain.study.StudyGroup;
 import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.notification.NotificationEventType;
+import com.studyclub.notification.NotificationMailResultCount;
 import com.studyclub.notification.NotificationRepository;
-import com.studyclub.notification.NotificationStatusCount;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Comparator;
@@ -233,18 +233,20 @@ public class StudyNoticeService {
         return new StudyNoticeListResponse(items, total, start, pageSize);
     }
 
-    /** 메일 행을 상태별로 센 값 — [대기, 완료, 실패]. 탈퇴로 취소된 건은 세지 않는다. */
+    /**
+     * 메일을 받는 사람 수 기준으로 센 값 — [대기, 완료, 실패]. 같은 조건의 템플릿이 여럿이면 한 사람에게 메일 행이 여러 개라, 사람마다 행들을 결과 하나로 줄여
+     * 센다(줄이는 규칙은 {@link NotificationRepository#countRecipientsByMailResult}). 탈퇴로 취소된 사람은 세지 않는다.
+     */
     private Map<Long, long[]> mailCounts(Collection<Long> noticeIds) {
         Map<Long, long[]> result = new HashMap<>();
-        for (NotificationStatusCount row :
-                notificationRepository.countByReferenceAndStatus(
+        for (NotificationMailResultCount row :
+                notificationRepository.countRecipientsByMailResult(
                         NotificationEventType.STUDY_NOTICE, noticeIds)) {
             long[] counts = result.computeIfAbsent(row.referenceId(), k -> new long[3]);
-            switch (row.status()) {
-                case PENDING, PROCESSING -> counts[0] += row.count();
+            switch (row.result()) {
+                case PENDING -> counts[0] += row.count();
                 case SENT -> counts[1] += row.count();
                 case FAILED -> counts[2] += row.count();
-                case CANCELLED -> {}
             }
         }
         return result;
@@ -257,7 +259,7 @@ public class StudyNoticeService {
                         .findFirstByStudyGroupIdOrderByCreatedAtDescIdDesc(groupId)
                         .map(StudyNotice::getCreatedAt)
                         .orElse(null);
-        return StudyNotice.sendBlock(study.isEnded(), lastSentAt, todayCount(groupId, now), now);
+        return StudyNotice.sendBlock(study.isEnded(now), lastSentAt, todayCount(groupId, now), now);
     }
 
     private long todayCount(Long groupId, Instant now) {
@@ -318,7 +320,7 @@ public class StudyNoticeService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이 스터디의 반이 아닙니다.");
         }
         studyCaptainGuard.assertCanEditGroup(
-                accountId, study.getCreatedBy(), group.getId(), FORBIDDEN_MESSAGE);
+                accountId, study.getOwnerCaptainId(), group.getId(), FORBIDDEN_MESSAGE);
     }
 
     private Study findStudy(Long studyId) {

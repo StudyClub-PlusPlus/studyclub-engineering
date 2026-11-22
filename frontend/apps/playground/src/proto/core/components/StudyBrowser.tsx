@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Locale, Operator, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { recruitState, studyTimezone } from '@core/lib/recruit';
-import { Select } from '@studyclub/ui';
+import { Select, Button, FilterChip, Segmented } from '@studyclub/ui';
 import { Search, X } from 'lucide-react';
 
 import { StudyListCard } from './StudyListCard';
@@ -70,19 +70,9 @@ function FilterOption({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type='button'
-      onClick={onClick}
-      aria-pressed={active}
-      // 테두리로 칸을 나눈다 — 배경색만으로는 흰 바탕에서 칩 경계가 보이지 않는다
-      className={`flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-1.5 type-label-lg transition-colors ${
-        active
-          ? 'border-brand bg-brand text-on-brand'
-          : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:text-fg'
-      }`}
-    >
+    <FilterChip selected={active} selectMode='single' onClick={onClick}>
       {children}
-    </button>
+    </FilterChip>
   );
 }
 
@@ -206,28 +196,15 @@ export function StudyBrowser({
       */}
       <div className='mb-6 flex flex-col gap-4'>
         <div className='flex flex-wrap items-center justify-start gap-3'>
-          <div
-            data-anno='2'
-            role='tablist'
-            aria-label='모집 상태'
-            className='inline-flex w-fit shrink-0 rounded-pill bg-surface-2 p-1'
-          >
-            {RECRUITMENT_OPTIONS.map((option) => {
-              const active = recruitment === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type='button'
-                  role='tab'
-                  aria-selected={active}
-                  onClick={() => setRecruitment(option.value)}
-                  className={`whitespace-nowrap rounded-pill px-4 py-1.5 type-label-lg transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+          <span data-anno='2' className='inline-flex shrink-0'>
+            <Segmented
+              shape='pill'
+              aria-label='모집 상태'
+              value={recruitment}
+              options={RECRUITMENT_OPTIONS}
+              onChange={setRecruitment}
+            />
+          </span>
           <div data-anno='3'>
             <FilterSelect
               value={timezone}
@@ -240,6 +217,7 @@ export function StudyBrowser({
             className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border bg-bg px-1 transition-[border-color,width] duration-200 focus-within:border-border-interactive sm:ml-auto sm:w-[200px] sm:focus-within:w-full lg:focus-within:w-[312px]'
           >
             <input
+              // ui-native: 늘어나는 알약 검색창 — 지우기 · 검색 단추를 품은 고유 검색칸
               type='text'
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -249,6 +227,7 @@ export function StudyBrowser({
             />
             {(input || hasQuery) && (
               <button
+                // ui-native: 꾸민 검색창 안의 지우기 표시 — 늘어나는 알약 검색창의 일부
                 type='button'
                 onClick={clearSearch}
                 aria-label='검색어 지우기'
@@ -259,6 +238,7 @@ export function StudyBrowser({
             )}
             <div className='mx-1 h-5 w-px shrink-0 bg-border-strong' />
             <button
+              // ui-native: 꾸민 검색창 안의 검색 단추 — 늘어나는 알약 검색창의 일부
               type='button'
               onClick={commitSearch}
               aria-label='검색'
@@ -301,13 +281,9 @@ export function StudyBrowser({
             <span className='text-fg'>&quot;{query.trim()}&quot;</span>
             {t({ ko: '에 해당하는 스터디를 찾을 수 없어요', en: ': no studies found' }, locale)}
           </p>
-          <button
-            type='button'
-            onClick={clearSearch}
-            className='rounded-pill border border-border-strong px-4 py-1.5 type-label-lg text-fg-secondary hover:border-fg-muted hover:text-fg'
-          >
+          <Button type='button' variant='secondary' size='sm' onClick={clearSearch}>
             {t({ ko: '검색어 지우기', en: 'Clear search' }, locale)}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className='flex min-h-[240px] items-center justify-center'>

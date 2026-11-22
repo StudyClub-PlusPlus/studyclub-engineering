@@ -1,11 +1,11 @@
-// @vitest-environment node
-
 import { NextRequest } from 'next/server';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { POST } from './route';
-import { ACCESS_COOKIE } from '@/lib/auth';
+import { POST } from '@/app/api/auth/social/login/route';
+import { ACCESS_COOKIE } from '@/features/auth/auth';
+
+// @vitest-environment node
 
 const tokens = {
   accessToken: 'test-access-token',
@@ -104,4 +104,11 @@ describe('백오피스 로그인 관리자 검사', () => {
     expect(response.status).toBe(502);
     expect(response.headers.has('set-cookie')).toBe(false);
   });
+});
+
+it('ADMIN이어도 잘못된 토큰 응답이면 쿠키를 발급하지 않는다', async () => {
+  fetchMock.mockResolvedValue(Response.json({ ...tokens, account: admin, accessToken: 42 }));
+  const response = await POST(request());
+  expect(response.status).toBe(502);
+  expect(response.headers.has('set-cookie')).toBe(false);
 });

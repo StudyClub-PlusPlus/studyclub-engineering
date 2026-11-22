@@ -3,8 +3,8 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ApplicationResultsTab } from './ApplicationResultsTab';
-import type { ApplicationResultsResponse } from './types';
+import { ApplicationResultsTab } from '@/features/application-results/ApplicationResultsTab';
+import type { ApplicationResultsResponse } from '@/features/application-results/types';
 
 const url = vi.hoisted(() => ({ search: '', replace: vi.fn() }));
 vi.mock('next/navigation', () => ({

@@ -17,6 +17,8 @@ import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.storage.StorageObject;
 import com.studyclub.domain.storage.StorageObjectRepository;
 import com.studyclub.domain.storage.StorageObjectStatus;
+import com.studyclub.domain.storage.StorageProvider;
+import com.studyclub.domain.storage.StoragePurpose;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -343,6 +345,44 @@ class ProfileImageIntegrationTest {
         uploadService.cleanUp(Instant.now());
 
         assertThat(row(expired).getStatus()).isEqualTo(StorageObjectStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("배치 - 205개 파일을 페이지 누락 없이 지우고 실패한 파일은 다음 실행에서 재시도한다")
+    void pagedStorageCleanupRetriesFailure() {
+        java.util.List<Long> ids = new java.util.ArrayList<>();
+        String failedKey = "test-retention-" + UUID.randomUUID();
+        for (int i = 0; i < 205; i++) {
+            String key = i == 0 ? failedKey : "test-retention-" + UUID.randomUUID();
+            StorageObject object =
+                    storageObjectRepository.save(
+                            new StorageObject(
+                                    9999L,
+                                    StoragePurpose.PROFILE,
+                                    StorageProvider.S3,
+                                    key,
+                                    "image/jpeg",
+                                    1));
+            ids.add(object.getId());
+            ageRow(object.getId(), Duration.ofHours(25));
+            stored.put(key, new byte[] {1});
+        }
+        doThrow(new IllegalStateException("test")).when(storage).delete(failedKey);
+        uploadService.cleanUp(Instant.now());
+        assertThat(storageObjectRepository.findAllById(ids))
+                .hasSize(1)
+                .allSatisfy(
+                        row -> assertThat(row.getStatus()).isEqualTo(StorageObjectStatus.DELETING));
+        org.mockito.Mockito.doAnswer(
+                        inv -> {
+                            stored.remove(failedKey);
+                            return null;
+                        })
+                .when(storage)
+                .delete(failedKey);
+        uploadService.cleanUp(Instant.now());
+        assertThat(storageObjectRepository.findAllById(ids)).isEmpty();
+        assertThat(stored).doesNotContainKey(failedKey);
     }
 
     // ---- 탈퇴 ---------------------------------------------------------------------------------

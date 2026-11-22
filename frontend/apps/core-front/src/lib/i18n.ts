@@ -1,5 +1,5 @@
 // 경량 i18n — 정적 UI 문자열 사전 (ko/en).
-import type { L10n, Locale } from './content';
+import type { L10n, Locale } from '@studyclub/types';
 
 export const LOCALES: Locale[] = ['ko', 'en'];
 export const DEFAULT_LOCALE: Locale = 'ko';
@@ -25,6 +25,7 @@ export const MESSAGES: Dict = {
   'nav.about': { ko: '소개', en: 'About' },
   'nav.mentoring': { ko: '멘토링', en: 'Mentoring' },
   'nav.join': { ko: '디스코드 합류', en: 'Join Discord' },
+  'nav.feedback': { ko: '문의·오류 신고', en: 'Contact · report a bug' },
 
   'issue.label': { ko: 'StudyClub · Vol.1', en: 'StudyClub · Vol.1' },
 

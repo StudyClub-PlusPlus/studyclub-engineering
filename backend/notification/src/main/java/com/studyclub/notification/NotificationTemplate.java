@@ -8,20 +8,21 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 
 /**
  * 알림 문구. DB 에 저장해 문구 수정마다 PR·배포가 필요해지는 걸 피한다(specs/notification/spec.md) — 백오피스에서 캡틴이 추가·수정·삭제한다.
+ * 같은 조건({@code EVENT_TYPE}, {@code CHANNEL})에 템플릿을 여럿 둘 수 있고, 그 조건이 생기면 모두 발송한다 — 유일 제약은 없다.
  */
 @Entity
 @Table(
         name = "NOTIFICATION_TEMPLATE",
-        uniqueConstraints = {
-            @UniqueConstraint(
-                    name = "uk_notification_template_event_channel",
-                    columnNames = {"EVENT_TYPE", "CHANNEL"})
+        indexes = {
+            @Index(
+                    name = "idx_notification_template_event_channel",
+                    columnList = "EVENT_TYPE, CHANNEL")
         })
 @Getter
 public class NotificationTemplate extends BaseEntity {

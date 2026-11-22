@@ -21,6 +21,7 @@ from app.backend_client import (
     AttendanceResult,
     BackendError,
     BackendUnreachable,
+    MarkedGroup,
     mark_attendances,
 )
 
@@ -34,6 +35,12 @@ MAX_GROUPS_SHOWN = 10
 # Discord rejects anything longer. Hitting it would fail the reply *after* the
 # attendance was already written, so the message is clipped rather than sent raw.
 DISCORD_MESSAGE_LIMIT = 2000
+KICKOFF = "KICKOFF"
+# Mirrors the backend's pick rule (specs/discord-attendance/spec.md § 회차 판정 규칙).
+NO_MEETING_HINT = (
+    "   진행 중인 회차도, 예정 시각 2시간 안의 회차도 없는 반입니다. "
+    "일정 화면에서 회차 시각을 확인해 주세요."
+)
 
 
 @dataclass(frozen=True)
@@ -98,7 +105,7 @@ def format_result(result: AttendanceResult, names_by_id: dict[str, str]) -> str:
         lines.append(f"✅ 출석 {result.marked_count}명 체크했습니다.{group_word}")
         for group in result.groups[:MAX_GROUPS_SHOWN]:
             started = " · 회차를 시작했습니다" if group.meeting_started else ""
-            lines.append(f"· {group.study_meeting_id}번 회차 — {len(group.marked)}명{started}")
+            lines.append(f"· {_meeting_label(group)} — {len(group.marked)}명{started}")
         hidden = len(result.groups) - MAX_GROUPS_SHOWN
         if hidden > 0:
             lines.append(f"· 외 {hidden}개 반")
@@ -112,8 +119,19 @@ def format_result(result: AttendanceResult, names_by_id: dict[str, str]) -> str:
     ):
         if ids:
             lines.append(f"⚠️ {label} {len(ids)}명 — {_names(ids, names_by_id)}")
+    if result.no_meeting:
+        lines.append(NO_MEETING_HINT)
 
     return _clip("\n".join(lines))
+
+
+def _meeting_label(group: MarkedGroup) -> str:
+    """``1번 회차 「OT」`` -- never the row id. A kickoff's title is fixed to 킥오프."""
+    if group.meeting_type == KICKOFF:
+        return "킥오프"
+    number = "" if group.study_meeting_number is None else f"{group.study_meeting_number}번 "
+    label = f"{number}회차"
+    return f"{label} 「{group.meeting_title}」" if group.meeting_title else label
 
 
 def _clip(message: str) -> str:

@@ -123,7 +123,7 @@ HTML 로 해석하지 않으므로 서버가 태그를 걸러 내거나 바꾸�
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/app/[locale]/notices/page.tsx` — 서버 컴포넌트. `?page=N` 을 `offset = (N-1) × 10` 으로 바꿔 부른다
-- `frontend/apps/core-front/src/lib/api.ts` — `fetchNotices(offset, limit)`. 캐시하지 않는다(`no-store`) — 등록 즉시 보여야 한다
+- `frontend/apps/core-front/src/features/site-notices/repository.ts` — `fetchNotices(offset, limit)`. 캐시하지 않는다(`no-store`) — 등록 즉시 보여야 한다
 
 ---
 
@@ -185,7 +185,7 @@ HTML 로 해석하지 않으므로 서버가 태그를 걸러 내거나 바꾸�
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/app/[locale]/notices/[id]/page.tsx` — 404 는 `notFound()`
-- `frontend/apps/core-front/src/lib/api.ts` — `fetchNotice(noticeId)`. `no-store`
+- `frontend/apps/core-front/src/features/site-notices/repository.ts` — `fetchNotice(noticeId)`. `no-store`
 
 ---
 
@@ -520,7 +520,7 @@ HTML 로 해석하지 않으므로 서버가 태그를 걸러 내거나 바꾸�
 - **삭제된 공지는 404** — 「있었는데 지워졌다」를 알려 줄 이유가 없다. 없는 ID 와 같게 답한다
 - **작성자 탈퇴 표시는 서버가 문구로** — 출석부·신청자 목록이 이미 `"탈퇴한 회원"` 을 서버에서 내려 준다. 같은 방식
 - **제목 200자 · 본문 20,000자 상한** — 기획에 숫자가 없어 이 스펙이 정했고 2026-10-26 리뷰에서 확정했다. 반 공지(제목 60 · 본문 1,500)보다 넉넉하게 둔 이유는 사이트 공지가 일정표·여러 단락을 담기 때문이다
-- **게시일은 보는 사람의 시간대 날짜로** — 시간대 정책이 화면 표기를 보는 사람의 시간대로 정했다. 서버는 UTC 시각을 주고 사이트와 콘솔 모두 브라우저 시간대로 바꿔 날짜를 보인다. 콘솔 표는 어느 시간대 기준인지 표 위에서 한 번 밝힌다
+- **게시일은 보는 사람의 시간대 날짜로** — 시간대 정책이 화면 표기를 보는 사람의 시간대로 정했다. 서버는 UTC 시각을 주고 사이트는 브라우저 시간대, 콘솔은 운영자 프로필 시간대로 바꿔 날짜를 보인다(POL-0006 「백오피스」). 콘솔 표는 어느 시간대 기준인지 표 위에서 한 번 밝힌다
 
 ## 미확정
 

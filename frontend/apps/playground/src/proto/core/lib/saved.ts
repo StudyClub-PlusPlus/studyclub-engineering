@@ -1,5 +1,5 @@
 import { getApplications } from '@core/lib/me';
-import type { Study } from '@studyclub/mock';
+import type { Study } from '@studyclub/types';
 
 /**
  * 찜한 스터디 — 모집 여부가 아니라 **스터디 진행 상태**로 나눈다.

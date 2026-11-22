@@ -2,6 +2,7 @@ package com.studyclub.api.account;
 
 import com.studyclub.api.account.AdminAccountDao.AccountRow;
 import com.studyclub.api.account.AdminAccountDao.NavigatorRow;
+import com.studyclub.api.account.AdminAccountDao.ParticipationRow;
 import com.studyclub.api.account.AdminAccountListFilter.Role;
 import com.studyclub.api.account.AdminAccountListResponse.AccountSummary;
 import com.studyclub.api.account.AdminAccountListResponse.NavigatorStudy;
@@ -11,8 +12,14 @@ import com.studyclub.common.privacy.EmailMasking;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.participant.ParticipationPeriod;
+import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
+import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,11 +38,18 @@ public class AdminAccountQueryService {
 
     private final AdminAccountDao adminAccountDao;
     private final AccountRepository accountRepository;
+    private final StudyRepository studyRepository;
+    private final SuperAdmins superAdmins;
 
     public AdminAccountQueryService(
-            AdminAccountDao adminAccountDao, AccountRepository accountRepository) {
+            AdminAccountDao adminAccountDao,
+            AccountRepository accountRepository,
+            StudyRepository studyRepository,
+            SuperAdmins superAdmins) {
         this.adminAccountDao = adminAccountDao;
         this.accountRepository = accountRepository;
+        this.studyRepository = studyRepository;
+        this.superAdmins = superAdmins;
     }
 
     public AdminAccountListResponse getAccounts(
@@ -57,6 +71,14 @@ public class AdminAccountQueryService {
 
         List<AccountRow> rows = adminAccountDao.getAccounts(normalized, offset, limit);
         List<Long> accountIds = rows.stream().map(row -> row.account().getId()).toList();
+        Instant asOf = Instant.now();
+        Map<Long, List<ParticipationPeriod>> participationPeriods =
+                adminAccountDao.getParticipationPeriods(accountIds).stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        ParticipationRow::accountId,
+                                        Collectors.mapping(
+                                                ParticipationRow::period, Collectors.toList())));
         Map<Long, List<NavigatorStudy>> navigatorOf =
                 adminAccountDao.getNavigatorStudies(accountIds).stream()
                         .collect(
@@ -68,6 +90,13 @@ public class AdminAccountQueryService {
                                                                 row.studyId(), row.title()),
                                                 Collectors.toList())));
         long adminCount = accountRepository.countBySystemRole(SystemRole.ADMIN);
+        boolean requesterIsSuperAdmin =
+                superAdmins.includes(accountRepository.findById(requesterId).orElse(null));
+        // 진행 중 담당 스터디가 있는 계정 — 한 페이지분을 한 번에 본다 (OWNS_STUDY)
+        Set<Long> owners =
+                new HashSet<>(
+                        studyRepository.findOwnerCaptainIdsWithStatusNotIn(
+                                accountIds, StudyStatus.ENDED_STATUSES));
 
         List<AccountSummary> items =
                 rows.stream()
@@ -78,7 +107,12 @@ public class AdminAccountQueryService {
                                                 navigatorOf.getOrDefault(
                                                         row.account().getId(), List.of()),
                                                 requesterId,
-                                                adminCount))
+                                                requesterIsSuperAdmin,
+                                                adminCount,
+                                                owners.contains(row.account().getId()),
+                                                participationPeriods.getOrDefault(
+                                                        row.account().getId(), List.of()),
+                                                asOf))
                         .toList();
         return new AdminAccountListResponse(items, total, offset, limit);
     }
@@ -93,8 +127,15 @@ public class AdminAccountQueryService {
         return new AdminAccountListFilter(role, q == null || q.isEmpty() ? null : q);
     }
 
-    private static AccountSummary toSummary(
-            AccountRow row, List<NavigatorStudy> navigatorOf, Long requesterId, long adminCount) {
+    private AccountSummary toSummary(
+            AccountRow row,
+            List<NavigatorStudy> navigatorOf,
+            Long requesterId,
+            boolean requesterIsSuperAdmin,
+            long adminCount,
+            boolean ownsOngoingStudy,
+            List<ParticipationPeriod> participationPeriods,
+            Instant asOf) {
         Account account = row.account();
         return new AccountSummary(
                 account.getId(),
@@ -103,10 +144,16 @@ public class AdminAccountQueryService {
                 EmailMasking.mask(account.getEmail()),
                 account.getSystemRole(),
                 navigatorOf,
-                row.participatingStudyCount() == 0,
+                account.isDormant(row.lastLoginAt(), participationPeriods, asOf),
                 account.getCreatedAt(),
                 // 판정은 엔티티 한 곳 — 권한 변경 API 가 거절할 때도 같은 메서드를 부른다
-                account.roleChangeBlockedReason(requesterId, adminCount),
-                account.isDiscordLinked());
+                account.roleChangeBlockedReason(
+                        requesterId,
+                        adminCount,
+                        ownsOngoingStudy,
+                        superAdmins.includes(account),
+                        requesterIsSuperAdmin),
+                account.isDiscordLinked(),
+                superAdmins.includes(account));
     }
 }

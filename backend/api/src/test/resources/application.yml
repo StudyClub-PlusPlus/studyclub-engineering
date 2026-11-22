@@ -34,10 +34,26 @@ mail:
 # 이 모듈과 무관한 기존 통합 테스트가 @SpringBootTest 로 전체 컨텍스트를 띄울 때 스케줄러가 같이 깨어나
 # 실제 SES 호출을 시도하지 않도록 기본은 꺼둔다. 스케줄러 테스트는 poll() 을 직접 호출해 시각 의존 없이 검증한다.
 notification:
+  site-base-url: http://localhost:4700
   polling:
     enabled: false
 
 # 업로드 정리 배치도 같은 이유로 끈다. 배치 테스트는 cleanUp() 을 직접 부른다.
+feedback:
+  retention:
+    enabled: false
+
 upload:
   cleanup:
     enabled: false
+
+analytics:
+  deletion:
+    enabled: false
+cleanup:
+  enabled: false
+
+# 최고 관리자 (specs/admin-users 「최고 관리자」) — 캡틴을 크루로 내리는 통합 테스트의 요청자들.
+# 클래스마다 @SpringBootTest(properties) 로 주면 컨텍스트가 늘어 같은 H2 를 쓰는 다른 컨텍스트가 닫히며 스키마를 지운다. 여기 한 곳에 둔다
+super-admin:
+  emails: acctlist-9901@example.com,rolechange-9921@example.com,concurrency-9961@example.com,other@owner-test.com

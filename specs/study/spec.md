@@ -2,6 +2,7 @@
 
 > ERD: [STUDY](../../docs/erd/STUDY.md) · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md)
 > Story PRD: [등록](../../01-planning/stories/study-create/PRD.md) · [수정·삭제](../../01-planning/stories/study-edit/PRD.md) · [공개](../../01-planning/stories/captain-publish-study/PRD.md) · [다음 기수](../../01-planning/stories/captain-reregister-cohort/PRD.md) · [운영 콘솔 목록](../../01-planning/stories/captain-list-all-studies/PRD.md) · [사용자 상세](../../01-planning/stories/crew-view-study-detail/PRD.md) · [운영 현황](../../01-planning/stories/study-detail/PRD.md) · [목록](../../01-planning/stories/crew-browse-studies/PRD.md)
+> 갱신: 2026-11-16 — 등록 시 `STUDY.OWNER_CAPTAIN_ID`(담당 캡틴)도 채운다. `CREATED_BY` 는 등록자 기록만 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
 > 생성일: 2026-09-08 (GET) · 2026-09-11 (POST 절 추가)
 > 갱신: 2026-09-19 — 신청 폼·제출·결과 API 는 [study-application/spec.md](../study-application/spec.md) 로 분리
 > 갱신: 2026-09-20 — STUDY_COHORT 테이블 폐기. 코호트 필드는 STUDY 로 통합, 모집 마감은 STUDY_RECRUITMENT 로 분리. 응답·요청 구조 반영
@@ -192,7 +193,7 @@ private StudyDetailResponse toDetail(Study study) {
 | keyword  | String | N    | 제목·소개 부분일치 검색 (대소문자 무관)                                                                                           |
 | status   | String | N    | 모집 상태 필터. `recruiting` / `ongoing` / `closed`                                                                               |
 | timezone | String | N    | 시간대 필터. `KST` / `PST` / `both`                                                                                               |
-| category | String | N    | 분야 필터 (API enum 값, 예: `AI_ML`·`ALGORITHM`). 유효값은 [CATEGORY_DISPLAY](../../frontend/apps/core-front/src/lib/api.ts) 참고 |
+| category | String | N    | 분야 필터 (API enum 값, 예: `AI_ML`·`ALGORITHM`). 유효값은 [CATEGORY_DISPLAY](../../frontend/packages/utils/src/constants.ts) 참고 |
 
 > **정렬**: 지원하지 않는다 — 항상 최신순(등록 순번) 고정.
 
@@ -222,7 +223,7 @@ private StudyDetailResponse toDetail(Study study) {
 >
 > **운영 콘솔 목록 갱신(2026-09-29)**: **작성자** 열을 추가하고 **출석률** 열을 뺐다. 작성자는 등록한
 > 캡틴의 닉네임(`ACCOUNT.NICKNAME`)이고 `STUDY.CREATED_BY` 로 찾는다 — 컬럼이 없던 시절
-> 등록된 스터디는 비어 있어 「—」로 보인다. 출석률은 기수 운영 화면의 출석 탭에서만 본다 — 목록 응답에
+> 등록된 스터디는 비어 있어 「—」로 보인다. 출석률은 기수 운영 화면(위 요약 카드 · 출석 탭)에서 본다 — 목록 응답에
 > 넣지 않는다. 정본: [captain-list-all-studies PRD](../../01-planning/stories/captain-list-all-studies/PRD.md)
 
 ---
@@ -348,7 +349,7 @@ private StudyDetailResponse toDetail(Study study) {
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/app/[locale]/studies/[id]/page.tsx` — 상세 페이지
-- `frontend/apps/core-front/src/lib/content.ts` — `getStudy(id)` mock 함수
+- `frontend/apps/core-front/src/features/studies/server.ts` — `getStudy(id)`
 - 운영 콘솔은 이 경로를 쓰지 않는다 — 아래 `GET /api/admin/studies/{studyId}` 를 쓴다
 - 구현: `StudyService#getDetail(studyId, accountId)`. 공개 판정은 `STATUS != DRAFT` 하나 — `Study#isPubliclyVisible`(OPEN 만)과 다르다.
   숨김 플래그(`IS_HIDDEN`)는 V27 에서 삭제했다 — 목록(`StudyListJpqlDao`)도 `STATUS != DRAFT` 하나로 거른다
@@ -447,7 +448,8 @@ private StudyDetailResponse toDetail(Study study) {
 | STUDY.STATUS               | `DRAFT`                    | 등록 후 ADMIN이 [공개(모집 시작)](#스터디-공개--공개-취소)로 OPEN 으로 전환                                                                   |
 | STUDY_RECRUITMENT.START_AT | `null`                     | 등록 시 비워 둔다(V49 부터 NULL 허용). 공개(`STATUS: DRAFT → OPEN`) 시 최신 회차 `START_AT` 을 `now()` 로 채우고, 공개 취소 시 `null` 로 되돌린다. 공개 판정 자체는 `STATUS` 로 한다 — `START_AT` 은 "모집이 언제 시작됐는가"를 기록하는 사실 데이터이고, 신청 폼 잠금이 이 값을 본다 |
 | STUDY_PROGRAM.TITLE        | 요청의 `title`             | 새 프로그램일 때만. 프로그램 제목은 첫 기수 제목을 따른다                                                                                     |
-| STUDY.CREATED_BY           | 요청한 계정의 `ACCOUNT.ID` | 작성자. 인증 토큰의 계정으로 채우고 요청 바디로 받지 않는다. 등록 뒤 바뀌지 않는다 — PATCH 가 건드리지 않는다. 구현됨(V29). 이 값이 **담당 캡틴** 판정의 근거다 — 등록할 때 명부에 넣지 않는다. 참여하려면 신청한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) |
+| STUDY.CREATED_BY           | 요청한 계정의 `ACCOUNT.ID` | 작성자. 인증 토큰의 계정으로 채우고 요청 바디로 받지 않는다. 등록 뒤 바뀌지 않는다 — PATCH 가 건드리지 않는다. 구현됨(V29). 「등록한 사람」 기록이다 — 권한 판정에 쓰지 않는다 (2026-11-16) |
+| STUDY.OWNER_CAPTAIN_ID     | 요청한 계정의 `ACCOUNT.ID` | **담당 캡틴**. 등록할 때 만든 캡틴으로 채운다. PATCH 가 건드리지 않는다 — 바꾸는 곳은 [신청자 탭 담당 캡틴 바꾸기](../study-group/spec.md#담당-캡틴-바꾸기). 명부에 넣지 않는다 — 참여하려면 신청한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) |
 
 ### Response — 201 No Content
 
@@ -507,11 +509,12 @@ Location: /api/admin/studies/{id}
 | 동작 | 선행 조건 | 결과 |
 |------|-----------|------|
 | publish (공개) | `STATUS=DRAFT` AND `APPLICATION_FORM.questions` ≥ 1 | `STATUS=OPEN`, 최신 회차(id MAX) `STUDY_RECRUITMENT.START_AT = now()` |
-| unpublish (공개 취소) | `STATUS=OPEN` | `STATUS=DRAFT`. 최신 회차 `STUDY_RECRUITMENT.START_AT = null` (모집 시작 전으로). 신청·크루·반·출석 변경 없음. 알림/이력 없음. |
+| unpublish (공개 취소) | `STATUS=OPEN` AND 시작 전(`STUDY.START_AT` 이 없거나 아직 안 됨, `STUDY.END_AT` 도 안 지남) | `STATUS=DRAFT`. 최신 회차 `STUDY_RECRUITMENT.START_AT = null` (모집 시작 전으로). 신청·크루·반·출석 변경 없음. 알림/이력 없음. |
 
 - 공개 = 모집 시작. 사이트 노출 여부는 `STATUS != DRAFT` 단일 판정.
 - `START_AT` 은 "모집이 언제 시작됐는가"라는 사실 데이터 — 노출 판정의 근거가 아님 ([ERD](../../docs/erd/STUDY.md#공개-여부)).
-- `ONGOING`·`ENDED`·`CLOSED` 에서 unpublish 는 불가 (409).
+- 시작한 스터디(진행 중·종료)는 unpublish 불가 (409 `STUDY_ALREADY_STARTED`). 판정은 저장된 `STATUS` 가 아니라 `Study#statusAsOf(now)` — `STATUS=OPEN` 으로 남아 있어도 `STUDY.START_AT`·`END_AT` 이 지났으면 막는다. 크루·출석이 이미 돌고 있어 내리면 사이트에서 사라진다.
+- `CLOSED` 에서 unpublish 도 불가 (409 `CONFLICT`).
 - 프로토타입은 공개·공개 취소 모두 확인 팝업을 거친다. 서버에 확인 단계는 없다.
 
 ### Error Responses
@@ -533,12 +536,14 @@ Location: /api/admin/studies/{id}
 | 401 | UNAUTHORIZED | 로그인 필요 |
 | 403 | FORBIDDEN | ADMIN 아님 (네비게이터 포함) |
 | 404 | NOT_FOUND | studyId 없음 |
-| 409 | CONFLICT | `DRAFT` 상태에서 unpublish, 또는 `ONGOING`·`ENDED`·`CLOSED` 에서 unpublish |
+| 409 | STUDY_ALREADY_STARTED | 시작일 경과(진행 중) 또는 종료일 경과·`ENDED` (저장된 `STATUS` 가 `OPEN` 이어도) |
+| 409 | CONFLICT | `DRAFT`·`CLOSED` 상태에서 unpublish |
 
 ### 신규 ErrorCode
 
 ```java
 APPLICATION_FORM_REQUIRED(409, "신청 폼을 먼저 연결하세요.")
+STUDY_ALREADY_STARTED(409, "시작한 스터디는 비공개로 바꿀 수 없습니다.")
 ```
 
 FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 하므로 전용 코드 추가. 신청 폼 판정 기준: `APPLICATION_FORM.questions` 배열 길이 ≥ 1 (NOT NULL 만으로 불충분).
@@ -547,7 +552,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 
 - `publish(accountId, studyId)` · `unpublish(accountId, studyId)` — 캡틴 전용이라 진입 메서드 각각 하나. 첫 줄 `assertCaptain`. `create`·`delete` 패턴과 동일. `FromSite`/`ForBackOffice` 접미사 없음.
 - 신청 폼 판정: `study.getApplicationForm()` null 이거나 `questions` 배열 길이 0 → `APPLICATION_FORM_REQUIRED`. APPLICATION_FORM JSON 구조 정본: [study-application/spec.md §APPLICATION_FORM](../study-application/spec.md)
-- 상태 전이는 `Study` 엔티티의 의미 있는 메서드(`Study#publish()` · `Study#unpublish()`)로. setter 금지.
+- 상태 전이는 `Study` 엔티티의 의미 있는 메서드(`Study#publish()` · `Study#unpublish(now)`)로. setter 금지. unpublish 의 선행 조건(시작 여부·`OPEN`)은 엔티티가 검사한다.
 - 최신 회차: `STUDY_RECRUITMENT` 에서 `id` MAX 인 행. 등록 시 `START_AT = null`, publish 시 `now()`, unpublish 시 `null` 로 되돌린다(V49). 신청서가 없으면 공개 취소 뒤 신청 폼을 다시 고칠 수 있다 — 이미 들어온 신청서가 있으면 그 신청서로 계속 잠긴다.
 
 ### 테스트 요구사항
@@ -555,7 +560,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 | 엔드포인트 | 성공 | 401 | 403 | 404 | 409-CONFLICT | 409-APP_FORM |
 |---|---|---|---|---|---|---|
 | `POST /api/admin/studies/{id}/publish` | DRAFT+폼 있음 → 204, STATUS=OPEN, 최신 회차 START_AT 채워짐 | 토큰 없음 | 네비게이터 | 없는 id | 이미 OPEN | 폼 없음/questions 0개 |
-| `POST /api/admin/studies/{id}/unpublish` | OPEN → 204, STATUS=DRAFT, START_AT 비움 | 토큰 없음 | 네비게이터 | 없는 id | DRAFT·ONGOING·ENDED·CLOSED | — |
+| `POST /api/admin/studies/{id}/unpublish` | 시작 전 OPEN → 204, STATUS=DRAFT, START_AT 비움 | 토큰 없음 | 네비게이터 | 없는 id | 시작일·종료일 경과(STUDY_ALREADY_STARTED) · DRAFT·CLOSED(CONFLICT) | — |
 
 ### 프론트엔드 사용처
 
@@ -653,7 +658,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
   목록 응답·목록 단계 필터(JPQL)·상세의 모집 상태 판정이 모두 같은 회차의 정원과 신청 수를 비교한다. 모집 회차가 없으면 정원 수정은 404 다
 - `timezone` 은 `STUDY.TIMEZONE`(V40) 에 저장한다. `KST`·`PST`·`BOTH` 밖의 값은 본문 변환 단계에서 400 이다(필드 사유 없이 `INVALID_INPUT`) — `category` 와 같다
 - 운영 콘솔(정보 탭)은 **바뀐 칸만** 보낸다. 마감이 지난 스터디의 다른 칸을 고칠 때 지난 `recruitDeadline` 을 다시 보내면 400 이다
-- 프론트엔드 사용처: `frontend/apps/back-office-front/src/components/StudyInfoTab.tsx` (DELETE 도 같은 파일) — 호출은 `features/studies/queries.ts` `useUpdateStudy`. `/api/admin/studies/{studyId}` 로 옮긴다
+- 프론트엔드 사용처: `frontend/apps/back-office-front/src/features/studies/StudyInfoTab.tsx` (DELETE 도 같은 파일) — 호출은 `features/studies/queries.ts` `useUpdateStudy`. `/api/admin/studies/{studyId}` 로 옮긴다
 
 ### Response — 204 No Content
 

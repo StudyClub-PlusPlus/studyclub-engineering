@@ -4,9 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 
-import { applicationResultKeys } from './queries';
 import { useSaveApplicationForm } from '@/features/application-form/queries';
 import { toFormValues } from '@/features/application-form/schema';
+import { applicationResultKeys } from '@/features/application-results/queries';
 
 afterEach(() => vi.unstubAllGlobals());
 

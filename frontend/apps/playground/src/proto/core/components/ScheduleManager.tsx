@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
   addDaysYmd,
   DOW_LABEL,
-  REPEAT_SPAN_DAYS,
+  REPEAT_SPAN_LABEL,
   TITLE_MAX,
   dateWithDow,
   dayLabel,
@@ -36,8 +36,8 @@ import { ME_ID, type Participant } from '@core/lib/schedule-board';
 import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import { SCHEDULE_ZONES, scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
-import type { Study } from '@studyclub/mock';
-import { Button, Input, Modal, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import type { Study } from '@studyclub/types';
+import { Button, Checkbox, Input, Modal, Select, SelectionCount, TableActionBar, cx, FilterChip } from '@studyclub/ui';
 import { Plus, X } from 'lucide-react';
 
 /**
@@ -62,6 +62,7 @@ export function ScheduleManager({
   startAdding = false,
   compact = false,
   onStartedAdding,
+  retroCell,
 }: {
   study: Study;
   group: NavigatorGroup;
@@ -73,6 +74,8 @@ export function ScheduleManager({
   onStartedAdding?: () => void;
   /** 제목 · 발표자 열을 좁힌다 — 백오피스는 옆에 메뉴가 있어 본문이 좁다. 가로 스크롤 없이 들어가게. */
   compact?: boolean;
+  /** 회고 열 — 사용자 사이트만 넘긴다. 킥오프 줄에는 그리지 않는다. */
+  retroCell?: (m: ProtoMeeting) => ReactNode;
 }) {
   const src = source ?? studySource(study, group.timeZone);
   const [adding, setAdding] = useState(canEdit && startAdding);
@@ -429,15 +432,12 @@ export function ScheduleManager({
                 <tr className='text-left type-label-sm text-fg-muted'>
                   {canEdit && (
                     <th data-anno='schedule:3-6' className='w-10 py-3 pl-4'>
-                      <input
-                        type='checkbox'
-                        aria-label='지울 수 있는 회차 전체 선택'
-                        className={CHECKBOX}
+                      <Checkbox
+                        label='지울 수 있는 회차 전체 선택'
+                        hideLabel
                         checked={allChecked}
                         disabled={deletable.length === 0}
-                        ref={(el) => {
-                          if (el) el.indeterminate = picked.length > 0 && !allChecked;
-                        }}
+                        indeterminate={picked.length > 0 && !allChecked}
                         onChange={() => setChecked(allChecked ? new Set() : new Set(deletable.map((m) => m.id)))}
                       />
                     </th>
@@ -450,6 +450,11 @@ export function ScheduleManager({
                     발표자1
                   </th>
                   <th className={cx('px-2 py-3 text-center', compact ? 'w-32' : 'w-36')}>발표자2</th>
+                  {retroCell && (
+                    <th data-anno='retro:1' className='w-40 px-2 py-3 text-center'>
+                      회고
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -495,23 +500,26 @@ export function ScheduleManager({
                     // 크루의 선착순 신청 — 빈 칸은 포인트 색 실선 칩 「신청」, 내 이름은 강조 칩 + × 로 취소.
                     if (!canEdit && !past && !id && other !== ME_ID) {
                       return (
-                        <button
+                        <Button
                           type='button'
+                          variant='secondary'
+                          size='sm'
                           data-anno='schedule:9-1'
                           aria-label={`${meetingLabel(m)} ${which} 신청`}
                           onClick={() => sign(m, slot, true)}
-                          className='inline-flex h-7 w-full items-center justify-center rounded-pill border border-brand type-label-lg text-brand transition-colors hover:bg-brand-subtle'
+                          className='w-full rounded-pill'
                         >
                           신청
-                        </button>
+                        </Button>
                       );
                     }
                     if (!canEdit && !past && id === ME_ID) {
                       return (
                         // 「신청」 칩과 같은 너비(칸 너비) — 신청 전후로 칸 모양이 바뀌지 않는다. 이름은 가운데, ×는 오른쪽 끝
-                        <span className='inline-flex h-7 w-full items-center gap-1 rounded-pill bg-brand-subtle pl-6 pr-0.5 type-label-sm text-brand'>
+                        <span className='inline-flex h-8 w-full min-w-16 items-center gap-1 rounded-pill bg-brand-subtle pl-6 pr-0.5 type-label-sm text-brand'>
                           <span className='min-w-0 flex-1 truncate text-center'>{nameOf(id)}</span>
                           <button
+                            // ui-native: 내 이름 칩 안의 빼기 표시 — 칩의 일부
                             type='button'
                             aria-label={`${meetingLabel(m)} ${which} 신청 취소`}
                             title='신청 취소'
@@ -545,10 +553,9 @@ export function ScheduleManager({
                       {canEdit && (
                         <td className='border-t border-border py-2.5 pl-4 align-middle'>
                           {!kickoff && !past && (
-                            <input
-                              type='checkbox'
-                              aria-label={`${meetingLabel(m)} 선택`}
-                              className={CHECKBOX}
+                            <Checkbox
+                              label={`${meetingLabel(m)} 선택`}
+                              hideLabel
                               checked={checked.has(m.id)}
                               onChange={() => toggle(m.id)}
                             />
@@ -638,6 +645,11 @@ export function ScheduleManager({
                         {presenterCell('presenter2')}
                         {errors.presenter2 && <p className='mt-1 type-label-sm text-error-700'>{errors.presenter2}</p>}
                       </td>
+                      {retroCell && (
+                        <td className={cn(cell, 'text-center')}>
+                          {kickoff ? <span className='inline-block py-1.5 text-fg-muted'>-</span> : retroCell(m)}
+                        </td>
+                      )}
                     </tr>
                   );
                   return [row];
@@ -702,10 +714,6 @@ function sameRow(a: RowDraft, b: RowDraft): boolean {
 function cn(...parts: string[]): string {
   return parts.join(' ');
 }
-
-/** 회차 선택 체크박스 — 출석부 체크박스와 같은 모양. */
-const CHECKBOX =
-  'block h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 function CellInput({
   type = 'text',
@@ -1032,20 +1040,9 @@ function AddForm({
             {repeatOptions.map((o) => {
               const on = draft.repeat === o.key;
               return (
-                <button
-                  key={o.key}
-                  type='button'
-                  aria-pressed={on}
-                  onClick={() => change({ repeat: o.key })}
-                  className={cx(
-                    'h-9 rounded-control border px-3 type-label-lg transition-colors',
-                    on
-                      ? 'border-brand bg-brand text-white'
-                      : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2',
-                  )}
-                >
+                <FilterChip key={o.key} selected={on} selectMode='single' onClick={() => change({ repeat: o.key })}>
                   {o.label}
-                </button>
+                </FilterChip>
               );
             })}
           </div>
@@ -1055,21 +1052,16 @@ function AddForm({
                 {WEEK_ORDER.map((d) => {
                   const on = draft.weekdays.includes(d);
                   return (
-                    <button
+                    <FilterChip
                       key={d}
-                      type='button'
-                      aria-pressed={on}
+                      selected={on}
+                      selectMode='single'
                       aria-label={`${DOW_LABEL[d]}요일`}
                       onClick={() => toggleWeekday(d)}
-                      className={cx(
-                        'h-9 w-9 rounded-control border type-label-lg transition-colors',
-                        on
-                          ? 'border-brand bg-brand text-white'
-                          : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2',
-                      )}
+                      className='w-9 justify-center px-0'
                     >
                       {DOW_LABEL[d]}
-                    </button>
+                    </FilterChip>
                   );
                 })}
               </div>
@@ -1083,7 +1075,7 @@ function AddForm({
             <Input
               type='date'
               label='종료일'
-              labelHint={`이 날까지 · 시작부터 최대 ${REPEAT_SPAN_DAYS}일`}
+              labelHint={`이 날까지 · 시작부터 최대 ${REPEAT_SPAN_LABEL}`}
               required
               min={draft.date}
               max={maxUntil(draft.date)}
@@ -1179,7 +1171,7 @@ function AddForm({
             <p className='font-semibold text-error-700'>{errors.form}</p>
           ) : (
             <p className='text-fg-muted'>
-              일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_DAYS}일까지.
+              일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_LABEL}까지.
             </p>
           )}
         </div>

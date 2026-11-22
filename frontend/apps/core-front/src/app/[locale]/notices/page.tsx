@@ -1,15 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import type { Locale } from '@studyclub/types';
 import type { Metadata } from 'next';
 
-import { NoticeDate } from '@/components/NoticeDate';
-import { NoticesLoadError } from '@/components/NoticesLoadError';
-import { getNotices, type Locale } from '@/lib/content';
+import { NOTICE_PAGE_SIZE } from '@/features/site-notices/model';
+import { NoticeDate } from '@/features/site-notices/NoticeDate';
+import { NoticesLoadError } from '@/features/site-notices/NoticesLoadError';
+import { getNotices } from '@/features/site-notices/server';
 import { m, t } from '@/lib/i18n';
 import { PAGE } from '@/lib/layout';
 import { pageMetadata } from '@/lib/seo';
-import { NOTICE_PAGE_SIZE } from '@/lib/site-notice';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;

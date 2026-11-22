@@ -2,7 +2,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { NOTICE_PAGE, nextNoticeOffset, nextRefetchDelay } from './model';
-import { getNoticeCompose, getNotices, sendNotice, type ApiNoticeSendRequest } from '@/lib/study-notice-api';
+import { getNoticeCompose, getNotices, sendNotice } from '@/features/study-notices/repository';
+import type { ApiNoticeSendRequest } from '@/features/study-notices/types';
 
 
 export const noticeKeys = {

@@ -44,13 +44,13 @@ const HOUR = 3_600_000;
 const forbidden = { errorCode: 'FORBIDDEN', errorMessage: '권한이 없습니다.' };
 const internalError = { errorCode: 'INTERNAL_ERROR', errorMessage: '집계 정보를 불러오지 못했습니다.' };
 
-/** 조회자 시간대 — 서버처럼 생략하면 회원 설정(목은 Asia/Seoul), 틀리면 400. */
+/** 조회자 시간대 — 명시한 Query는 검증하고, mock 회원의 프로필(Asia/Seoul)을 우선한다. */
 function timeZoneOf(request: Request): string | Response {
   const raw = new URL(request.url).searchParams.get('timeZone');
   if (raw === null) return 'Asia/Seoul';
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: raw });
-    return raw;
+    return 'Asia/Seoul';
   } catch {
     return HttpResponse.json(
       { errorCode: 'INVALID_INPUT', errorMessage: 'timeZone 이 올바르지 않습니다.' },

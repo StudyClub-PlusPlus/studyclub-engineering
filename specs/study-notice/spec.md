@@ -8,7 +8,7 @@
 > Story PRD:
 > - [네비게이터는 스터디별 공지를 등록할 수 있다. (ST-016)](../../01-planning/stories/navigator-study-notice/PRD.md)
 
-네비게이터(또는 그 스터디를 만든 캡틴)가 **자기 반 팀원 중 고른 사람에게** 공지를 메일·디스코드로 보낸다.
+네비게이터(또는 그 스터디의 담당 캡틴)가 **자기 반 팀원 중 고른 사람에게** 공지를 메일·디스코드로 보낸다.
 사이트용 엔드포인트다 — 백오피스 경로(`/api/admin`)는 두지 않는다 ([endpoint-convention](../../docs/backend-development-guide/api/endpoint-convention.md)).
 권한은 [authz-guards](../authz-guards/spec.md) 의 `@RequireCaptainOrNavigator(scope = GROUP)` 이고, 서비스가 `StudyCaptainGuard.assertCanEditGroup` 으로 한 번 더 확인한다 (다른 캡틴은 크루로 본다).
 
@@ -52,7 +52,7 @@ sequenceDiagram
 
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}/groups/{groupId}/notices/compose`
-- **인증**: 필요 — 그 반의 네비게이터(`PARTICIPANT_ROLE=LEADER`) 또는 그 스터디를 만든 캡틴. 그 밖은 403
+- **인증**: 필요 — 그 반의 네비게이터(`PARTICIPANT_ROLE=LEADER`) 또는 그 스터디의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`, NULL 이면 캡틴 누구나). 그 밖은 403
 - **설명**: 받는 사람 후보와, 보낼 수 있는지·디스코드가 되는지·한도가 얼마나 남았는지. **화면이 날짜·횟수로 다시 계산하지 않고 이 값을 그린다** ([판정은 서버가 내려준다](../../docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다))
 
 ### Path Parameters
@@ -168,7 +168,7 @@ sequenceDiagram
 | 401 | UNAUTHORIZED | 로그인 아님 |
 | 403 | FORBIDDEN | compose 와 같음 |
 | 404 | NOT_FOUND | 스터디·반 없음 |
-| 409 | STUDY_ENDED | 끝난 스터디 |
+| 409 | STUDY_ENDED | 끝난 스터디 — `Study.isEnded(now)`: `STATUS ∈ {ENDED, CLOSED}` 이거나 `END_AT` 경과 (2026-11-18 bug-37) |
 | 429 | STUDY_NOTICE_RATE_LIMITED | 직전 발송 1분 안(`COOLDOWN`) 또는 오늘 30회 초과(`DAILY_LIMIT`). 메시지에 사유와 `nextAvailableAt` |
 
 > `ErrorCode.STUDY_NOTICE_RATE_LIMITED(429)` 를 새로 두었다. `ErrorCode.fromStatus(429)` 도 이 코드를 돌려준다 (프레임워크가 던진 429 가 따로 없다).
@@ -227,7 +227,7 @@ sequenceDiagram
 | items[].discord.skipReason | String | Y | `SKIPPED` 일 때만. `BOT_NOT_CONFIGURED` · `NO_DISCORD_CHANNEL` · `SENDER_NOT_LINKED` · `NO_TEXT_CHANNEL` | STUDY_NOTICE.DISCORD_SKIP_REASON |
 | items[].discord.mentionedCount | Integer | N | 멘션을 요청한 사람 수 (연동한 사람). 봇은 길드를 떠난 사람을 멘션에서 빼고도 204 를 주고 누구를 뺐는지 알려 주지 않으므로, 실제 알림을 받은 수보다 많을 수 있다 | 계산: `DISCORD_MENTIONED = true` 인 수 |
 
-메일을 센 값은 **목록 한 번에 센다** (공지마다 쿼리하지 않는다 — N+1). 공지 여러 건의 `(REFERENCE_ID, RECIPIENT_USER_ID, STATUS)` 를 중복 없이 한 번에 읽어 서버에서 받는 사람별 대표 상태로 줄인다.
+메일을 센 값은 **목록 한 번에 센다** (공지마다 쿼리하지 않는다 — N+1). 공지 여러 건을 한 번의 쿼리로 받는 사람별 대표 상태로 **DB 에서** 줄여 결과별 인원을 센다 — 받는 사람이 많아도 돌아오는 행은 공지당 많아야 셋(대기·완료·실패)이다.
 
 ### Error Responses
 
@@ -268,7 +268,7 @@ sequenceDiagram
 ## 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/app/[locale]/my/joined/[id]/schedule/notice/page.tsx` — 탭 화면은 `features/study-notices/components/NoticeTab.tsx`
-- `frontend/apps/core-front/src/features/study-notices/queries.ts` · `frontend/apps/core-front/src/lib/study-notice-api.ts` — 세 엔드포인트 호출
+- `frontend/apps/core-front/src/features/study-notices/queries.ts` · `frontend/apps/core-front/src/features/study-notices/repository.ts` — 세 엔드포인트 호출
 - 프로토: playground `/proto/core/ko/my/joined/{id}/schedule/notice`
 
 ## 퍼널·계측

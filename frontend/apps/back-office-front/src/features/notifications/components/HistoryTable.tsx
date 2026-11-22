@@ -1,11 +1,12 @@
 'use client';
 
-import { Badge } from '@studyclub/ui';
-import { Loader2, RotateCw } from 'lucide-react';
+import { Badge, IconButton } from '@studyclub/ui';
+import { RotateCw } from 'lucide-react';
 
 import { TableCard } from '@/components/ui';
 import { channelLabel, eventLabel, formatStamp, statusLabel, statusTone } from '@/features/notifications/labels';
 import { NOTIFICATION_PAGE_SIZE, type ApiNotification } from '@/features/notifications/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 const COLUMNS = 6;
 
@@ -26,13 +27,14 @@ export function HistoryTable({
   resending: ReadonlySet<number>;
   onResend: (id: number) => void;
 }) {
+  const tz = useDisplayTimeZone();
   return (
     <TableCard>
       <HistoryHead />
       <tbody>
         {rows.map((row) => (
           <tr key={row.id}>
-            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(row.createdAt)}</td>
+            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(row.createdAt, tz)}</td>
             <td className='whitespace-nowrap'>{eventLabel(row.eventType)}</td>
             <td className='whitespace-nowrap text-fg-secondary'>{channelLabel(row.recipientType)}</td>
             <td className='max-w-0 truncate text-fg-secondary'>{row.recipientValue}</td>
@@ -40,7 +42,7 @@ export function HistoryTable({
               <StatusCell row={row} spinning={resending.has(row.id)} onResend={onResend} />
             </td>
             <td className='tnum whitespace-nowrap text-fg-secondary'>
-              {row.sentAt ? formatStamp(row.sentAt) : <span className='text-fg-muted'>—</span>}
+              {row.sentAt ? formatStamp(row.sentAt, tz) : <span className='text-fg-muted'>—</span>}
             </td>
           </tr>
         ))}
@@ -84,17 +86,16 @@ function StatusCell({
         {statusLabel(row.status)}
       </Badge>
       {(row.canResend || spinning) && (
-        <button
-          type='button'
+        // 보내는 중에는 loading 으로 막는다 — design-system §9-1 은 버튼 안 스피너를 쓰지 않는다
+        <IconButton
+          variant='tertiary'
+          size='sm'
           title='재발송'
           aria-label='재발송'
-          aria-busy={spinning || undefined}
-          disabled={spinning}
+          loading={spinning}
           onClick={() => onResend(row.id)}
-          className='grid h-7 w-7 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-wait disabled:hover:bg-transparent'
-        >
-          {spinning ? <Loader2 size={15} className='animate-spin' /> : <RotateCw size={15} />}
-        </button>
+          icon={<RotateCw />}
+        />
       )}
     </span>
   );
@@ -121,13 +122,7 @@ export function HistorySkeleton() {
 }
 
 /** 표 자리에 서는 안내 한 줄(+ 버튼). 비어도 표 자리의 높이를 지킨다. */
-export function HistoryNotice({
-  children,
-  action,
-}: {
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
+export function HistoryNotice({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className='flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center'>
       <p className='type-body-sm text-fg-secondary'>{children}</p>

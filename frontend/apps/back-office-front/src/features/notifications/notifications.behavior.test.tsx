@@ -6,13 +6,10 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NotificationHistoryPage from '@/app/notifications/page';
+import { USER_KEY } from '@/features/auth/auth';
 import { formatStamp } from '@/features/notifications/labels';
 import { RESEND_GIVE_UP_MS, RESEND_POLL_MS, RESEND_REQUEST_TIMEOUT_MS } from '@/features/notifications/queries';
-import type {
-  ApiNotification,
-  ApiNotificationPage,
-  ApiNotificationResend,
-} from '@/features/notifications/types';
+import type { ApiNotification, ApiNotificationPage, ApiNotificationResend } from '@/features/notifications/types';
 import { ApiError, http } from '@/lib/http';
 import { handleUnauthorized } from '@/lib/query-client';
 
@@ -88,7 +85,15 @@ function row(patch: Partial<ApiNotification> = {}): ApiNotification {
 }
 
 const TEMPLATES = [
-  { id: 1, eventType: 'USER_REGISTERED', channel: 'EMAIL', subject: 's', body: 'b', updatedAt: null, updatedByAdminId: null },
+  {
+    id: 1,
+    eventType: 'USER_REGISTERED',
+    channel: 'EMAIL',
+    subject: 's',
+    body: 'b',
+    updatedAt: null,
+    updatedByAdminId: null,
+  },
 ];
 
 /** 서버 흉내 — 목록(필터·페이지·ids)과 재발송 접수. 요청은 httpMock.mock.calls 로 확인한다. */
@@ -118,7 +123,7 @@ function fakeServer(initial: ApiNotification[], opts: ServerOpts = {}) {
   let resendCall = 0;
   let gatherRead = 0;
   const failure = () => new ApiError(opts.failStatus ?? 500, '서버 오류');
-  const respond = async (path: string, init?: RequestInit): Promise<unknown> => {
+  const respond = async (path: string, _schema: unknown, init?: RequestInit): Promise<unknown> => {
     const url = new URL(path, 'http://x');
     if (url.pathname === '/api/admin/notification-templates') return TEMPLATES;
     if (url.pathname === '/api/admin/notifications/resend') {
@@ -152,7 +157,12 @@ function fakeServer(initial: ApiNotification[], opts: ServerOpts = {}) {
       const offset = Number(url.searchParams.get('offset') ?? 0);
       const limit = Number(url.searchParams.get('limit') ?? 20);
       const matched = db.filter((r) => !status || r.status === status);
-      const page = { items: matched.slice(offset, offset + limit), total: matched.length, offset, limit } satisfies ApiNotificationPage;
+      const page = {
+        items: matched.slice(offset, offset + limit),
+        total: matched.length,
+        offset,
+        limit,
+      } satisfies ApiNotificationPage;
       // 이 응답은 이미 나간 것이다 — 먼저 복사해 두고, 그 뒤에 서버 상태를 바꾼다(변화는 다음 읽기부터 보인다)
       const sent = structuredClone(page);
       if (gather) opts.afterGatherRead?.((gatherRead += 1), db);
@@ -161,7 +171,9 @@ function fakeServer(initial: ApiNotification[], opts: ServerOpts = {}) {
     throw new Error(`unexpected request: ${path}`);
   };
   // 실제 네트워크처럼 응답을 복사해서 준다 — 같은 객체를 넘기면 서버 쪽 변경이 이미 받은 응답까지 바꿔 버린다
-  httpMock.mockImplementation(async (path: string, init?: RequestInit) => structuredClone(await respond(path, init)));
+  httpMock.mockImplementation(async (path: string, _schema: unknown, init?: RequestInit) =>
+    structuredClone(await respond(path, _schema, init)),
+  );
   return db;
 }
 
@@ -188,7 +200,9 @@ function renderRetryToast() {
 const table = () => within(screen.getByRole('table'));
 
 const listCalls = () =>
-  httpMock.mock.calls.map((c) => String(c[0])).filter((p) => p.startsWith('/api/admin/notifications?') || p === '/api/admin/notifications');
+  httpMock.mock.calls
+    .map((c) => String(c[0]))
+    .filter((p) => p.startsWith('/api/admin/notifications?') || p === '/api/admin/notifications');
 /** 목록을 새로 읽은 횟수 — 끝 추적(`?ids=`)은 세지 않는다. */
 const listReads = () => listCalls().filter((p) => !p.includes('ids='));
 const resendCalls = () => httpMock.mock.calls.filter((c) => String(c[0]) === '/api/admin/notifications/resend');
@@ -207,7 +221,16 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  localStorage.removeItem(USER_KEY);
 });
+
+/** 로그인 때 받은 세션 user 에 프로필 시간대를 둔다. */
+function loginAs(timeZone: string) {
+  localStorage.setItem(
+    USER_KEY,
+    JSON.stringify({ id: 1, email: 'captain@example.com', nickname: '캡틴', picture: null, role: 'ADMIN', timeZone }),
+  );
+}
 
 describe('발송 이력 조회', () => {
   it('상태·조건·채널을 문구로 적고 수신 주소는 서버가 가린 값 그대로 적는다', async () => {
@@ -370,7 +393,7 @@ describe('한 건 재발송', () => {
     fireEvent.click(await screen.findByRole('button', { name: '재발송' }));
 
     await waitFor(() => expect(resendCalls()).toHaveLength(1));
-    expect(JSON.parse(String(resendCalls()[0]![1]?.body))).toEqual({ ids: [7] });
+    expect(JSON.parse(String(resendCalls()[0]![2]?.body))).toEqual({ ids: [7] });
     // 접수한 뒤에 그 줄이 「대기」로 바뀐다
     await waitFor(() => expect(table().getByText('대기')).toBeInTheDocument());
     expect(toastMock).not.toHaveBeenCalled(); // 접수는 끝이 아니다 — 아직 알리지 않는다
@@ -433,7 +456,7 @@ describe('한 건 재발송', () => {
 
     expect(toastDismissMock).toHaveBeenCalledWith('toast-1');
     await waitFor(() => expect(resendCalls()).toHaveLength(2));
-    expect(JSON.parse(String(resendCalls()[1]![1]?.body))).toEqual({ ids: [7] });
+    expect(JSON.parse(String(resendCalls()[1]![2]?.body))).toEqual({ ids: [7] });
     await waitFor(() => expect(table().getByText('대기')).toBeInTheDocument());
   });
 
@@ -514,7 +537,9 @@ describe('거르는 조건에서 벗어난 줄은 그 자리에 남는다', () =
 
     fireEvent.click(icon);
 
-    await waitFor(() => expect(toastMock).toHaveBeenCalledWith('다시 보낼 수 있는 건이 없어 아무것도 보내지 않았습니다.'));
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith('다시 보낼 수 있는 건이 없어 아무것도 보내지 않았습니다.'),
+    );
     expect(table().getByText('대기')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '재발송' })).not.toBeInTheDocument();
   });
@@ -571,7 +596,7 @@ describe('전체 재발송', () => {
 
     // 130건 → 100 + 30 두 번으로 나뉘어 나간다
     await waitFor(() => expect(resendCalls()).toHaveLength(2));
-    const sent = resendCalls().map((c) => (JSON.parse(String(c[1]?.body)) as { ids: number[] }).ids.length);
+    const sent = resendCalls().map((c) => (JSON.parse(String(c[2]?.body)) as { ids: number[] }).ids.length);
     expect(sent).toEqual([100, 30]);
     // 목록은 페이지(20건)가 아니라 100건 단위로 읽는다
     expect(listCalls().some((p) => p.includes('limit=100') && p.includes('status=FAILED'))).toBe(true);
@@ -601,7 +626,7 @@ describe('전체 재발송', () => {
     fireEvent.click(within(view.container).getByRole('button', { name: '다시 시도' }));
 
     await waitFor(() => expect(resendCalls()).toHaveLength(3));
-    const sizes = resendCalls().map((c) => (JSON.parse(String(c[1]?.body)) as { ids: number[] }).ids.length);
+    const sizes = resendCalls().map((c) => (JSON.parse(String(c[2]?.body)) as { ids: number[] }).ids.length);
     expect(sizes).toEqual([100, 30, 30]); // 나가지 못한 30건만 다시 — 이미 접수된 100건은 건드리지 않는다
   });
 
@@ -620,7 +645,7 @@ describe('전체 재발송', () => {
     fireEvent.click(within(renderRetryToast().container).getByRole('button', { name: '다시 시도' }));
 
     await waitFor(() => expect(resendCalls()).toHaveLength(1));
-    expect(JSON.parse(String(resendCalls()[0]![1]?.body)).ids).toEqual([1, 2, 3]);
+    expect(JSON.parse(String(resendCalls()[0]![2]?.body)).ids).toEqual([1, 2, 3]);
   });
 });
 
@@ -653,7 +678,7 @@ describe('거른 전체를 모을 때 빠뜨리지 않는다', () => {
     await confirmResendAll();
 
     await waitFor(() => expect(resendCalls().length).toBeGreaterThan(0));
-    const requested = new Set(resendCalls().flatMap((c) => (JSON.parse(String(c[1]?.body)) as { ids: number[] }).ids));
+    const requested = new Set(resendCalls().flatMap((c) => (JSON.parse(String(c[2]?.body)) as { ids: number[] }).ids));
     // 예전 방식은 offset=100 에서 빈 목록을 받고 끝나 앞의 100건만 모았다
     expect(requested.size).toBe(200);
     expect(requested.has(101) && requested.has(200)).toBe(true);
@@ -740,7 +765,9 @@ describe('요청에 제한 시간이 있다', () => {
     fakeServer(failedRows(2), { hang: { track: true } });
     renderPage();
     await confirmResendAll();
-    await waitFor(() => expect(screen.getByRole('button', { name: '전체 재발송' })).toHaveAttribute('aria-busy', 'true'));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '전체 재발송' })).toHaveAttribute('aria-busy', 'true'),
+    );
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(RESEND_GIVE_UP_MS + RESEND_REQUEST_TIMEOUT_MS);
@@ -768,7 +795,10 @@ describe('로그인 만료(401)는 공통 처리로 간다', () => {
 
   it('끝을 쫓다가 401 이 오면 공통 처리를 부르고 더 쫓지 않는다', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    fakeServer([row({ id: 7, status: 'FAILED', sentAt: null, canResend: true })], { trackFails: true, failStatus: 401 });
+    fakeServer([row({ id: 7, status: 'FAILED', sentAt: null, canResend: true })], {
+      trackFails: true,
+      failStatus: 401,
+    });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '재발송' }));
     await waitFor(() => expect(table().getByText('대기')).toBeInTheDocument());
@@ -819,13 +849,22 @@ describe('시각은 줄마다 약칭 없이 시각만, 기준은 표 위에 한 
     renderPage();
     await screen.findAllByText('h***@example.com');
 
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    await waitFor(() => expect(screen.getByTestId('timezone-note')).toHaveTextContent(zone));
-    expect(screen.getAllByText(/내 시간대 기준/)).toHaveLength(1);
+    expect(screen.getByTestId('timezone-note')).toHaveTextContent('한국 · 서울 · KST');
+    expect(screen.getAllByText(/내 프로필 시간대 기준/)).toHaveLength(1);
+  });
+
+  it('프로필 시간대가 밴쿠버면 표의 시각과 기준 안내가 밴쿠버 기준이다', async () => {
+    loginAs('America/Vancouver');
+    fakeServer([row({ id: 1, createdAt: '2026-07-15T09:00:00Z', sentAt: null })]);
+    renderPage();
+    await screen.findByText('h***@example.com');
+    expect(screen.getByTestId('timezone-note')).toHaveTextContent('북미 서부 · 밴쿠버 · PCT');
+    const cells = within(table().getAllByRole('row')[1]!).getAllByRole('cell');
+    expect(cells[0]!.textContent).toBe('26. 07. 15. 02:00');
   });
 
   it('읽을 수 없는 값은 원문 그대로 둔다', () => {
-    expect(formatStamp('not-a-date')).toBe('not-a-date');
-    expect(formatStamp('2026-10-15T09:00:00Z')).toMatch(/^\d{2}\. \d{2}\. \d{2}\. \d{2}:\d{2}$/);
+    expect(formatStamp('not-a-date', 'Asia/Seoul')).toBe('not-a-date');
+    expect(formatStamp('2026-10-15T09:00:00Z', 'Asia/Seoul')).toBe('26. 10. 15. 18:00');
   });
 });

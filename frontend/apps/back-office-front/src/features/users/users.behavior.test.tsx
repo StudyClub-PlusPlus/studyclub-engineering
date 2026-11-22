@@ -161,7 +161,8 @@ describe('이메일 보기', () => {
     const button = await screen.findByRole('button', { name: '하늘 이메일 보기' });
     fireEvent.click(button);
     await waitFor(() => expect(button).toBeDisabled());
-    expect(button).toHaveTextContent('확인 중…');
+    // 처리 중 안내는 버튼 옆 role=status 에 있다 (design-system §9-1)
+    expect(button.parentElement).toHaveTextContent('확인 중…');
     // 다른 줄은 막히지 않는다
     expect(screen.getByRole('button', { name: '나래 이메일 보기' })).toBeEnabled();
     // 중복 클릭은 요청을 더 보내지 않는다
@@ -242,11 +243,12 @@ describe('디스코드 보기', () => {
     // 같은 틱에 다시 눌러도 서버 요청은 한 번이다.
     fireEvent.click(button);
     await waitFor(() => expect(button).toBeDisabled());
-    expect(button).toHaveTextContent('확인 중…');
+    // 처리 중 안내는 버튼 옆 role=status 에 있다 (design-system §9-1)
+    expect(button.parentElement).toHaveTextContent('확인 중…');
     expect(screen.getByRole('button', { name: '나래 디스코드 아이디 보기' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '하늘 이메일 보기' })).toBeEnabled();
     expect(revealCalls()).toHaveLength(1);
-    expect(revealCalls()[0]).toEqual(['/api/admin/users/18/discord-reveals', { method: 'POST' }]);
+    expect(revealCalls()[0]).toEqual(['/api/admin/users/18/discord-reveals', expect.anything(), { method: 'POST' }]);
 
     await act(async () => d.resolve({ id: 18, discordHandle: HANDLE }));
     expect(await screen.findByText(`@${HANDLE}`)).toBeInTheDocument();
@@ -430,7 +432,7 @@ describe('권한 변경', () => {
     expect(toastMock).not.toHaveBeenCalled();
     const patch = httpMock.mock.calls.find(([p]) => String(p).includes('/system-role'))!;
     expect(patch[0]).toBe('/api/admin/users/18/system-role');
-    expect(patch[1]).toMatchObject({ method: 'PATCH', body: JSON.stringify({ systemRole: 'ADMIN' }) });
+    expect(patch[2]).toMatchObject({ method: 'PATCH', body: JSON.stringify({ systemRole: 'ADMIN' }) });
 
     const before = listCalls().length;
     await act(async () => d.resolve({ id: 18, systemRole: 'ADMIN' }));

@@ -1,4 +1,5 @@
 import { mockClient, type MockResolveContext } from "../utils";
+import { MOCK_ACTOR_ID, mockAdminAccounts } from "./accounts";
 
 /**
  * 백오피스 참여 명단 — `GET /api/admin/studies/{studyId}/participants` (specs/study-group/spec.md 「참여 명단」,
@@ -25,20 +26,22 @@ const person = (
     discordNickname?: string;
     groupId?: number;
     role?: "LEADER" | "MEMBER";
-    region?: "KR" | "NA" | "ETC" | null;
-    captain?: boolean;
+    timeZone?: string | null;
+    accountId?: number;
   } = {},
 ) => ({
   participantId: id,
-  accountId: 1000 + id,
+  accountId: extra.accountId ?? 1000 + id,
   nickname,
   discordNickname: extra.discordNickname ?? null,
   email: `crew${id}@example.com`,
-  regionGroup: extra.region === undefined ? "KR" : extra.region,
+  regionGroup: null,
+  timeZone: extra.timeZone === undefined ? "Asia/Seoul" : extra.timeZone,
   groupId: extra.groupId ?? 1,
   participantRole: extra.role ?? "MEMBER",
   status,
-  captain: extra.captain ?? false,
+  /** 서버처럼 담당 캡틴(ownerCaptain)과 같은 계정이면 true — `listOf` 가 채운다. */
+  captain: false,
   joinedAt: `2026-10-${String(1 + (id % 9)).padStart(2, "0")}T01:00:00Z`,
 });
 
@@ -46,28 +49,29 @@ type Row = ReturnType<typeof person>;
 
 /**
  * 두 반 · 반마다 네비게이터 하나 · 신청한 담당 캡틴 한 줄(「캡틴」 칩) · 휴식 중 · 참여 중단(`includeLeft` 때만) ·
- * 디스코드 별명 없는 사람(「—」) · 지역 없는 사람 · 닉네임이 겹치는 두 사람(디스코드 별명으로 가른다).
+ * 디스코드 별명 없는 사람(「—」) · 시간대 없는 사람 · 닉네임이 겹치는 두 사람(디스코드 별명으로 가른다).
  */
 const CREW: Row[] = [
   person(1, "jamie", "ACTIVE", {
     discordNickname: "제이미/BE/서울/분산시스템",
     role: "LEADER",
   }),
-  person(2, "seeun", "ACTIVE", {
-    discordNickname: "세은/PM/서울",
-    captain: true,
+  // 담당 캡틴(캡틴 계정 3 · 다온)이 크루로도 신청한 줄
+  person(2, "daon", "ACTIVE", {
+    discordNickname: "다온/PM/서울",
+    accountId: MOCK_ACTOR_ID,
   }),
   person(3, "doyun", "ACTIVE", {
     discordNickname: "도윤/FE/시애틀",
-    region: "NA",
+    timeZone: "America/Vancouver",
   }),
   person(4, "harin", "PAUSED", { discordNickname: "하린/BE/부산" }),
   person(5, "minjun", "ACTIVE", { discordNickname: "민준/BE/서울" }),
   person(6, "minjun", "ACTIVE", {
     discordNickname: "민준/ML/LA",
-    region: "NA",
+    timeZone: "America/Los_Angeles",
   }),
-  person(7, "seoyun", "ACTIVE", { region: null }),
+  person(7, "seoyun", "ACTIVE", { timeZone: null }),
   person(8, "jihoo", "WITHDRAWN", { discordNickname: "지후/FE/서울" }),
   person(11, "chaewon", "ACTIVE", {
     discordNickname: "채원/DE/서울",
@@ -77,17 +81,27 @@ const CREW: Row[] = [
   person(12, "eunwoo", "ACTIVE", {
     discordNickname: "은우/BE/토론토",
     groupId: 2,
-    region: "ETC",
+    timeZone: "America/New_York",
   }),
   person(13, "yuna", "ACTIVE", { groupId: 2 }),
 ];
+
+/** 스터디별 담당 캡틴 계정 id — 처음 값은 요청자(캡틴). 바꾸면 새로고침 전까지 남는다. */
+const OWNERS = new Map<number, number>();
+const ownerOf = (studyId: number) => {
+  const id = OWNERS.get(studyId) ?? MOCK_ACTOR_ID;
+  const account = mockAdminAccounts.find((a) => a.id === id);
+  return account ? { accountId: account.id, nickname: account.nickname ?? `캡틴 ${account.id}` } : null;
+};
 
 const groupName = (id: number) =>
   GROUPS.find((g) => g.groupId === id)?.name ?? "";
 
 function listOf(studyId: number, all: Row[], includeLeft: boolean) {
+  const owner = ownerOf(studyId);
   const participants = all
     .filter((p) => includeLeft || p.status !== "WITHDRAWN")
+    .map((p) => ({ ...p, captain: p.accountId === owner?.accountId }))
     .sort(
       (a, b) =>
         Number(b.participantRole === "LEADER") -
@@ -101,6 +115,7 @@ function listOf(studyId: number, all: Row[], includeLeft: boolean) {
       (p) => p.status === "ACTIVE" || p.status === "PAUSED",
     ).length,
     recruitmentCapacity: 20,
+    ownerCaptain: owner,
     groups: GROUPS,
     participants,
   };
@@ -175,6 +190,30 @@ export const adminParticipantsHandlers = mockClient.createHandlerGroup(
           response: {
             errorCode: "PARTICIPANT_NOT_ACTIVE",
             errorMessage: "participantId 4: 활성 상태의 크루만 변경할 수 있습니다.",
+          },
+        },
+      ],
+    },
+    {
+      method: "PATCH",
+      path: "/:id/owner-captain",
+      presets: [
+        {
+          label: "성공",
+          status: 200,
+          response: async (ctx: MockResolveContext) => {
+            const studyId = studyIdOf(ctx);
+            const { accountId } = (await ctx.request.json()) as { accountId: number };
+            OWNERS.set(studyId, accountId);
+            return { studyId, ownerCaptain: ownerOf(studyId) };
+          },
+        },
+        {
+          label: "캡틴 아님",
+          status: 409,
+          response: {
+            errorCode: "OWNER_CAPTAIN_NOT_ADMIN",
+            errorMessage: "캡틴만 담당 캡틴이 될 수 있습니다.",
           },
         },
       ],

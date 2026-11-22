@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Meeting, ScheduleGroup } from './meetings';
-import { ScheduleTable } from './ScheduleTable';
+import type { Meeting, ScheduleGroup } from '@/features/schedule/meetings';
+import { ScheduleTable } from '@/features/schedule/ScheduleTable';
 
 const group: ScheduleGroup = { id: '3', title: '목요일반', time: { weekdays: [4], time: '20:00', tz: 'Asia/Seoul' } };
 

@@ -1,6 +1,6 @@
+import type { Locale } from '@studyclub/types';
 import { Instagram, Linkedin, MessageCircle, Youtube } from 'lucide-react';
 
-import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import { activeSocialChannels, type SocialId } from '@/lib/social';
 

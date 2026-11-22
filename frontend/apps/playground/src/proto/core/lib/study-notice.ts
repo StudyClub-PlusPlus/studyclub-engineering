@@ -3,7 +3,7 @@
 import { getDiscordNickname } from '@core/lib/me';
 import type { NavigatorGroup } from '@core/lib/meetings';
 import { participantsOf } from '@core/lib/schedule-board';
-import type { Study } from '@studyclub/mock';
+import type { Study } from '@studyclub/types';
 
 /**
  * 스터디 공지 보내기 (프로토) — 네비게이터가 자기 반 팀원 중 고른 사람에게 메일·디스코드로 보낸다.

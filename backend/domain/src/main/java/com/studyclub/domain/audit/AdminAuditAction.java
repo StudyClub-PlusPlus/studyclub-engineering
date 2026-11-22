@@ -4,6 +4,7 @@ package com.studyclub.domain.audit;
 public enum AdminAuditAction {
     /** 백오피스 회원 목록에서 한 명의 이메일 원본을 봤다. BEFORE/AFTER 없음. */
     EMAIL_REVEAL,
+    ANALYTICS_OPT_OUT,
     /** 백오피스 회원 목록에서 한 명의 디스코드 username을 봤다. BEFORE/AFTER 없음. */
     DISCORD_REVEAL,
     /** 계정 권한(SYSTEM_ROLE)이 실제로 바뀌었다. BEFORE/AFTER 에 변경 전후 값. */
@@ -17,5 +18,14 @@ public enum AdminAuditAction {
      * 백오피스 신청자 탭에서 명부 행의 역할(네비게이터)을 바꿨다 (specs/study-group/spec.md). BEFORE 에 변경 전 역할, AFTER 에 명부 행
      * ID. 역할은 {@code LEADER} · {@code MEMBER} 둘뿐이라 변경 후 값은 BEFORE 의 반대다.
      */
-    PARTICIPANT_ROLE
+    PARTICIPANT_ROLE,
+    /**
+     * 백오피스 신청자 탭에서 스터디의 담당 캡틴(STUDY.OWNER_CAPTAIN_ID)을 바꿨다 (specs/study-group/spec.md). TARGET 은 새
+     * 담당 캡틴, BEFORE 에 옛 담당 캡틴 계정 ID(없었으면 null), AFTER 에 스터디 ID.
+     */
+    OWNER_CAPTAIN,
+    /** 캡틴 계정 탈퇴에 따른 시스템 권한 말소. */
+    ACCOUNT_ROLE_REVOKE,
+    /** 활동 중인 네비게이터의 계정 탈퇴에 따른 참여 권한 말소. */
+    PARTICIPANT_REVOKE
 }

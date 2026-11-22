@@ -52,6 +52,11 @@ erDiagram
   ACCOUNT_LEAVE_REASON
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
   ACCOUNT |o..o{ SITE_NOTICE : "작성한 캡틴 (FK 없음)"
+  ACCOUNT |o..o{ FEEDBACK : "제출자·완료 처리자 (FK 없음)"
+  FEEDBACK ||--o{ FEEDBACK_IMAGE : "첨부"
+  ACCOUNT |o..o{ CLUB_EVENT : "등록한 캡틴 (FK 없음)"
+  CLUB_EVENT ||--|{ CLUB_EVENT_CHANNEL : "참여 방식"
+  CLUB_EVENT ||--o{ CLUB_EVENT_QUESTION : "신청 질문"
   STUDY_PROGRAM ||--o{ STUDY : "기수"
   STUDY ||--o{ STUDY_GROUP : "분반"
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
@@ -87,6 +92,11 @@ erDiagram
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
   ACCOUNT |o..o{ SITE_NOTICE : "작성한 캡틴 (FK 없음)"
   ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
+  ACCOUNT |o..o{ FEEDBACK : "제출자·완료 처리자 (FK 없음)"
+  FEEDBACK ||--o{ FEEDBACK_IMAGE : "첨부"
+  ACCOUNT |o..o{ CLUB_EVENT : "등록한 캡틴 (FK 없음)"
+  CLUB_EVENT ||--|{ CLUB_EVENT_CHANNEL : "참여 방식"
+  CLUB_EVENT ||--o{ CLUB_EVENT_QUESTION : "신청 질문"
   NOTIFICATION {
     bigint ID PK
     varchar EVENT_TYPE
@@ -161,10 +171,11 @@ erDiagram
   ACCOUNT_IDENTITY {
     bigint   ID                PK
     bigint   ACCOUNT_ID           FK
-    varchar  ISSUER               "GOOGLE / APPLE"
-    varchar  PROVIDER_ACCOUNT_ID     "OAuth sub"
+    varchar  ISSUER               "GOOGLE / APPLE / EMAIL(테스트 로그인)"
+    varchar  PROVIDER_ACCOUNT_ID     "OAuth sub (EMAIL 은 정규화 메일)"
     varchar  PROVIDER_EMAIL       "OAuth 제공자 이메일. ACCOUNT.EMAIL 과 다를 수 있음"
     datetime LAST_LOGIN_AT
+    varchar  PASSWORD_HASH        "EMAIL 수단만"
   }
 
   ACCOUNT_CONSENT {
@@ -186,7 +197,7 @@ erDiagram
   STORAGE_OBJECT {
     bigint   ID                PK
     bigint   ACCOUNT_ID           "올린 사람 (FK 없음)"
-    varchar  PURPOSE              "PROFILE / STUDY_THUMBNAIL"
+    varchar  PURPOSE              "PROFILE / STUDY_THUMBNAIL / FEEDBACK"
     varchar  PROVIDER             "S3 / R2"
     varchar  OBJECT_KEY        UK "gigs/profiles/<UUID>.webp"
     varchar  CONTENT_TYPE
@@ -204,6 +215,12 @@ erDiagram
     bigint   TARGET_ACCOUNT_ID    "대상 회원. FK 없음"
     varchar  BEFORE_VALUE         "ROLE_CHANGE 의 변경 전 SYSTEM_ROLE"
     varchar  AFTER_VALUE          "ROLE_CHANGE 의 변경 후 SYSTEM_ROLE"
+    varchar  ACTOR_IP              "검증된 접속 주소"
+    bigint   PARTICIPANT_ID
+    varchar  PARTICIPANT_ROLE       "행위 직전 역할"
+    varchar  REASON
+    varchar  RETENTION_POLICY       "적용 규칙·버전"
+    datetime EXPIRES_AT             "저장한 만료 시각; 역할 미상은 NULL"
     datetime CREATED_AT           "행위 시각"
     datetime UPDATED_AT
   }
@@ -216,6 +233,79 @@ erDiagram
     datetime REMOVED_AT           "소프트 삭제. NULL = 게시 중"
     datetime CREATED_AT           "게시 시각"
     datetime UPDATED_AT           "마지막 수정"
+  }
+
+  FEEDBACK {
+    bigint   ID                PK
+    bigint   ACCOUNT_ID           "제출자 (FK 없음)"
+    varchar  TYPE                 "QUESTION / IDEA / BUG"
+    varchar  TITLE
+    varchar  CONTENT              "평문 2000자"
+    varchar  BROWSER              "Chrome 141 · macOS"
+    int      VIEWPORT_WIDTH
+    int      VIEWPORT_HEIGHT
+    varchar  STATUS               "NEW / SEEN / DONE — DONE 은 회신으로만"
+    bigint   DONE_BY_ACCOUNT_ID   "첫 회신 캡틴 (FK 없음)"
+    varchar  REPLY_CONTENT
+    datetime REPLIED_AT           "첫 회신 시각"
+    varchar  RETENTION_POLICY       "적용 규칙·버전"
+    datetime EXPIRES_AT             "저장한 만료 시각"
+    varchar  ADMIN_MEMO           "캡틴 전용"
+    datetime CREATED_AT           "접수 시각"
+    datetime UPDATED_AT
+  }
+
+  FEEDBACK_IMAGE {
+    bigint   ID                PK
+    bigint   FEEDBACK_ID          FK
+    bigint   STORAGE_OBJECT_ID    "업로드 행 (FK 없음)"
+    varchar  IMAGE_URL
+    int      DISPLAY_ORDER
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  CLUB_EVENT {
+    bigint   ID                     PK
+    varchar  TITLE
+    varchar  SUMMARY
+    text     DESCRIPTION              "평문 5000자"
+    varchar  TIME_ZONE                "행사 기준 IANA 시간대"
+    datetime STARTS_AT
+    datetime ENDS_AT                  "NULL = 시작일 다음 날 00:00"
+    datetime DEADLINE_AT
+    varchar  CONFIRMATION             "AUTO / REVIEW"
+    varchar  STATUS                   "PUBLISHED / CLOSED / CANCELLED"
+    datetime PUBLISHED_AT
+    bigint   VERSION                  "저장마다 +1"
+    bigint   CREATED_BY               "등록한 캡틴 (FK 없음)"
+    varchar  CREATE_IDEMPOTENCY_KEY   "UK (CREATED_BY, KEY)"
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  CLUB_EVENT_CHANNEL {
+    bigint   ID                PK
+    bigint   CLUB_EVENT_ID        FK
+    varchar  CHANNEL              "ONLINE / OFFLINE"
+    int      CAPACITY
+    varchar  LOCATION             "오프라인 장소"
+    varchar  ONLINE_URL           "온라인 링크 (로그 금지)"
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  CLUB_EVENT_QUESTION {
+    bigint   ID                PK
+    bigint   CLUB_EVENT_ID        FK
+    varchar  QUESTION_KEY         "questionId, 행사 안 유일"
+    varchar  LABEL
+    varchar  TYPE                 "TEXT / TEXTAREA / RADIO / CHECKBOX"
+    boolean  REQUIRED
+    json     OPTIONS
+    int      SORT_ORDER
+    datetime CREATED_AT
+    datetime UPDATED_AT
   }
 
   STUDY_PROGRAM {
@@ -293,6 +383,17 @@ erDiagram
     datetime LEFT_AT               "참여 종료 시각. WITHDRAWN·DELETED 일 때만"
   }
 
+  STUDY_PARTICIPANT_GROUP_MOVE {
+    bigint   ID                 PK
+    bigint   PARTICIPANT_ID        "→ STUDY_PARTICIPANT (FK 없음)"
+    bigint   FROM_GROUP_ID         "옛 반 (FK 없음 — 반을 지워도 남김)"
+    varchar  FROM_GROUP_NAME       "그때 이름"
+    bigint   TO_GROUP_ID           "새 반 (FK 없음)"
+    varchar  TO_GROUP_NAME         "그때 이름"
+    bigint   MOVED_BY_ACCOUNT_ID   "옮긴 캡틴 — 응답에 안 냄"
+    datetime MOVED_AT
+  }
+
   STUDY_ATTENDANCE {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
@@ -365,16 +466,20 @@ erDiagram
   STUDY_PROPOSAL        ||--o{ STUDY_PROPOSAL_INTEREST : "나도"
 
   STUDY_APPLICATION     ||..o| STUDY_PARTICIPANT       : "승인 시 생성"
+  STUDY_PARTICIPANT     ||--o{ STUDY_PARTICIPANT_GROUP_MOVE : "반 이동 기록"
   STUDY_PROPOSAL        ||..o| STUDY_PROGRAM           : "채택 시 승격"
 ```
 
 ## 테이블
+
+분석 개인정보: [ACCOUNT_ANALYTICS](./ACCOUNT_ANALYTICS.md). 회원당 분석 설정·삭제 진행을 한 행에 저장하며, 계정과 외래키를 두지 않는다.
 
 
 | 영역  | 테이블                                                     | 한 줄                    | 저장하는 상태                              |
 | --- | ------------------------------------------------------- | ---------------------- | ------------------------------------ |
 | 회원  | [ACCOUNT](./ACCOUNT.md)                                    | 회원 프로필                 | `SYSTEM_ROLE`                        |
 | 회원  | [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
+| 회원  | [EMAIL_SIGNUP_CODE](./EMAIL_SIGNUP_CODE.md) | 테스트 로그인 가입 코드 | — |
 | 회원  | [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)                                  | 회원 동의                 | —                                    |
 | 회원  | [ACCOUNT_LEAVE_REASON](./ACCOUNT_LEAVE_REASON.md)                        | 탈퇴 사유 집계 (계정과 잇지 않음) | —                              |
 | 회원  | [ADMIN_AUDIT_LOG](./ADMIN_AUDIT_LOG.md)                                  | 운영 감사 로그 — 이메일 보기·권한 변경 (ID 만) | —                              |
@@ -387,6 +492,7 @@ erDiagram
 | 모집  | [STUDY_RECRUITMENT](./STUDY_RECRUITMENT.md)             | 모집 회차 — 기수의 모집 기간/조건   | —                                    |
 | 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
 | 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 분반에 소속된 사람        | `STATUS`, `PARTICIPANT_ROLE`         |
+| 모집  | [STUDY_PARTICIPANT_GROUP_MOVE](./STUDY_PARTICIPANT_GROUP_MOVE.md) | 반 이동 기록 — 옛 반 · 새 반 이름과 시각 | —                                    |
 | 운영  | [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |
 | 운영  | [STUDY_DISCORD_LINK](./STUDY_DISCORD_LINK.md)           | 스터디 ↔ 디스코드 카테고리·역할 ID  | —                                    |
 | 반응  | [STUDY_REVIEW](./STUDY_REVIEW.md)                       | 후기                     | —                                    |
@@ -399,6 +505,11 @@ erDiagram
 | 알림 | [STUDY_NOTICE](./STUDY_NOTICE.md) | 반 공지 발송 기록 (메일 결과는 NOTIFICATION, 디스코드 결과는 여기) | `DISCORD_STATUS` |
 | 알림 | [STUDY_NOTICE_RECIPIENT](./STUDY_NOTICE_RECIPIENT.md) | 반 공지를 받는 사람 (공지 한 건에 한 사람 한 행) | — |
 | 공지 | [SITE_NOTICE](./SITE_NOTICE.md) | 사이트 전체 공지 — 콘솔이 쓰고 사이트가 읽는다 | `REMOVED_AT` (소프트 삭제) |
+| 문의 | [FEEDBACK](./FEEDBACK.md) | 문의·오류 신고 — 크루가 보내고 콘솔이 처리 · 회신 | `STATUS` |
+| 문의 | [FEEDBACK_IMAGE](./FEEDBACK_IMAGE.md) | 문의 첨부 이미지 (최대 3장) | — |
+| 행사 | [CLUB_EVENT](./CLUB_EVENT.md) | 캡틴이 등록하는 크루 행사 — 등록 즉시 공개 | `STATUS` (표시 상태는 계산) |
+| 행사 | [CLUB_EVENT_CHANNEL](./CLUB_EVENT_CHANNEL.md) | 행사 참여 방식(온라인·오프라인)별 정원·장소·링크 | — |
+| 행사 | [CLUB_EVENT_QUESTION](./CLUB_EVENT_QUESTION.md) | 행사 신청 질문 (현재 질문, 신청은 사본을 따로 둔다) | — |
 
 
 ## ERD 추가·변경 절차

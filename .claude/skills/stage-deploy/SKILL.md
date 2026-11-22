@@ -1,6 +1,6 @@
 ---
 name: stage-deploy
-description: "기능 브랜치를 develop 에 합쳐 push 해서 stage 에 반영한다. 마이그레이션 번호 확인 → 로컬 merge → 테스트 → push → 배포 워크플로 감시 → stage 확인까지. 「stage 에 올려」「stage 반영」「develop 에 합쳐」"
+description: "기능 브랜치를 develop 에 합쳐 push 해서 stage 에 반영한다. 마이그레이션 번호 확인 → 로컬 merge → 테스트 → push → 배포 워크플로 감시 → stage 확인까지. 사용자가 stage 반영을 시킬 때나, 작업을 마치며 「develop 에 병합해서 스테이지에 올릴까요?」에 동의했을 때 쓴다. 「stage 에 올려」「stage 반영」「스테이지에 올려」「develop 에 합쳐」"
 ---
 
 # /stage-deploy — 기능 브랜치를 stage 에
@@ -20,9 +20,12 @@ description: "기능 브랜치를 develop 에 합쳐 push 해서 stage 에 반�
 | 바뀐 경로 | 워크플로 | 확인 주소 |
 |---|---|---|
 | `backend/**` | `backend-develop-CI` (+ `backend-migration-check`) | `https://api-stage.studyclub.life/api/health` |
-| `frontend/apps/core-front/**` · `frontend/packages/**` | `core-front-develop-CI` | `https://stage.studyclub.life` |
-| `frontend/apps/back-office-front/**` · `frontend/packages/**` | `back-office-front-develop-CI` | `https://back-office-stage.studyclub.life` |
-| `frontend/packages/ui/**` | `storybook-develop-CI` 도 | — |
+| `frontend/apps/core-front/**` · `frontend/packages/**` · `frontend/*` | `core-front-develop-CI` | `https://stage.studyclub.life` |
+| `frontend/apps/back-office-front/**` · `frontend/packages/**` · `frontend/*` | `back-office-front-develop-CI` | `https://back-office-stage.studyclub.life` |
+| `frontend/packages/ui/**` · `frontend/packages/design/**` · `frontend/*` | `storybook-develop-CI` 도 | — |
+| `discord/**` | `discord-develop-CI` | — |
+
+프론트 3종(core-front·back-office-front·storybook)은 자기 워크플로 파일이 바뀌어도 돈다. 표와 어긋나면 `.github/workflows/*-develop.yaml` 의 `push.paths` 가 정본이다.
 
 빌드 결과는 슬랙 `#build-status` 에 뜬다.
 
@@ -33,17 +36,17 @@ description: "기능 브랜치를 develop 에 합쳐 push 해서 stage 에 반�
 ```bash
 git fetch origin develop <브랜치>
 # develop 의 마지막 번호 vs 브랜치가 새로 넣는 번호 — 겹치면 멈춘다
-git ls-tree --name-only origin/develop backend/domain/src/main/resources/db/migration/ | sed 's/.*\/V\([0-9]*\)__.*/\1/' | sort -n | tail -1
-git diff --name-only --diff-filter=A origin/develop...origin/<브랜치> -- backend/domain/src/main/resources/db/migration/
+# 마이그레이션은 backend/domain 과 backend/notification 두 모듈에 있고 번호를 함께 쓴다
+git ls-tree -r --name-only origin/develop backend | grep '/db/migration/V' | sed 's/.*\/V\([0-9]*\)__.*/\1/' | sort -n | tail -1
+git diff --name-only --diff-filter=A origin/develop...origin/<브랜치> -- 'backend/*/db/migration/V*.sql'
 ```
 
-- **stage 는 Flyway off — `V*.sql` 은 stage 에서 실행되지 않는다.** 스키마는 Hibernate(`update`)가 엔티티로 맞추고, 데이터 마이그레이션(INSERT·UPDATE)은 손으로 한 번 넣어야 한다([database-guide §환경별](../../../docs/backend-development-guide/database-guide.md)). 번호가 develop 마지막+1 이 아니면 prod 에서 충돌하니 멈추고 사람에게 묻는다
+- **stage 는 Flyway off — `V*.sql` 은 stage 에서 실행되지 않는다.** 스키마는 Hibernate(`update`)가 엔티티로 맞추고, 데이터 마이그레이션(INSERT·UPDATE)은 손으로 한 번 넣어야 한다([database-guide §환경별](../../../docs/backend-development-guide/database-guide.md#환경별)). 번호가 develop 마지막+1 이 아니면 prod 에서 충돌하니 멈추고 사람에게 묻는다
 - 이 브랜치가 stage 의 무엇을 바꾸는지(새 env 가 필요한가 등) PR 본문의 「머지 전 확인」을 읽는다. stage 서버 env 는 인프라 레포 소관이다 — 없으면 사람에게 알린다
 
 ### 2. 로컬에서 합친다
 
 작업 트리가 깨끗한지 먼저 본다 (`git status --short`). 남의 변경이 있으면 stash 하지 말고 묻는다.
-
 ```bash
 git checkout -B develop origin/develop
 git merge --no-ff --no-commit <브랜치>
@@ -63,8 +66,7 @@ git merge --no-ff --no-commit <브랜치>
 (cd frontend && pnpm install --frozen-lockfile && pnpm --filter core-front run build && pnpm --filter back-office-front run build)
 ```
 
-> 2026-10-16: `@studyclub/ui` 에 새 훅을 넣으면서 `'use client'` 를 빠뜨렸다. vitest·tsc 는 통과했고
-> stage 이미지 빌드(`next build`)에서만 터졌다. **ui 패키지에 훅·상태를 쓰는 파일을 추가하면 맨 위에 `'use client'`.**
+**ui 패키지에 훅·상태를 쓰는 파일을 추가하면 맨 위에 `'use client'`.** 빠뜨려도 vitest·tsc 는 통과하고 stage 이미지 빌드(`next build`)에서만 터진다.
 
 로컬에 패키지가 덜 깔려 실패하는 것(`Cannot find module 'msw'` 등)은 이번 변경과 무관하다 — 같은 파일이 develop 에서도 실패하는지로 가린다. 무관하면 보고에 그렇다고 적는다.
 
@@ -81,9 +83,8 @@ git push origin develop
 ### 5. 배포 감시
 
 ```bash
-gh run list --branch develop --limit 10 --json databaseId,workflowName,status,conclusion,headSha \
-  -q '.[] | select(.headSha|startswith("<merge SHA 7자리>"))'
-gh run watch <databaseId> --exit-status
+gh run list --commit "$(git rev-parse HEAD)" --json databaseId,workflowName,status,conclusion
+gh run watch <databaseId> --exit-status   # 나온 run 마다
 ```
 
 실패하면 `gh run view <id> --log-failed` 로 원인을 보고하고 멈춘다. develop 을 되돌리지 않는다 — 사람이 정한다.

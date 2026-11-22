@@ -1,4 +1,4 @@
-import type { ApplicationQuestionType } from '@studyclub/mock';
+import type { ApplicationQuestionType } from '@studyclub/types';
 
 export const QUESTION_TYPES: ApplicationQuestionType[] = ['text', 'textarea', 'radio', 'checkbox', 'select'];
 

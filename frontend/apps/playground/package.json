@@ -10,7 +10,10 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test:timezones": "node scripts/check-timezones.mjs",
-    "export-specs": "node scripts/export-specs.mjs"
+    "test:user-dormancy": "node scripts/check-user-dormancy.mjs",
+    "test:events": "node scripts/check-events.mjs",
+    "export-specs": "node scripts/export-specs.mjs",
+    "capture-screens": "node scripts/capture-screens.mjs"
   },
   "dependencies": {
     "@studyclub/design": "workspace:*",
@@ -18,9 +21,11 @@
     "@studyclub/ui": "workspace:*",
     "lucide-react": "^0.460.0",
     "msw": "^2.15.0",
-    "next": "16.4.1",
+    "next": "16.4.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "@studyclub/types": "workspace:*",
+    "@studyclub/utils": "workspace:*"
   },
   "prettier": "@studyclub/prettier-config",
   "devDependencies": {
@@ -31,6 +36,7 @@
     "@studyclub/eslint-config": "workspace:*",
     "@studyclub/prettier-config": "workspace:*",
     "eslint": "^9.24.0",
+    "playwright-core": "1.63.0",
     "prettier": "^3.5.3",
     "tailwindcss": "^4",
     "typescript": "^5",

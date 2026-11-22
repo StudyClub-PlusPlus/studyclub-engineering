@@ -3,6 +3,7 @@
 import { TableCard } from '@/components/ui';
 import { formatStamp } from '@/features/notifications/labels';
 import type { ApiSiteNotice, SiteNoticeOrder, SiteNoticeSort } from '@/features/site-notices/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /**
  * 정렬하는 컬럼 머리 — 이름을 누른다. 처음 누르면 오름차순, 다시 누르면 내림차순.
@@ -27,6 +28,7 @@ function SortLabel({
   if (active) tone = 'text-brand';
   return (
     <button
+      // ui-native: 표 머리 정렬 — 머리 글자 자체가 정렬 단추
       type='button'
       onClick={() => onChange(next)}
       aria-label={`${label} ${nextLabel} 정렬`}
@@ -53,6 +55,7 @@ export function SiteNoticesTable({
   onSort: (sort: SiteNoticeSort, order: SiteNoticeOrder) => void;
   onOpen: (noticeId: number) => void;
 }) {
+  const tz = useDisplayTimeZone();
   function activeOf(key: SiteNoticeSort): SiteNoticeOrder | null {
     if (sort === key) return order;
     return null;
@@ -82,6 +85,7 @@ export function SiteNoticesTable({
             <td className='min-w-[22rem] max-w-[34rem]'>
               {/* 제목을 누르면 편집 팝업 — 행에 삭제 버튼을 두지 않는다 */}
               <button
+                // ui-native: 표의 제목 칸 — 누르면 그 공지를 여는 글자 링크
                 type='button'
                 onClick={() => onOpen(n.noticeId)}
                 className='flex max-w-full items-center gap-1.5 text-left font-semibold underline-offset-4 hover:text-brand hover:underline'
@@ -90,8 +94,8 @@ export function SiteNoticesTable({
               </button>
             </td>
             <td className='whitespace-nowrap text-fg-secondary'>{n.author}</td>
-            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(n.publishedAt)}</td>
-            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(n.updatedAt)}</td>
+            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(n.publishedAt, tz)}</td>
+            <td className='tnum whitespace-nowrap text-fg-secondary'>{formatStamp(n.updatedAt, tz)}</td>
           </tr>
         ))}
         {rows.length === 0 && (

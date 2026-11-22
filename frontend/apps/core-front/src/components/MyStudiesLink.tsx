@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-import { getUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
+import type { Locale } from '@studyclub/types';
+import { ButtonLink } from '@studyclub/ui';
+
+import { getUser } from '@/features/auth/auth';
 import { t } from '@/lib/i18n';
 
 /**
@@ -23,13 +25,13 @@ export function MyStudiesLink({ locale }: { locale: Locale }) {
   if (!signedIn) return null;
 
   return (
-    <Link
+    <ButtonLink
+      linkAs={Link}
+      variant='secondary'
       href={`/${locale}/my/joined`}
-      className='sc-button hidden type-label-lg sm:inline-flex'
-      data-variant='secondary'
-      data-size='md'
+      className='hidden sm:inline-flex'
     >
       {t({ ko: '내 스터디룸', en: 'My study room' }, locale)}
-    </Link>
+    </ButtonLink>
   );
 }

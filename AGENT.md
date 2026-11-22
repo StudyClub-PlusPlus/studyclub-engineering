@@ -2,6 +2,18 @@
 
 이 파일은 Claude / Codex / 다른 AI agent 가 이 모노레포에서 작업할 때 따라야 할 컨텍스트와 개발 규약이다.
 
+<!-- repo-kit:dev-rules 1.0.0 -->
+## 개발 규칙 (MUST)
+
+1. 주석은 코드로 알 수 없는 제약·이유만 쓴다. 코드를 다시 말하는 주석, 스펙·docs 에 있는 규칙을 옮긴 주석, 버그 번호·작업 이력 주석은 쓰지 않는다. 이번 변경으로 틀려진 주석은 같은 변경에서 지운다
+2. 로직을 바꾸면 테스트를 같이 낸다
+3. 버그 수정은 제보 증상을 재현하는 테스트를 먼저 쓰고, 고치기 전 코드에서 실패하는 것을 확인한다
+4. 손댄 파일에 빠진 테스트가 보이면 같은 PR 에서 채운다
+5. 사용자 동작이 바뀌는 PR 은 prober 테스트 케이스를 PR 에 같이 올린다 (머지되면 확정본)
+
+테스트 쓰는 법은 이 레포의 `testing-guide.md`. 턴이 끝나면 `.claude/hooks/typecheck-on-stop.sh` 가 손댄 워크스페이스를 검사하고, 실패하면 끝내지 못한다.
+<!-- /repo-kit:dev-rules -->
+
 ## ⚠️ 이 레포는 PUBLIC 이다
 
 `StudyClub-PlusPlus/studyclub-engineering` 는 **공개 레포지토리**다. 아래는 **절대 커밋 금지**:
@@ -30,12 +42,16 @@ frontend/                # Node 워크스페이스(turbo) — 프론트 루트
   packages/
     design/              # 디자인 토큰 & 정본 CSS (@studyclub/design — base, core, console)
     ui/                  # 공용 UI 컴포넌트 (@studyclub/ui — Storybook 포함)
-    mock/                # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티 (@studyclub/mock)
+    mock/                # mock 데이터 + MSW API 계층 (@studyclub/mock)
+    types/               # 공용 도메인·국제화 타입 (@studyclub/types)
+    utils/               # 공용 함수·상수 (@studyclub/utils)
 01-planning/             # 기획 — stories/{story-name}/PRD.md · _registry/(스토리 목록·정책 POL-####)
 specs/                   # API 스펙 — specs/{도메인}/spec.md
 backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain / common
   api/  domain/  common/
 ```
+
+공용 타입은 `@studyclub/types`, 공용 함수·상수는 `@studyclub/utils`에서 직접 가져온다. mock은 이를 재수출하지 않는다.
 
 ### packages/mock 상세 구조
 
@@ -44,23 +60,11 @@ frontend/packages/mock/
 ├── package.json
 ├── tsconfig.json
 └── src/
-    ├── index.ts                     # 패키지 최상위 진입점 (types, data re-export)
-    ├── types.ts                     # 하위 호환성을 위한 types, constants, utils 통합 export
+    ├── index.ts                     # mock 데이터·설정 진입점
     │
     ├── constants/                   # 상수 정의
-    │   ├── study.ts                 # 카테고리 표시명, 신청 폼 템플릿 등
+    │   ├── study.ts                 # 예시 신청 폼 템플릿
     │   ├── community.ts
-    │   └── index.ts
-    │
-    ├── types/                       # 도메인 모델 인터페이스/타입 정의
-    │   ├── study.ts                 # Study, StudyProgram, Recruitment 등
-    │   ├── crew.ts
-    │   ├── community.ts
-    │   └── index.ts
-    │
-    ├── utils/                       # 날짜/텍스트 포맷팅 등 유틸 함수
-    │   ├── study.ts
-    │   ├── crew.ts
     │   └── index.ts
     │
     ├── data/                        # 순수 Mock 데이터 소스
@@ -110,10 +114,12 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 - **푸시 전에 빌드한다** — 백엔드는 `cd backend && ./gradlew check` (테스트 + 포맷 검사),
   프론트는 `pnpm test`. 포맷이 걸리면 `./gradlew spotlessApply` 로 고친다.
   로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
-  **playground 를 고쳤으면 커밋 전에 `pnpm --filter playground run build` (frontend/ 에서)를 돌려 오류가 없는지 확인한 뒤에만 커밋한다** — `beta` 브랜치에서 바로 배포되는 유일한 앱이라(`playground-beta.yaml`) 다른 앱의 CI 게이트를 안 거친다.
+  **playground 를 고쳤으면 커밋 전에 `pnpm --filter playground run build` (frontend/ 에서)를 돌려 오류가 없는지 확인한 뒤에만 커밋한다** — `beta` 브랜치에 들어가면 바로 배포되는 유일한 앱이다(`playground-beta.yaml`). PR 에서는 `frontend-PR-CI` 가 빌드하지만 `beta` 에 직접 푸시하면 그 게이트를 안 거친다.
   `01-planning/stories/**` 또는 `playground/**/spec.ts` 를 건드렸으면 `pnpm --filter playground export-specs --check` 도 통과해야 한다.
-  프론트 화면·부품을 고쳤으면 레포 루트에서 `node scripts/check-component-drift.mjs` 도 통과시킨다 — `@studyclub/ui` 와 같은 이름의 부품 사본이나
-  토큰을 건너뛴 값(Tailwind 기본 팔레트 색, `#hex` 색 코드, `text-[13px]` 같은 글자 크기)이 기준선보다 늘면 실패한다.
+  프론트 화면·부품을 고쳤으면 레포 루트에서 `node scripts/check-component-drift.mjs` 도 통과시킨다 — `@studyclub/ui` 와 같은 이름의 부품 사본,
+  ui 부품이 있는데 직접 쓴 HTML 폼 요소(`<input>` · `<select>` · `<textarea>`)와 `<button>`, 버튼처럼 꾸민 링크(→ `ButtonLink`), 손으로 짠 말풍선(→ `HelpPopover`),
+  스토리가 없거나 playground `/components` 카탈로그에 없는 ui 부품, 토큰을 건너뛴 값(Tailwind 기본 팔레트 색, `#hex` 색 코드, `text-[13px]` 같은 글자 크기)이 기준선보다 늘면 실패한다.
+  일부러 둔 예외는 여는 태그 안에 `// ui-native: 이유` 를 단다(표시 없는 날 요소의 기준선은 0).
   부품 모양은 `packages/ui` 에서만 고친다. PR 에서는 `design-drift` CI 가 같은 검사를 돌린다.
 - **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
 - **Story PRD** — 화면 기획은 `01-planning/stories/{story-name}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`01-planning/_registry/stories.md`](01-planning/_registry/stories.md). **`§2 화면명세` 안에 `spec.ts` `scope` 마다 `<!-- spec:start {scope} -->` / `<!-- spec:end {scope} -->` 마커를 넣고 `pnpm --filter playground export-specs` 로 내용을 채운다** — 마커 없이 PR 을 올리면 playground CI 가 막는다
@@ -153,7 +159,16 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 - CI: 프론트=`.github/workflows/{core,back-office}-front-*` (context `frontend/`), 백엔드=`backend-*`.
   **playground 만 `beta` 브랜치에서 배포된다** (`playground-beta.yaml`) — 프로토타입이라 main 을 기다리지 않는다.
   `backend-PR-CI` 는 PR 마다 `./gradlew check` 를 돌린다 — 컴파일 실패·포맷 위반이 머지되는 걸 막는 게이트.
+  `frontend-PR-CI` 는 `frontend/**`(playground 포함)·`01-planning/stories/**` 를 고친 PR 마다 모든 워크스페이스의 lint·typecheck, vitest·playground 규칙 검사,
+  playground 빌드·`export-specs --check`, Storybook 빌드를 돌린다. 결과는 `frontend-check` 하나로 모인다. 디자인 이탈 검사는 `design-drift`.
+  로컬 Node 가 25 이상이면 내장 `localStorage` 가 jsdom 을 가려 vitest 가 깨진다 — CI 와 같은 Node 22 를 쓰거나 `NODE_OPTIONS=--no-experimental-webstorage` 로 돌린다.
   `backend-migration-check` 는 PR 마다 빈 MySQL 에 마이그레이션을 적용해 본다 — 여기서 깨지면 `V*.sql` 을 고친다.
+- **디스코드 봇의 `CREATE TABLE` 을 고치면 같은 커밋에서 `discord/.prober/map/schema.json` 도 다시 뽑는다** —
+  `cd discord && python -m tests.test_prober_schema > .prober/map/schema.json`. 봇은 백엔드 MySQL 과 별개로 SQLite 테이블을 쓰고,
+  Prober(DB 구조 지도)는 이 파일을 그대로 읽는다(`prober-map`). 파일이 실제 테이블과 다르면 `discord-PR-CI` 의 pytest 가 막는다.
+- **`.prober/map/` 는 Prober 지도의 위층이다** — `concepts.json` 은 테이블을 개념 묶음으로 나누고 이름으로 못 찾는 관계(`CREATED_BY` → ACCOUNT, 디스코드 snowflake 등)를 적는다.
+  `flows/*.json` 은 흐름 하나의 단계 순서(테이블 · op · 이벤트 · 시스템 밖). 테이블을 추가·삭제·이름 변경했거나 스펙의 처리 순서를 바꿨으면 같은 PR 에서 고친다.
+  `prober-map` CI 가 스펙·`docs/erd`·`docs/flows` 와 함께 올리고, DB 구조에 없는 테이블을 가리키면 경고를 찍는다.
 
 ---
 
@@ -221,16 +236,18 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 | API 연동·에러/로딩 처리 | [`docs/frontend-development-guide/api-integration.md`](docs/frontend-development-guide/api-integration.md) |
 | **화면 문구·표기 (줄표 금지 등)** | [`docs/frontend-development-guide/ui-copy.md`](docs/frontend-development-guide/ui-copy.md) |
 | **화면 콘텐츠 폭 (PAGE·READ·FORM·DETAIL)** | [`docs/frontend-development-guide/layout.md`](docs/frontend-development-guide/layout.md) |
+| **테스트 — 재현 먼저 · 화면 규칙은 화면으로 · 명령** | [`docs/frontend-development-guide/testing-guide.md`](docs/frontend-development-guide/testing-guide.md) |
 
 #### FE 핵심 요약
 
-1. **관심사 분리** — 페이지(데이터 fetch) / 컴포넌트(렌더링) / lib(로직·API) 역할 구분
-2. **API 레이어** — `lib/api/` 에 모아두고 컴포넌트에서 직접 fetch 하지 않는다
+1. **관심사 분리** — 페이지(조립) / features(기능 API·규칙·화면) / lib(앱 공통 기반) / packages(앱 간 공유) 역할 구분
+2. **API 레이어** — `features/<기능>/repository.ts`에 HTTP 요청을, `queries.ts`에 React Query 훅을 둔다. 전송은 앱의 `lib/http.ts`를 사용하고 응답 Zod 스키마를 필수로 전달한다. 입력 폼은 기능별 스키마와 RHF `zodResolver`를 연결한다
 3. **Server Component 기본** — `'use client'` 는 인터랙션 필요한 말단에만
 4. **Mock 교체** — `// TODO(api)` 검색 → mock import 를 API 함수 호출로 교체
 5. **판정을 다시 하지 않는다** — `recruitStatus` 같은 응답 필드를 그린다. 날짜·숫자로 재계산 금지, 없으면 스펙에 요청 ([api-integration §판정](docs/frontend-development-guide/api-integration.md#판정을-다시-하지-않는다))
 6. **화면 문구에 줄표(em dash·en dash)를 쓰지 않는다**: 쌍점·쉼표·문장 나누기로. 대문자 자간 라벨(`LIFESTYLE`) 대신 칩과 같은 한글 이름. PR 전에 자기검사 0건 ([ui-copy](docs/frontend-development-guide/ui-copy.md))
 7. **폭은 네 가지 중에서만**: 바깥은 언제나 `PAGE`(max-w-6xl), 글은 `READ`, 폼은 `FORM`, 상세는 2단 `DETAIL_GRID`. 상수는 `src/lib/layout.ts` ([layout](docs/frontend-development-guide/layout.md))
+8. **부품은 `@studyclub/ui` 먼저**: 입력칸·선택·체크박스·버튼·토글·탭·버튼 모양 링크(`ButtonLink`)·도움말 말풍선(`HelpPopover`)은 `packages/ui/src/index.ts` 에 있는 부품을 쓴다. 모양이 안 맞으면 ui 부품에 props 를 더하고, 없는 부품은 `pnpm --filter @studyclub/ui new-component {Name}` 으로 스토리 · `/components` 카탈로그 칸과 함께 만들어 쓴다. 부품을 만들거나 고치기 전에 [`design-system.md`](frontend/packages/design/docs/design-system.md) §9 와 토큰(§2~§7)을 읽고 맞추며, §9 에 없는 부품은 같은 PR 에서 §9 에 스펙을 추가한다. 앱·`proto/` 에 새로 짜지 않는다. 카드 전체가 누르는 곳 같은 예외는 여는 태그 안에 `// ui-native: 이유` 를 단다 ([component-guide §공용 UI](docs/frontend-development-guide/component-guide.md#공용-ui--studyclubui-먼저))
 
 ---
 
@@ -238,7 +255,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 사실이 생기면 도메인 이벤트를 발행하고, 부수효과(ops 알림·메일·외부 연동)는 구독자로 붙인다. 서비스 메서드에서 부수효과를 직접 부르지 않는다. 운영자가 초반에 알아야 할 이벤트는 OpsAlertListener 가 구독한다.
 
-운영자가 초반에 알아야 할 이벤트(가입·신청·승인·실패)는 ops 알림으로 보낸다. 새 기능을 만들면 ops 이벤트가 필요한지 판단하고 spec 표에 추가한다.
+운영자가 초반에 알아야 할 이벤트(가입·신청·승인·실패)는 ops 알림으로 보낸다. 새 기능을 만들면 ops 이벤트가 필요한지 판단하고 spec 표에 추가한다. 알림은 등급(INFO·WARN·ERROR)을 달아 `OpsAlertNotifier.send(level, …)` 하나로 보내고, 목적지는 env 가 정한다(specs/ops-alerts §등급과 목적지). 코드에 환경 분기를 두지 않는다.
 
 - 이벤트 규칙·목록: [specs/domain-events/spec.md](./specs/domain-events/spec.md)
 - ops 알림 계약·표: [specs/ops-alerts/spec.md](./specs/ops-alerts/spec.md)

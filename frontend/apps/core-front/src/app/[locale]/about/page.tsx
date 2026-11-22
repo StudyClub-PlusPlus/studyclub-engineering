@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import type { L10n, Locale } from '@studyclub/types';
 import {
   ArrowRight,
   BookOpen,
@@ -20,7 +21,8 @@ import type { Metadata } from 'next';
 import { JoinCta } from '@/components/JoinCta';
 import { MemberMap } from '@/components/MemberMap';
 import { RegionClocks } from '@/components/RegionClocks';
-import { getSite, getOperators, type L10n, type Locale } from '@/lib/content';
+import { getSite, getOperators } from '@/features/community/server';
+import { FEATURES } from '@/lib/features';
 import { m, t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 
@@ -225,12 +227,9 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       label: m('studies.title', locale),
       external: false,
     },
-    {
-      href: `/${locale}/events`,
-      icon: Calendar,
-      label: m('events.title', locale),
-      external: false,
-    },
+    ...(FEATURES.EVENTS
+      ? [{ href: `/${locale}/events`, icon: Calendar, label: m('events.title', locale), external: false }]
+      : []),
     ...(site.mentoring_url
       ? [
           {

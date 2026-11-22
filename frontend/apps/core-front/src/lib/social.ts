@@ -1,4 +1,5 @@
-import type { L10n } from '@/lib/content';
+import type { L10n } from '@studyclub/types';
+
 import { IS_INDEXABLE } from '@/lib/seo';
 
 /**

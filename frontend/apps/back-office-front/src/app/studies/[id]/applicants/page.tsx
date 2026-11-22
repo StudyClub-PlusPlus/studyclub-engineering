@@ -18,10 +18,7 @@ export default function StudyApplicantsPage() {
 
   return (
     <div>
-      <Link
-        href={listHref}
-        className='inline-flex items-center gap-1.5 type-label-lg text-brand hover:underline'
-      >
+      <Link href={listHref} className='inline-flex items-center gap-1.5 type-label-lg text-brand hover:underline'>
         <ArrowLeft size={15} aria-hidden /> 스터디 관리
       </Link>
       <h1 className='mb-6 mt-3 type-headline-md'>

@@ -1,5 +1,7 @@
 package com.studyclub.api.auth;
 
+import com.studyclub.api.analytics.AnalyticsPrivacyService;
+import com.studyclub.api.audit.AdminAuditRecorder;
 import com.studyclub.api.upload.UploadService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
@@ -13,9 +15,13 @@ import com.studyclub.domain.account.AccountLeaveReasonRepository;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.Issuer;
 import com.studyclub.domain.account.LeaveReason;
+import com.studyclub.domain.account.RefreshTokenRepository;
+import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.audit.AdminAuditLog;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
+import com.studyclub.domain.feedback.FeedbackImageRepository;
 import com.studyclub.domain.notice.StudyNoticeRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
@@ -28,6 +34,7 @@ import com.studyclub.domain.proposal.StudyProposalStatus;
 import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
+import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.notification.Notification;
 import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
@@ -83,10 +90,15 @@ public class AccountDeletionService {
     private final StudyApplicationRepository studyApplicationRepository;
     private final NotificationRepository notificationRepository;
     private final StudyNoticeRepository studyNoticeRepository;
+    private final FeedbackImageRepository feedbackImageRepository;
     private final ObjectMapper objectMapper;
     private final UploadService uploadService;
+    private final AdminAuditRecorder auditRecorder;
     private final AppleOAuthClient appleOAuthClient;
     private final ApplicationEventPublisher eventPublisher;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final StudyRepository studyRepository;
+    private final AnalyticsPrivacyService analyticsPrivacy;
 
     @Transactional
     public void deleteAccount(Long accountId, LeaveReason reason) {
@@ -111,8 +123,17 @@ public class AccountDeletionService {
         // 로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID) 에 걸린다.
         accountIdentityRepository.deleteByAccountId(accountId);
 
+        // refresh token 무효화 — 탈퇴 후 남은 토큰으로 재로그인하지 못하게 한다.
+        refreshTokenRepository.deleteByAccountId(accountId);
+
         // 동의 이력 파기 — DB cascade 는 Flyway 로 만든 스키마에만 있어서 코드로 명시적으로 지운다.
         accountConsentRepository.deleteByAccountId(accountId);
+
+        // 등록한 사람(CREATED_BY)과 담당 캡틴(OWNER_CAPTAIN_ID)을 null 로 비운다. 담당 캡틴이 null 이면
+        // StudyCaptainGuard.isOwnerCaptain 이 ADMIN 누구나 담당 캡틴으로 인정해, 탈퇴 후에도 다른 캡틴이
+        // 출석부 참여 중단 등 담당 캡틴 전용 기능을 쓸 수 있다 (specs/study-participant/spec.md 권한).
+        studyRepository.clearCreatedBy(accountId);
+        studyRepository.clearOwnerCaptain(accountId);
 
         // 참여 기록 — 지우지 않고 DELETED 로 표시한다. 행을 지우면 이미 쌓인 STUDY_ATTENDANCE(ACCOUNT_ID 로만
         // 연결, FK 없음)가 갈 곳을 잃어 출석률 집계에서 전체 이력이 통째로 빠진다 — "하차"와 "결석"이 같은 숫자로
@@ -147,9 +168,18 @@ public class AccountDeletionService {
                         onRoster.stream().map(StudyParticipant::getStudyId).distinct().toList(),
                         onRoster.stream()
                                 .anyMatch(p -> p.getParticipantRole() == ParticipantRole.LEADER)));
+        // 문의·오류 신고 — 문의 행은 남기고(「탈퇴한 사용자」) 첨부 이미지 행만 지운다. 파일은 아래 찜하기에 같이 걸린다
+        // (specs/feedback/spec.md 「탈퇴 때」).
+        feedbackImageRepository.deleteAllByFeedbackAccountId(accountId);
+
+        if (account.getSystemRole() == SystemRole.ADMIN) {
+            auditRecorder.record(AdminAuditLog.accountRoleRevoked(accountId));
+        }
+
         // 계정·프로필 삭제.
+        analyticsPrivacy.onAccountDeletion(accountId);
         accountRepository.delete(account);
-        // 사진 파일 — 주소만 지우면 파일이 공개 주소에 남는다. 이 계정의 연결된·연결 안 된 파일을 DELETING 으로 찜하고
+        // 사진 파일 — 주소만 지우면 파일이 공개 주소에 남는다. 이 계정의 프로필 사진 · 문의 첨부 · 연결 안 된 파일을 DELETING 으로 찜하고
         // 커밋 뒤 저장소에서 지운다. 지우기에 실패해도 탈퇴는 성공이고, 행이 남아 정리 배치가 다시 지운다 (specs/user-leave/spec.md 5단계).
         uploadService.deleteAfterCommit(
                 uploadService.markDeletingByAccount(accountId, Instant.now()));
@@ -172,6 +202,12 @@ public class AccountDeletionService {
                                         p.getStatus() == ParticipantStatus.ACTIVE
                                                 || p.getStatus() == ParticipantStatus.PAUSED)
                         .toList();
+        for (StudyParticipant participant : onRoster) {
+            if (participant.getParticipantRole() == ParticipantRole.LEADER) {
+                auditRecorder.record(
+                        AdminAuditLog.participantRoleRevoked(accountId, participant.getId()));
+            }
+        }
         Instant deletedAt = Instant.now();
         for (StudyParticipant participation : participations) {
             participation.markDeletedDueToAccountDeletion(deletedAt);

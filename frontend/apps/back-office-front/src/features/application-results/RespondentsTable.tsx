@@ -1,6 +1,6 @@
-import { answerText } from './answers';
-import type { ApplicationResultsResponse } from './types';
 import { TableCard } from '@/components/ui';
+import { answerText } from '@/features/application-results/answers';
+import type { ApplicationResultsResponse } from '@/features/application-results/types';
 
 export function RespondentsTable({ data }: { data: ApplicationResultsResponse }) {
   return (

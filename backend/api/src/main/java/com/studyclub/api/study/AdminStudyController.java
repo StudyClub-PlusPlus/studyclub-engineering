@@ -48,6 +48,9 @@ public class AdminStudyController {
                     "studyId",
                     "visibility",
                     "recruitStatus",
+                    "recruitFilter",
+                    "keyword",
+                    "hasApplicationForm",
                     "sort",
                     "offset",
                     "limit");
@@ -69,7 +72,7 @@ public class AdminStudyController {
             summary = "백오피스 스터디 목록 조회",
             description =
                     "ADMIN만 호출 가능. DRAFT 포함 전 상태. 모집 판정은 최신 회차 신청서 수 기준."
-                            + " visibility·recruitStatus·sort 는 대시보드 전체 보기용(specs/dashboard/spec.md 4.4).")
+                            + " 검색·필터·열별 정렬 후 서버에서 페이지를 조회한다(specs/dashboard/spec.md 4.4).")
     @GetMapping
     public BackofficeStudyListResponse list(
             @RequestParam(required = false) StudyCategory category,
@@ -78,6 +81,9 @@ public class AdminStudyController {
             @RequestParam(required = false) Long studyId,
             @RequestParam(required = false) StudyVisibility visibility,
             @RequestParam(required = false) RecruitStatus recruitStatus,
+            @RequestParam(required = false) AdminStudyRecruitFilter recruitFilter,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Boolean hasApplicationForm,
             @RequestParam(required = false) BackofficeStudySort sort,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit,
@@ -85,7 +91,16 @@ public class AdminStudyController {
         rejectEmptyListQuery(request);
         return backofficeStudyListService.getStudies(
                 new BackofficeStudyListFilter(
-                        category, studyKind, status, studyId, visibility, recruitStatus, sort),
+                        category,
+                        studyKind,
+                        status,
+                        studyId,
+                        visibility,
+                        recruitStatus,
+                        sort,
+                        keyword,
+                        hasApplicationForm,
+                        recruitFilter),
                 offset,
                 limit);
     }
@@ -100,6 +115,12 @@ public class AdminStudyController {
             for (String value : values) {
                 if (value == null || value.isBlank()) {
                     throw new BusinessException(ErrorCode.INVALID_INPUT, name + " 값이 비어 있습니다.");
+                }
+                if (name.equals("hasApplicationForm")
+                        && !value.equals("true")
+                        && !value.equals("false")) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_INPUT, "hasApplicationForm은 true 또는 false여야 합니다.");
                 }
             }
         }

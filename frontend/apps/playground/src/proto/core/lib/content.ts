@@ -2,33 +2,10 @@
 // 예전 dogfood 버전은 파일시스템 yaml 을 읽었지만, public 레포에선
 // 하드코딩 mock (@studyclub/mock) 을 소스로 쓴다. 함수 시그니처/반환 모양은 동일 유지.
 // TODO(api): 팀 합류 후 api.studyclub.life fetch 로 교체.
-import type { Study as MockStudy, StudyclubEvent, Operator, Member, Site, Announcement } from '@studyclub/mock';
-import {
-  studies as studiesData,
-  events as eventsData,
-  operators as operatorsData,
-  members as membersData,
-  site as siteData,
-  announcements as announcementsData,
-} from '@studyclub/mock';
+import { studies as studiesData, events as eventsData, operators as operatorsData, members as membersData, site as siteData, announcements as announcementsData } from '@studyclub/mock';
+import type { Study as MockStudy, StudyclubEvent, Operator, Member, Site, Announcement } from '@studyclub/types';
 
-export type {
-  Locale,
-  L10n,
-  StudyStatus,
-  StudyFormat,
-  StudyKind,
-  RecruitmentStatus,
-  Recruitment,
-  StudyWeek,
-  StudyReview,
-  StudyStats,
-  StudyclubEvent,
-  Operator,
-  Member,
-  Site,
-  Announcement,
-} from '@studyclub/mock';
+export type { Locale, L10n, StudyStatus, StudyFormat, StudyKind, RecruitmentStatus, Recruitment, StudyWeek, StudyReview, StudyStats, StudyclubEvent, Operator, Member, Site, Announcement } from '@studyclub/types';
 
 /** 공개 일정이 확정된 경우에만 제공하는 프로토 데이터. 시작 예정일·소개 문구에서 추측하지 않는다. */
 export type Study = MockStudy & {

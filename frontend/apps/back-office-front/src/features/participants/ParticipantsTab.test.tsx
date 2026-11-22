@@ -1,11 +1,18 @@
+import { toast } from '@studyclub/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ParticipantsTab } from './ParticipantsTab';
-import { participantKeys } from './queries';
-import type { ParticipantsResponse } from './types';
+// 토스트는 DOM 이 아니라 호출로 확인한다 (Toaster 를 마운트하지 않는다).
+vi.mock('@studyclub/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@studyclub/ui')>();
+  return { ...actual, toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) };
+});
+
+import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
+import { participantKeys } from '@/features/participants/queries';
+import type { ParticipantsResponse } from '@/features/participants/types';
 
 const memoryUrl = vi.hoisted(() => {
   let search = '';
@@ -40,6 +47,7 @@ const data: ParticipantsResponse = {
   studyId: 20,
   participantCount: 2,
   recruitmentCapacity: 10,
+  ownerCaptain: null,
   groups: [
     { groupId: 1, name: '기본반', isDefault: true, canDelete: false },
     { groupId: 2, name: '목요일반', isDefault: false, canDelete: false },
@@ -52,7 +60,7 @@ const data: ParticipantsResponse = {
       nickname: '한국크루',
       discordNickname: null,
       email: 'crew@example.com',
-      regionGroup: 'KR',
+      timeZone: 'Asia/Seoul',
       groupId: 1,
       participantRole: 'MEMBER',
       status: 'ACTIVE',
@@ -65,7 +73,7 @@ const data: ParticipantsResponse = {
       nickname: '북미캡틴',
       discordNickname: 'captain',
       email: 'captain@example.com',
-      regionGroup: 'NA',
+      timeZone: 'America/Vancouver',
       groupId: 1,
       participantRole: 'LEADER',
       status: 'PAUSED',
@@ -91,9 +99,11 @@ function mount(
   );
   return fetch;
 }
+const toastSuccessMock = vi.mocked(toast.success);
 afterEach(() => {
   act(() => memoryUrl.set(''));
   memoryUrl.push.mockClear();
+  toastSuccessMock.mockClear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -117,13 +127,13 @@ describe('참여자 반 편성', () => {
       refreshed = client.invalidateQueries({ queryKey: participantKeys.list(20) });
     });
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '한국크루 반' }), '2');
-    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeEnabled();
     await act(async () => {
       finish(reply(data));
       await refreshed;
     });
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
-    await screen.findByText('저장했습니다.');
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('저장했습니다.'));
     expect(client.getQueryState(otherKey)?.isInvalidated).toBe(false);
   });
   it('서버 목록 순서와 무관하게 서버가 기본으로 표시한 반에 기본 배지를 표시한다', async () => {
@@ -145,7 +155,7 @@ describe('참여자 반 편성', () => {
     response.participants[1]!.participantId = 7;
     mount(response, async () => reply({ errorMessage: '요청에 실패했습니다 (500), groupId 7' }, 500));
     await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     await screen.findByRole('alert');
     expect(screen.queryByText('저장 실패')).not.toBeInTheDocument();
   });
@@ -157,20 +167,20 @@ describe('참여자 반 편성', () => {
       return reply({ errorMessage: 'participantId 41: 참여 상태가 변경되었습니다.' }, 409);
     });
     await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     await waitFor(() => expect(screen.getByRole('combobox', { name: '한국크루 반' })).toBeDisabled());
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeDisabled();
     expect(screen.queryByRole('button', { name: '변경 취소' })).not.toBeInTheDocument();
   });
 
   it('필터 안 전체 선택과 해제가 다른 필터의 선택을 유지한다', async () => {
     mount();
     await userEvent.click(await screen.findByRole('checkbox', { name: '북미캡틴 선택' }));
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '지역 필터' }), 'KR');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'Asia/Seoul');
     expect(screen.queryByRole('button', { name: '선택 해제' })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('checkbox', { name: '보이는 크루 전체 선택' }));
     await userEvent.click(screen.getByRole('checkbox', { name: '보이는 크루 전체 선택' }));
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '지역 필터' }), 'all');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'all');
     expect(screen.getByRole('checkbox', { name: '북미캡틴 선택' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: '한국크루 선택' })).not.toBeChecked();
   });
@@ -191,7 +201,7 @@ describe('참여자 반 편성', () => {
     await screen.findByText('crew@example.com');
     if (action === '배정') {
       await userEvent.selectOptions(screen.getByRole('combobox', { name: '한국크루 반' }), '2');
-      await userEvent.click(screen.getByRole('button', { name: '저장' }));
+      await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     } else if (action === '반 생성') {
       await userEvent.click(screen.getByRole('button', { name: '반 추가' }));
       await userEvent.type(screen.getByRole('textbox', { name: '반 제목' }), '새반{Enter}');
@@ -223,8 +233,8 @@ describe('참여자 반 편성', () => {
     await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
     expect(fetch.mock.calls.filter(([, init]) => init.method)).toHaveLength(0);
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '북미캡틴 반' }), '3');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
-    await screen.findByText('저장했습니다.');
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('저장했습니다.'));
     expect(fetch.mock.calls.filter(([, init]) => init.method)).toEqual([
       [
         expect.stringContaining('/studies/20/participants'),
@@ -251,14 +261,14 @@ describe('참여자 반 편성', () => {
         : reply({ errorMessage: '서버 오류가 발생했습니다.' }, 500),
     );
     expect(fetch.mock.calls.filter(([, init]) => init.method)).toHaveLength(0);
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
-    await screen.findByText('저장했습니다.');
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('저장했습니다.'));
     expect(fetch.mock.calls.filter(([, init]) => init.method)[0]?.[1]).toMatchObject({
       method: 'PATCH',
       body: JSON.stringify({ changes: [{ participantId: 41, participantRole: 'LEADER' }] }),
     });
     expect(screen.getByRole('combobox', { name: '한국크루 역할' })).toHaveValue('LEADER');
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeDisabled();
   });
 
   it('고른 크루의 반과 역할을 이어서 일괄 변경하고 이미 같은 값인 칸은 보내지 않는다', async () => {
@@ -268,7 +278,7 @@ describe('참여자 반 편성', () => {
     expect(screen.getByRole('combobox', { name: '바꿀 역할' })).toHaveValue('');
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '바꿀 반' }), '2');
     expect(screen.getByRole('combobox', { name: '한국크루 역할' })).toHaveValue('LEADER');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     await waitFor(() =>
       expect(JSON.parse(fetch.mock.calls.filter(([, init]) => init.method)[0]?.[1].body as string)).toEqual({
         changes: [
@@ -287,19 +297,19 @@ describe('참여자 반 편성', () => {
     await userEvent.click(screen.getByRole('button', { name: '변경 취소' }));
     expect(role).toHaveValue('LEADER');
     expect(screen.getByRole('combobox', { name: '북미캡틴 반' })).toHaveValue('1');
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeDisabled();
     await userEvent.selectOptions(role, 'MEMBER');
-    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeEnabled();
     await userEvent.selectOptions(role, 'LEADER');
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeDisabled();
   });
 
   it('필터에 숨은 선택 행은 일괄 변경하지 않는다', async () => {
     const fetch = mount();
     await userEvent.click(await screen.findByRole('checkbox', { name: '보이는 크루 전체 선택' }));
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '지역 필터' }), 'KR');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'Asia/Seoul');
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '바꿀 반' }), '2');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     await waitFor(() =>
       expect(fetch.mock.calls.filter(([, init]) => init.method)[0]?.[1].body).toBe(
         JSON.stringify({ changes: [{ participantId: 41, groupId: 2 }] }),
@@ -310,12 +320,12 @@ describe('참여자 반 편성', () => {
   it('저장 실패 시 입력을 유지하고 원래 반으로 되돌리면 저장을 잠근다', async () => {
     mount(data, async () => reply({ errorMessage: 'participantId 41: 참여 상태가 변경되었습니다.' }, 409));
     await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     expect(await screen.findByRole('alert')).toHaveTextContent('41');
     expect(screen.getByText('저장 실패')).toBeVisible();
     expect(screen.getByRole('combobox', { name: '한국크루 반' })).toHaveValue('2');
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '한국크루 반' }), '1');
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /저장/ })).toBeDisabled();
   });
 
   it('제목 검증·중복 오류는 카드 안에 남기고 Esc로 닫는다', async () => {
@@ -338,7 +348,12 @@ describe('참여자 반 편성', () => {
     const response = structuredClone(data);
     const fetch = mount(response, async (url, init) => {
       if (init.method === 'POST') {
-        response.groups.push({ groupId: 4, name: JSON.parse(init.body as string).name, isDefault: false, canDelete: true });
+        response.groups.push({
+          groupId: 4,
+          name: JSON.parse(init.body as string).name,
+          isDefault: false,
+          canDelete: true,
+        });
         return reply({ groupId: 4, name: '새반' }, 201);
       }
       if (init.method === 'PATCH') {
@@ -378,7 +393,7 @@ describe('참여자 반 편성', () => {
     expect(screen.queryByRole('combobox', { name: '한국크루 반' })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: '바꿀 반' })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: '반 필터' })).not.toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: '지역 필터' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '시간대 필터' })).toBeVisible();
   });
 
   it('일부 선택 상태는 보이는 크루를 기준으로 표시하고 전체 선택·해제로 전환한다', async () => {
@@ -386,10 +401,10 @@ describe('참여자 반 편성', () => {
     const all = await screen.findByRole('checkbox', { name: '보이는 크루 전체 선택' });
     await userEvent.click(screen.getByRole('checkbox', { name: '한국크루 선택' }));
     expect(all).toBePartiallyChecked();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '지역 필터' }), 'KR');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'Asia/Seoul');
     expect(all).toBeChecked();
     expect(all).not.toBePartiallyChecked();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '지역 필터' }), 'all');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'all');
     expect(all).toBePartiallyChecked();
     await userEvent.click(all);
     expect(all).toBeChecked();
@@ -400,16 +415,46 @@ describe('참여자 반 편성', () => {
   });
 
   it('URL 필터를 복원하고 변경할 때 기존 쿼리를 보존한다', async () => {
-    memoryUrl.set('tab=crew&region=KR&group=1');
+    memoryUrl.set('tab=crew&tz=Asia%2FSeoul&group=1');
     mount();
     await screen.findByRole('combobox', { name: '한국크루 반' });
     expect(screen.queryByRole('combobox', { name: '북미캡틴 반' })).not.toBeInTheDocument();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '지역 필터' }), 'all');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'all');
     expect(memoryUrl.get()).toBe('tab=crew&group=1');
     expect(screen.getByRole('combobox', { name: '북미캡틴 반' })).toBeVisible();
-    act(() => memoryUrl.set('tab=crew&region=INVALID&group=999'));
-    expect(screen.getByRole('combobox', { name: '지역 필터' })).toHaveValue('all');
+    act(() => memoryUrl.set('tab=crew&tz=INVALID&group=999'));
+    expect(screen.getByRole('combobox', { name: '시간대 필터' })).toHaveValue('all');
     expect(screen.getByRole('combobox', { name: '반 필터' })).toHaveValue('all');
+  });
+
+  it('참여 크루의 시간대를 약칭으로 보여 주고 시간대로 거른다', async () => {
+    memoryUrl.set('');
+    mount({
+      ...data,
+      participants: [
+        ...data.participants,
+        {
+          ...data.participants[0],
+          participantId: 43,
+          accountId: 3,
+          nickname: '시간대없음',
+          discordNickname: 'tz-none',
+          timeZone: null,
+        },
+      ],
+    });
+    const table = within(await screen.findByRole('table'));
+    expect(table.getByRole('columnheader', { name: '시간대' })).toBeVisible();
+    expect(table.queryByRole('columnheader', { name: '지역' })).not.toBeInTheDocument();
+    const cellOf = (nickname: string) => table.getByText(nickname).closest('tr')!;
+    expect(within(cellOf('한국크루')).getByText('KST')).toBeVisible();
+    expect(within(cellOf('북미캡틴')).getByText('PCT')).toBeVisible();
+    expect(within(cellOf('시간대없음')).getByText('-')).toBeVisible();
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'America/Vancouver');
+    expect(memoryUrl.get()).toBe('tz=America%2FVancouver');
+    expect(table.queryByText('한국크루')).not.toBeInTheDocument();
+    expect(table.getByText('북미캡틴')).toBeVisible();
   });
 
   it('링크 이동을 공통 모달로 확인하고 계속 편집하면 변경을 유지한다', async () => {
@@ -461,7 +506,7 @@ describe('참여자 반 편성', () => {
     let finish!: (response: Response) => void;
     mount(data, () => new Promise<Response>((resolve) => (finish = resolve)));
     await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
-    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     const link = document.createElement('a');
     link.href = '/studies';
     document.body.append(link);
@@ -474,5 +519,94 @@ describe('참여자 반 편성', () => {
       link.remove();
     }
     await waitFor(() => expect(screen.getByRole('button', { name: '변경 취소 후 이동' })).toBeEnabled());
+  });
+});
+
+describe('담당 캡틴', () => {
+  const captain = (id: number, name: string) => ({
+    id,
+    name,
+    maskedEmail: 'c***@example.com',
+    systemRole: 'ADMIN',
+    navigatorOf: [],
+    dormant: false,
+    joinedAt: '2026-01-01T00:00:00Z',
+    roleChangeBlockedReason: null,
+    discordLinked: true,
+  });
+  const captains = { items: [captain(5, '소라'), captain(6, '민준')], total: 2, offset: 0, limit: 100 };
+
+  const nicknames: Record<number, string> = { 5: '소라', 6: '민준' };
+  /** 서버처럼 PATCH 가 성공하면 다음 GET 의 ownerCaptain 이 바뀐다. */
+  function mountWithCaptains(write: (url: string, init: RequestInit) => Promise<Response>) {
+    let owner = 5;
+    const fetch = vi.fn(async (url: string, init: RequestInit) => {
+      if (init.method) {
+        const response = await write(url, init);
+        if (response.ok) owner = (JSON.parse(String(init.body)) as { accountId: number }).accountId;
+        return response;
+      }
+      if (url.includes('/api/admin/users')) return reply(captains);
+      return reply({ ...data, ownerCaptain: { accountId: owner, nickname: nicknames[owner] } });
+    });
+    vi.stubGlobal('fetch', fetch);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <ParticipantsTab studyId={20} />
+      </QueryClientProvider>,
+    );
+    return fetch;
+  }
+  async function ownerSelect() {
+    const select = await screen.findByRole('combobox', { name: '담당 캡틴' });
+    await waitFor(() => expect(select).toBeEnabled());
+    return select;
+  }
+
+  it('캡틴 계정 중에서 고르면 바로 PATCH …/owner-captain 을 보내고, 저장 중에는 잠갔다가 새 값으로 바뀐다', async () => {
+    let finish!: () => void;
+    const fetch = mountWithCaptains(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(reply({ studyId: 20, ownerCaptain: { accountId: 6, nickname: '민준' } }));
+        }),
+    );
+    const select = await ownerSelect();
+    expect(select).toHaveValue('5');
+
+    await userEvent.selectOptions(select, '6');
+    await waitFor(() => expect(select).toBeDisabled());
+    expect(screen.getByRole('status')).toHaveTextContent('저장 중');
+    const patch = fetch.mock.calls.find(([url, init]) => init.method === 'PATCH' && url.includes('/owner-captain'));
+    expect(patch?.[1].body).toBe(JSON.stringify({ accountId: 6 }));
+
+    await act(async () => finish());
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('담당 캡틴을 바꿨습니다.'));
+    await waitFor(() => expect(select).toHaveValue('6'));
+    expect(select).toBeEnabled();
+  });
+
+  it('캡틴이 아니게 된 사람을 고르면(409) 오류를 알리고 지금 값을 그대로 둔다', async () => {
+    mountWithCaptains(async () =>
+      reply({ errorCode: 'OWNER_CAPTAIN_NOT_ADMIN', errorMessage: '캡틴만 담당 캡틴이 될 수 있습니다.' }, 409),
+    );
+    const select = await ownerSelect();
+    await userEvent.selectOptions(select, '6');
+    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith('캡틴만 담당 캡틴이 될 수 있습니다.'));
+    await waitFor(() => expect(select).toBeEnabled());
+    expect(select).toHaveValue('5');
+    expect(toastSuccessMock).not.toHaveBeenCalled();
+  });
+
+  it('같은 사람을 고르면 요청하지 않는다', async () => {
+    const fetch = mountWithCaptains(async () => reply({}));
+    const select = await ownerSelect();
+    await userEvent.selectOptions(select, '5');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(fetch.mock.calls.filter(([, init]) => init.method)).toHaveLength(0);
+    expect(select).toBeEnabled();
   });
 });

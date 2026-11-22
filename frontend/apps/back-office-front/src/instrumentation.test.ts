@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { register } from './instrumentation';
+import { register } from '@/instrumentation';
 
 const { setupServer, listen } = vi.hoisted(() => {
   const listen = vi.fn();

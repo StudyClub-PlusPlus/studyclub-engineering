@@ -1,0 +1,28 @@
+name: pr-dev-rules
+
+# AGENT.md §개발 규칙의 경고 전용 검사 — 실패시키지 않는다.
+# 로직 파일(backend 의 src/main, frontend 앱의 src)이 바뀌었는데 테스트 파일이 없거나, 추가된 주석에 bug-<번호> 가 있으면 경고를 단다.
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/apps/**'
+      - '01-planning/stories/**'
+      - 'scripts/check-dev-rules.mjs'
+      - '.github/workflows/pr-dev-rules.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  warn:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-dev-rules.mjs "origin/${{ github.base_ref }}" HEAD

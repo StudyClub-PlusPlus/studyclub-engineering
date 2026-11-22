@@ -63,3 +63,20 @@ export const SingleSelect: Story = {
     );
   },
 };
+
+/** 폼 값으로 하나만 고르는 묶음 — role radio · aria-checked 로 알린다. */
+export const RadioGroup: Story = {
+  render: () => {
+    const options = ['KST', 'PST', '동시 진행'];
+    const [selected, setSelected] = useState('KST');
+    return (
+      <div role='radiogroup' aria-label='진행 시간대' className='flex flex-wrap gap-2'>
+        {options.map((o) => (
+          <FilterChip key={o} role='radio' selected={selected === o} selectMode='single' onClick={() => setSelected(o)}>
+            {o}
+          </FilterChip>
+        ))}
+      </div>
+    );
+  },
+};

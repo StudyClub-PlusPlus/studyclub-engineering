@@ -1,12 +1,12 @@
 package com.studyclub.api.participant;
 
+import com.studyclub.api.audit.AdminAuditRecorder;
 import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.audit.AdminAuditLog;
-import com.studyclub.domain.audit.AdminAuditLogRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
@@ -45,7 +45,7 @@ public class ParticipantWithdrawalService {
     private final StudyGroupRepository studyGroupRepository;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyMeetingRepository studyMeetingRepository;
-    private final AdminAuditLogRepository adminAuditLogRepository;
+    private final AdminAuditRecorder auditRecorder;
     private final StudyCaptainGuard studyCaptainGuard;
     private final ApplicationEventPublisher eventPublisher;
     private final AccountRepository accountRepository;
@@ -55,7 +55,7 @@ public class ParticipantWithdrawalService {
             StudyGroupRepository studyGroupRepository,
             StudyParticipantRepository studyParticipantRepository,
             StudyMeetingRepository studyMeetingRepository,
-            AdminAuditLogRepository adminAuditLogRepository,
+            AdminAuditRecorder auditRecorder,
             StudyCaptainGuard studyCaptainGuard,
             ApplicationEventPublisher eventPublisher,
             AccountRepository accountRepository) {
@@ -63,7 +63,7 @@ public class ParticipantWithdrawalService {
         this.studyGroupRepository = studyGroupRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyMeetingRepository = studyMeetingRepository;
-        this.adminAuditLogRepository = adminAuditLogRepository;
+        this.auditRecorder = auditRecorder;
         this.studyCaptainGuard = studyCaptainGuard;
         this.eventPublisher = eventPublisher;
         this.accountRepository = accountRepository;
@@ -114,12 +114,12 @@ public class ParticipantWithdrawalService {
         boolean ownerCaptain = true;
         if (backOffice) {
             studyCaptainGuard.assertOwnerCaptain(
-                    actorAccountId, study.getCreatedBy(), "담당 캡틴만 참여를 중단시킬 수 있습니다.");
+                    actorAccountId, study.getOwnerCaptainId(), "담당 캡틴만 참여를 중단시킬 수 있습니다.");
         } else {
             ownerCaptain =
                     studyCaptainGuard.assertCanWithdrawInGroup(
                             actorAccountId,
-                            study.getCreatedBy(),
+                            study.getOwnerCaptainId(),
                             studyGroupId,
                             "참여를 중단시킬 권한이 없습니다.");
         }
@@ -147,7 +147,7 @@ public class ParticipantWithdrawalService {
             throw new BusinessException(ErrorCode.STUDY_ENDED);
         }
         for (StudyParticipant target : targets) {
-            assertWithdrawable(target, actorAccountId, study.getCreatedBy(), backOffice);
+            assertWithdrawable(target, actorAccountId, study.getOwnerCaptainId(), backOffice);
         }
         // 회차는 요청한 분반 · 대상 분반만 ID 오름차순으로 미리 잠근다 — 디스코드 출석과 같은 순서. 출석 쓰기 · 발표자 비우기가 뒤에서 다시 잠가도 기다리지
         // 않는다
@@ -194,9 +194,13 @@ public class ParticipantWithdrawalService {
             return false;
         }
         studyParticipantRepository.save(target);
-        adminAuditLogRepository.save(
+        auditRecorder.record(
                 AdminAuditLog.withdraw(
-                        actorAccountId, target.getAccountId(), target.getId(), before));
+                        actorAccountId,
+                        target.getAccountId(),
+                        target.getId(),
+                        before,
+                        target.getParticipantRole()));
         return true;
     }
 
@@ -219,7 +223,10 @@ public class ParticipantWithdrawalService {
     }
 
     private static void assertWithdrawable(
-            StudyParticipant target, Long actorAccountId, Long studyCreatedBy, boolean backOffice) {
+            StudyParticipant target,
+            Long actorAccountId,
+            Long studyOwnerCaptainId,
+            boolean backOffice) {
         if (target.getAccountId().equals(actorAccountId)) {
             throw new BusinessException(ErrorCode.CANNOT_WITHDRAW_SELF);
         }
@@ -227,7 +234,7 @@ public class ParticipantWithdrawalService {
         if (!backOffice && target.getParticipantRole() == ParticipantRole.LEADER) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "네비게이터는 출석부에서 중단시킬 수 없습니다.");
         }
-        if (studyCreatedBy != null && studyCreatedBy.equals(target.getAccountId())) {
+        if (studyOwnerCaptainId != null && studyOwnerCaptainId.equals(target.getAccountId())) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "담당 캡틴은 출석부에서 중단시킬 수 없습니다.");
         }
         if (target.getStatus() == ParticipantStatus.DELETED

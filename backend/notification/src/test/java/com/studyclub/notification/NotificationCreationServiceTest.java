@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,6 +54,24 @@ class NotificationCreationServiceTest {
         return a;
     }
 
+    private static NotificationTemplate noticeTemplate(Long id, String subject) {
+        NotificationTemplate template =
+                spy(
+                        new NotificationTemplate(
+                                NotificationEventType.STUDY_NOTICE,
+                                NotificationChannel.EMAIL,
+                                subject,
+                                "<p>{{body}}</p>"));
+        when(template.getId()).thenReturn(id);
+        return template;
+    }
+
+    private void givenNoticeTemplates(NotificationTemplate... found) {
+        when(templates.findAllByEventTypeAndChannelOrderByIdAsc(
+                        NotificationEventType.STUDY_NOTICE, NotificationChannel.EMAIL))
+                .thenReturn(List.of(found));
+    }
+
     private void givenAccounts(Account... found) {
         when(accounts.findAllById(anyCollection())).thenReturn(List.of(found));
     }
@@ -62,15 +81,7 @@ class NotificationCreationServiceTest {
         StudyNotice notice =
                 StudyNotice.create(1L, 2L, 99L, "제목", "본문", true, false, List.of(10L, 11L, 12L));
         when(notices.findById(NOTICE_ID)).thenReturn(Optional.of(notice));
-        when(templates.findByEventTypeAndChannel(
-                        NotificationEventType.STUDY_NOTICE, NotificationChannel.EMAIL))
-                .thenReturn(
-                        Optional.of(
-                                new NotificationTemplate(
-                                        NotificationEventType.STUDY_NOTICE,
-                                        NotificationChannel.EMAIL,
-                                        "[StudyClub] {{studyTitle}} 공지",
-                                        "<p>{{body}}</p>")));
+        givenNoticeTemplates(noticeTemplate(1L, "[StudyClub] {{studyTitle}} 공지"));
         when(studies.findById(1L)).thenReturn(Optional.of(study));
         when(groups.findById(2L)).thenReturn(Optional.of(group));
         when(study.getTitle()).thenReturn("DDIA 2판");
@@ -149,12 +160,92 @@ class NotificationCreationServiceTest {
     }
 
     @Test
-    @DisplayName("템플릿이 없으면 예외를 던진다 — 호출한 트랜잭션(공지 저장)이 통째로 롤백되도록 삼키지 않는다")
+    @DisplayName("템플릿이 하나도 없으면 예외를 던진다 — 호출한 트랜잭션(공지 저장)이 통째로 롤백되도록 삼키지 않는다")
     void missingTemplateThrows() {
-        when(templates.findByEventTypeAndChannel(any(), any())).thenReturn(Optional.empty());
+        givenNoticeTemplates();
 
         assertThatThrownBy(() -> service.createStudyNoticeEmails(NOTICE_ID))
                 .isInstanceOf(IllegalStateException.class);
         verify(notifications, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("같은 조건에 템플릿이 둘이면 받는 사람마다 행이 둘이다 — 행마다 templateId 가 다르고 받는 사람·보낸 사람·공지 참조는 같다")
+    void fansOutRecipientsTimesTemplates() {
+        givenNoticeTemplates(
+                noticeTemplate(1L, "[StudyClub] {{studyTitle}} 공지"),
+                noticeTemplate(2L, "[StudyClub] 새 공지가 도착했어요"));
+        givenAccounts(account(10L, "a@example.com"), account(11L, "b@example.com"));
+
+        int created = service.createStudyNoticeEmails(NOTICE_ID);
+
+        assertThat(created).isEqualTo(4);
+        ArgumentCaptor<List<Notification>> saved = ArgumentCaptor.forClass(List.class);
+        verify(notifications).saveAll(saved.capture());
+        assertThat(saved.getValue())
+                .extracting(Notification::getRecipientUserId, Notification::getTemplateId)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(10L, 1L),
+                        org.assertj.core.groups.Tuple.tuple(10L, 2L),
+                        org.assertj.core.groups.Tuple.tuple(11L, 1L),
+                        org.assertj.core.groups.Tuple.tuple(11L, 2L));
+        assertThat(saved.getValue())
+                .allSatisfy(
+                        n -> {
+                            assertThat(n.getReferenceId()).isEqualTo(NOTICE_ID);
+                            assertThat(n.getSenderAccountId()).isEqualTo(99L);
+                        });
+    }
+
+    @Test
+    @DisplayName("웰컴메일도 같은 조건의 템플릿마다 행을 만든다 — 한 번의 saveAll 로, 닉네임 스냅샷은 같다")
+    void welcomeFansOutTemplates() {
+        Account account = account(5L, "w@example.com");
+        when(accounts.findByIdForUpdate(5L)).thenReturn(Optional.of(account));
+        NotificationTemplate first = welcomeTemplate(1L);
+        NotificationTemplate second = welcomeTemplate(2L);
+        when(templates.findAllByEventTypeAndChannelOrderByIdAsc(
+                        NotificationEventType.USER_REGISTERED, NotificationChannel.EMAIL))
+                .thenReturn(List.of(first, second));
+
+        service.createWelcomeEmailNotification(5L);
+
+        ArgumentCaptor<List<Notification>> saved = ArgumentCaptor.forClass(List.class);
+        verify(notifications, times(1)).saveAll(saved.capture());
+        assertThat(saved.getValue())
+                .extracting(Notification::getTemplateId)
+                .containsExactly(1L, 2L);
+        assertThat(saved.getValue())
+                .allSatisfy(
+                        n -> {
+                            assertThat(n.getRecipientUserId()).isEqualTo(5L);
+                            assertThat(n.getRecipientValue()).isEqualTo("w@example.com");
+                            assertThat(n.getPayload()).containsEntry("nickname", "닉네임5");
+                        });
+    }
+
+    @Test
+    @DisplayName("웰컴메일 템플릿이 하나도 없으면 행을 만들지 않고 끝난다 — 예외 없이 로그만")
+    void welcomeWithoutTemplateCreatesNothing() {
+        Account account = account(5L, "w@example.com");
+        when(accounts.findByIdForUpdate(5L)).thenReturn(Optional.of(account));
+        when(templates.findAllByEventTypeAndChannelOrderByIdAsc(any(), any()))
+                .thenReturn(List.of());
+
+        service.createWelcomeEmailNotification(5L);
+
+        verify(notifications, never()).saveAll(any());
+    }
+
+    private static NotificationTemplate welcomeTemplate(Long id) {
+        NotificationTemplate template =
+                spy(
+                        new NotificationTemplate(
+                                NotificationEventType.USER_REGISTERED,
+                                NotificationChannel.EMAIL,
+                                "환영합니다 " + id,
+                                "안녕하세요, {{nickname}}님."));
+        when(template.getId()).thenReturn(id);
+        return template;
     }
 }

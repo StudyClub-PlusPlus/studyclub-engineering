@@ -1,4 +1,4 @@
-import type { LifecycleState } from '@studyclub/mock';
+import type { LifecycleState } from '@studyclub/types';
 
 /** 스터디 상태 표시 문구. 코드값은 백엔드 `STUDY.STATUS` 와 같다. */
 export const LIFECYCLE_LABEL: Record<LifecycleState, string> = {

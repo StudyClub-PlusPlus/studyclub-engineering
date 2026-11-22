@@ -44,6 +44,11 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
 
+# 최고 관리자 (specs/admin-users 「최고 관리자」). 콤마로 여러 명. 부팅 때 이 사람들은 캡틴이 되고, 화면 · API 로는 못 내린다.
+# 캡틴을 크루로 내리는 것은 최고 관리자만 한다. 비면 최고 관리자 없음. 값은 env 로만 (PUBLIC 레포).
+super-admin:
+  emails: ${SUPER_ADMIN_EMAILS:}
+
   # 구글 OAuth (GCP 콘솔에서 클라이언트 생성 후 env 로 주입 — 비어있어도 부팅됨)
 google:
   client-id: ${GOOGLE_CLIENT_ID:}
@@ -94,7 +99,11 @@ upload:
   pending-retention-hours: 24    # 이 시간 지나도 연결 없으면 정리 배치가 지운다
   cleanup:
     enabled: true
-    fixed-delay-ms: 3600000      # 한 시간
+
+# 문의 보유 기간: 첫 답변부터 1년, 미답변은 접수부터 1년 (specs/feedback/spec.md).
+feedback:
+  retention:
+    enabled: true
 
 # 인증 쿠키 (JwtAuthFilter). stage·운영·사이트·백오피스가 같은 상위 도메인에 쿠키를 심으므로
 # - cookie-env: 쿠키 이름에 넣을 환경 이름. stage 만 "stage" (sc_stage_access_token). 운영·로컬은 비워 기존 이름
@@ -102,6 +111,14 @@ upload:
 auth:
   cookie-env: ${AUTH_COOKIE_ENV:}
   back-office-origins: ${BACK_OFFICE_ORIGINS:http://localhost:4701}
+
+# stage 테스트 로그인 (specs/stage-email-login) — 메뉴에 없는 이메일 가입 · 비밀번호 로그인.
+# enabled 가 꺼져 있거나 APP_ENV=production 이면 /auth/email/** 가 404. code-copy 는 stage 에서만 —
+# 운영에서 켜면 서버가 뜨지 않는다.
+stage-login:
+  enabled: ${EMAIL_LOGIN_ENABLED:false}
+  code-copy: ${EMAIL_CODE_COPY:false}
+  app-env: ${APP_ENV:local}
 
 # JWT 서명키 (운영은 내부 시크릿 SSOT → env 주입, 레포 평문 금지)
 jwt:
@@ -118,10 +135,14 @@ scalar:
   # UI 가 Scalar 로 사용량을 보내는 기본값을 끈다
   telemetry: false
 
-# 운영자 알림 (specs/ops-alerts/spec.md). 웹훅이 비면 아무것도 보내지 않는다 — 로컬·테스트 기본값.
+# 운영자 알림 (specs/ops-alerts/spec.md). 등급별 목적지 — info → info + team, warn·error → warn. 빈 웹훅은 건너뛴다 — 로컬·테스트 기본값.
+# team 은 prod 만 넣는다. 비면 옛 이름 OPS_DISCORD_WEBHOOK_URL 을 읽는다.
 # APP_ENV 는 제목 접두어용: production → 없음, stage → [Stage], beta → [Beta], 그 밖 → [Local].
 # 웹훅 URL 은 토큰이다 — 레포에 적지 않고 env 로만 주입한다.
 ops:
+  info-webhook-url: ${OPS_INFO_WEBHOOK_URL:}
+  warn-webhook-url: ${OPS_WARN_WEBHOOK_URL:}
+  team-webhook-url: ${OPS_TEAM_WEBHOOK_URL:}
   discord-webhook-url: ${OPS_DISCORD_WEBHOOK_URL:}
   env: ${APP_ENV:local}
 
@@ -129,11 +150,24 @@ ops:
 # 환경 표시는 위 ops.env(APP_ENV) 를 같이 쓴다. 키는 레포에 적지 않고 env 로만 주입한다.
 amplitude:
   api-key: ${AMPLITUDE_API_KEY:}
+  deletion:
+    secret: ${AMPLITUDE_SECRET_KEY:}
+    endpoint: ${AMPLITUDE_DELETION_ENDPOINT:https://amplitude.com/api/2/deletions/users}
 
 # 같은 사실(가입·활성화)을 GA4 Measurement Protocol 로도 보낸다. 둘 중 하나라도 비면 보내지 않는다.
 ga4:
   measurement-id: ${GA4_MEASUREMENT_ID:}
   api-secret: ${GA4_API_SECRET:}
+  deletion:
+    property-id: ${GA4_PROPERTY_ID:}
+    service-account-email: ${GA4_DELETION_SERVICE_ACCOUNT_EMAIL:}
+    private-key: ${GA4_DELETION_PRIVATE_KEY:}
+
+analytics:
+  hmac-key: ${ANALYTICS_HMAC_KEY:}
+  hmac-key-version: ${ANALYTICS_HMAC_KEY_VERSION:v1}
+  deletion:
+    enabled: ${ANALYTICS_DELETION_ENABLED:true}
 
 # 세 env 가 다 비어 있으면 동작이 지금과 완전히 동일하다 (콘솔 텍스트, 파일 안 씀).
 #
@@ -179,3 +213,17 @@ management:
         http.server.requests: true
       slo:
         http.server.requests: 100ms,500ms,1s,2s
+
+# 정리 작업은 전용 실행기에서 실행 완료 후 하루 간격. 알림의 30초 폴링은 별도다.
+cleanup:
+  enabled: ${CLEANUP_ENABLED:true}
+  fixed-delay-ms: ${CLEANUP_FIXED_DELAY_MS:86400000}
+  initial-delay-ms: ${CLEANUP_INITIAL_DELAY_MS:60000}
+
+audit:
+  trusted-proxies: ${AUDIT_TRUSTED_PROXIES:}
+  retention:
+    enabled: ${AUDIT_RETENTION_ENABLED:true}
+    # 2년 의무 대상 여부를 운영 적용 전에 확인한다 (specs/data-retention/spec.md).
+    # 신규 기록에만 적용. 기존 행은 저장된 규칙·만료일을 유지한다.
+    access-years: ${AUDIT_ACCESS_RETENTION_YEARS:1}

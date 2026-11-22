@@ -1,0 +1,87 @@
+{
+  "shots": [
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "schedule-retro-column",
+      "title": "스터디 일정 — 회고 열 (크루)",
+      "path": "/proto/core/ko/my/joined/18/schedule",
+      "scrollTo": "table"
+    },
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "write",
+      "title": "회고 작성",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro/write?meeting=claude-code-source-study-s8",
+      "fullPage": true
+    },
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "write-invalid",
+      "title": "회고 작성 — 필수 칸 오류",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro/write?meeting=claude-code-source-study-s8",
+      "click": ["회고 제출"],
+      "fullPage": true
+    },
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "retro-by-author",
+      "title": "회고 탭 — 작성자별",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro?meeting=claude-code-source-study-s7",
+      "click": ["작성자별"],
+      "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "retro-by-question",
+      "title": "회고 탭 — 문항별",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro?meeting=claude-code-source-study-s7",
+      "click": ["문항별"],
+      "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "retro-mobile",
+      "title": "회고 탭 — 모바일",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro?meeting=claude-code-source-study-s7",
+      "viewport": "mobile",
+      "click": ["작성자별"],
+      "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "navigator-view-meeting-retros",
+      "name": "schedule-navigator",
+      "title": "스터디 일정 — 회고 열 (네비게이터)",
+      "path": "/proto/core/ko/my/joined/20/schedule",
+      "scrollTo": "table"
+    },
+    {
+      "story": "navigator-view-meeting-retros",
+      "name": "retro-navigator",
+      "title": "회고 탭 — 네비게이터 (작성 현황 · 문항별)",
+      "path": "/proto/core/ko/my/joined/20/schedule/retro",
+      "click": ["문항별"],
+      "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "navigator-view-meeting-retros",
+      "name": "schedule-captain",
+      "title": "스터디 일정 — 회고 열 (캡틴)",
+      "path": "/proto/core/ko/my/joined/1/schedule",
+      "scrollTo": "table"
+    },
+    {
+      "story": "captain-collect-meeting-retros",
+      "name": "console-retros",
+      "title": "콘솔 — 회고 모아보기",
+      "path": "/proto/console/retros"
+    },
+    {
+      "story": "captain-collect-meeting-retros",
+      "name": "console-retros-scrolled",
+      "title": "콘솔 — 개선할 점 👍 많은 순 · 가로로 민 상태 (스터디 · 참여자 열 고정)",
+      "path": "/proto/console/retros",
+      "click": ["개선할 점 내림차순으로 정렬"],
+      "scrollLeft": { "selector": "[data-anno=\"retros:3\"]", "px": 700 }
+    }
+  ]
+}

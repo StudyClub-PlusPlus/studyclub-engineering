@@ -41,4 +41,8 @@ public class StudyBookmark extends BaseEntity {
 
     @Column(name = "STUDY_ID", nullable = false)
     private Long studyId;
+
+    public static StudyBookmark of(Long accountId, Long studyId) {
+        return StudyBookmark.builder().accountId(accountId).studyId(studyId).build();
+    }
 }

@@ -1,0 +1,48 @@
+import { z } from 'zod';
+
+export const apiAttendanceSchema = z.object({
+  study: z.object({
+    id: z.number(),
+    title: z.string(),
+    participantCount: z.number(),
+    totalMeetings: z.number(),
+    avgAttendanceRate: z.union([z.null(), z.number()]),
+  }),
+  meetings: z.array(
+    z.object({
+      id: z.number(),
+      scheduledAt: z.string(),
+    }),
+  ),
+  participants: z.array(
+    z.object({
+      participantId: z.number(),
+      displayName: z.string(),
+      discordNickname: z.union([z.string(), z.null()]).optional(),
+      participantRole: z.string(),
+      captain: z.boolean(),
+      participantStatus: z.string(),
+      leftAt: z.union([z.null(), z.string()]),
+      attendances: z.array(
+        z.object({
+          meetingId: z.number(),
+          status: z.union([
+            z.null(),
+            z.literal('PRESENT'),
+            z.literal('LATE'),
+            z.literal('ABSENT'),
+            z.literal('EXCUSED'),
+          ]),
+        }),
+      ),
+      attendanceRate: z.union([z.null(), z.number()]),
+    }),
+  ),
+});
+
+/** 스터디 출석률 요약 — 모든 반 가중평균(0 ~ 1). 체크된 회차가 없으면 null. */
+export const apiAttendanceSummarySchema = z.object({
+  attendanceRate: z.union([z.null(), z.number()]),
+});
+
+export const emptyResponseSchema = z.null();

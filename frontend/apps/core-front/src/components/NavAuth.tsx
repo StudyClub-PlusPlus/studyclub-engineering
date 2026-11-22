@@ -3,18 +3,20 @@
 // Nav 우측 auth 영역 — 서버 컴포넌트 Nav 안에 끼우는 client 아일랜드.
 // 비로그인: 로그인 / 온보딩 미완료: 가입 마무리 / 완료: 아바타+이름 → 드롭다운.
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
+import { Button, ButtonLink } from '@studyclub/ui';
 import { ChevronDown, DoorOpen, Heart, LogOut, UserRound } from 'lucide-react';
 
-import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
+import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/features/auth/auth';
+import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/features/auth/preview';
 import { announceMenuOpen, closeOnOtherMenu } from '@/lib/header-menus';
-import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/lib/preview';
 
 export function NavAuth({ locale }: { locale: Locale }) {
   const router = useRouter();
+  const pathname = usePathname();
   // user=null 이 서버·클라 첫 렌더 공통값이라 하이드레이션 불일치 없음.
   // 로그아웃 방문자(대다수)는 "로그인"이 그대로 SSR 되고, 로그인 상태면 마운트 후 아바타로 스왑.
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -49,39 +51,35 @@ export function NavAuth({ locale }: { locale: Locale }) {
 
   if (user?.onboardingCompletedAt === null) {
     return (
-      <Link
+      <ButtonLink
+        linkAs={Link}
+        variant='tertiary'
         href={`/${locale}/onboarding`}
-        className='sc-button type-label-lg'
-        data-variant='tertiary'
-        data-size='md'
       >
         {locale === 'en' ? 'Finish sign-up' : '가입 마무리'}
-      </Link>
+      </ButtonLink>
     );
   }
 
   if (!user) {
     return (
       <div className='flex items-center gap-2'>
-        <Link
-          href={`/${locale}/login`}
-          className='sc-button type-label-lg'
-          data-variant='secondary'
-          data-size='md'
+        <ButtonLink
+          linkAs={Link}
+          variant='secondary'
+          href={`/${locale}/login?next=${encodeURIComponent(pathname)}`}
         >
           {locale === 'en' ? 'Log in' : '로그인'}
-        </Link>
+        </ButtonLink>
         {IS_DEV && (
-          <button
+          <Button
             type='button'
+            variant='tertiary'
             onClick={enterPreview}
             title='로그인 없이 마이페이지 보기 (로컬 개발 서버 전용)'
-            className='sc-button type-label-lg'
-            data-variant='tertiary'
-            data-size='md'
           >
             MY
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -90,6 +88,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
   return (
     <div className='relative' ref={ref}>
       <button
+        // ui-native: 아바타 메뉴 열기 — 프로필 사진 · 이름을 담은 고유 팝오버 위젯
         type='button'
         onClick={() => setOpen((v) => {
           if (!v) announceMenuOpen('avatar');
@@ -140,6 +139,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
           {/* 「문의·오류 신고」는 푸터에 있다 — 눌러야 나오는 자리에 두면 할 말이 생긴 사람이 찾지 못한다 */}
           <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
+            // ui-native: 아바타 메뉴 항목 — 팝오버 메뉴의 한 줄(menuitem 목록)
             type='button'
             onClick={async () => {
               setOpen(false);

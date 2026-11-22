@@ -11,6 +11,12 @@ import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyRepository;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -21,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminStudyGroupService {
 
     private static final String DUPLICATE_NAME = "같은 이름의 반이 이미 있습니다.";
+    private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
     private final StudyRepository studyRepository;
     private final StudyGroupRepository studyGroupRepository;
@@ -41,31 +48,104 @@ public class AdminStudyGroupService {
         this.studyGroupDeletability = studyGroupDeletability;
     }
 
-    /** 반 제목을 바꾼다. 같은 스터디 안에 같은 이름이 있으면 409. */
+    /**
+     * 반 제목·요일·시간대를 바꾼다. 보낸 필드만 반영한다. 이름이 같은 스터디 안에 이미 있으면 409. {@code moveUpcomingMeetings} 면 시작 전
+     * 회차도 새 시간대·시각으로 옮긴다.
+     */
     @Transactional
     public StudyGroupUpdateResponse update(
             Long studyId, Long groupId, StudyGroupUpdateRequest request) {
+        // 회차를 옮기면 회차 API 와 같은 순서로 잠근다 — 분반 먼저, 트랜잭션의 첫 조회로
         StudyGroup group =
                 studyGroupRepository
-                        .findById(groupId)
+                        .findByIdForUpdate(groupId)
                         .filter(g -> g.getStudyId().equals(studyId))
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.NOT_FOUND, "반을 찾을 수 없습니다."));
-        // 엔티티를 바꾸기 전에 확인한다 — 먼저 바꾸면 조회 직전 자동 flush 가 제약 위반을 500 으로 낸다
-        String name = StudyGroup.normalizeName(request.name());
-        // 이름 변경 없이 그대로면 중복 확인을 건너뛴다
-        if (!name.equalsIgnoreCase(group.getName())
-                && studyGroupRepository.existsByStudyIdAndNameIgnoreCase(studyId, name)) {
-            throw new BusinessException(ErrorCode.CONFLICT, DUPLICATE_NAME);
+        if (request.name() != null) {
+            // 엔티티를 바꾸기 전에 확인한다 — 먼저 바꾸면 조회 직전 자동 flush 가 제약 위반을 500 으로 낸다
+            String name = StudyGroup.normalizeName(request.name());
+            // 이름 변경 없이 그대로면 중복 확인을 건너뛴다
+            if (!name.equalsIgnoreCase(group.getName())
+                    && studyGroupRepository.existsByStudyIdAndNameIgnoreCase(studyId, name)) {
+                throw new BusinessException(ErrorCode.CONFLICT, DUPLICATE_NAME);
+            }
+            group.changeName(name);
+            try {
+                studyGroupRepository.flush();
+            } catch (DataIntegrityViolationException e) {
+                // 확인과 저장 사이에 다른 요청이 같은 이름을 먼저 넣은 경우의 마지막 방어선 (uk_study_group_study_name)
+                throw new BusinessException(ErrorCode.CONFLICT, DUPLICATE_NAME);
+            }
         }
-        group.changeName(name);
-        try {
-            studyGroupRepository.flush();
-        } catch (DataIntegrityViolationException e) {
-            // 확인과 저장 사이에 다른 요청이 같은 이름을 먼저 넣은 경우의 마지막 방어선 (uk_study_group_study_name)
-            throw new BusinessException(ErrorCode.CONFLICT, DUPLICATE_NAME);
+        if (request.daysOfWeek() != null) group.changeDaysOfWeek(request.daysOfWeek());
+        ZoneId oldZone = MeetingSchedule.zoneOf(group.getTimezone());
+
+        // timezone 과 startTime 은 서로 영향을 주므로 함께 처리한다. null 이면 바꾸지 않는다.
+        // timezone 만 바뀌고 startTime 이 없으면 벽시계 시각을 유지한 채 Instant 를 재계산한다.
+        if (request.timezone() != null) {
+            if (request.startTime() == null
+                    && group.getStartAt() != null
+                    && group.getTimezone() != null) {
+                String wall = group.getStartAt().atZone(oldZone).format(HH_MM);
+                group.changeStartAt(
+                        LocalTime.parse(wall, HH_MM)
+                                .atDate(LocalDate.EPOCH)
+                                .atZone(MeetingSchedule.zoneOf(request.timezone()))
+                                .toInstant());
+            }
+            group.changeTimezone(request.timezone());
         }
-        return new StudyGroupUpdateResponse(group.getId(), group.getName());
+        if (request.startTime() != null) {
+            // timezone 이 없으면 MeetingSchedule.zoneOf 의 기본값(Asia/Seoul)으로 저장한다 — 회차 조회와 같은 규칙
+            group.changeStartAt(
+                    LocalTime.parse(request.startTime(), HH_MM)
+                            .atDate(LocalDate.EPOCH)
+                            .atZone(MeetingSchedule.zoneOf(group.getTimezone()))
+                            .toInstant());
+        }
+        if (request.moveUpcomingMeetings()
+                && (request.timezone() != null || request.startTime() != null)) {
+            moveUpcomingMeetings(group, oldZone, request.startTime());
+        }
+
+        String startTime =
+                group.getStartAt() == null || group.getTimezone() == null
+                        ? null
+                        : group.getStartAt()
+                                .atZone(MeetingSchedule.zoneOf(group.getTimezone()))
+                                .format(HH_MM);
+        return new StudyGroupUpdateResponse(
+                group.getId(),
+                group.getName(),
+                group.getDaysOfWeek(),
+                startTime,
+                group.getTimezone());
+    }
+
+    /**
+     * 시작 전 회차를 반의 새 시간대로 옮긴다. 날짜는 옛 시간대의 현지 날짜를 그대로 두고, 시각은 새 {@code startTime} 이 있으면 그것, 없으면 회차마다의
+     * 벽시계 시각이다. 시작한 회차는 출석이 있을 수 있어 두고, 옮긴 결과가 지난 시각이거나 다른 회차와 같은 날이면 전부 되돌린다(400 · 409).
+     */
+    private void moveUpcomingMeetings(StudyGroup group, ZoneId oldZone, String startTime) {
+        // 디스코드 출석이 같은 잠금으로 회차를 시작시킨다 — 잠근 뒤에 시작 여부를 판정한다
+        List<StudyMeeting> meetings =
+                studyMeetingRepository.findByStudyGroupIdForUpdate(group.getId());
+        Instant now = Instant.now();
+        ZoneId newZone = MeetingSchedule.zoneOf(group.getTimezone());
+        List<StudyMeeting> moved = new ArrayList<>();
+        for (StudyMeeting meeting : meetings) {
+            if (meeting.isStarted(now)) continue;
+            LocalDateTime wall = meeting.getScheduledAt().atZone(oldZone).toLocalDateTime();
+            if (startTime != null) wall = wall.with(LocalTime.parse(startTime, HH_MM));
+            // 서머타임으로 겹치는 시각은 앞쪽, 없는 시각은 뒤로 민다 — 반 시각 저장(atZone)과 같은 규칙
+            meeting.reschedule(wall.atZone(newZone).toInstant(), meeting.getTitle(), now);
+            moved.add(meeting);
+        }
+        MeetingSchedule schedule = new MeetingSchedule(group.getTimezone(), meetings);
+        for (StudyMeeting meeting : moved) {
+            schedule.checkReschedule(meeting, meeting.getScheduledAt());
+        }
     }
 
     /**

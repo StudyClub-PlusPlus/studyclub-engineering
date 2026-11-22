@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 
 import { LIFECYCLE_HINT, LIFECYCLE_LABEL, LIFECYCLE_TONE } from '@console/components/lifecycle';
-import type { LifecycleState } from '@studyclub/mock';
+import type { LifecycleState } from '@studyclub/types';
 import { Badge } from '@studyclub/ui';
 
 /**

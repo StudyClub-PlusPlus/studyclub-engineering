@@ -2,11 +2,22 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { Button, Checkbox, Input, Modal, Segmented, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import {
+  Button,
+  Checkbox,
+  cx,
+  Input,
+  Modal,
+  Segmented,
+  Select,
+  SelectionCount,
+  TableActionBar,
+  TimeSelect,
+} from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
-import { AddMeetingDialog } from './AddMeetingDialog';
-import { KickoffDialog } from './KickoffDialog';
+import { AddMeetingDialog } from '@/features/schedule/AddMeetingDialog';
+import { KickoffDialog } from '@/features/schedule/KickoffDialog';
 import {
   isKickoff,
   meetingLabel,
@@ -16,9 +27,9 @@ import {
   type Meeting,
   type Person,
   type ScheduleGroup,
-} from './meetings';
-import type { MeetingPatch } from './store';
-import { dateWithDow, dayLabel, DISPLAY_ZONES, wallParts, zonedInstant, zoneLabel } from './time';
+} from '@/features/schedule/meetings';
+import type { MeetingPatch } from '@/features/schedule/store';
+import { dateWithDow, dayLabel, DISPLAY_ZONES, wallParts, zonedInstant, zoneLabel } from '@/features/schedule/time';
 
 /**
  * 일정 표 — 고른 반의 회차. 사용자 사이트 스터디 일정 표와 같은 표다 (navigator-register-sessions PRD §3 ~ §10).
@@ -153,6 +164,7 @@ export function ScheduleTable({
         date: v.date,
         time: v.time,
         title: v.title,
+        scheduledAt: meetings.find((m) => m.id === id)?.scheduledAt,
         ...(v.presenter1 !== before?.presenter1 && { presenter1: v.presenter1 || null }),
         ...(v.presenter2 !== before?.presenter2 && { presenter2: v.presenter2 || null }),
       };
@@ -324,7 +336,7 @@ export function ScheduleTable({
                   </th>
                   <th className='w-24 px-4 py-3 text-center'>회차</th>
                   <th className='w-40 px-2 py-3'>일자</th>
-                  <th className='w-28 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
+                  <th className='w-44 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
                   <th className='w-60 px-2 py-3'>제목</th>
                   <th className='w-32 px-2 py-3 text-center'>발표자1</th>
                   <th className='w-32 px-2 py-3 text-center'>발표자2</th>
@@ -399,9 +411,9 @@ export function ScheduleTable({
                       </td>
                       <td className={cx(cell, 'tnum')}>
                         {editable ? (
-                          <CellInput
-                            type='time'
-                            label={`${meetingLabel(m)} 시작 시각 (${zoneLabel(zone)})`}
+                          <TimeSelect
+                            size='sm'
+                            aria-label={`${meetingLabel(m)} 시작 시각 (${zoneLabel(zone)})`}
                             value={wall.time}
                             error={errors.time}
                             onChange={(time) => changeWall(m, { time })}
@@ -488,7 +500,7 @@ function CellInput({
   error,
   onChange,
 }: {
-  type: 'date' | 'time';
+  type: 'date';
   label: string;
   value: string;
   error?: string;

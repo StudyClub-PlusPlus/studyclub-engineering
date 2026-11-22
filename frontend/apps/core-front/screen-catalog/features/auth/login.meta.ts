@@ -13,6 +13,7 @@ const MEMBER = {
 export const authScreenStates: ScreenStateDef[] = [
   {
     id: 'login--default',
+    prdScenarios: ['CORE-ST-005-V01', 'CORE-ST-005-S01'],
     label: '로그인 페이지 — 기본',
     pageId: 'login',
     rationale: '로그인 진입점. Google OAuth 버튼이 올바르게 렌더되는지 확인한다.',
@@ -26,6 +27,7 @@ export const authScreenStates: ScreenStateDef[] = [
   },
   {
     id: 'my--default',
+    prdScenarios: ['CORE-ST-012-V01', 'CORE-ST-012-S01', 'CORE-ST-012-S11'],
     label: '마이페이지 — 내 정보',
     pageId: 'my',
     rationale:
@@ -56,6 +58,20 @@ export const authScreenStates: ScreenStateDef[] = [
     assertions: {
       visible: ['h1:has-text("찜한 스터디")', 'button[aria-label="찜한 스터디에서 빼기"]'],
     },
+    screenshot: { fullPage: true },
+  },
+  {
+    id: 'my-leave--default',
+    prdScenarios: ['CORE-ST-013-V01', 'CORE-ST-013-S02', 'CORE-ST-013-S03'],
+    label: '회원 탈퇴 — 안내 · 사유 고르기',
+    pageId: 'my-leave',
+    rationale: '지면형 탈퇴 화면에 안내 두 줄 · 사유(선택) · 탈퇴 버튼이 보이는지 확인한다.',
+    recipe: {
+      storage: [{ key: 'sc_user', value: MEMBER }],
+      render: { url: '/ko/my/leave' },
+    },
+    viewports: ['desktop', 'mobile'],
+    assertions: { visible: ['h1:has-text("회원 탈퇴")'] },
     screenshot: { fullPage: true },
   },
   {

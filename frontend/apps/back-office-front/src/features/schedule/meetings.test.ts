@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { planDraft, previewOf, validateEdit, validateKickoff, type Meeting, type MeetingDraft } from './meetings';
-import { wallParts, zonedInstant } from './time';
+import {
+  maxUntil,
+  planDraft,
+  previewOf,
+  validateEdit,
+  validateKickoff,
+  type Meeting,
+  type MeetingDraft,
+} from '@/features/schedule/meetings';
+import { wallParts, zonedInstant } from '@/features/schedule/time';
 
 const NOW = new Date('2026-10-22T00:00:00Z');
 const KST = 'Asia/Seoul';
@@ -74,10 +82,16 @@ describe('회차 추가 검사', () => {
     expect(plan?.skipped.map((s) => s.reason)).toEqual(['이미 1회차', '이미 2회차']);
   });
 
-  it('반복은 시작 일자 포함 31일까지', () => {
-    const errors = planDraft(draft({ repeat: 'daily', until: '2026-12-05' }), [], KST, NOW).errors;
-    expect(errors.until).toContain('31일 안에서만');
-    expect(planDraft(draft({ repeat: 'daily', until: '2026-12-04' }), [], KST, NOW).plan?.dates).toHaveLength(31);
+  it('반복은 시작 일자부터 1년 뒤 같은 날까지', () => {
+    const errors = planDraft(draft({ repeat: 'daily', until: '2027-11-05' }), [], KST, NOW).errors;
+    expect(errors.until).toContain('1년 안에서만');
+    expect(errors.until).toContain('2027-11-04');
+    expect(planDraft(draft({ repeat: 'daily', until: '2027-11-04' }), [], KST, NOW).plan?.dates).toHaveLength(366);
+  });
+
+  it('2/29 에 시작하면 다음 해 2/28 까지', () => {
+    expect(maxUntil('2028-02-29')).toBe('2029-02-28');
+    expect(maxUntil('2026-11-04')).toBe('2027-11-04');
   });
 
   it('매주인데 요일을 하나도 안 고르면 막는다', () => {

@@ -3,10 +3,10 @@
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
 import { Moon, Sun } from 'lucide-react';
 
-import type { Locale } from '@/lib/content';
-import { REGIONS, tzLabel } from '@/lib/regions';
+import { REGIONS, tzLabel } from '@/features/community/regions';
 
 function parts(tz: string, locale: Locale) {
   const loc = locale === 'ko' ? 'ko-KR' : 'en-US';

@@ -177,7 +177,7 @@ spec-kit 의 specify → plan → tasks → implement → converge 를 이 프�
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/app/[locale]/studies/[id]/page.tsx`
-- `frontend/apps/core-front/src/lib/content.ts` → `getStudy(id)`
+- `frontend/apps/core-front/src/features/studies/server.ts` → `getStudy(id)`
 
 ### 미확정
 

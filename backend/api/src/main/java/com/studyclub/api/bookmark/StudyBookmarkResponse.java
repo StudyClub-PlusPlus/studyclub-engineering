@@ -6,9 +6,10 @@ import java.util.List;
 public record StudyBookmarkResponse(
         List<StudyBookmarkItem> items, long total, int offset, int limit) {
 
-    public record StudyBookmarkItem(String title, String category) {
+    public record StudyBookmarkItem(Long studyId, String title, String category) {
         public static StudyBookmarkItem from(StudyBookmarkSummary summary) {
-            return new StudyBookmarkItem(summary.getTitle(), summary.getCategory());
+            return new StudyBookmarkItem(
+                    summary.getStudyId(), summary.getTitle(), summary.getCategory());
         }
     }
 }

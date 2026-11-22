@@ -1,8 +1,10 @@
-// BO 전 페이지 로그인 게이트 — access 쿠키(bo_access_token) 없으면 /login 으로.
 import { NextRequest, NextResponse } from 'next/server';
 
+import { legacyRedirectUrl } from '@studyclub/utils';
+
 import { ACCESS_COOKIE } from '@/lib/cookie-names';
-import { legacyRedirectUrl } from '@/lib/legacy-domain';
+
+// BO 전 페이지 로그인 게이트 — access 쿠키(bo_access_token) 없으면 갱신을 거쳐 화면 또는 /login 으로.
 
 /**
  * 로컬 UI 작업용 게이트 우회.
@@ -20,8 +22,11 @@ const DEV_BYPASS = process.env.NODE_ENV === 'development' && process.env.BO_DEV_
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 0) 옛 도메인으로 들어오면 같은 경로의 studyclub.life 로 영구 이동 (lib/legacy-domain.ts)
-  const legacy = legacyRedirectUrl(req.headers.get('x-forwarded-host') ?? req.headers.get('host'), pathname + req.nextUrl.search);
+  // 0) 옛 도메인으로 들어오면 같은 경로의 studyclub.life 로 영구 이동 (@studyclub/utils)
+  const legacy = legacyRedirectUrl(
+    req.headers.get('x-forwarded-host') ?? req.headers.get('host'),
+    pathname + req.nextUrl.search,
+  );
   if (legacy) return NextResponse.redirect(legacy, 301);
 
   // 1) 로컬 개발 우회 모드
@@ -41,25 +46,21 @@ export function middleware(req: NextRequest) {
     return res;
   }
 
-  // 2) 정상 인증 모드
-  const token = req.cookies.get(ACCESS_COOKIE)?.value;
-  if (token) {
-    if (pathname === '/login') {
-      const url = req.nextUrl.clone();
-      url.pathname = '/';
-      url.search = '';
-      return NextResponse.redirect(url);
-    }
-    return NextResponse.next();
-  }
-
+  // 2) 로그인은 쿠키가 남아 있어도 연다. 쿠키 존재만으로는 서버의 인증 성공을 보장할 수 없다.
+  // 401 뒤 쿠키 정리에 실패해도 여기서 대시보드로 돌려보내면 무한 이동이 된다.
   if (pathname === '/login') {
     return NextResponse.next();
   }
 
+  if (req.cookies.get(ACCESS_COOKIE)?.value) {
+    return NextResponse.next();
+  }
+
+  // 액세스 쿠키는 토큰과 같이 15분이면 사라진다. refresh 쿠키는 path 가 /api/auth 라 여기서 안 보이므로
+  // 갱신 라우트가 refresh 쿠키로 판단해 보던 화면이나 로그인으로 보낸다.
   const url = req.nextUrl.clone();
-  url.pathname = '/login';
-  url.search = `?next=${encodeURIComponent(req.nextUrl.pathname)}`;
+  url.pathname = '/api/auth/refresh';
+  url.search = `?next=${encodeURIComponent(pathname + req.nextUrl.search)}`;
   return NextResponse.redirect(url);
 }
 

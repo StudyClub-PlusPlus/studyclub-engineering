@@ -1,3 +1,5 @@
+# PRD 연결 정본: docs/frontend-development-guide/core-e2e-prd-map.md
+# 설명용 명세. 실제 실행 범위는 .meta.ts의 assertions·steps이며 전체 행동 완료를 뜻하지 않는다.
 Feature: 스터디 신청 폼 (crew-submit-application)
 
   Background:
@@ -10,7 +12,7 @@ Feature: 스터디 신청 폼 (crew-submit-application)
   Scenario: 디스코드 미연동 사용자의 신청 시도
     Given 로그인되어 있으나 GET /api/me 의 discordLinked 가 false 인 사용자
     When 신청하기 버튼을 클릭한다
-    Then GET /api/me 를 기다리는 동안 신청하기 버튼이 비활성이고 스피너가 돈다
+    Then GET /api/me 를 기다리는 동안 신청하기 버튼이 잠긴다(aria-busy) — 버튼 안 스피너는 없다(design-system §9-1)
     And 디스코드 연동 모달(ApplyDiscordGate)이 노출된다
     When "디스코드 연동하기"를 클릭하면 디스코드 인가 팝업이 열린다 (client id 없는 개발 서버는 팝업 없이 목 코드)
     And 팝업이 돌려준 code 로 POST /api/me/discord/link 가 204 를 준다

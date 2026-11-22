@@ -5,7 +5,8 @@
 export type SystemRole = 'ADMIN' | 'MEMBER';
 
 /** 이 행의 권한을 지금 바꿀 수 없는 이유. 판정은 서버가 하고 화면은 문구만 띄운다. */
-export type RoleChangeBlockedReason = 'CANNOT_CHANGE_OWN_ROLE' | 'LAST_ADMIN_REQUIRED';
+export type RoleChangeBlockedReason =
+  'CANNOT_CHANGE_OWN_ROLE' | 'LAST_ADMIN_REQUIRED' | 'SUPER_ADMIN_LOCKED' | 'NOT_SUPER_ADMIN' | 'OWNS_STUDY';
 
 export type ApiAdminAccount = {
   id: number;
@@ -21,6 +22,8 @@ export type ApiAdminAccount = {
   joinedAt: string;
   roleChangeBlockedReason: RoleChangeBlockedReason | null;
   discordLinked: boolean;
+  /** 최고 관리자(서버 설정 SUPER_ADMIN_EMAILS). 화면 · API 로는 못 내린다. */
+  superAdmin?: boolean;
 };
 
 export type ApiAdminAccountPage = {

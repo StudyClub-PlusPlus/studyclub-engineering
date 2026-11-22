@@ -13,8 +13,9 @@ import {
 import type { Locale, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { addApplication, getApplication, getDiscordNickname, getRegion, setDiscordNickname } from '@core/lib/me';
-import { categoriesOf, toISODate, type MemberRegion } from '@studyclub/mock';
+import { type MemberRegion } from '@studyclub/types';
 import { Button, Checkbox, Modal } from '@studyclub/ui';
+import { categoriesOf, toISODate } from '@studyclub/utils';
 import { CalendarClock } from 'lucide-react';
 
 /**

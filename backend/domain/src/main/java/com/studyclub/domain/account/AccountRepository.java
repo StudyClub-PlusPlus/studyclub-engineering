@@ -50,6 +50,12 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     /** 디스코드 유저 ID 다건 → 회원. DISCORD_ID 는 UNIQUE 라 유저당 최대 1행이다. */
     List<Account> findByDiscordIdIn(Collection<String> discordIds);
 
+    /** 늦은 연결 role 동기화 — 풀 엔티티 대신 discordId 만 뽑는다 (StudyDiscordLinkService). */
+    @Query(
+            "SELECT a.discordId FROM Account a"
+                    + " WHERE a.id IN :ids AND a.discordId IS NOT NULL AND a.discordId <> ''")
+    List<String> findDiscordIdsByIdIn(@Param("ids") Collection<Long> ids);
+
     Optional<Account> findByDiscordId(String discordId);
 
     boolean existsByNickname(String nickname);

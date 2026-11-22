@@ -1,18 +1,7 @@
 import { tx } from '@console/lib/l10n';
-import {
-  CATEGORY_DISPLAY,
-  MEMBER_REGIONS,
-  attendancePoint,
-  categoriesOf,
-  getStudyCrew,
-  recruitState,
-  site,
-  studies,
-  toISODate,
-  todayISO,
-  type MemberRegion,
-  type Study,
-} from '@studyclub/mock';
+import { getStudyCrew, site, studies } from '@studyclub/mock';
+import { type MemberRegion, type Study } from '@studyclub/types';
+import { CATEGORY_DISPLAY, MEMBER_REGIONS, attendancePoint, categoriesOf, recruitState, toISODate, todayISO } from '@studyclub/utils';
 
 /**
  * 대시보드 집계.

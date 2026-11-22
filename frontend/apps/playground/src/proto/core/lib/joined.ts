@@ -3,7 +3,8 @@ import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { isKickoff, meetingLabel, wallParts, type ProtoMeeting } from '@core/lib/meetings';
 import { zoneAbbreviation } from '@core/lib/schedule-timezone';
-import { site, type Study, type StudyMeeting } from '@studyclub/mock';
+import { site } from '@studyclub/mock';
+import { type Study, type StudyMeeting } from '@studyclub/types';
 
 /** IANA 시간대. */
 export type WallTz = string;

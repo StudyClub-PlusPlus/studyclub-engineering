@@ -10,6 +10,8 @@ public record StudyParticipantsResponse(
         Long studyId,
         int participantCount,
         Integer recruitmentCapacity,
+        /** 담당 캡틴 — 명부와 상관없다. 없으면 null. */
+        OwnerCaptainResponse.OwnerCaptain ownerCaptain,
         List<Group> groups,
         List<Participant> participants) {
 
@@ -22,6 +24,7 @@ public record StudyParticipantsResponse(
             String discordNickname,
             String email,
             String regionGroup,
+            String timeZone,
             Long groupId,
             ParticipantRole participantRole,
             ParticipantStatus status,

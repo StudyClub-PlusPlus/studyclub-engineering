@@ -1,4 +1,4 @@
-import { isMockApiEnabled } from './lib/mock-api';
+import { isMockApiEnabled } from '@/lib/mock-api';
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs' && isMockApiEnabled()) {
