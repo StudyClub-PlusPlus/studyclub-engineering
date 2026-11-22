@@ -817,6 +817,7 @@ function HeatGridDemo() {
         unit='명'
         describe={(h, d) => `${HEAT_DAYS[d]} ${h}시 · ${heatSample(d, h)}명`}
         tooltip={(h, d) => HEAT_NAMES.slice(0, heatSample(d, h)).join(', ') || '없음'}
+        showValues
         hint='칸에 올리면 이름이 보입니다'
       />
       <HeatGrid

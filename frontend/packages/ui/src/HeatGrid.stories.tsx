@@ -54,7 +54,7 @@ export const Empty: Story = {
 const HOURS = Array.from({ length: 24 }, (_, h) => ({ key: String(h), label: String(h) }));
 const NAMES = ['지우', '민준', '서연', '하준', '도윤', '수아', '예준'];
 
-/** 시각을 줄, 요일을 열로 — 말풍선(`tooltip`)에 그 칸에 든 사람 이름을 나열한다. */
+/** 시각을 줄, 요일을 열로 — 칸이 넓으니 값을 칸 안에 적고(`showValues`), 말풍선(`tooltip`)에 그 칸에 든 사람 이름을 나열한다. */
 export const HoursByDays: Story = {
   args: {
     rows: HOURS,
@@ -62,5 +62,6 @@ export const HoursByDays: Story = {
     value: (h: number, d: number) => sample(d, h),
     describe: (h: number, d: number) => `${DAYS[d]} ${h}시 · ${sample(d, h)}명`,
     tooltip: (h: number, d: number) => NAMES.slice(0, sample(d, h)).join(', ') || '없음',
+    showValues: true,
   },
 };

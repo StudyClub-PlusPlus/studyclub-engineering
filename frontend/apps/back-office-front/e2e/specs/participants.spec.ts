@@ -209,11 +209,10 @@ test('참여 가능 시간: 칸을 골라 그 시각에 되는 크루만 남기�
   const writes = await mockParticipants(context);
   await page.goto('/studies/20?tab=crew');
   const board = page.getByRole('region', { name: '참여 가능 시간' });
-  await expect(board.getByText('2명', { exact: true })).toBeVisible();
+  await expect(board.locator('h2').getByText('2명', { exact: true })).toBeVisible();
 
   const table = page.getByRole('table');
-  const daysCell = (nickname: string) =>
-    table.getByRole('row').filter({ hasText: nickname }).getByRole('cell').nth(5);
+  const daysCell = (nickname: string) => table.getByRole('row').filter({ hasText: nickname }).getByRole('cell').nth(5);
   await expect(table.getByRole('columnheader', { name: '참여 가능 요일' })).toBeVisible();
   await expect(daysCell('김크루')).toHaveText('월 · 목');
   await expect(daysCell('이네비')).toHaveText('월');
@@ -222,7 +221,7 @@ test('참여 가능 시간: 칸을 골라 그 시각에 되는 크루만 남기�
   // KST 월 12시 = 뉴욕 일요일 밤 → 서울의 김크루만. KST 화 12시 = 뉴욕 월요일 밤 → 이네비만
   await expect(board.getByRole('button', { name: '화 12시 KST · 1명' })).toBeVisible();
   await board.getByRole('button', { name: '월 12시 KST · 1명' }).click();
-  await expect(page.getByText('월 12시 KST에 되는 크루 1명')).toBeVisible();
+  await expect(page.getByRole('region', { name: '참여 크루' }).getByText('월 12시 KST에 되는 크루 1명')).toBeVisible();
   await expect(table.getByText('이네비')).toHaveCount(0);
   await expect(table.getByText('박캡틴')).toHaveCount(0);
   await page.screenshot({ path: 'test-results/participants-availability.png', fullPage: true });

@@ -119,8 +119,10 @@ function ParticipantAssignment({
       />
       <OwnerCaptainSection studyId={studyId} owner={data.ownerCaptain} />
       <GroupsSection studyId={studyId} data={data} disabled={busy || dirty} />
-      {data.participants.length > 0 && <AvailabilitySection people={people} pick={timePick} onPick={setTimePick} />}
-      <section aria-label='참여 크루' className='space-y-3'>
+      {data.participants.length > 0 && (
+        <AvailabilitySection people={people} pick={timePick} onPick={setTimePick} rosterId='crew-roster' />
+      )}
+      <section id='crew-roster' aria-label='참여 크루' className='scroll-mt-20 space-y-3'>
         <div className='space-y-2'>
           <h2 className='font-semibold'>참여 크루 {data.participantCount}명</h2>
           <div className='flex flex-wrap gap-2'>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { availabilityOverlap, availableDaysText } from './availability';
+import { availabilityOverlap, bestSlots, availableDaysText } from './availability';
 
 // 2026-11-18(수) 정오 KST — 기준 주는 11-16(월) ~ 11-22(일). 북미는 서머타임이 끝난 뒤(PST = UTC-8)
 const NOV = new Date('2026-11-18T03:00:00Z');
@@ -117,5 +117,35 @@ describe('availableDaysText', () => {
   it('없으면 빈 문자열', () => {
     expect(availableDaysText(null)).toBe('');
     expect(availableDaysText([])).toBe('');
+  });
+});
+
+describe('bestSlots', () => {
+  it('요일마다 인원이 가장 많은 가장 긴 구간을 뽑고, 많은 순으로 준다', () => {
+    const r = availabilityOverlap(
+      [
+        { id: 1, days: ['mon', 'sat'], timeZone: 'Asia/Seoul' },
+        { id: 2, days: ['sat'], timeZone: 'Asia/Seoul' },
+        { id: 3, days: ['wed'], timeZone: 'Asia/Seoul' },
+      ],
+      { baseZone: 'Asia/Seoul', excludeNight: true, now: NOV },
+    );
+    const hours = Array.from({ length: 17 }, (_, i) => i + 7);
+    const slots = bestSlots(r, { hours, limit: 2 });
+    expect(slots).toEqual([
+      { day: 5, startHour: 7, endHour: 23, ids: [1, 2] },
+      { day: 0, startHour: 7, endHour: 23, ids: [1] },
+    ]);
+  });
+
+  it('보이는 시각(hours)만 보고, 아무도 없는 요일은 뺀다', () => {
+    const r = availabilityOverlap([{ id: 'pt', days: ['mon'], timeZone: 'America/Los_Angeles' }], {
+      baseZone: 'Asia/Seoul',
+      excludeNight: true,
+      now: NOV,
+    });
+    // PT 월 7~23시 = KST 월 24시(화 0시) ~ 화 16시 → 7시 이후 줄에서는 화 7~16시
+    const slots = bestSlots(r, { hours: Array.from({ length: 17 }, (_, i) => i + 7), limit: 3 });
+    expect(slots).toEqual([{ day: 1, startHour: 7, endHour: 16, ids: ['pt'] }]);
   });
 });

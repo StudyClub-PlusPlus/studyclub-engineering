@@ -290,8 +290,10 @@ export function CrewTab({
           {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
         </ul>
       </section>
-      {active.length > 0 && <AvailabilityBoard people={people} pick={timePick} onPick={setTimePick} />}
-      <section data-anno='attendee:3'>
+      {active.length > 0 && (
+        <AvailabilityBoard people={people} pick={timePick} onPick={setTimePick} rosterId='crew-roster' />
+      )}
+      <section id='crew-roster' data-anno='attendee:3' className='scroll-mt-20'>
         <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
           <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 type-title-lg'>
             참여 크루

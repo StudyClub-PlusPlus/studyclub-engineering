@@ -187,3 +187,53 @@ export function availabilityOverlap<Id extends string | number>(
     weekStart: ymd(monday.getUTCFullYear(), monday.getUTCMonth() + 1, monday.getUTCDate()),
   };
 }
+
+export type BestSlot<Id = string | number> = {
+  /** 0 = 월 … 6 = 일 (기준 시간대) */
+  day: number;
+  /** 같은 인원이 이어지는 첫 시각 */
+  startHour: number;
+  /** 같은 인원이 이어지는 마지막 시각 (포함) */
+  endHour: number;
+  /** 이 시각 내내 되는 사람 */
+  ids: Id[];
+};
+
+/**
+ * 「가장 많이 되는 시간」 — 요일마다 인원이 가장 많은 시각이 이어지는 가장 긴 구간을 하나 뽑고,
+ * 인원이 많은 순(같으면 구간이 긴 순 · 이른 요일 순)으로 `limit` 개를 준다. 인원이 0 인 요일은 뺀다.
+ * `hours` 에 든 시각만 본다(칸판에 보이는 줄).
+ */
+export function bestSlots<Id extends string | number>(
+  overlap: AvailabilityOverlap<Id>,
+  options: { hours: readonly number[]; limit: number },
+): BestSlot<Id>[] {
+  const hours = [...options.hours].sort((a, b) => a - b);
+  const slots: BestSlot<Id>[] = [];
+  overlap.cells.forEach((row, day) => {
+    const top = Math.max(0, ...hours.map((h) => row[h]!.ids.length));
+    if (top === 0) return;
+    // 인원이 top 인 시각이 이어지는 구간 중 가장 긴 것 (같으면 이른 것)
+    let run: { start: number; end: number } | null = null;
+    let cur: { start: number; end: number } | null = null;
+    for (const h of hours) {
+      if (row[h]!.ids.length !== top) {
+        cur = null;
+        continue;
+      }
+      cur = cur && cur.end === h - 1 ? { start: cur.start, end: h } : { start: h, end: h };
+      if (!run || cur.end - cur.start > run.end - run.start) run = cur;
+    }
+    if (!run) return;
+    // 구간 내내 되는 사람 — 첫 칸의 사람 중 끝까지 남는 사람
+    let ids = row[run.start]!.ids;
+    for (let h = run.start + 1; h <= run.end; h++) {
+      const here = new Set(row[h]!.ids);
+      ids = ids.filter((id) => here.has(id));
+    }
+    slots.push({ day, startHour: run.start, endHour: run.end, ids });
+  });
+  return slots
+    .sort((a, b) => b.ids.length - a.ids.length || b.endHour - b.startHour - (a.endHour - a.startHour) || a.day - b.day)
+    .slice(0, options.limit);
+}

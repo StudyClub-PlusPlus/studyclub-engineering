@@ -597,16 +597,35 @@ describe('참여 가능 시간', () => {
     expect(within(screen.getByRole('table')).getByText('북미캡틴')).toBeVisible();
   });
 
-  it('현지 밤 빼기를 끄면 크루 현지 새벽 칸도 센다', async () => {
+  it('크루 새벽 빼기를 끄면 크루 현지 새벽 칸도 센다', async () => {
     mount(withDays);
-    // 기준 시간대 0 ~ 6시 줄은 처음엔 숨기고, 「밤 시간 보기」로 펼친다
+    // 기준 시간대 0 ~ 6시 줄은 처음엔 숨기고, 「0~6시 줄 보기」로 펼친다
     expect(await screen.findByRole('button', { name: '월 7시 KST · 1명' })).toBeVisible();
     expect(screen.queryByRole('button', { name: /^월 3시 KST/ })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('switch', { name: '밤 시간(0~7시) 보기' }));
+    await userEvent.click(screen.getByRole('switch', { name: '0~6시 줄 보기' }));
     // KST 월 3시 — 한국크루 현지 새벽
     expect(screen.getByRole('button', { name: '월 3시 KST · 0명' })).toBeVisible();
-    await userEvent.click(screen.getByRole('switch', { name: '현지 밤(0~7시) 빼기' }));
+    await userEvent.click(screen.getByRole('switch', { name: '크루 새벽 빼기' }));
     expect(screen.getByRole('button', { name: '월 3시 KST · 1명' })).toBeVisible();
+  });
+
+  it('가장 많이 되는 시간을 누르면 그 구간 내내 되는 크루만 남기고, 「명단에서 보기」로 명단에 간다', async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    mount(withDays);
+    const best = within(await screen.findByRole('group', { name: '가장 많이 되는 시간' }));
+    // 둘 다 1명이면 긴 구간이 먼저 — 한국크루의 KST 월요일 7 ~ 23시
+    const chips = best.getAllByRole('button');
+    expect(chips[0]).toHaveTextContent('월 7~23시 KST · 1명');
+    await userEvent.click(chips[0]!);
+    expect(chips[0]).toHaveAttribute('aria-pressed', 'true');
+    const table = within(screen.getByRole('table'));
+    expect(table.getByText('한국크루')).toBeVisible();
+    expect(table.queryByText('북미캡틴')).not.toBeInTheDocument();
+    expect(screen.getByText('월 7~23시 KST에 되는 크루 1명')).toBeVisible();
+
+    await userEvent.click(screen.getByRole('button', { name: '명단에서 보기' }));
+    expect(scroll).toHaveBeenCalled();
   });
 
   it('반 · 시간대 필터를 바꾸면 고른 시각을 푼다', async () => {

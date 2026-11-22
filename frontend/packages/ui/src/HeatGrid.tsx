@@ -26,10 +26,14 @@ export interface HeatGridProps {
   hint?: ReactNode;
   /** 칸에 마우스 · 포커스를 올리면 칸 옆에 띄우는 말풍선 내용 (예: 그 칸에 든 사람 이름). 없으면 띄우지 않는다. */
   tooltip?: (row: number, col: number) => ReactNode;
+  /** 칸 안에 값을 숫자로 적는다 (0 은 비운다). 칸이 넓을 때(열 12칸 이하)만 쓴다. */
+  showValues?: boolean;
   className?: string;
 }
 
 const LEVEL = ['bg-heat-0', 'bg-heat-1', 'bg-heat-2', 'bg-heat-3', 'bg-heat-4'] as const;
+// 칸 안 숫자 — heat-0~2 는 fg(대비 5.84 이상), heat-3 · 4 는 fg-on-color(4.89 이상) (design-system.md §2-7)
+const VALUE_TEXT = ['text-fg', 'text-fg', 'text-fg', 'text-fg-on-color', 'text-fg-on-color'] as const;
 
 /** 0 은 빈 칸, 나머지는 최대값의 1/4 마다 한 단계 (design-system.md §2-7). */
 export function heatLevel(v: number, max: number): 0 | 1 | 2 | 3 | 4 {
@@ -52,6 +56,7 @@ export function HeatGrid({
   unit = '',
   hint,
   tooltip,
+  showValues = false,
   className,
 }: HeatGridProps) {
   const [active, setActive] = useState<HeatGridCell | null>(null);
@@ -146,6 +151,8 @@ export function HeatGrid({
                       aria-label={describe(ri, ci)}
                       aria-pressed={onSelect ? isSelected : undefined}
                       className={cx(
+                        showValues && 'tnum type-label-sm font-semibold',
+                        showValues && VALUE_TEXT[level],
                         'h-6 w-full rounded-xs transition-shadow duration-fast focus-visible:outline-none focus-visible:shadow-(--ring)',
                         LEVEL[level],
                         isSelected && 'outline-2 outline-offset-1 outline-fg',
@@ -159,7 +166,9 @@ export function HeatGrid({
                       onBlur={leave}
                       onKeyDown={(ev) => move(ev, ri, ci)}
                       onClick={() => onSelect?.(isSelected ? null : { row: ri, col: ci })}
-                    />
+                    >
+                      {showValues && v > 0 ? <span aria-hidden>{v}</span> : null}
+                    </button>
                   </span>
                 );
               })}

@@ -3,10 +3,12 @@
     {
       "story": "captain-assign-classes",
       "name": "availability-board",
-      "title": "신청자 탭 — 참여 가능 시간 (시각 × 요일 · KST 기준 · 현지 밤 빼기)",
+      "title": "신청자 탭 — 참여 가능 시간 (가장 많이 되는 시간 · 칸 안 인원 · KST 기준)",
       "path": "/proto/console/studies/1",
       "viewport": "desktop",
-      "click": ["신청자"],
+      "click": [
+        "신청자"
+      ],
       "scrollTo": "[data-anno~=\"class:3\"]"
     },
     {
@@ -15,9 +17,24 @@
       "title": "칸에 올리면 그 시각에 되는 크루 닉네임을 말풍선으로 보인다",
       "path": "/proto/console/studies/1",
       "viewport": "desktop",
-      "click": ["신청자"],
+      "click": [
+        "신청자"
+      ],
       "scrollTo": "[data-anno~=\"class:3\"]",
       "hover": "토 21시 KST · 11명"
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-best",
+      "title": "「가장 많이 되는 시간」을 누르면 그 구간 내내 되는 크루만 남고, 「명단에서 보기」가 생긴다",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": [
+        "신청자",
+        "일 7~15시 KST · 15명"
+      ],
+      "scrollTo": "[data-anno~=\"class:3\"]",
+      "fullPage": true
     },
     {
       "story": "captain-assign-classes",
@@ -25,7 +42,10 @@
       "title": "칸을 고르면 그 시각에 되는 크루만 명단에 남는다 · 명단의 참여 가능 요일 열",
       "path": "/proto/console/studies/1",
       "viewport": "desktop",
-      "click": ["신청자", "목 21시 KST · 10명"],
+      "click": [
+        "신청자",
+        "목 21시 KST · 10명"
+      ],
       "scrollTo": "[data-anno~=\"class:4\"]"
     },
     {
@@ -34,7 +54,10 @@
       "title": "기준 시간대 PT — 같은 신청자가 PT 의 요일 · 시각으로 다시 놓인다",
       "path": "/proto/console/studies/1",
       "viewport": "desktop",
-      "click": ["신청자", "PT"],
+      "click": [
+        "신청자",
+        "PT"
+      ],
       "scrollTo": "[data-anno~=\"class:3\"]"
     },
     {
@@ -43,7 +66,9 @@
       "title": "모바일 — 요일 7열이라 칸판은 화면에 맞고, 명단 표는 가로로 민다",
       "path": "/proto/console/studies/1",
       "viewport": "mobile",
-      "click": ["신청자"],
+      "click": [
+        "신청자"
+      ],
       "scrollTo": "[data-anno~=\"class:4\"], [data-anno~=\"class:5\"]",
       "fullPage": false
     }
