@@ -232,6 +232,12 @@ export function RetroBoard({
       <div className={cx(lead && 'grid gap-4 lg:grid-cols-[13rem_1fr]')}>
         {lead && <WritingStatus retros={retros} missing={missing} />}
         <div className='flex min-w-0 flex-col gap-4'>
+          {/* 크루에게는 누가 안 썼는지(이름)를 보이지 않는다 — 내가 안 썼을 때만 쓰자고 권한다. 이름 목록은 네비게이터 · 캡틴의 작성 현황에만. */}
+          {canWrite && !current.mine && (
+            <p data-anno='retro:4' className='rounded-card bg-info-bg px-5 py-3 type-body-sm text-info-fg'>
+              아직 회고를 작성하지 않았어요! 회고를 작성해 생각을 나누어 보아요.
+            </p>
+          )}
           {retros.length === 0 ? (
             <p className='rounded-card border border-dashed border-border py-12 text-center type-body-sm text-fg-muted'>
               아직 이 회차에 남긴 회고가 없어요.
@@ -252,11 +258,6 @@ export function RetroBoard({
             RETRO_SECTIONS.map((s, i) => (
               <QuestionCard key={s.key} index={i + 1} section={s.key} retros={retros} lead={lead} onLike={like} />
             ))
-          )}
-          {!lead && missing.length > 0 && (
-            <p data-anno='retro:4' className='type-body-sm text-fg-muted'>
-              아직 쓰지 않은 참여자 {missing.length}명 · {missing.map((m) => m.name).join(', ')}
-            </p>
           )}
         </div>
       </div>

@@ -32,6 +32,14 @@
     },
     {
       "story": "crew-write-meeting-retro",
+      "name": "retro-not-written",
+      "title": "회고 탭 — 아직 안 쓴 회차 (작성 권유)",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro?meeting=claude-code-source-study-s8",
+      "click": ["작성자별"],
+      "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "crew-write-meeting-retro",
       "name": "retro-by-question",
       "title": "회고 탭 — 문항별",
       "path": "/proto/core/ko/my/joined/18/schedule/retro?meeting=claude-code-source-study-s7",

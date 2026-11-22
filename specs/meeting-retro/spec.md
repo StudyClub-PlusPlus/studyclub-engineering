@@ -18,7 +18,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/studies/{studyId}/retros/status | 내 분반 회차마다 회고 상태 (끝났나 · 기한 · 쓸 수 있나 · 내가 썼나 · 쓴 사람/쓸 사람) | 필요 (반 참여자 · 네비게이터 · 담당 캡틴) | 스펙작성중 |
-| GET | /api/studies/{studyId}/meetings/{meetingId}/retros | 한 회차의 회고 목록 · 안 쓴 참여자 | 필요 (같음) | 스펙작성중 |
+| GET | /api/studies/{studyId}/meetings/{meetingId}/retros | 한 회차의 회고 목록 · 안 쓴 참여자(네비게이터 · 캡틴만) | 필요 (같음) | 스펙작성중 |
 | PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/me | 내 회고 작성 · 수정 | 필요 (그 회차의 쓸 사람) | 스펙작성중 |
 | PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 누르기 | 필요 (반 참여자, 자기 회고 제외) | 스펙작성중 |
 | DELETE | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 취소 | 필요 (같음) | 스펙작성중 |
@@ -109,6 +109,7 @@ erDiagram
 
 - 순서: 내 회고가 맨 앞, 나머지는 `writtenAt` 오름차순
 - 👍 를 누른 사람은 내려주지 않는다 — 수만
+- `missing` 은 그 반의 LEADER · CO_LEADER 와 ADMIN 에게만 채운다. 크루에게는 늘 `[]` — 안 쓴 사람 이름을 크루에게 보이지 않는다. 내가 안 썼는지는 `items` 에 `me: true` 가 있는지로 안다
 - 끝나지 않은 회차는 `409 RETRO_NOT_OPEN`
 
 ## PUT /api/studies/{studyId}/meetings/{meetingId}/retros/me
