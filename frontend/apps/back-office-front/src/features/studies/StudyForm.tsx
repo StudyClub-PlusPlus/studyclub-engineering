@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Checkbox, Input, Select, Textarea, useImageUpload, Button, FilterChip } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
+import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
 import {
   EMPTY_FORM,
   FormMode,
@@ -494,6 +495,7 @@ export function StudyForm({
 
       <TimezoneField value={value.timezone} onChange={(next) => set('timezone', next)} />
 
+      <TimezoneNote subject='모집 마감일과 진행 시작일은' />
       <div className='grid gap-3 sm:grid-cols-2'>
         <Input
           id='deadline'

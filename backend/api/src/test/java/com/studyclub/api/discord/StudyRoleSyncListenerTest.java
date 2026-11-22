@@ -440,7 +440,7 @@ class StudyRoleSyncListenerTest {
 
     private void isNavigatorElsewhere(boolean holds) {
         lenient()
-                .when(participants.existsActiveNavigatorInAnyActiveStudy(ACCOUNT_ID))
+                .when(participants.existsActiveNavigatorInAnyActiveStudy(eq(ACCOUNT_ID), any()))
                 .thenReturn(holds);
     }
 

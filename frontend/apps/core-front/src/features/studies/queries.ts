@@ -6,6 +6,9 @@ import { fetchBrowserStudies, fetchBrowserStudy } from './browser-repository';
 import { studyKeys } from './keys';
 import type { StudySearch } from '@/features/studies/types';
 
+/** 서버가 방금 받아 심어 준 첫 화면을 하이드레이션 직후 다시 부르지 않는다 */
+const SERVER_SEEDED_STALE_TIME = 60 * 1000;
+
 /**
  * 목록. 공개 API 라 로그인 없이도 받는다.
  * GET /api/studies
@@ -19,6 +22,7 @@ export function useStudies(search: StudySearch, initial?: Study[]) {
     queryKey: studyKeys.list(search),
     queryFn: () => fetchBrowserStudies(search),
     initialData: isDefault ? initial : undefined,
+    staleTime: SERVER_SEEDED_STALE_TIME,
     // 필터를 바꾸는 동안 이전 목록을 지우지 않는다 — 비었다 다시 차면 어디를 보고 있었는지 잃는다
     placeholderData: (previous) => previous,
   });
@@ -30,6 +34,7 @@ export function useStudyDetail(studyId: number, initial?: Study | null) {
   return useQuery({
     queryKey: studyKeys.detail(studyId),
     ...(initial ? { initialData: initial } : {}),
+    staleTime: SERVER_SEEDED_STALE_TIME,
     queryFn: () => fetchBrowserStudy(studyId),
     retry: false,
   });

@@ -1,7 +1,10 @@
 package com.studyclub.domain.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.DisplayName;
@@ -194,6 +197,55 @@ class StudyTest {
     }
 
     @Test
+    @DisplayName("단계: 운영자 종료 상태값 ENDED → CLOSED")
+    void phase_endedStatus() {
+        var study = phased(StudyStatus.ENDED, days(10), null);
+        assertThat(study.phase(0, days(3), 30)).isEqualTo(StudyPhase.CLOSED);
+    }
+
+    @Test
+    @DisplayName("지금 상태: 저장값이 OPEN 이어도 START_AT 이 지나면 ONGOING, END_AT 이 지나면 ENDED (bug-37)")
+    void statusAsOf_readsDates() {
+        Instant now = Instant.now();
+        assertThat(phased(StudyStatus.OPEN, days(3), days(30)).statusAsOf(now))
+                .isEqualTo(StudyStatus.OPEN);
+        assertThat(phased(StudyStatus.OPEN, days(-1), days(30)).statusAsOf(now))
+                .isEqualTo(StudyStatus.ONGOING);
+        assertThat(phased(StudyStatus.OPEN, days(-1), null).statusAsOf(now))
+                .isEqualTo(StudyStatus.ONGOING);
+        assertThat(phased(StudyStatus.OPEN, days(-30), days(-1)).statusAsOf(now))
+                .isEqualTo(StudyStatus.ENDED);
+        assertThat(phased(StudyStatus.OPEN, null, null).statusAsOf(now))
+                .isEqualTo(StudyStatus.OPEN);
+        // 경계 — 정확히 그 시각이면 지난 것으로 본다
+        assertThat(phased(StudyStatus.OPEN, now, null).statusAsOf(now))
+                .isEqualTo(StudyStatus.ONGOING);
+        assertThat(phased(StudyStatus.OPEN, days(-1), now).statusAsOf(now))
+                .isEqualTo(StudyStatus.ENDED);
+        assertThat(phased(StudyStatus.DRAFT, days(-30), days(-1)).statusAsOf(now))
+                .isEqualTo(StudyStatus.DRAFT);
+        assertThat(phased(StudyStatus.CLOSED, days(-1), days(30)).statusAsOf(now))
+                .isEqualTo(StudyStatus.CLOSED);
+    }
+
+    @Test
+    @DisplayName("끝났다: ENDED · CLOSED 이거나 END_AT 경과. 진행 중: 시작했고 안 끝났다")
+    void isEnded_isOngoing() {
+        Instant now = Instant.now();
+        var started = phased(StudyStatus.OPEN, days(-1), days(30));
+        var pastEnd = phased(StudyStatus.OPEN, days(-30), days(-1));
+        var notStarted = phased(StudyStatus.OPEN, days(3), days(30));
+        assertThat(started.isEnded(now)).isFalse();
+        assertThat(started.isOngoing(now)).isTrue();
+        assertThat(pastEnd.isEnded(now)).isTrue();
+        assertThat(pastEnd.isOngoing(now)).isFalse();
+        assertThat(notStarted.isEnded(now)).isFalse();
+        assertThat(notStarted.isOngoing(now)).isFalse();
+        assertThat(phased(StudyStatus.CLOSED, days(3), null).isEnded(now)).isTrue();
+        assertThat(phased(StudyStatus.ENDED, null, null).isEnded(now)).isTrue();
+    }
+
+    @Test
     @DisplayName("시간대: PDT·PST → PST, KST → KST, 표기 없음 → BOTH")
     void timezone_fromSchedule() {
         assertThat(scheduled("Thu 6:00 PM PDT").timezone()).isEqualTo(StudyTimezone.PST);
@@ -217,6 +269,43 @@ class StudyTest {
 
     private static Instant days(long days) {
         return Instant.now().plus(days, ChronoUnit.DAYS);
+    }
+
+    @Test
+    @DisplayName("비공개 전환: 시작 전 OPEN 은 DRAFT 가 된다")
+    void unpublish_beforeStart() {
+        var study = phased(StudyStatus.OPEN, days(3), days(30));
+        study.unpublish(Instant.now());
+        assertThat(study.getStatus()).isEqualTo(StudyStatus.DRAFT);
+    }
+
+    @Test
+    @DisplayName("비공개 전환: 시작일이 지난 OPEN 은 STUDY_ALREADY_STARTED")
+    void unpublish_afterStart() {
+        var study = phased(StudyStatus.OPEN, days(-1), days(30));
+        assertThatThrownBy(() -> study.unpublish(Instant.now()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.STUDY_ALREADY_STARTED);
+        assertThat(study.getStatus()).isEqualTo(StudyStatus.OPEN);
+    }
+
+    @Test
+    @DisplayName("비공개 전환: 종료일이 지난 OPEN 도 STUDY_ALREADY_STARTED")
+    void unpublish_afterEnd() {
+        var study = phased(StudyStatus.OPEN, days(-30), days(-1));
+        assertThatThrownBy(() -> study.unpublish(Instant.now()))
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.STUDY_ALREADY_STARTED);
+    }
+
+    @Test
+    @DisplayName("비공개 전환: DRAFT 는 CONFLICT")
+    void unpublish_draft() {
+        var study = phased(StudyStatus.DRAFT, days(3), null);
+        assertThatThrownBy(() -> study.unpublish(Instant.now()))
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.CONFLICT);
     }
 
     private Study phased(StudyStatus status, Instant startAt, Instant endAt) {

@@ -36,6 +36,11 @@ MAX_GROUPS_SHOWN = 10
 # attendance was already written, so the message is clipped rather than sent raw.
 DISCORD_MESSAGE_LIMIT = 2000
 KICKOFF = "KICKOFF"
+# Mirrors the backend's pick rule (specs/discord-attendance/spec.md § 회차 판정 규칙).
+NO_MEETING_HINT = (
+    "   진행 중인 회차도, 예정 시각 2시간 안의 회차도 없는 반입니다. "
+    "일정 화면에서 회차 시각을 확인해 주세요."
+)
 
 
 @dataclass(frozen=True)
@@ -114,6 +119,8 @@ def format_result(result: AttendanceResult, names_by_id: dict[str, str]) -> str:
     ):
         if ids:
             lines.append(f"⚠️ {label} {len(ids)}명 — {_names(ids, names_by_id)}")
+    if result.no_meeting:
+        lines.append(NO_MEETING_HINT)
 
     return _clip("\n".join(lines))
 

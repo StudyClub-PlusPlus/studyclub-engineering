@@ -3,12 +3,13 @@
 
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { LIFECYCLE_LABEL, LIFECYCLE_ORDER } from '@console/components/lifecycle';
 import { LifecycleBadge } from '@console/components/LifecycleBadge';
 import { tx } from '@console/lib/l10n';
 import { rememberStudiesListSearch } from '@console/lib/list-return';
+import { useTopScroll } from '@console/lib/use-top-scroll';
 import { studyAuthor } from '@console/lib/users';
 import { recruitmentZoneLabel } from '@core/lib/recruitment-timezones';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
@@ -367,37 +368,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   }, [urlReady, query, category, status, recruit, publish, form, sort, page]);
 
   // 가로 스크롤바를 표 위에도 둔다 — 행이 많으면 아래로 내려가야 스크롤바가 보인다.
-  const topScrollRef = useRef<HTMLDivElement>(null);
-  const bodyScrollRef = useRef<HTMLDivElement>(null);
-  const syncing = useRef(false);
-  const [scrollWidth, setScrollWidth] = useState(0);
+  const scroll = useTopScroll();
   /** 공개/미공개 전환 확인 팝업. 값이 있으면 열려 있다. */
   const [confirm, setConfirm] = useState<{ id: string; title: string; next: boolean } | null>(null);
-
-  useEffect(() => {
-    const el = bodyScrollRef.current;
-    if (!el) return;
-    const update = () => setScrollWidth(el.scrollWidth);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    if (el.firstElementChild) ro.observe(el.firstElementChild);
-    return () => ro.disconnect();
-  }, []);
-
-  /** 위·아래 스크롤바를 서로 맞춘다. 한쪽이 움직이면 다른 쪽을 옮기되, 되돌아오는 이벤트는 무시한다. */
-  function syncScroll(from: 'top' | 'body') {
-    if (syncing.current) {
-      syncing.current = false;
-      return;
-    }
-    const src = from === 'top' ? topScrollRef.current : bodyScrollRef.current;
-    const dst = from === 'top' ? bodyScrollRef.current : topScrollRef.current;
-    if (!src || !dst || dst.scrollLeft === src.scrollLeft) return;
-    syncing.current = true;
-    dst.scrollLeft = src.scrollLeft;
-  }
-
 
   // 칼럼 순서는 고정이다 — 운영자가 바꾸지 않는다
   const columns = COLUMNS;
@@ -533,15 +506,15 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
 
       <div className='card'>
         <div
-          ref={topScrollRef}
-          onScroll={() => syncScroll('top')}
+          ref={scroll.topRef}
+          onScroll={scroll.onTopScroll}
           aria-hidden='true'
           data-anno='list:7'
           className='overflow-x-auto overflow-y-hidden border-b border-border'
         >
-          <div style={{ width: scrollWidth, height: 1 }} />
+          <div style={{ width: scroll.width, height: 1 }} />
         </div>
-        <div ref={bodyScrollRef} onScroll={() => syncScroll('body')} className='overflow-x-auto'>
+        <div ref={scroll.bodyRef} onScroll={scroll.onBodyScroll} className='overflow-x-auto'>
           <table className='bo-table'>
             <thead>
               <tr>
@@ -770,11 +743,31 @@ function readListUrl(search: string): ListUrlState {
   const page = Math.floor(Number(p.get('page')));
   return {
     q: p.get('q') ?? '',
-    category: pick('category', CATEGORY_OPTIONS.map((o) => o.value), 'all'),
-    status: pick<StatusFilter>('status', STATUS_OPTIONS.map((o) => o.value), 'all'),
-    recruit: pick<RecruitFilter>('recruit', RECRUIT_OPTIONS.map((o) => o.value), 'all'),
-    publish: pick<PublishFilter>('publish', PUBLISH_OPTIONS.map((o) => o.value), 'all'),
-    form: pick<FormFilter>('form', FORM_OPTIONS.map((o) => o.value), 'all'),
+    category: pick(
+      'category',
+      CATEGORY_OPTIONS.map((o) => o.value),
+      'all',
+    ),
+    status: pick<StatusFilter>(
+      'status',
+      STATUS_OPTIONS.map((o) => o.value),
+      'all',
+    ),
+    recruit: pick<RecruitFilter>(
+      'recruit',
+      RECRUIT_OPTIONS.map((o) => o.value),
+      'all',
+    ),
+    publish: pick<PublishFilter>(
+      'publish',
+      PUBLISH_OPTIONS.map((o) => o.value),
+      'all',
+    ),
+    form: pick<FormFilter>(
+      'form',
+      FORM_OPTIONS.map((o) => o.value),
+      'all',
+    ),
     sort,
     page: Number.isFinite(page) && page >= 1 ? page : 1,
   };

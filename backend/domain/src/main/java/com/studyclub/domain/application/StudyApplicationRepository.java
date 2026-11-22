@@ -33,6 +33,14 @@ public interface StudyApplicationRepository extends JpaRepository<StudyApplicati
             @Param("recruitmentId") Long recruitmentId);
 
     @Query(
+            "SELECT application FROM StudyApplication application "
+                    + "JOIN StudyRecruitment recruitment ON recruitment.id = application.recruitmentId "
+                    + "WHERE recruitment.studyId = :studyId AND application.accountId = :accountId "
+                    + "ORDER BY application.id DESC")
+    List<StudyApplication> findByStudyIdAndAccountIdOrderByIdDesc(
+            @Param("studyId") Long studyId, @Param("accountId") Long accountId);
+
+    @Query(
             "SELECT COUNT(application) > 0 "
                     + "FROM StudyApplication application "
                     + "JOIN StudyRecruitment recruitment "

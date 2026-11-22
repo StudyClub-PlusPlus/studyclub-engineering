@@ -20,6 +20,8 @@ export const sessionUserSchema = z.object({
   nickname: z.string().nullable(),
   picture: z.string().nullable(),
   role: z.string(),
+  /** 운영자 프로필 시간대 (`ACCOUNT.TIME_ZONE`). 이 필드가 생기기 전에 로그인한 세션에는 없다. */
+  timeZone: z.string().nullable().optional(),
 });
 export type SessionUser = z.infer<typeof sessionUserSchema>;
 
@@ -68,6 +70,13 @@ export function setUser(user: SessionUser): void {
   if (typeof window === 'undefined') return;
   getQueryClient().clear();
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+/** 세션 user 의 시간대만 바꾼다. 같은 사람이라 조회 캐시는 비우지 않는다. */
+export function setUserTimeZone(timeZone: string | null): void {
+  const user = getUser();
+  if (!user || typeof window === 'undefined') return;
+  window.localStorage.setItem(USER_KEY, JSON.stringify({ ...user, timeZone }));
 }
 
 export function clearSession(): void {

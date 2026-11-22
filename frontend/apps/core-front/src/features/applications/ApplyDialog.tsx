@@ -81,6 +81,7 @@ export function ApplyDialog({
   onSubmitted,
   onDeadline,
   onRequireDiscord,
+  onWithdrawn,
 }: {
   study: Study;
   locale: Locale;
@@ -89,6 +90,7 @@ export function ApplyDialog({
   onSubmitted: () => void;
   onDeadline?: (label: string) => void;
   onRequireDiscord?: () => void;
+  onWithdrawn?: () => void;
 }) {
   const router = useRouter();
 
@@ -375,6 +377,12 @@ export function ApplyDialog({
         }
 
         if (err.status === 409) {
+          if ((err.body as { errorCode?: string } | undefined)?.errorCode === 'STUDY_WITHDRAWN') {
+            close(true);
+            onWithdrawn?.();
+            return;
+          }
+
           if (err.message.includes('이미 신청')) {
             addApplication({
               studyId: study.id,

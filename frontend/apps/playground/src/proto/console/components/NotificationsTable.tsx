@@ -196,12 +196,12 @@ export function NotificationsTable() {
           실패만 걸렀을 때만 선다 — 다른 조건에서는 성공한 건까지 묶여 같은 메일이 두 번 간다.
           누르는 즉시 보내지 않고 몇 건인지 알린 뒤 다시 묻는다 (POL-0008).
         */}
+        <div className='ml-auto flex items-center gap-1.5'>
         {filter === 'FAILED' && allFailed.length > 0 && (
           <Button
             data-anno='history:1-2'
             size='sm'
             variant='secondary'
-            className='ml-auto'
             leadingIcon={bulkBusy ? <Loader2 size={13} className='animate-spin' /> : <RotateCw size={13} />}
             disabled={phase === 'loading' || bulkBusy}
             onClick={() => setAsking(true)}
@@ -209,6 +209,7 @@ export function NotificationsTable() {
             전체 재발송
           </Button>
         )}
+        </div>
       </div>
 
       <TableCard anno='history:2'>
@@ -358,7 +359,7 @@ function FilterSelect<T extends string>({
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as 'all' | T)}
       className={cx(
-        'w-auto shrink-0',
+        'w-auto shrink-0 disabled:bg-surface-2',
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
       )}
     >

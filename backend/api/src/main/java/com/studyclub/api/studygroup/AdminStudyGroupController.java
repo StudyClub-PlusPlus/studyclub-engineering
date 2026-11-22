@@ -58,7 +58,8 @@ public class AdminStudyGroupController {
                             + " startTime: HH:mm(분반 현지), null 이면 미정으로 되돌린다."
                             + " timezone 없이 startTime 만 보내면 400."
                             + " timezone: POL-0006 허용 값(Asia/Seoul · America/New_York · America/Vancouver"
-                            + " · America/Los_Angeles), null 이면 미정(startTime 도 함께 지운다)으로 되돌린다.")
+                            + " · America/Los_Angeles), null 이면 미정(startTime 도 함께 지운다)으로 되돌린다."
+                            + " moveUpcomingMeetings: true 면 시작 전 회차도 같은 날짜의 새 시간대·시각으로 옮긴다(기본 false).")
     @PatchMapping("/{groupId}")
     public StudyGroupUpdateResponse update(
             @PathVariable Long studyId,

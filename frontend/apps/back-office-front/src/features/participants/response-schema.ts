@@ -22,7 +22,7 @@ export const participantsResponseSchema = z.union([
         nickname: z.string(),
         discordNickname: z.union([z.null(), z.string()]),
         email: z.string(),
-        regionGroup: z.union([z.null(), z.literal('KR'), z.literal('NA'), z.literal('ETC')]),
+        timeZone: z.union([z.null(), z.string()]),
         groupId: z.number(),
         participantRole: z.union([z.literal('LEADER'), z.literal('MEMBER')]),
         status: z.union([z.literal('ACTIVE'), z.literal('PAUSED'), z.literal('WITHDRAWN'), z.literal('COMPLETED')]),

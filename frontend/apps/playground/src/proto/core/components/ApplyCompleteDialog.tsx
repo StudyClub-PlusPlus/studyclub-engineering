@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
-import { Button, IconButton, Modal } from '@studyclub/ui';
-import { X } from 'lucide-react';
+import { Button, Modal } from '@studyclub/ui';
 
 /**
  * 스터디 신청 완료 팝업.
@@ -36,16 +35,6 @@ export function ApplyCompleteDialog({
       open={open}
       onClose={onClose}
       title={t({ ko: '스터디 신청 완료', en: 'Application submitted' }, locale)}
-      headerEnd={
-        <IconButton
-          variant='tertiary'
-          size='sm'
-          data-anno='complete:2'
-          aria-label={t({ ko: '닫기', en: 'Close' }, locale)}
-          onClick={onClose}
-          icon={<X size={18} />}
-        />
-      }
       footer={
         <Button data-anno='complete:3' className='w-full' onClick={goMyStudies}>
           {t({ ko: '내 스터디룸 보러 가기', en: 'Go to My study room' }, locale)}

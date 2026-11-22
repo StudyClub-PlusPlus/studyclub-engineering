@@ -144,16 +144,27 @@ export function useDeleteMeetings(studyId: number, groupId: number) {
 
 /**
  * 반 스터디 시간 저장 — daysOfWeek(0=일…6=토 → 서버 형식 mon…sun) · timezone 을 PATCH 로 보낸다.
- * 성공 후 회차 목록을 다시 읽는다 — 시간대가 바뀌면 표의 벽시계가 달라진다.
+ * 성공 후 회차 목록을 다시 읽는다 — 시간대가 바뀌거나 회차를 옮기면 표의 벽시계가 달라진다.
  */
 export function useUpdateGroupTime(studyId: number, groupId: number) {
   const refetch = useRefetchMeetings(studyId, groupId);
   return useMutation({
-    mutationFn: ({ weekdays, time, tz }: { weekdays: number[]; time: string; tz: StudyTz }) =>
+    mutationFn: ({
+      weekdays,
+      time,
+      tz,
+      moveUpcomingMeetings,
+    }: {
+      weekdays: number[];
+      time: string;
+      tz: StudyTz;
+      moveUpcomingMeetings: boolean;
+    }) =>
       scheduleRepository.updateGroupTime(studyId, groupId, {
         daysOfWeek: weekdays.map((d) => DOW_KEYS[d]!),
         startTime: time || null,
         timezone: tz,
+        moveUpcomingMeetings,
       }),
     onSettled: refetch,
   });

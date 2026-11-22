@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { TimeZonePicker } from '@core/components/TimeZonePicker';
 import {
@@ -64,6 +64,7 @@ export function ScheduleManager({
   startAdding = false,
   compact = false,
   onStartedAdding,
+  retroCell,
 }: {
   study: Study;
   group: NavigatorGroup;
@@ -75,6 +76,8 @@ export function ScheduleManager({
   onStartedAdding?: () => void;
   /** 제목 · 발표자 열을 좁힌다 — 백오피스는 옆에 메뉴가 있어 본문이 좁다. 가로 스크롤 없이 들어가게. */
   compact?: boolean;
+  /** 회고 열 — 사용자 사이트만 넘긴다. 킥오프 줄에는 그리지 않는다. */
+  retroCell?: (m: ProtoMeeting) => ReactNode;
 }) {
   const src = source ?? studySource(study, group.timeZone);
   const [adding, setAdding] = useState(canEdit && startAdding);
@@ -440,6 +443,11 @@ export function ScheduleManager({
                     발표자1
                   </th>
                   <th className={cx('px-2 py-3 text-center', compact ? 'w-32' : 'w-36')}>발표자2</th>
+                  {retroCell && (
+                    <th data-anno='retro:1' className='w-40 px-2 py-3 text-center'>
+                      회고
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -630,6 +638,11 @@ export function ScheduleManager({
                         {presenterCell('presenter2')}
                         {errors.presenter2 && <p className='mt-1 type-label-sm text-error-700'>{errors.presenter2}</p>}
                       </td>
+                      {retroCell && (
+                        <td className={cn(cell, 'text-center')}>
+                          {kickoff ? <span className='inline-block py-1.5 text-fg-muted'>-</span> : retroCell(m)}
+                        </td>
+                      )}
                     </tr>
                   );
                   return [row];

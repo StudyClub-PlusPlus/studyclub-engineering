@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: "유저스토리 하나의 playground 프로토타입을 생성·수정하고, PR 전에 그 프로토타입을 근거로 Story PRD 와 API 스펙을 갱신한다. prototype-agent 스킬 규약을 따른다. 유저스토리 화면을 playground 에 새로 만들거나 고칠 때, 프로토 PR 전에 PRD·spec.ts·스펙·레지스트리를 맞출 때 쓴다. 「프로토타입 만들어」「프로토 고쳐」「playground 에 화면 추가」「PRD 갱신」「/prototype {정규문장}」"
+description: "유저스토리 하나의 playground 프로토타입을 생성·수정하고, PR 전에 그 프로토타입을 근거로 Story PRD 와 API 스펙을 갱신하고, 화면 캡처를 PR 에 싣고, 끝나면 EPIC · STORY · TASK 나누는 안을 승인받아 ZAPP 에 반영한다. prototype-agent 스킬 규약을 따른다. 유저스토리 화면을 playground 에 새로 만들거나 고칠 때, 프로토 PR 전에 PRD·spec.ts·스펙·레지스트리를 맞출 때 쓴다. 「프로토타입 만들어」「프로토 고쳐」「playground 에 화면 추가」「PRD 갱신」「/prototype {정규문장}」"
 ---
 
 # /prototype — 유저스토리 프로토타입 → 문서
@@ -111,8 +111,54 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 - 새 화면이면 [`01-planning/_registry/informationarchitecture.md`](../../../01-planning/_registry/informationarchitecture.md) 에 `IA-###` 노드를 추가한다
 - 새 도메인 스펙이면 [`specs/README.md`](../../../specs/README.md) 표에도 한 줄 추가한다
 
-## 3. PR
+## 3. 화면 캡처 (PR 올리기 전)
+
+리뷰어가 playground 를 띄우지 않고도 화면을 보게, **프로토 PR 에는 화면 캡처를 반드시 싣는다.** 손으로 찍지 않고 목록으로 찍는다 — 화면이 바뀌면 같은 목록으로 다시 찍는다.
+
+1. 찍을 화면 목록을 `01-planning/stories/{story-name}/screens/shots.json` 에 쓴다 (형식은 [`capture-screens.mjs`](../../../frontend/apps/playground/scripts/capture-screens.mjs) 머리 주석)
+   - PRD §2 「상태별 화면」 중 **그림으로 봐야 아는 상태**를 고른다: 기본 · 조건부 요소가 보이는 상태 · 검증 실패 · 역할별 차이. 카피 한 줄이 전부인 상태(빈 결과 · 로딩)는 찍지 않는다 (prd-guide §1.4)
+   - 넓은 표·화면이 있으면 모바일(`"viewport": "mobile"`)도 한 장
+2. `frontend/` 에서 `pnpm --filter playground capture-screens 01-planning/stories/{story-name}/screens/shots.json --md`
+   - 서버가 없으면 스크립트가 `next dev` 를 띄운다. 로그인은 예시 계정(example.com)으로 들어간다
+   - 한 장이라도 실패하면 멈춘다. 목록을 고쳐 다시 찍는다 — 빠진 채로 올리지 않는다
+3. 찍힌 PNG 를 **열어서 본다.** 빈 화면 · 로딩 중 · 개발 도구 오류 표시 · 실제 개인정보(이름 · 메일)가 찍혔으면 다시 찍는다 (PUBLIC 레포)
+4. `screens/` 폴더(PNG + `shots.json`)를 같은 커밋에 넣는다
+
+## 4. PR
 
 - 대상 브랜치는 `beta`
 - 한 PR = 한 Story. 프로토타입과 문서를 같은 PR 에 담는다
 - 본문에 Story 정규문장 · 프로토 지면 · PRD 링크 · 스펙 변경 여부 · 남은 미확정을 적는다
+- 본문에 **`## 화면` 절** — 3 의 `--md` 가 출력한 마크다운을 그대로 붙인다 (push 뒤에 붙여야 이미지가 열린다. 이미 올린 PR 이면 `gh pr edit {번호} --body-file`)
+- `pr-dev-rules` 가 프로토 화면이 바뀌었는데 `screens/*.png` 가 없으면 경고를 단다
+
+## 5. ZAPP 반영 (PR 을 올린 뒤 — 매번)
+
+프로토타입 작업이 끝나면 **언제나** 작업 결과를 ZAPP 에 반영한다. 단, ZAPP 에 쓰기 전에 **나누는 안을 먼저 제안하고 승인을 받는다.** 승인 없이 만들지 않는다.
+
+### 5-1. 읽기
+
+- `list_projects` → 프로젝트(StudyClub++) · `list_initiatives` · `list_issues`(같은 기능 이름으로) — 이미 있는 에픽 · 스토리에 붙일 수 있으면 새로 만들지 않는다
+- 기획에서 시작한 기능이면 `get_plan_case(include: ['items'])` 로 R · F · S 항목을 읽는다
+
+### 5-2. 나누는 안 제안 (채팅으로, 표 하나)
+
+| 층 | ZAPP | 나누는 기준 |
+|---|---|---|
+| **EPIC** | 이니셔티브 (`save_initiative`) | 기능 하나 — 사용자가 이름으로 부르는 덩어리 (예: 스터디 미팅 회고). 이미 있으면 그걸 쓴다 |
+| **STORY** | 이슈 `type: STORY` (`initiativeId` 로 에픽에) | `stories.md` 의 `ST-###` 하나 = ZAPP 스토리 하나. 제목은 정규문장 그대로, 본문에 PRD · 프로토 · PR 링크 |
+| **ISSUE(TASK)** | 이슈 `type: TASK` (`parentId` = 스토리, `discipline`) | PRD §3 「개발 범위」 표의 「할 일」이 있는 줄 하나 = 작업 하나. FE 줄 → `DEV`(core-front/back-office-front 화면 · API 연결), BE 줄 → `DEV`(엔드포인트 묶음), 기획 줄 → `PLAN`, 디자인 시안 손질 → `DESIGN`, 화면 카탈로그(e2e) → `QA` |
+
+제안 표에는 층 · 제목 · 상위 · 직군 · 근거(PRD 의 어느 줄)를 적는다. 이미 있는 것은 「기존 — 갱신」으로 표시한다.
+같이 묻는다: 기획(plan case) 항목에 프로토에서 새로 생긴 요구(R · F · S)를 제안으로 올릴지 · 디자인 아티팩트를 스토리에 걸지.
+
+### 5-3. 승인 뒤 반영
+
+1. 에픽: `save_initiative` (없을 때만 생성, `stage: 'screens'`, note 에 PR 링크)
+2. 스토리: `create_issue(type: 'STORY', initiativeId)` — 이미 있으면 `update_issue` 로 본문에 PRD · PR 링크만 더한다
+3. 작업: `create_issue(type: 'TASK', parentId: 스토리, discipline)` — `status: 'BACKLOG'`. 마감 · 담당은 사람이 정한다 (비운다)
+   - 기획 기능명세와 잇는다: 이슈를 기능명세 항목에 직접 거는 도구는 없다(`prdId` 는 옛 기능 스펙용). 스토리 · 작업 본문 끝에 `기능명세: F-01 · S-01 …` 줄과 기획 링크를 적는다. 승인 전 신규 항목은 제목으로 적고, 승인되어 코드가 붙으면 코드로 바꾼다
+4. 승인받았으면: `propose_plan_items`(늘 제안 — 사람이 기능명세 탭에서 승인) · `link_artifact`(디자인 아티팩트 → 스토리)
+5. 만든 것의 링크를 채팅에 표로 남기고, PR 본문 끝에 「ZAPP」 한 줄(에픽 · 스토리 링크)을 더한다
+
+승인받지 못한 층은 만들지 않는다. 일부만 승인했으면 승인한 것만 만든다.

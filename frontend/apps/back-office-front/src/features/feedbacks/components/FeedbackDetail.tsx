@@ -11,6 +11,8 @@ import { StatusPicker } from '@/features/feedbacks/components/StatusPicker';
 import { COPY, EMPTY_VALUE, formatStamp, personLabel, viewportLabel } from '@/features/feedbacks/labels';
 import { useChangeFeedbackStatus, useReplyFeedback, useSaveFeedbackMemo } from '@/features/feedbacks/queries';
 import { MEMO_MAX, REPLY_MAX, REPLY_MIN, type ApiAdminFeedbackDetail } from '@/features/feedbacks/types';
+import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /** 목록으로 돌아가는 길 — 상세 머리 위와 「없는 건」 안내에서 같이 쓴다. */
 export function BackToList() {
@@ -33,6 +35,7 @@ export function BackToList() {
  */
 export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
   const status = useChangeFeedbackStatus(detail.id);
+  const tz = useDisplayTimeZone();
   /** 크게 보고 있는 첨부 이미지 */
   const [zoom, setZoom] = useState<number | null>(null);
 
@@ -43,6 +46,8 @@ export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
     <div className='flex flex-col gap-4'>
       <BackToList />
 
+      <TimezoneNote subject='시각은' />
+
       <article className='card divide-y divide-border overflow-hidden p-0'>
         <header className='flex flex-wrap items-start justify-between gap-3 px-6 py-5'>
           <div className='min-w-0'>
@@ -51,7 +56,7 @@ export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
               <h1 className='min-w-0 break-words text-xl font-extrabold tracking-tight'>{detail.title}</h1>
             </div>
             <p className='tnum mt-1.5 text-sm text-fg-muted'>
-              {personLabel(detail.submitter)} · {formatStamp(detail.createdAt)}
+              {personLabel(detail.submitter)} · {formatStamp(detail.createdAt, tz)}
             </p>
           </div>
           <div className='flex shrink-0 items-center gap-2 text-sm text-fg-secondary'>
@@ -139,6 +144,7 @@ export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
  */
 function ReplySection({ detail }: { detail: ApiAdminFeedbackDetail }) {
   const mutation = useReplyFeedback(detail.id);
+  const tz = useDisplayTimeZone();
   const [draft, setDraft] = useState(detail.reply?.content ?? '');
   /** 이미 회신한 건을 고치는 중 */
   const [editing, setEditing] = useState(false);
@@ -157,7 +163,7 @@ function ReplySection({ detail }: { detail: ApiAdminFeedbackDetail }) {
       <section className='px-6 py-5' aria-label='회신'>
         <div className='flex items-baseline justify-between gap-3'>
           <span className='text-sm font-medium text-neutral-800'>회신</span>
-          <span className='tnum text-xs text-fg-muted'>{formatStamp(detail.reply.repliedAt)} 보냄</span>
+          <span className='tnum text-xs text-fg-muted'>{formatStamp(detail.reply.repliedAt, tz)} 보냄</span>
         </div>
         <p
           data-testid='feedback-reply'

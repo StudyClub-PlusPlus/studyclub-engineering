@@ -1,15 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-
 import type { Locale } from '@studyclub/types';
 import { Heart } from 'lucide-react';
 
-import { getBookmarks, setBookmarked } from '@/features/bookmarks/storage';
+import { useBookmarks } from '@/features/bookmarks/queries';
 import { track } from '@/lib/analytics';
 import { t } from '@/lib/i18n';
 
-/** 관심 스터디(하트). 저장은 `features/bookmarks/storage` 가 담당한다(마이페이지가 같은 목록을 읽는다). */
+/** 관심 스터디(하트). 저장은 `useBookmarks` 가 담당한다(마이페이지가 같은 목록을 읽는다). */
 
 export function BookmarkButton({
   studyId,
@@ -24,22 +22,15 @@ export function BookmarkButton({
   /** 어느 화면의 하트인지 — 분석용 */
   source?: 'card_landing' | 'card_list' | 'detail';
 }) {
-  // 서버 렌더 결과와 어긋나지 않도록 마운트 후에만 실제 상태를 반영한다
-  const [marked, setMarked] = useState(false);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    setMarked(getBookmarks().includes(studyId));
-    setReady(true);
-  }, [studyId]);
+  const { ids, ready, toggle: save } = useBookmarks();
+  const marked = ids.includes(studyId);
 
   function toggle(e: React.MouseEvent) {
     // 카드 전체가 링크인 목록에서 상세로 이동해버리지 않게 막는다
     e.preventDefault();
     e.stopPropagation();
     const next = !marked;
-    setMarked(next);
-    setBookmarked(studyId, next);
+    void save(studyId, next);
     track({ name: next ? 'Study Bookmarked' : 'Study Unbookmarked', props: { study_id: studyId, source } });
   }
 

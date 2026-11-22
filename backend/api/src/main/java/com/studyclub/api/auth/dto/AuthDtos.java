@@ -53,7 +53,7 @@ public final class AuthDtos {
             String refreshToken,
             long accessTokenExpiresIn,
             long refreshTokenExpiresIn,
-            AccountView account,
+            AccountSelfView account,
             /** 구글이 이번 로그인에 준 name. 온보딩 닉네임 입력칸 초기값용이라 DB 에 저장하지 않는다. */
             String suggestedNickname) {}
 
