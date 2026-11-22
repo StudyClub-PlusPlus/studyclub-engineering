@@ -6,10 +6,12 @@ import { BulkSelect, SelectAll } from '@console/components/AttendanceTab';
 import { AvailabilityBoard, pickLabel, type AvailabilityPick } from '@console/components/AvailabilityBoard';
 import { DiscordCell } from '@console/components/DiscordCell';
 import { TableCard } from '@console/components/ui';
-import { dummyDays, dummyTimeZone } from '@console/lib/availability';
+import { dummyDays } from '@console/lib/availability';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
+import { crewTimeZone, crewZoneLabel, UNKNOWN_ZONE } from '@console/lib/crew-timezones';
 import { EMPTY_RULE } from '@console/lib/schedule';
 import { captainOptions } from '@console/lib/users';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { type Crew } from '@studyclub/types';
 import {
   Badge,
@@ -23,7 +25,7 @@ import {
   cx,
   toast,
 } from '@studyclub/ui';
-import { MEMBER_REGIONS, availableDaysText } from '@studyclub/utils';
+import { availableDaysText } from '@studyclub/utils';
 import { Loader2, Plus, X } from 'lucide-react';
 
 /**
@@ -40,10 +42,6 @@ import { Loader2, Plus, X } from 'lucide-react';
  *
  * **담당 캡틴은 명부와 따로 선다.** 맨 위 「담당 캡틴」 칸은 스터디당 한 명이고, 참여하지 않는 캡틴도 고를 수 있다.
  */
-
-function regionLabel(key: Crew['region']) {
-  return MEMBER_REGIONS.find((r) => r.key === key)?.label.ko ?? key;
-}
 
 export function CrewTab({
   crew,
@@ -75,11 +73,13 @@ export function CrewTab({
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const active = crew;
-  // 명단 필터 — 반을 나눌 때 지역별로, 반을 확인할 때 반별로 본다. 둘 다 화면에서만 거른다
-  const [regionFilter, setRegionFilterRaw] = useState<'all' | Crew['region']>('all');
+  const viewerZone = useDisplayTimeZone();
+  const zoneOptions = [...new Set(active.map((c) => crewTimeZone(c) ?? UNKNOWN_ZONE))].sort();
+  // 명단 필터 — 반을 나눌 때 시간대별로, 반을 확인할 때 반별로 본다. 둘 다 화면에서만 거른다
+  const [regionFilter, setRegionFilterRaw] = useState<string>('all');
   const [picked, setClassFilterRaw] = useState<string>('all');
-  // 반 · 지역을 바꾸면 센 사람이 달라진다 — 고른 시각은 푼다
-  const setRegionFilter = (v: 'all' | Crew['region']) => {
+  // 반 · 시간대를 바꾸면 센 사람이 달라진다 — 고른 시각은 푼다
+  const setRegionFilter = (v: string) => {
     setRegionFilterRaw(v);
     setTimePick(null);
   };
@@ -91,11 +91,12 @@ export function CrewTab({
   const classFilter = classes.some((c) => c.id === picked) ? picked : 'all';
   const filtered = active.filter(
     (c) =>
-      (regionFilter === 'all' || c.region === regionFilter) && (classFilter === 'all' || assign[c.id] === classFilter),
+      (regionFilter === 'all' || (crewTimeZone(c) ?? UNKNOWN_ZONE) === regionFilter) &&
+      (classFilter === 'all' || assign[c.id] === classFilter),
   );
   // 참여 가능 시간은 반 · 지역 필터로 좁힌 명단을 센다 — 「기본반에 남은 사람끼리 언제 되나」를 본다
   const people = useMemo(
-    () => filtered.map((c) => ({ id: c.id, name: c.name, days: dummyDays(c), timeZone: dummyTimeZone(c) })),
+    () => filtered.map((c) => ({ id: c.id, name: c.name, days: dummyDays(c), timeZone: crewTimeZone(c) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 명단 구성이 바뀔 때만 다시 센다
     [filtered.map((c) => c.id).join()],
   );
@@ -112,7 +113,7 @@ export function CrewTab({
       return;
     }
     // TODO(api): 새 반은 POST …/groups { name }, 수정은 PATCH …/groups/{groupId} { name }
-    if (!cls) onSaveClass({ id: `c${Date.now()}`, title, rule: EMPTY_RULE });
+    if (!cls) onSaveClass({ id: `c${Date.now()}`, title, rule: { ...EMPTY_RULE, tz: viewerZone } });
     else if (title !== cls.title) onSaveClass({ ...cls, title });
     setRenaming(null);
   }
@@ -301,7 +302,7 @@ export function CrewTab({
             <span className='tnum type-label-lg text-fg-muted'>{active.length}</span>
           </h2>
         </div>
-        {/* 필터는 제목 아래 줄, 왼쪽부터 반 · 지역 드롭다운 */}
+        {/* 필터는 제목 아래 줄, 왼쪽부터 반 · 시간대 드롭다운 */}
         <div data-anno='attendee:3-3' className='mt-2 flex flex-wrap items-center gap-2'>
           {/* 반이 하나면 거를 것이 없다 */}
           {classes.length > 1 && (
@@ -313,15 +314,24 @@ export function CrewTab({
             />
           )}
           <FilterSelect
-            label='지역'
+            label='시간대'
             value={regionFilter}
             onChange={(v) => setRegionFilter(v as typeof regionFilter)}
-            options={MEMBER_REGIONS.map((r) => ({ value: r.key, label: r.label.ko }))}
+            options={zoneOptions.map((zone) => ({ value: zone, label: crewZoneLabel(zone) }))}
           />
           {timePick && (
-            <span data-anno='class:4' className='inline-flex h-9 items-center gap-1 rounded-pill border border-brand bg-brand-subtle pl-3 pr-1 type-label-lg text-fg'>
+            <span
+              data-anno='class:4'
+              className='inline-flex h-9 items-center gap-1 rounded-pill border border-brand bg-brand-subtle pl-3 pr-1 type-label-lg text-fg'
+            >
               {pickLabel(timePick)}에 되는 크루 {shown.length}명
-              <IconButton size='xs' variant='tertiary' icon={<X />} aria-label='시각 필터 풀기' onClick={() => setTimePick(null)} />
+              <IconButton
+                size='xs'
+                variant='tertiary'
+                icon={<X />}
+                aria-label='시각 필터 풀기'
+                onClick={() => setTimePick(null)}
+              />
             </span>
           )}
         </div>
@@ -397,8 +407,10 @@ export function CrewTab({
                 <th className='whitespace-nowrap'>디스코드 닉네임</th>
                 <th className='whitespace-nowrap'>디스코드</th>
                 <th>이메일</th>
-                <th className='whitespace-nowrap'>지역</th>
-                <th data-anno='class:5' className='whitespace-nowrap'>참여 가능 요일</th>
+                <th className='whitespace-nowrap'>시간대</th>
+                <th data-anno='class:5' className='whitespace-nowrap'>
+                  참여 가능 요일
+                </th>
                 <th className='whitespace-nowrap'>반</th>
                 <th className='whitespace-nowrap'>역할</th>
               </tr>
@@ -426,7 +438,9 @@ export function CrewTab({
                   */}
                   <DiscordCell email={c.email} />
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
-                  <td className='whitespace-nowrap text-fg-secondary'>{regionLabel(c.region)}</td>
+                  <td className='whitespace-nowrap text-fg-secondary'>
+                    {crewZoneLabel(crewTimeZone(c) ?? UNKNOWN_ZONE)}
+                  </td>
                   {/* 본인이 고른 현지 요일 그대로 — 기준 시간대로 옮기면 하루가 이틀에 걸친다 */}
                   <td className='whitespace-nowrap text-fg-secondary'>{availableDaysText(dummyDays(c)) || '-'}</td>
                   <td data-anno='class:2' className='whitespace-nowrap'>
@@ -554,7 +568,7 @@ function OwnerCaptainField({ value, onChange }: { value: string; onChange: (capt
 /** 「반 추가」로 연 새 카드의 자리 표시 id — 저장하면 진짜 id 를 받는다. */
 const NEW_CLASS = '__new__';
 
-/** 명단 필터 드롭다운(반 · 지역). 값이 있으면 테두리로 드러낸다 — 걸러진 채로 명단을 오독하지 않게. */
+/** 명단 필터 드롭다운(반 · 시간대). 값이 있으면 테두리로 드러낸다 — 걸러진 채로 명단을 오독하지 않게. */
 function FilterSelect({
   label,
   value,

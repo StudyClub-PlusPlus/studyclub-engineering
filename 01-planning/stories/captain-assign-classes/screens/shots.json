@@ -44,7 +44,7 @@
       "viewport": "desktop",
       "click": [
         "신청자",
-        "일 7~15시 KST · 15명"
+        "일 7~8시 KST · 14명"
       ],
       "scrollTo": "[data-anno~=\"class:3\"]",
       "fullPage": true

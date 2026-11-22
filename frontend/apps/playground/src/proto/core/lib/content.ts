@@ -7,10 +7,7 @@ import type { Study as MockStudy, StudyclubEvent, Operator, Member, Site, Announ
 
 export type { Locale, L10n, StudyStatus, StudyFormat, StudyKind, RecruitmentStatus, Recruitment, StudyWeek, StudyReview, StudyStats, StudyclubEvent, Operator, Member, Site, Announcement } from '@studyclub/types';
 
-/** 공개 일정이 확정된 경우에만 제공하는 프로토 데이터. 시작 예정일·소개 문구에서 추측하지 않는다. */
-export type Study = MockStudy & {
-  confirmedSchedule?: { scheduledAt: string; timeZone: string };
-};
+export type Study = MockStudy;
 
 function sortByOrder<T extends { id: string; order?: number }>(items: T[]): T[] {
   return [...items].sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.id.localeCompare(b.id));

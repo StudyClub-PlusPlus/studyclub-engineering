@@ -1,9 +1,12 @@
 'use client';
 
+
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { PageHeader } from '@console/components/ui';
+import { formatConsoleTimestamp } from '@console/lib/display-timezone';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { Badge, Button, Input, Pagination, Select, cx } from '@studyclub/ui';
 import { Search } from 'lucide-react';
 
@@ -82,15 +85,8 @@ function FilterSelect<T extends string>({
   );
 }
 
-/** 보는 사람의 시간대로, 24시간제 — 「26.10.18 14:02」 */
-export function stamp(iso: string): string {
-  const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return iso;
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${String(at.getFullYear()).slice(2)}.${p(at.getMonth() + 1)}.${p(at.getDate())} ${p(at.getHours())}:${p(at.getMinutes())}`;
-}
-
 export function FeedbacksTable() {
+  const zone = useDisplayTimeZone();
   const router = useRouter();
   const [rows, setRows] = useState<Feedback[] | null>(null);
   const [input, setInput] = useState('');
@@ -204,7 +200,7 @@ export function FeedbacksTable() {
                 onClick={() => router.push(`/proto/console/feedbacks/${f.id}`)}
                 className='cursor-pointer hover:bg-surface-2'
               >
-                <td className='tnum whitespace-nowrap text-fg-secondary'>{stamp(f.createdAt)}</td>
+                <td className='tnum whitespace-nowrap text-fg-secondary'>{formatConsoleTimestamp(f.createdAt, zone)}</td>
                 <td className='whitespace-nowrap'>
                   <Badge tone={TYPE_TONE[f.type]}>{FEEDBACK_TYPE_LABEL[f.type]}</Badge>
                 </td>

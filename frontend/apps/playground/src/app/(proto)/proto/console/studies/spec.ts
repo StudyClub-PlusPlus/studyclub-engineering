@@ -13,6 +13,7 @@ export const PUBLISH_SPEC: ScreenSpec = {
   chip: '스터디 공개',
   scope: 'publish',
   notes: [
+    '시간대 공통 규칙: 01-planning/stories/timezone-expansion/PRD.md.',
     '공개 전환은 화면 상태로만 처리한다. 새로고침하면 되돌아간다 — 저장 API 가 아직 없다',
     '등록·수정·삭제는 이 화면 범위 밖이다 (각각 별도 Story)',
   ],
@@ -110,13 +111,10 @@ export const LIST_SPEC: ScreenSpec = {
     },
     {
       n: '2-3',
-      title: '시간대',
-      display: ['「KST」 · 「PST」 · 「동시 진행(KST·PST)」. 값이 없으면 「미정」'],
-      policy: [
-        '등록 폼에서 운영자가 직접 고른 값이다 — 일정·킥오프 문구를 읽어서 추정하지 않는다',
-        '이 필드가 생기기 전에 만든 스터디는 값이 없어 「미정」으로 보인다. 사용자 사이트도 이 값이 있으면 그대로 쓰고, 없는 행만 문구로 추정한다',
-      ],
-      data: ['STUDY.TIMEZONE'],
+      title: '모집 시간대',
+      display: ['모든 시간대에서 모집 · 선택한 국가/도시 목록 · 모집 시간대 미정'],
+      policy: ['스터디 등록·정보에서 설정한 모집 범위. 실제 반 일정의 기준 시간대와 별개다', '기존 동시 진행은 서울·LA이며 전체 모집으로 바꾸지 않는다'],
+      data: ['study.recruitmentTimeZones'],
     },
     {
       n: '3',

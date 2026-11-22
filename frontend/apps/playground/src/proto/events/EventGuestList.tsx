@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { m, t } from '@core/lib/i18n';
+import { formattingZone } from '@core/lib/time-zone-rules';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { Locale, StudyclubEvent } from '@studyclub/types';
 import { Badge, Segmented } from '@studyclub/ui';
@@ -129,12 +130,12 @@ export function EventGuestList({
                     className='flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-card bg-brand-subtle text-brand sm:h-20 sm:w-20'
                   >
                     <span className='type-label-sm'>
-                      {new Intl.DateTimeFormat('ko-KR', { timeZone: displayTimeZone, month: 'long' }).format(
+                      {new Intl.DateTimeFormat('ko-KR', { timeZone: formattingZone(displayTimeZone, new Date(event.startsAt)), month: 'long' }).format(
                         new Date(event.startsAt),
                       )}
                     </span>
                     <span className='type-headline-md'>
-                      {new Intl.DateTimeFormat('ko-KR', { timeZone: displayTimeZone, day: 'numeric' }).format(
+                      {new Intl.DateTimeFormat('ko-KR', { timeZone: formattingZone(displayTimeZone, new Date(event.startsAt)), day: 'numeric' }).format(
                         new Date(event.startsAt),
                       )}
                     </span>
