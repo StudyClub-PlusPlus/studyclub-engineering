@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { Button, FilterChip, HeatGrid, HelpPopover, Segmented, Switch, type HeatGridCell } from '@studyclub/ui';
 import {
@@ -11,7 +11,7 @@ import {
   bestSlots,
   type AvailabilityPerson,
 } from '@studyclub/utils';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, ChevronDown } from 'lucide-react';
 
 import { DISPLAY_ZONES, zoneLabel } from '@/features/schedule/time';
 
@@ -50,6 +50,9 @@ export function AvailabilitySection({
   const [baseZone, setBaseZone] = useState<string>(DISPLAY_ZONES[0].iana);
   const [excludeNight, setExcludeNight] = useState(true);
   const [showNightRows, setShowNightRows] = useState(false);
+  // 표만 접는다 — 「가장 많이 되는 시간」과 고른 시각 줄은 접어도 남는다
+  const [gridOpen, setGridOpen] = useState(true);
+  const gridId = useId();
   const hours = showNightRows ? ALL_HOURS : DAY_HOURS;
   const overlap = useMemo(
     () => availabilityOverlap(people, { baseZone, excludeNight }),
@@ -121,44 +124,65 @@ export function AvailabilitySection({
           <Switch label='0~6시 줄 보기' checked={showNightRows} onCheckedChange={change(setShowNightRows)} />
         </div>
       </div>
-      {best.length > 0 && (
-        <div role='group' aria-label='가장 많이 되는 시간' className='flex flex-wrap items-center gap-2'>
-          <span className='type-label-lg text-fg-secondary'>가장 많이 되는 시간</span>
-          {best.map((b) => {
-            const label = pickLabel({ day: b.day, hour: b.startHour, endHour: b.endHour, baseZone });
-            const on =
-              pick?.baseZone === baseZone &&
-              pick.day === b.day &&
-              pick.hour === b.startHour &&
-              pick.endHour === b.endHour;
-            return (
-              <FilterChip
-                key={b.day}
-                selected={on}
-                onClick={() =>
-                  onPick(on ? null : { day: b.day, hour: b.startHour, endHour: b.endHour, baseZone, ids: b.ids })
-                }
-              >
-                {label} · <span className='tnum'>{b.ids.length}명</span>
-              </FilterChip>
-            );
-          })}
-        </div>
-      )}
-      <HeatGrid
-        aria-label={`참여 가능 인원 · 시각 × 요일 (${zoneLabel(baseZone)})`}
-        rows={hours.map((h) => ({ key: String(h), label: String(h) }))}
-        columns={COLS}
-        value={(r, d) => cellAt(hours[r]!, d).ids.length}
-        max={max}
-        unit='명'
-        showValues
-        describe={(r, d) => describe(hours[r]!, d)}
-        tooltip={(r, d) => who(hours[r]!, d)}
-        selected={selected}
-        onSelect={select}
-        hint='칸을 누르면 그 시각에 되는 크루만 명단에 남습니다.'
-      />
+      <div className='flex flex-wrap items-center gap-2'>
+        {best.length > 0 && (
+          <div role='group' aria-label='가장 많이 되는 시간' className='flex flex-wrap items-center gap-2'>
+            <span className='type-label-lg text-fg-secondary'>가장 많이 되는 시간</span>
+            {best.map((b) => {
+              const label = pickLabel({ day: b.day, hour: b.startHour, endHour: b.endHour, baseZone });
+              const on =
+                pick?.baseZone === baseZone &&
+                pick.day === b.day &&
+                pick.hour === b.startHour &&
+                pick.endHour === b.endHour;
+              return (
+                <FilterChip
+                  key={b.day}
+                  selected={on}
+                  onClick={() =>
+                    onPick(on ? null : { day: b.day, hour: b.startHour, endHour: b.endHour, baseZone, ids: b.ids })
+                  }
+                >
+                  {label} · <span className='tnum'>{b.ids.length}명</span>
+                </FilterChip>
+              );
+            })}
+          </div>
+        )}
+        <span className='ml-auto'>
+          <Button
+            variant='tertiary'
+            size='sm'
+            aria-expanded={gridOpen}
+            aria-controls={gridId}
+            trailingIcon={
+              <ChevronDown
+                aria-hidden
+                className={gridOpen ? 'rotate-180 transition-transform' : 'transition-transform'}
+              />
+            }
+            onClick={() => setGridOpen((o) => !o)}
+          >
+            {gridOpen ? '표 접기' : '표 펼치기'}
+          </Button>
+        </span>
+      </div>
+      <div id={gridId} hidden={!gridOpen}>
+        <HeatGrid
+          aria-label={`참여 가능 인원 · 시각 × 요일 (${zoneLabel(baseZone)})`}
+          rows={hours.map((h) => ({ key: String(h), label: String(h) }))}
+          columns={COLS}
+          value={(r, d) => cellAt(hours[r]!, d).ids.length}
+          max={max}
+          unit='명'
+          showValues
+          describe={(r, d) => describe(hours[r]!, d)}
+          tooltip={(r, d) => who(hours[r]!, d)}
+          selected={selected}
+          onSelect={select}
+          hint='칸을 누르면 그 시각에 되는 크루만 명단에 남습니다.'
+        />
+      </div>
       {pick && pick.baseZone === baseZone && (
         <div className='flex flex-wrap items-center gap-2 border-t border-border pt-3'>
           <span className='type-body-sm text-fg'>

@@ -635,6 +635,18 @@ describe('참여 가능 시간', () => {
     expect(scroll).toHaveBeenCalled();
   });
 
+  it('표 접기를 누르면 칸판만 접히고, 가장 많이 되는 시간은 남는다', async () => {
+    mount(withDays);
+    const grid = await screen.findByRole('grid', { name: /^참여 가능 인원/ });
+    await userEvent.click(screen.getByRole('button', { name: '표 접기' }));
+    expect(grid).not.toBeVisible();
+    expect(screen.getByRole('group', { name: '가장 많이 되는 시간' })).toBeVisible();
+    const open = screen.getByRole('button', { name: '표 펼치기' });
+    expect(open).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(open);
+    expect(grid).toBeVisible();
+  });
+
   it('반 · 시간대 필터를 바꾸면 고른 시각을 푼다', async () => {
     mount(withDays);
     await userEvent.click(await screen.findByRole('button', { name: '월 12시 KST · 1명' }));

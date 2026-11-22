@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { SCHEDULE_ZONES, zoneSymbol } from '@core/lib/schedule-timezone';
 import { Button, FilterChip, HeatGrid, HelpPopover, Segmented, Switch, type HeatGridCell } from '@studyclub/ui';
@@ -12,7 +12,7 @@ import {
   bestSlots,
   type AvailabilityPerson,
 } from '@studyclub/utils';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, ChevronDown } from 'lucide-react';
 
 /** 고른 시각 — 칸 하나면 `hour` 만, 「가장 많이 되는 시간」 구간이면 `endHour` 까지 */
 export type AvailabilityPick = { day: number; hour: number; endHour?: number; baseZone: string; ids: string[] };
@@ -49,6 +49,9 @@ export function AvailabilityBoard({
   const [baseZone, setBaseZone] = useState<string>(SCHEDULE_ZONES[0]!.iana);
   const [excludeNight, setExcludeNight] = useState(true);
   const [showNightRows, setShowNightRows] = useState(false);
+  // 표만 접는다 — 「가장 많이 되는 시간」과 고른 시각 줄은 접어도 남는다
+  const [gridOpen, setGridOpen] = useState(true);
+  const gridId = useId();
   const hours = showNightRows ? ALL_HOURS : DAY_HOURS;
   const overlap = useMemo(
     () => availabilityOverlap(people, { baseZone, excludeNight }),
@@ -130,31 +133,50 @@ export function AvailabilityBoard({
           </span>
         </div>
       </div>
-      {best.length > 0 && (
-        <div data-anno='class:3-7' className='flex flex-wrap items-center gap-2'>
-          <span className='type-label-lg text-fg-secondary'>가장 많이 되는 시간</span>
-          {best.map((b) => {
-            const label = pickLabel({ day: b.day, hour: b.startHour, endHour: b.endHour, baseZone });
-            const on =
-              pick?.baseZone === baseZone &&
-              pick.day === b.day &&
-              pick.hour === b.startHour &&
-              pick.endHour === b.endHour;
-            return (
-              <FilterChip
-                key={b.day}
-                selected={on}
-                onClick={() =>
-                  onPick(on ? null : { day: b.day, hour: b.startHour, endHour: b.endHour, baseZone, ids: b.ids })
-                }
-              >
-                {label} · <span className='tnum'>{b.ids.length}명</span>
-              </FilterChip>
-            );
-          })}
-        </div>
-      )}
-      <div data-anno='class:3-4'>
+      <div className='flex flex-wrap items-center gap-2'>
+        {best.length > 0 && (
+          <div data-anno='class:3-7' className='flex flex-wrap items-center gap-2'>
+            <span className='type-label-lg text-fg-secondary'>가장 많이 되는 시간</span>
+            {best.map((b) => {
+              const label = pickLabel({ day: b.day, hour: b.startHour, endHour: b.endHour, baseZone });
+              const on =
+                pick?.baseZone === baseZone &&
+                pick.day === b.day &&
+                pick.hour === b.startHour &&
+                pick.endHour === b.endHour;
+              return (
+                <FilterChip
+                  key={b.day}
+                  selected={on}
+                  onClick={() =>
+                    onPick(on ? null : { day: b.day, hour: b.startHour, endHour: b.endHour, baseZone, ids: b.ids })
+                  }
+                >
+                  {label} · <span className='tnum'>{b.ids.length}명</span>
+                </FilterChip>
+              );
+            })}
+          </div>
+        )}
+        <span data-anno='class:3-9' className='ml-auto'>
+          <Button
+            variant='tertiary'
+            size='sm'
+            aria-expanded={gridOpen}
+            aria-controls={gridId}
+            trailingIcon={
+              <ChevronDown
+                aria-hidden
+                className={gridOpen ? 'rotate-180 transition-transform' : 'transition-transform'}
+              />
+            }
+            onClick={() => setGridOpen((o) => !o)}
+          >
+            {gridOpen ? '표 접기' : '표 펼치기'}
+          </Button>
+        </span>
+      </div>
+      <div id={gridId} hidden={!gridOpen} data-anno='class:3-4'>
         <HeatGrid
           aria-label={`참여 가능 인원 · 시각 × 요일 (${zoneSymbol(baseZone)})`}
           rows={hours.map((h) => ({ key: String(h), label: String(h) }))}
