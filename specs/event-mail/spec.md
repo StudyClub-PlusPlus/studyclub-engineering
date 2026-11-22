@@ -225,7 +225,7 @@ PRD §7 은 메일을 **운영자 안내**와 **자동**으로 나눈다. 둘 �
 
 ### 프론트엔드 사용처
 
-- back-office-front 행사 상세 안내 메일 작성 창 (아직 없음). `useEventMailPreview(eventId, {type, audience, notice})` — 안내 작성 탭에서는 `notice: ""` 로 수신자 수·버튼 판정만, 미리보기 탭에서는 입력 중인 내용으로 부른다. 입력할 때마다 부르지 않는다 (미리보기 탭 전환·대상 변경 때만)
+- back-office-front 행사 상세 안내 메일 작성 창 (`features/events/EventMailComposer.tsx`). `useEventMailPreview(eventId, {type, audience, notice})` — 안내 작성 탭에서는 `notice: ""` 로 수신자 수·버튼 판정만, 미리보기 탭에서는 입력 중인 내용으로 부른다. 입력할 때마다 부르지 않는다 (미리보기 탭 전환·대상 변경 때만)
 - 취소 안내의 기본 문구(「부득이한 사정으로 행사가 취소되었습니다. …」)는 지금처럼 화면 상수로 채운다 (`EventMailComposer` 초기값). 서버는 기본 문구를 주지 않는다
 - 근거 시안: `EventMailComposer.tsx` · `model.ts` `renderEventNoticePreview`
 
@@ -380,7 +380,7 @@ PRD §7-1 M6 「접수 시 템플릿과 개인별 결과를 고정하고 수정�
 
 ### 프론트엔드 사용처
 
-- back-office-front 안내 메일 작성 창 `보내기` (아직 없음). `useSendEventMail()` mutation — 보낼 때마다 `crypto.randomUUID()` 로 키를 만들고, 응답 전에는 버튼을 막는다. 성공하면 메일 이력 탭으로 옮기고 이력 목록을 다시 읽는다 (프로토 `onSent` → `setTab('mails')`)
+- back-office-front 안내 메일 작성 창 `보내기` (`features/events/EventMailComposer.tsx`). `useSendEventMail()` mutation — 보낼 때마다 `crypto.randomUUID()` 로 키를 만들고, 응답 전에는 버튼을 막는다. 성공하면 메일 이력 탭으로 옮기고 이력 목록을 다시 읽는다 (프로토 `onSent` → `setTab('mails')`)
 - 근거 시안: `EventMailComposer.tsx` · `model.ts` `transition` MAIL · CANCELLATION_MAIL · `createEventNoticeMail`
 
 ---

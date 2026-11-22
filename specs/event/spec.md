@@ -9,7 +9,7 @@
 >
 > 기준 프로토타입: playground `/proto/console/events` · `/proto/console/events/{id}` (PR #469, PR #471)
 > 판정 로직의 근거: `frontend/apps/playground/src/proto/events/model.ts` (`EVENT_LIMITS` · `validateEvent` · `eventStatus` · `seatInfo` · `transition`)
-> 실제 경로(연결 전): back-office-front `/events` (「준비 중」 화면)
+> 실제 경로: back-office-front `/events` · `/events/{eventId}` (`features/events`)
 
 ## 엔드포인트 목록
 
@@ -268,7 +268,7 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 
 ### 프론트엔드 사용처
 
-- `frontend/apps/back-office-front/src/app/events/page.tsx`: 지금은 「준비 중」. 연결 시 `features/events/EventsTable.tsx` 를 복원한다
+- `frontend/apps/back-office-front/src/app/events/page.tsx` · `features/events/EventsTable.tsx`
 - 근거 시안: `frontend/apps/playground/src/proto/events/EventAdminList.tsx` · `model.ts` `eventAdminPage`
 
 ---
@@ -490,7 +490,7 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 
 ### 프론트엔드 사용처
 
-- back-office-front 행사 상세 (아직 없음. 시안 확정 뒤 만든다)
+- back-office-front `app/events/[eventId]/page.tsx` · `features/events/EventConsole.tsx`
 - 근거 시안: `frontend/apps/playground/src/proto/events/EventAdminDetail.tsx` · `EventWorkspace.tsx`
 
 ---
@@ -605,7 +605,7 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 
 ### 프론트엔드 사용처
 
-- back-office-front 행사 상세 「행사 정보」 탭 (아직 없음)
+- back-office-front 행사 상세 「행사 정보」 탭 (`features/events/EventEditor.tsx`)
 - 근거 시안: `frontend/apps/playground/src/proto/events/EventEditor.tsx` (편집 모드) · `model.ts` `validateEvent` · `transition` SAVE
 
 ---

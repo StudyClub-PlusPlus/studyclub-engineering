@@ -16,6 +16,8 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** 백엔드 `errorCode`. 같은 상태 코드 안에서 화면이 다르게 움직여야 할 때(409 여러 종류) 분기에 쓴다. */
+    readonly code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -39,6 +41,14 @@ function messageOf(body: unknown, status: number): string {
   return `요청에 실패했습니다 (${status})`;
 }
 
+function codeOf(body: unknown): string | undefined {
+  if (body && typeof body === 'object') {
+    const code = (body as { errorCode?: unknown }).errorCode;
+    if (typeof code === 'string') return code;
+  }
+  return undefined;
+}
+
 export async function http<T>(path: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
   const request: RequestInit = {
     cache: 'no-store',
@@ -57,7 +67,7 @@ export async function http<T>(path: string, schema: z.ZodType<T>, init?: Request
   } catch (error) {
     if (res.ok) throw new ApiResponseError(error);
   }
-  if (!res.ok) throw new ApiError(res.status, messageOf(body, res.status));
+  if (!res.ok) throw new ApiError(res.status, messageOf(body, res.status), codeOf(body));
   const result = schema.safeParse(body);
   if (!result.success) throw new ApiResponseError(result.error);
   return result.data;

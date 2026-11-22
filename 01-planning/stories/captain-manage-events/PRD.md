@@ -189,7 +189,7 @@ flowchart LR
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | 기획 | 행사 운영 흐름 | 플레이그라운드와 화면 설명 | 시안 검토 |
-| FE | back-office-front 행사 운영 | 기존 기본 등록 시안, 실제 행사 API 연결 없음 | 검토한 화면을 실제 앱으로 구현 |
+| FE | back-office-front 행사 운영 | 목록·등록·상세(행사 정보·상태 전환·참가자·메일 이력·안내/취소 안내 메일)를 `/api/admin/events` 스펙에 맞춰 구현. BE 구현 전이라 실제 연결은 BE 머지 뒤 확인. dev mock(MSW) 핸들러는 없음 | BE 배포 뒤 stage 에서 연결 확인 |
 | BE | 행사 등록·수정·운영 목록·상세 API ([event 스펙](../../../specs/event/spec.md)) | 구현중. 엔드포인트 4개 · `CLUB_EVENT` 테이블(V59) BE PR. 신청 수·일괄 확정은 임시 포트 어댑터(0건) | 신청 스펙 어댑터 연결, back-office-front 연결(후속 FE PR) |
 | BE | 모집 마감·재모집·행사 취소 API ([event-status 스펙](../../../specs/event-status/spec.md)) | 스펙작성중. PR #479 리뷰 결정(S1~S5) 반영 완료 | 스펙 확정 후 구현 |
 | BE | 참가자 목록·신청서·이메일 보기·참가 처리·종료 자동 전환 API ([event-participant 스펙](../../../specs/event-participant/spec.md)) | 스펙작성중. PR #479 리뷰 결정(P1~P6) 반영 완료. 신청 테이블 `CLUB_EVENT_REGISTRATION` 은 ST-038 과 공동 PR 로 먼저 만든다 | 공통 신청 테이블 PR 머지 후 구현 |
