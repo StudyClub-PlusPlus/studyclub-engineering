@@ -1,6 +1,7 @@
 import { isValidZone } from '@core/lib/schedule-timezone';
 import { zoneLabel } from '@core/lib/time-zones';
 import type { Crew } from '@studyclub/types';
+
 import { readMemberTimeZones } from '@/proto/lib/member-timezone-store';
 
 export function crewTimeZone(crew: Pick<Crew, 'email'> & { timeZone?: string | null }, members = readMemberTimeZones()): string | null {

@@ -1,6 +1,5 @@
 'use client';
 
-import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 import { useEffect, useMemo, useState } from 'react';
 
@@ -13,6 +12,7 @@ import { Search, X } from 'lucide-react';
 
 import { StudyListCard } from './StudyListCard';
 import { useRecruitmentStudies } from '@/proto/lib/recruitment-zone-store';
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 type RecruitmentFilter = 'all' | 'recruiting' | 'ongoing' | 'closed';
 type TimezoneFilter = string;

@@ -4,7 +4,6 @@ import { useRef, type ChangeEvent } from 'react';
 
 import { tx } from '@console/lib/l10n';
 import { MARKDOWN_HINT } from '@core/components/ApplicationFormUi';
-import { recruitmentDeadlineDate } from '@/proto/lib/recruitment-deadline';
 import { recruitmentTimeZones } from '@core/lib/recruitment-timezones';
 import { isValidZone } from '@core/lib/schedule-timezone';
 import { latestCohort, programs } from '@studyclub/mock';
@@ -13,6 +12,7 @@ import { Button, Checkbox, Input, Select, Textarea, FilterChip } from '@studyclu
 import { STUDY_CATEGORIES, categoriesOf, toISODate } from '@studyclub/utils';
 
 import { RecruitmentTimeZoneField } from './RecruitmentTimeZoneField';
+import { recruitmentDeadlineDate } from '@/proto/lib/recruitment-deadline';
 import { withSavedRecruitmentZones } from '@/proto/lib/recruitment-zone-store';
 
 /**

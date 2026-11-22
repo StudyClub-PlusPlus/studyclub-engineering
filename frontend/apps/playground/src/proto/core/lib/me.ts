@@ -1,10 +1,12 @@
 'use client';
 
 import { seedMyAttendance } from '@core/lib/attendance';
-import { resolveDisplayZone } from '@core/lib/schedule-timezone';
 import { getUser } from '@core/lib/auth';
-import { saveMemberTimeZone } from '@/proto/lib/member-timezone-store';
+import { resolveDisplayZone } from '@core/lib/schedule-timezone';
 import type { MemberRegion } from '@studyclub/types';
+
+import { saveMemberTimeZone } from '@/proto/lib/member-timezone-store';
+
 
 /**
  * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청·거주 지역.

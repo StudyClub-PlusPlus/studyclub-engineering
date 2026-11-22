@@ -53,14 +53,17 @@ export function RecruitmentTimeZoneField({ value, onChange, error }: {
       {value.mode === 'selected' && <div ref={root} className='relative mt-1'
         onBlur={(event) => { if (!root.current?.contains(event.relatedTarget as Node | null)) setOpen(false); }}
         onKeyDown={(event) => { if (event.key === 'Escape' && open) { event.stopPropagation(); setOpen(false); trigger.current?.focus(); } }}>
-        {/* ui-native: 체크박스 검색 패널을 여는 도메인 선택기 */}
-        <button ref={trigger} type='button' aria-label='모집 시간대 선택' aria-expanded={open} aria-haspopup='dialog'
+        <button
+          // ui-native: 선택값을 표시하고 체크박스 검색 패널을 여는 시간대 전용 선택기
+          ref={trigger} type='button' aria-label='모집 시간대 선택' aria-expanded={open} aria-haspopup='dialog'
           onClick={() => { if (!open) setWorldwide(false); setOpen(!open); setQuery(''); }}
           className='flex min-h-12 w-full items-center justify-between gap-3 rounded-control border border-border-strong bg-bg px-3.5 py-2.5 text-left type-label-lg'>
           <span>{value.zones.length ? memberTimeZones('', 'ko', value.zones).map((zone) => zoneLabel(zone, 'ko')).join(' / ') : '시간대를 선택해 주세요'}</span>
           <ChevronDown size={16} className='shrink-0 text-fg-muted' />
         </button>
-        {open && <div role='dialog' aria-label='모집 시간대 선택 목록'
+        {open && <div
+          // ui-native: 검색 입력과 복수 체크박스를 포함한 비모달 선택 패널. 도움말이나 확인 모달이 아님
+          role='dialog' aria-label='모집 시간대 선택 목록'
           className='absolute left-0 right-0 top-full z-40 mt-1.5 rounded-card border border-border bg-bg p-2 shadow-lg'>
           <Input id={searchId} size='sm' aria-label='모집 시간대 검색' placeholder='도시 또는 국가 검색'
             value={query} onChange={(event) => setQuery(event.target.value)} />

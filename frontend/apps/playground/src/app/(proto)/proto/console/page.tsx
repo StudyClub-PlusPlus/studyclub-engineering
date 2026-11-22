@@ -1,9 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { readMemberTimeZones, seedMemberTimeZones } from '@/proto/lib/member-timezone-store';
-
-import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
+import { useEffect, useState } from 'react';
 
 import { AttendanceTrend, Card, CategoryStudyCard, RegionDonut } from '@console/components/DashboardCharts';
 import { KpiCard } from '@console/components/KpiCard';
@@ -13,11 +10,12 @@ import { formatConsoleTimestamp } from '@console/lib/display-timezone';
 import { wallParts } from '@core/lib/meetings';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 
-
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 import { useEventWorkspace } from '@/proto/events/EventWorkspace';
+import { readMemberTimeZones, seedMemberTimeZones } from '@/proto/lib/member-timezone-store';
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 // 프로토는 /proto/console 아래 매달린다.
 const BASE = '/proto/console';
@@ -38,7 +36,8 @@ export default function Dashboard() {
   useRecruitmentClock(studies);
   const zone = useDisplayTimeZone();
   const today = wallParts(new Date(), zone).date;
-  const updatedAt = useMemo(() => new Date().toISOString(), [studies, zone, members]);
+  const [updatedAt, setUpdatedAt] = useState(() => new Date().toISOString());
+  useEffect(() => setUpdatedAt(new Date().toISOString()), [studies, zone, members]);
   const { kpi, board, regions, categories, trend } = aggregate(today, studies, zone, members);
   const { state: eventState, now } = useEventWorkspace();
   const upcoming = upcomingEvents(eventState?.events ?? [], zone, now);
