@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { ClassPicker } from '@console/components/ClassPicker';
 import { hasSchedule, type StudyClass } from '@console/lib/classes';
+import { latestStartedMeeting } from '@core/lib/attendance';
 import { type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/types';
 import { Badge, Button, Checkbox, Modal, Select, SelectionCount, TableActionBar, HelpPopover } from '@studyclub/ui';
 import { attendanceRate } from '@studyclub/utils';
@@ -309,6 +310,7 @@ export function AttendanceTab({
   title,
   toolbar,
   whenOf,
+  instantOf,
 }: {
   study: Study;
   /** 이름 칸에 쓰는 것만 받는다 — 사용자 사이트는 명부 밖의 「나」도 넣는다. */
@@ -342,6 +344,7 @@ export function AttendanceTab({
   startAt?: string;
   title?: string;
   toolbar?: ReactNode;
+  instantOf?: (meeting: StudyMeeting) => Date;
   whenOf?: (meeting: StudyMeeting) => { date: string; time: string };
 }) {
   const [draft, setDraft] = useState(() => cloneBook(attendance));
@@ -379,7 +382,9 @@ export function AttendanceTab({
   };
   // 일괄 적용 회차 — 고르지 않았으면 오늘 이전 마지막 회차(방금 끝난 회차)를 먼저 둔다.
   const today = new Date().toISOString().slice(0, 10);
-  const defaultMeeting = [...meetings].reverse().find((s) => s.date <= today)?.id ?? meetings[0]?.id ?? '';
+  const defaultMeeting = (instantOf
+    ? latestStartedMeeting(meetings, instantOf)?.id
+    : [...meetings].reverse().find((s) => s.date <= today)?.id) ?? meetings[0]?.id ?? '';
   const meetingId = bulkMeeting || defaultMeeting;
 
   function pick(id: string) {

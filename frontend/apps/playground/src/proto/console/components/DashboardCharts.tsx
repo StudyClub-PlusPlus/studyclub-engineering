@@ -53,8 +53,8 @@ export function RegionDonut({ data }: { data: ZoneCount[] }) {
 
   return (
     <div>
-      <div className='flex flex-wrap items-center gap-4'>
-        <svg viewBox='0 0 140 140' className='h-[120px] w-[120px] shrink-0 -rotate-90' role='img' aria-label='크루 시간대 분포'>
+      <div className='flex flex-col gap-4'>
+        <svg viewBox='0 0 140 140' className='h-[120px] w-[120px] shrink-0 self-center -rotate-90' role='img' aria-label='크루 시간대 분포'>
           <circle cx='70' cy='70' r={R} fill='none' stroke='var(--color-surface-2)' strokeWidth='20' />
           {rows.map((row, index) => {
             const len = row.count / total * C;
@@ -62,42 +62,42 @@ export function RegionDonut({ data }: { data: ZoneCount[] }) {
               <circle key={row.key} cx='70' cy='70' r={R} fill='none'
                 stroke={ZONE_COLORS[index]} strokeWidth='20'
                 strokeDasharray={len + ' ' + (C - len)} strokeDashoffset={-offset}>
-                <title>{(row.key === 'others' ? 'Others' : crewZoneLabel(row.key)) + ' · ' + row.count + '명 · ' + pct(row.count) + '%'}</title>
+                <title>{(row.key === 'others' ? '기타' : crewZoneLabel(row.key)) + ' · ' + row.count + '명 · ' + pct(row.count) + '%'}</title>
               </circle>
             );
             offset += len;
             return el;
           })}
         </svg>
-        <ul className='flex min-w-0 flex-1 flex-col gap-2.5'>
+        <ul className='flex min-w-0 flex-col gap-2.5'>
           {rows.map((row, index) => (
             <li key={row.key} className='relative flex items-center gap-2.5'>
               <span className='h-2.5 w-2.5 shrink-0 rounded-full' style={{ background: ZONE_COLORS[index] }} aria-hidden='true' />
               {row.key === 'others' ? (
                 <span className='flex-1' onMouseEnter={() => setShowSummary(true)} onMouseLeave={() => setShowSummary(false)}>
-                  <Button variant='tertiary' size='sm' aria-expanded={expanded} aria-controls='timezone-others'
+                  <Button variant='tertiary' size='md' className='min-h-8 min-w-0 px-0 text-fg' aria-expanded={expanded} aria-controls='timezone-others'
                     aria-describedby={showSummary ? 'timezone-others-summary' : undefined}
                     onFocus={() => setShowSummary(true)} onBlur={() => setShowSummary(false)}
                     onKeyDown={(event) => { if (event.key === 'Escape') setShowSummary(false); }}
                     onClick={() => { setExpanded(!expanded); setShowSummary(false); }}>
-                    Others {expanded ? '⌃' : '⌄'}
+                    기타 {expanded ? '⌃' : '⌄'}
                   </Button>
                   {showSummary && <span id='timezone-others-summary' role='tooltip' className='absolute bottom-full left-0 z-10 mb-1 rounded-control border border-border bg-surface-raised px-3 py-2 type-label-sm shadow-lg'>
                     {othersCount}명 · {pct(othersCount)}% · {rest.length}개 시간대
                   </span>}
                 </span>
-              ) : <span className='min-w-0 flex-1 type-label-lg text-fg'>{crewZoneLabel(row.key)}</span>}
-              <span className='tnum shrink-0 type-label-lg text-fg'>{pct(row.count)}%</span>
-              <span className='tnum w-12 shrink-0 text-right type-label-sm text-fg-muted'>{row.count}명</span>
+              ) : <span className='min-w-0 flex-1 break-keep type-label-lg text-fg'>{crewZoneLabel(row.key)}</span>}
+              <span className='tnum w-10 shrink-0 whitespace-nowrap text-right type-label-lg text-fg'>{pct(row.count)}%</span>
+              <span className='tnum w-12 shrink-0 whitespace-nowrap text-right type-label-sm text-fg-muted'>{row.count}명</span>
             </li>
           ))}
         </ul>
       </div>
-      {expanded && <ul id='timezone-others' className='mt-4 flex flex-col gap-2 border-t border-border pt-3' aria-label='Others 시간대 상세'>
+      {expanded && <ul id='timezone-others' className='mt-4 flex flex-col gap-2 border-t border-border pt-3' aria-label='기타 시간대 상세'>
         {rest.map((row) => <li key={row.key} className='flex items-center gap-2.5 type-label-sm'>
-          <span className='min-w-0 flex-1 text-fg-secondary'>{crewZoneLabel(row.key)}</span>
-          <span className='tnum'>{pct(row.count)}%</span>
-          <span className='tnum w-12 text-right text-fg-muted'>{row.count}명</span>
+          <span className='min-w-0 flex-1 break-keep text-fg-secondary'>{crewZoneLabel(row.key)}</span>
+          <span className='tnum w-10 shrink-0 whitespace-nowrap text-right'>{pct(row.count)}%</span>
+          <span className='tnum w-12 shrink-0 whitespace-nowrap text-right text-fg-muted'>{row.count}명</span>
         </li>)}
       </ul>}
     </div>

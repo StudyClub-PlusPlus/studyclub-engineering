@@ -266,7 +266,7 @@ export default function MyPage() {
           <Field label='시간대' anno='profile:3' saved={false}>
             {editing ? (
               <div className='w-full max-w-xs'>
-                <TimeZonePicker value={draftZone} onChange={setDraftZone} locale={locale} hideLabel />
+                <TimeZonePicker value={draftZone} onChange={setDraftZone} locale={locale} hideLabel prioritizeCountries />
               </div>
             ) : (
               <span className='font-semibold text-fg'>{zoneName(timeZone, locale) ?? timeZone}</span>

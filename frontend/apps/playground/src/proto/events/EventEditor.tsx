@@ -81,7 +81,7 @@ export function EventEditor({
         />
         {iso && viewerZone !== draft.timeZone && (
           <p className='type-label-sm text-fg-muted' aria-live='polite'>
-            내 시간 · {scheduleZoneTitle(viewerZone)} {localDateTime(new Date(iso), viewerZone)}
+            {scheduleZoneTitle(viewerZone, 'ko', new Date(iso))} 기준 · {localDateTime(new Date(iso), viewerZone)}
           </p>
         )}
         {!readOnly && ambiguous && (
@@ -158,7 +158,7 @@ export function EventEditor({
             onChange={(e) => set('description', e.target.value)}
           />
           <TimeZonePicker
-            label='기준 시간대' locale='ko' compact required={false} annotation={false}
+            label='기준 시간대' locale='ko' compact prioritizeCountries required={false} annotation={false}
             value={draft.timeZone} disabled={readOnly || unresolvedDate} onChange={changeTimeZone}
             error={!readOnly && unresolvedDate ? '날짜·시각 입력을 완료한 뒤 시간대를 변경해 주세요.' : undefined}
           />

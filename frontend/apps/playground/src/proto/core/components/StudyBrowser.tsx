@@ -1,17 +1,21 @@
 'use client';
 
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
+
 import { useEffect, useMemo, useState } from 'react';
 
 import type { Locale, Operator, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
-import { recruitState, studyTimezone } from '@core/lib/recruit';
+import { recruitState } from '@core/lib/recruit';
+import { matchesRecruitmentZone, recruitmentLocationLabel, recruitmentZoneOptions } from '@core/lib/recruitment-timezones';
 import { Select, Button, FilterChip, Segmented } from '@studyclub/ui';
 import { Search, X } from 'lucide-react';
 
 import { StudyListCard } from './StudyListCard';
+import { useRecruitmentStudies } from '@/proto/lib/recruitment-zone-store';
 
 type RecruitmentFilter = 'all' | 'recruiting' | 'ongoing' | 'closed';
-type TimezoneFilter = 'all' | 'KST' | 'PST' | 'both';
+type TimezoneFilter = string;
 
 const RECRUITMENT_OPTIONS: { value: RecruitmentFilter; label: string }[] = [
   { value: 'all', label: '전체' },
@@ -33,15 +37,10 @@ const CATEGORY_OPTIONS: { value: string; label: string }[] = [
   { value: '비즈니스', label: '비즈니스' },
   { value: '기타', label: '기타' },
 ];
-const TIMEZONE_OPTIONS: { value: TimezoneFilter; label: string }[] = [
-  { value: 'KST', label: 'KST' },
-  { value: 'PST', label: 'PT' },
-  { value: 'both', label: '동시 모집' },
-];
 
-function statusOf(study: Study): Exclude<RecruitmentFilter, 'all'> {
+function statusOf(study: Study, now = Date.now()): Exclude<RecruitmentFilter, 'all'> {
   if (study.status === 'ongoing') return 'ongoing';
-  if (study.status === 'closed' || recruitState(study) === 'closed') return 'closed';
+  if (study.status === 'closed' || recruitState(study, now) === 'closed') return 'closed';
   return 'recruiting';
 }
 function categoryMatches(study: Study, value: string): boolean {
@@ -87,6 +86,7 @@ function FilterSelect<T extends string>({
 }) {
   return (
     <Select
+      aria-label='모집 시간대 필터'
       value={value}
       onChange={(event) => onChange(event.target.value as T)}
       className='h-9 w-fit rounded-lg border border-border bg-bg type-label-lg text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
@@ -112,14 +112,15 @@ export function StudyBrowser({
   studies: initialStudies,
   locale,
   leads,
-  schedulePreview = false,
 }: {
   studies: Study[];
   locale: Locale;
   leads: Record<string, Operator>;
-  schedulePreview?: boolean;
 }) {
-  const [studies, setStudies] = useState<Study[]>(initialStudies);
+  const [sourceStudies, setStudies] = useState<Study[]>(initialStudies);
+  const studies = useRecruitmentStudies(sourceStudies);
+  const clock = useRecruitmentClock(studies);
+  const timezoneOptions = useMemo(() => recruitmentZoneOptions(studies, locale).map((zone) => ({ value: zone, label: recruitmentLocationLabel(zone, locale) })), [studies, locale]);
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const [recruitment, setRecruitment] = useState<RecruitmentFilter>('all');
@@ -166,11 +167,15 @@ export function StudyBrowser({
     const q = query.trim().toLowerCase();
     return studies.filter((s) => {
       if (category !== 'all' && !categoryMatches(s, category)) return false;
-      if (timezone !== 'all' && studyTimezone(s) !== timezone) return false;
+      if (!matchesRecruitmentZone(s, timezone)) return false;
       if (q && !searchText(s).includes(q)) return false;
       return true;
     });
   }, [studies, query, category, timezone]);
+
+  useEffect(() => {
+    if (timezone !== 'all' && !timezoneOptions.some((option) => option.value === timezone)) setTimezone('all');
+  }, [timezoneOptions, timezone]);
 
   const hasQuery = query.trim().length > 0;
   const commitSearch = () => setQuery(input);
@@ -184,9 +189,9 @@ export function StudyBrowser({
 
   // 정렬은 두지 않는다 — 목록은 둘러보기 전용이라 등록 순서 그대로 보인다.
   const filtered = useMemo(() => {
-    const list = recruitment === 'all' ? base : base.filter((s) => statusOf(s) === recruitment);
+    const list = recruitment === 'all' ? base : base.filter((s) => statusOf(s, clock) === recruitment);
     return [...list].sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
-  }, [base, recruitment]);
+  }, [base, recruitment, clock]);
 
   return (
     <div>
@@ -208,7 +213,7 @@ export function StudyBrowser({
           <div data-anno='3'>
             <FilterSelect
               value={timezone}
-              options={[{ value: 'all' as const, label: '시간대 전체' }, ...TIMEZONE_OPTIONS]}
+              options={[{ value: 'all', label: locale === 'ko' ? '시간대 전체' : 'All time zones' }, ...timezoneOptions]}
               onChange={setTimezone}
             />
           </div>
@@ -266,7 +271,6 @@ export function StudyBrowser({
         <div data-anno='5' className='grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3'>
           {filtered.map((s) => (
             <StudyListCard
-              schedulePreview={schedulePreview}
               key={s.id}
               study={s}
               locale={locale}

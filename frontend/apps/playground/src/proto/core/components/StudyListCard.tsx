@@ -4,7 +4,8 @@ import Link from 'next/link';
 
 import { userStudyPath, type Locale, type Operator, type Study } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
-import { confirmedRecruitSchedule, recruitBadge, studyStartValue, studyTimezoneLabel } from '@core/lib/recruit';
+import { recruitBadge, studyStartValue } from '@core/lib/recruit';
+import { recruitmentZoneLabel } from '@core/lib/recruitment-timezones';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { StudyCard } from '@studyclub/ui';
 import { CalendarClock, Globe, Rocket } from 'lucide-react';
@@ -23,28 +24,19 @@ function shortDate(value: string): string {
 export function StudyListCard({
   study,
   locale,
-  schedulePreview = false,
 }: {
   study: Study;
   locale: Locale;
   lead?: Operator;
   index?: number;
-  schedulePreview?: boolean;
 }) {
   const zone = useDisplayTimeZone();
-  const confirmed = confirmedRecruitSchedule(study, locale, zone);
-  const badge = recruitBadge(study, locale);
+  const badge = recruitBadge(study, locale, zone);
   const details = [
-    ...(confirmed
-      ? [{ icon: CalendarClock, label: `${locale === 'ko' ? '확정 일정' : 'Confirmed meeting'} · ${confirmed.label}` }]
-      : study.schedule
-        ? [{ icon: CalendarClock, label: t(study.schedule, locale) }]
-        : []),
+    ...(study.schedule ? [{ icon: CalendarClock, label: t(study.schedule, locale) }] : []),
     {
       icon: Globe,
-      label: confirmed
-        ? `${locale === 'ko' ? '내 시간대' : 'My time zone'}: ${confirmed.zone}`
-        : studyTimezoneLabel(study, locale),
+      label: `${locale === 'ko' ? '모집 시간대' : 'Recruitment time zones'}: ${recruitmentZoneLabel(study, locale)}`,
     },
     {
       icon: Rocket,
@@ -55,7 +47,7 @@ export function StudyListCard({
   return (
     <StudyCard
       data-anno='5-1'
-      href={`${userStudyPath(locale, study)}${schedulePreview ? '?scenario=confirmed-schedule' : ''}`}
+      href={userStudyPath(locale, study)}
       linkAs={Link}
       title={t(study.title, locale)}
       category={study.category}

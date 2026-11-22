@@ -2,6 +2,8 @@
 
 import { seedMyAttendance } from '@core/lib/attendance';
 import { resolveDisplayZone } from '@core/lib/schedule-timezone';
+import { getUser } from '@core/lib/auth';
+import { saveMemberTimeZone } from '@/proto/lib/member-timezone-store';
 import type { MemberRegion } from '@studyclub/types';
 
 /**
@@ -118,8 +120,9 @@ export function getTimeZone(): string {
   return resolveDisplayZone(saved, browser);
 }
 
-export function setTimeZone(zone: string) {
+export function setTimeZone(zone: string, email = getUser()?.email) {
   writeJSON(ZONE_KEY, zone);
+  if (email) saveMemberTimeZone(email, zone);
   window.dispatchEvent(new Event('sc:timezone-change'));
 }
 

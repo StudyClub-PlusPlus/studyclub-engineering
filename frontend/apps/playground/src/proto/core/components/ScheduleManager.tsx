@@ -37,7 +37,7 @@ import { ME_ID, type Participant } from '@core/lib/schedule-board';
 import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { localDateTime, relativeTimeChanges } from '@core/lib/time-zone-preview';
-import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
+import { useDisplayTimeZone, useIsConsoleTimeZone, useTimeZoneChangeLock } from '@core/lib/use-display-timezone';
 import type { Study } from '@studyclub/types';
 import { Button, Checkbox, Input, Modal, Select, SelectionCount, TableActionBar, cx, FilterChip } from '@studyclub/ui';
 import { Plus, X } from 'lucide-react';
@@ -92,9 +92,10 @@ export function ScheduleManager({
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [incompleteWalls, setIncompleteWalls] = useState<Record<string, { date: string; time: string }>>({});
   const viewerZone = useDisplayTimeZone();
+  const consoleTimeZone = useIsConsoleTimeZone();
   // 조회·수정 모두 내 시간대로 시작하고, 사용자가 메뉴에서 고른 경우에만 전환한다.
   const [inputZone, setInputZone] = useState<string | null>(null);
-  const zone = canEdit ? (inputZone ?? viewerZone) : viewerZone;
+  const zone = canEdit && !consoleTimeZone ? (inputZone ?? viewerZone) : viewerZone;
   /** 저장소가 localStorage 라 렌더 트리거가 없다 — 바꿀 때마다 올려 다시 읽는다. */
   const [, setRev] = useState(0);
   const refresh = () => setRev((n) => n + 1);
@@ -122,6 +123,7 @@ export function ScheduleManager({
     .filter((m) => incompleteWalls[m.id] || (drafts[m.id] && !sameRow(drafts[m.id], saved(m))))
     .map((m) => m.id);
   const dirty = changedIds.length > 0;
+  useTimeZoneChangeLock(dirty || adding || settingKickoff);
 
   // 고친 줄을 반영한 회차들로 같은 날 겹침을 본다 — 두 줄을 같은 날로 옮기는 것도 막아야 한다.
   const projected = meetings.map((m) => (drafts[m.id] ? { ...m, date: drafts[m.id].date } : m));
@@ -283,22 +285,23 @@ export function ScheduleManager({
           </span>
         </h2>
         <div className='flex max-w-full flex-wrap items-center gap-2'>
-          {canEdit ? (
+          {canEdit && !consoleTimeZone ? (
             <div data-anno='schedule:8' className='flex items-center gap-2 type-label-sm text-fg-secondary'>
               시간대
               <div className='w-60 max-w-full'>
                 <TimeZonePicker
+                  prioritizeCountries
                   locale='ko' label='시간대' hideLabel compact annotation={false}
                   value={zone} disabled={Object.keys(incompleteWalls).length > 0}
                   onChange={setInputZone}
                 />
               </div>
             </div>
-          ) : (
+          ) : !consoleTimeZone ? (
             <p data-anno='schedule:8' className='type-label-sm text-fg-secondary'>
               내 시간대: {scheduleZoneTitle(zone)}
             </p>
-          )}
+          ) : null}
           {canSetKickoff && (
             <span data-anno='schedule:10-1'>
               <Button size='sm' variant='secondary' onClick={() => setSettingKickoff(true)}>
@@ -997,7 +1000,7 @@ function AddForm({
 
         {inputInstant && viewerZone !== inputZone && (
           <p className='type-label-sm text-fg-muted' aria-live='polite'>
-            내 시간 · {scheduleZoneTitle(viewerZone)} {localDateTime(inputInstant, viewerZone)}
+            {scheduleZoneTitle(viewerZone)} 기준 · {localDateTime(inputInstant, viewerZone)}
           </p>
         )}
 
@@ -1076,7 +1079,7 @@ function AddForm({
           <div className='type-label-sm text-warning-700' role='status'>
             {timeChanges.map((change) => (
               <p key={change.at}>
-                {dateWithDow(wallParts(new Date(change.at), viewerZone).date)} 회차부터 내 시간 {change.before} → {change.after} · 서머타임
+                {dateWithDow(wallParts(new Date(change.at), viewerZone).date)} 회차부터 {scheduleZoneTitle(viewerZone)} 기준 {change.before} → {change.after} · 서머타임
               </p>
             ))}
           </div>

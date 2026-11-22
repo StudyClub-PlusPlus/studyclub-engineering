@@ -1,19 +1,25 @@
 'use client';
 
+
+
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { LIFECYCLE_LABEL, LIFECYCLE_ORDER } from '@console/components/lifecycle';
 import { LifecycleBadge } from '@console/components/LifecycleBadge';
-import { TIMEZONE_LABEL } from '@console/components/StudyForm';
 import { tx } from '@console/lib/l10n';
 import { rememberStudiesListSearch } from '@console/lib/list-return';
 import { studyAuthor } from '@console/lib/users';
+import { recruitmentZoneLabel } from '@core/lib/recruitment-timezones';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew, recruitCapacity } from '@studyclub/mock';
 import { type LifecycleState, type Study } from '@studyclub/types';
 import { Badge, Button, Input, Modal, Pagination, Select, cx } from '@studyclub/ui';
-import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, recruitState, toISODate, todayISO } from '@studyclub/utils';
+import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, toISODate, todayISO } from '@studyclub/utils';
 import { Check, Minus, Search } from 'lucide-react';
+
+import { recruitState, recruitmentDeadlineAt, recruitmentDeadlineLabel } from '@/proto/lib/recruitment-deadline';
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 /**
  * 스터디 관리 목록.
@@ -24,7 +30,7 @@ import { Check, Minus, Search } from 'lucide-react';
  * 않는다 — 진행 일정은 신청 화면에 알리는 문구일 뿐 운영자가 목록에서 훑어볼 값이 아니고, 정렬·필터도 못 건다.
  * 언제 시작하는지가 궁금하면 **스터디 시작일**(`STUDY.START_AT`, 정렬 가능한 날짜)을 본다.
  * 종류(스터디/클럽)는 목록에 두지 않는다 — 칼럼도 거르는 칸도 없다.
- * 시간대(KST/PST/동시 진행)는 등록 폼에서 운영자가 직접 고르는 값이다 — 값이 없으면 「미정」이다.
+ * 모집 시간대는 전체·여러 지역·미정 중 하나이며 반 일정의 기준 시간대와 별개다.
  * 모집 상태는 「모집 종료일」과 「모집 정원」에서, 지원 현황의 분모는 「모집 정원」(비우면 제한 없음)에서 나온다.
  * 공개 상태는 등록 폼이 아니라 이 목록에서 켠다 — **모집 시작 일자가 있으면 공개**다.
  *
@@ -167,7 +173,7 @@ type Column = {
   label: string;
   cellClass?: string;
   anno?: string;
-  render: (row: Row, ctx: { requestPublish: (s: Study, next: boolean) => void }) => ReactNode;
+  render: (row: Row, ctx: { zone: string; requestPublish: (s: Study, next: boolean) => void }) => ReactNode;
 };
 
 const COLUMNS: Column[] = [
@@ -188,10 +194,10 @@ const COLUMNS: Column[] = [
   },
   {
     key: 'timezone',
-    label: '시간대',
+    label: '모집 시간대',
     cellClass: 'whitespace-nowrap text-fg-secondary',
     anno: 'list:2-3',
-    render: ({ s }) => (s.timezone ? TIMEZONE_LABEL[s.timezone] : <span className='text-fg-muted'>미정</span>),
+    render: ({ s }) => <span className='block max-w-60 truncate' title={recruitmentZoneLabel(s, 'ko')}>{recruitmentZoneLabel(s, 'ko')}</span>,
   },
   {
     key: 'recruitStart',
@@ -205,7 +211,7 @@ const COLUMNS: Column[] = [
     label: '모집 종료일',
     cellClass: 'tnum whitespace-nowrap type-label-sm text-fg-secondary',
     anno: 'list:2-1',
-    render: ({ s }) => toISODate(s.recruitment?.deadline) ?? <span className='text-fg-muted'>—</span>,
+    render: ({ s }, { zone }) => recruitmentDeadlineLabel(s, zone) ?? <span className='text-fg-muted'>—</span>,
   },
   {
     key: 'recruit',
@@ -278,7 +284,7 @@ const SORT_VALUE: Record<SortKey, (s: Study) => string | number | undefined> = {
   category: (s) => categoriesOf(s)[0],
   timezone: (s) => s.timezone,
   recruitStart: (s) => startedOn(s),
-  recruitEnd: (s) => toISODate(s.recruitment?.deadline),
+  recruitEnd: (s) => recruitmentDeadlineAt(s),
   recruit: (s) => (recruitState(s) === 'apply' ? 0 : 1),
   crew: (s) => summarize(s).active,
   startAt: (s) => toISODate(s.startAt),
@@ -326,6 +332,8 @@ function SortLabel({
 }
 
 export function StudiesTable({ studies }: { studies: Study[] }) {
+  const clock = useRecruitmentClock(studies);
+  const zone = useDisplayTimeZone();
   const [patch, setPatch] = useState<Record<string, PublishPatch>>({});
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
@@ -402,7 +410,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         .filter((s) => {
           if (category !== 'all' && !categoriesOf(s).includes(category)) return false;
           if (status !== 'all' && lifecycleState(s) !== status) return false;
-          if (recruit !== 'all' && recruitState(s) !== recruit) return false;
+          if (recruit !== 'all' && recruitState(s, clock) !== recruit) return false;
           if (publish !== 'all' && publishState(s) !== publish) return false;
           if (form === 'has' && !applyFormUrl(s)) return false;
           if (form === 'none' && applyFormUrl(s)) return false;
@@ -420,15 +428,15 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             const c = compareBy(sort, a, b);
             if (c !== 0) return c;
           }
-          const ra = recruitState(a) === 'apply' ? 0 : 1;
-          const rb = recruitState(b) === 'apply' ? 0 : 1;
+          const ra = recruitState(a, clock) === 'apply' ? 0 : 1;
+          const rb = recruitState(b, clock) === 'apply' ? 0 : 1;
           if (ra !== rb) return ra - rb;
-          const da = toISODate(a.recruitment?.deadline) ?? '9999-99-99';
-          const db = toISODate(b.recruitment?.deadline) ?? '9999-99-99';
+          const da = recruitmentDeadlineAt(a) ?? '9999-99-99';
+          const db = recruitmentDeadlineAt(b) ?? '9999-99-99';
           return da.localeCompare(db);
         })
     );
-  }, [studies, patch, query, category, status, recruit, publish, form, sort]);
+  }, [studies, clock, patch, query, category, status, recruit, publish, form, sort]);
 
   // 필터·정렬이 바뀌어 페이지 수가 줄어도 빈 페이지가 남지 않게 현재 페이지를 눌러 준다.
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -585,6 +593,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     {columns.map((c) => (
                       <td key={c.key} data-anno={c.anno} className={c.cellClass}>
                         {c.render(row, {
+                          zone,
                           requestPublish: (study, next) => setConfirm({ id: study.id, title: tx(study.title), next }),
                         })}
                       </td>

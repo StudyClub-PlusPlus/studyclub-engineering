@@ -11,9 +11,11 @@ export const SPEC: ScreenSpec = {
   scope: 'dashboard',
   screen: '대시보드 (운영 콘솔)',
   notes: [
+    '시간대 공통 규칙: 01-planning/stories/timezone-expansion/PRD.md.',
+    '공통 헤더의 운영자 콘솔 왼쪽에서 백오피스 표시 시간대를 고른다. 회원이 한 명 이상인 시간대를 먼저 표시하고 ‘전체 시간대에서 찾기’로 확장한다. 회원이 없어져도 기존 선택을 유지하며, 선택은 이 브라우저의 운영자 계정별로 유지한다. 회원 프로필과 반·행사의 기준 시간대는 바뀌지 않는다. Playground는 예시 회원 명단으로 목록을 구성한다',
     '기간 필터가 없다 — 전기간 기준. 추세 차트만 최근 12주를 본다',
     '스터디 목록은 현황 보드 한 곳에만 둔다. 같은 목록을 두 번 그리면 어느 쪽이 최신인지 매번 확인하게 된다',
-    '자동 갱신은 없다. 새로고침으로만 다시 읽는다',
+    '회원 통계는 페이지 재진입·새로고침에 읽고 헤더 시간대 변경 시 해당 기준 집계를 요청한다. 열린 화면의 모집 마감 상태만 마감 순간에 다시 판정한다',
     '미구현 — 위젯별 로딩·오류 상태. 지금은 mock 이라 한 번에 그려진다',
   ],
   entries: [
@@ -25,7 +27,7 @@ export const SPEC: ScreenSpec = {
     {
       n: '1-1',
       title: '기준 · 갱신 시각',
-      display: ['이 화면의 수가 **어느 범위**이고 **언제 읽은 것**인가'],
+      display: ['전기간 기준 · YYYY-MM-DD HH:mm 시간대 약칭 갱신. 헤더에서 고른 시간대로 표시하며 기록 날짜의 서머타임을 적용한다'],
       policy: ['범위와 시각을 함께 적는다 — 둘 다 없으면 오늘 수인지 알 수 없다'],
     },
     {
@@ -111,6 +113,8 @@ export const SPEC: ScreenSpec = {
       n: '3-3',
       title: '예정 행사',
       display: ['행사 이름과 **며칠 남았는가**. 날짜와 남은 일수를 함께, 당일이면 그 사실을'],
+      behavior: ['행사 관리와 같은 데이터를 사용한다. 공개되고 취소되지 않은 미래 시작 행사만 가까운 순으로 표시하며, 각 행은 해당 행사 상세로 이동한다'],
+      data: ['실제 시작 시각으로 예정 여부를 판단하고, 날짜와 D-day는 공통 헤더 시간대로 변환한다'],
       policy: ['행사 타입(밋업·워크샵·토크·온라인)은 이 묶음에 적지 않는다 — 가르는 기준을 여기서 설명할 수 없다'],
     },
     {
@@ -124,8 +128,8 @@ export const SPEC: ScreenSpec = {
       n: '4',
       title: '크루 시간대 분포',
       display: ['활성 크루의 시간대별 비율·인원. 여러 스터디에 속한 회원은 한 번만 집계'],
-      policy: ['다섯 항목 이하면 모두 표시. 초과하면 상위 네 항목과 Others. 미설정은 별도 항목이며 다섯 자리 중 하나를 사용한다. Others는 hover·focus로 요약, 클릭·탭으로 전체 상세를 펼친다. 상세 비율도 전체 활성 크루가 분모다'],
-      data: ['이메일로 중복을 제거한 활성 크루의 IANA 시간대. Playground는 표본 시간대를 사용하며 미설정은 별도로 집계한다'],
+      policy: ['다섯 항목 이하면 모두 표시. 초과하면 상위 네 항목과 기타. 기타는 hover·focus로 요약, 클릭·탭으로 전체 상세를 펼친다. 상세 비율도 전체 활성 크루가 분모다. 실제 누락 데이터가 들어온 경우에만 미설정을 별도 표시하고 다섯 자리 중 하나를 사용한다'],
+      data: ['실제 서비스는 계정 ID, Playground는 이메일로 중복을 제거한 활성 크루의 IANA 시간대. 시간대는 온보딩 필수 항목이므로 Playground의 가입 완료 회원 표본에는 미설정 값을 넣지 않는다'],
     },
     {
       n: '5',
@@ -135,7 +139,7 @@ export const SPEC: ScreenSpec = {
         '한 주를 집으면 그 주의 출석률과 밑재료를 알린다 — 「2026-08-24 주 · 출석률 68% (출석 412 / 대상 606)」',
       ],
       policy: [
-        '**주의 경계는 보는 사람의 시간대 기준이다** — 대시보드를 연 사람의 시간대에서 월요일 00:00 부터 한 주로 묶는다. 그래서 운영진의 시간대에 따라 주간 출석률이 다를 수 있다 ([POL-0006](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0006-timezone.md)) (→ [share 10-15](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/docs/share/2026-10-15-dashboard-week-boundary.md))',
+        '**주의 경계는 보는 사람의 시간대 기준이다** — 헤더에서 고른 시간대에서 월요일 00:00 부터 한 주로 묶는다. 그래서 운영진의 시간대에 따라 주간 출석률이 다를 수 있다 ([POL-0006](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0006-timezone.md)) (→ [share 10-15](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/docs/share/2026-10-15-dashboard-week-boundary.md))',
         '**체크된 회차가 없는 주는 값이 없는 것으로 다룬다. 0% 로 알리지 않는다** — 쉬어간 주가 폭락으로 보이면 없는 문제를 찾게 된다',
         '값이 한 주뿐이어도 그 값을 알린다 — 이어지는 선이 없을 뿐이다',
         '값이 하나도 없을 때만 그 사실을 적는다',

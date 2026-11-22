@@ -6,7 +6,7 @@ import { classLabel, hasSchedule, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE, WEEKDAY_LABELS, otherClock, type ScheduleRule } from '@console/lib/schedule';
 import { TimeZonePicker } from '@core/components/TimeZonePicker';
 import { isValidZone, scheduleZoneTitle } from '@core/lib/schedule-timezone';
-import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
+import { useDisplayTimeZone, useTimeZoneChangeLock } from '@core/lib/use-display-timezone';
 import { Button, Input, Modal, FilterChip } from '@studyclub/ui';
 
 /**
@@ -38,6 +38,7 @@ export function ClassScheduleDialog({
 
   const editing = hasSchedule(cls);
   const viewerZone = useDisplayTimeZone();
+  useTimeZoneChangeLock(open);
 
   const valid = rule.weekdays.length > 0 && isValidZone(rule.tz);
   const invalid = touched && !valid;
@@ -106,6 +107,7 @@ export function ClassScheduleDialog({
               </div>
               <div className='min-w-48 flex-1'>
                 <TimeZonePicker
+                  prioritizeCountries
                   locale='ko' label='기준 시간대' hideLabel compact annotation={false}
                   value={rule.tz} onChange={(tz) => setRule({ ...rule, tz })}
                 />
@@ -115,7 +117,7 @@ export function ClassScheduleDialog({
 
           {other && (
             <p className='type-label-sm text-fg-muted' aria-live='polite'>
-              내 시간 · {scheduleZoneTitle(viewerZone)} {other}
+              {scheduleZoneTitle(viewerZone)} 기준 · {other}
             </p>
           )}
 

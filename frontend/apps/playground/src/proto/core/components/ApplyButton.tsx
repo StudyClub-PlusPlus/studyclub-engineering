@@ -1,5 +1,7 @@
 'use client';
 
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
+
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type MouseEvent } from 'react';
 
@@ -24,6 +26,7 @@ import { ApplyDiscordGate } from './ApplyDiscordGate';
  */
 export function ApplyButton({ study, locale }: { study: Study; locale: Locale }) {
   const router = useRouter();
+  useRecruitmentClock([study]);
   const pathname = usePathname();
   const [formOpen, setFormOpen] = useState(false);
   const [discordOpen, setDiscordOpen] = useState(false);

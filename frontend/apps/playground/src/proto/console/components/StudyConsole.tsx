@@ -1,6 +1,8 @@
 'use client';
 
 
+
+
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
@@ -22,7 +24,6 @@ import { seedClasses } from '@console/lib/seed-classes';
 import { studyAuthor } from '@console/lib/users';
 import { ScheduleManager } from '@core/components/ScheduleManager';
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
-import { TimeZonePicker } from '@core/components/TimeZonePicker';
 import { discordUrl, driveUrl } from '@core/lib/joined';
 import { wallParts, zonedInstant, type ProtoMeeting } from '@core/lib/meetings';
 import { dropPresenters } from '@core/lib/schedule-source';
@@ -30,10 +31,12 @@ import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew } from '@studyclub/mock';
 import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
 import { Badge, Button, Modal, Switch, Tabs } from '@studyclub/ui';
-import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState, recruitState, toISODate, todayISO } from '@studyclub/utils';
+import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState } from '@studyclub/utils';
 import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
 import { useAnnotate } from '@/proto/annotate';
+import { recruitState, recruitmentDeadlineLabel, recruitmentDaysLeft } from '@/proto/lib/recruitment-deadline';
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 /**
  * 스터디 운영 콘솔.
@@ -111,10 +114,8 @@ export function StudyConsole({ study }: { study: Study }) {
   // 참여 중단한 크루 — 출석부에서 고른다. 하차 · 제명을 가르지 않고, 되돌리지 않는다 (사용자 사이트와 같다).
   // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT
   const [left, setLeft] = useState<Record<string, { at: string }>>({});
-  // 출석부 회차 머리의 시간대 — 사용자 사이트 출석부 · 일정 표와 같은 KST/PDT 전환
-  const viewerZone = useDisplayTimeZone();
-  const [selectedZone, setZone] = useState<string>();
-  const zone = selectedZone ?? viewerZone;
+  // 출석부 회차 머리도 백오피스 공통 헤더의 시간대로 표시한다.
+  const zone = useDisplayTimeZone();
   // 일정 탭의 「스터디 시간 정하기 · 수정」 창
   const [ruleOpen, setRuleOpen] = useState(false);
 
@@ -195,13 +196,10 @@ export function StudyConsole({ study }: { study: Study }) {
     }
     return total === 0 ? undefined : Math.round((score / total) * 100);
   }, [classes, study, meetings, active, assign, navigators, left, books]);
+  useRecruitmentClock([study]);
   const open = recruitState(study) === 'apply';
-  const deadline = toISODate(study.recruitment?.deadline);
-  // 마감까지 남은 날. 마감일은 필수라 늘 있다 — 값이 비어 있는 옛 데이터만 undefined.
-  const dday =
-    deadline === undefined
-      ? undefined
-      : Math.round((Date.parse(`${deadline}T00:00:00Z`) - Date.parse(`${todayISO()}T00:00:00Z`)) / 86_400_000);
+  const deadline = recruitmentDeadlineLabel(study, zone);
+  const dday = recruitmentDaysLeft(study, zone);
   // 목록에 걸어 둔 필터 · 정렬 · 페이지로 돌아간다
   const listHref = useStudiesListHref();
   // 사이트 공개 — 화면 상태로만 바꾼다(새로고침하면 되돌아간다). 목록 「스터디 공개」 칸과 같은 규칙 · 같은 확인 팝업
@@ -383,11 +381,11 @@ export function StudyConsole({ study }: { study: Study }) {
                 다음 기수 만들기
               </Button>
             )}
-            <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
+            <span title={deadline}><Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
               {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
-              {/* 마감일 당일도 아직 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
+              {/* 마감일 당일에도 마감 순간 전까지만 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
               {open ? (dday === undefined ? '모집중' : `모집중 · D-${dday}`) : '모집 마감'}
-            </Badge>
+            </Badge></span>
             {draft && (
               <Badge tone='closingsoon' className='px-2.5 py-1 font-semibold'>
                 미공개
@@ -626,13 +624,9 @@ export function StudyConsole({ study }: { study: Study }) {
                   headOf={view.book.headOf}
                   onWithdraw={(ids) => withdraw(view, ids)}
                   startAt={view.group.startAt}
-                  // 제목 줄 — 「출석」 · 「전체 N」 · 오른쪽 KST/PDT (사용자 사이트 출석부와 같은 줄). 반 이름은 위 칩이 말한다
+                  // 제목 줄 — 「출석」 · 「전체 N」. 반 이름은 위 칩, 표시 시간대는 공통 헤더에 둔다.
                   title='출석'
-                  toolbar={
-                    <div className='w-60' data-anno='attendance:11'>
-                      <TimeZonePicker label='회차 표시 시간대' locale='ko' value={zone} onChange={setZone} hideLabel compact annotation={false} />
-                    </div>
-                  }
+                  instantOf={instantOf}
                   whenOf={(m) => wallParts(instantOf(m as ProtoMeeting), zone)}
                 />
               );

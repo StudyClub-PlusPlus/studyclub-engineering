@@ -1,5 +1,7 @@
-import { countCrewTimeZones, groupTimeZones } from '@console/lib/crew-timezones';
-import { meetingWindow, meetingsOf } from '@core/lib/attendance';
+import { countCrewTimeZones, groupTimeZones, usedMemberTimeZones } from '@console/lib/crew-timezones';
+import { daysUntil, upcomingEvents } from '@console/lib/dashboard';
+import { formatConsoleTimestamp, getConsoleTimeZone, setConsoleTimeZone } from '@console/lib/display-timezone';
+import { latestStartedMeeting, meetingWindow, meetingsOf } from '@core/lib/attendance';
 import { weekDays, ymdInTz } from '@core/lib/joined';
 import { getRegion, getTimeZone, setRegion, setTimeZone } from '@core/lib/me';
 import {
@@ -15,18 +17,22 @@ import {
   withAdded,
   zonedInstant,
 } from '@core/lib/meetings';
-import { confirmedRecruitSchedule, withConfirmedScheduleExample } from '@core/lib/recruit';
+import { recruitBadge } from '@core/lib/recruit';
 import { regularScheduleDisplay } from '@core/lib/regular-schedule';
 import { classSource, studySource } from '@core/lib/schedule-source';
 import { resolveDisplayZone, SCHEDULE_ZONES, scheduleZoneTitle, zoneAbbreviation } from '@core/lib/schedule-timezone';
 import { zoneOffset } from '@core/lib/time-zones';
-import { studies } from '@studyclub/mock';
+import { createEventPreviewState, studies } from '@studyclub/mock';
 import assert from 'node:assert/strict';
 
 import { snapToOnboardingZone, isOnboardingTimeZone } from './onboarding';
+import { matchesRecruitmentZone, recruitmentTimeZones, recruitmentZoneOptions, recruitmentZoneLabel } from './recruitment-timezones';
 import { relativeTimeChanges } from './time-zone-preview';
-import { availableZones, zoneSearchText } from './time-zones';
+import { availableZones, memberTimeZones, zoneSearchText } from './time-zones';
 import { resolveEventInput, wallTime } from '../../events/model';
+import { readMemberTimeZones, saveMemberTimeZone, seedMemberTimeZones } from '@/proto/lib/member-timezone-store';
+import { recruitState, recruitmentDeadlineAt, recruitmentDeadlineLabel, recruitmentDaysLeft } from '@/proto/lib/recruitment-deadline';
+import { createRecruitmentProjector, saveRecruitmentZones, withSavedRecruitmentZones } from '@/proto/lib/recruitment-zone-store';
 
 const seoul = 'Asia/Seoul';
 const east = 'America/New_York';
@@ -282,40 +288,8 @@ assert.equal(vancouverDay.hits.find((h) => h.meetingId === vancouverAdded.id)?.a
 const laDay = weekDays([ddia], 'ko', west, '2026-11-02').find((d) => d.date === '2026-11-04')!;
 assert.equal(laDay.hits.find((h) => h.meetingId === vancouverAdded.id)?.time, '17:30');
 
-const recruit = studies.find((s) => s.id === 'ai-paper-study')!;
-assert.equal(confirmedRecruitSchedule(recruit, 'ko', east), undefined);
-assert.equal(confirmedRecruitSchedule({ ...recruit, startAt: '2027-01-07', timezone: 'KST' }, 'ko', east), undefined);
-const example = withConfirmedScheduleExample(recruit);
-assert.deepEqual(confirmedRecruitSchedule(example, 'ko', east), {
-  label: '2027-01-07 (목) 06:00',
-  zone: '뉴욕(EST)',
-});
-assert.deepEqual(confirmedRecruitSchedule(example, 'ko', vancouver), {
-  label: '2027-01-07 (목) 04:00',
-  zone: '밴쿠버(PCT)',
-});
-assert.deepEqual(confirmedRecruitSchedule(example, 'ko', west), {
-  label: '2027-01-07 (목) 03:00',
-  zone: 'LA(PST)',
-});
-assert.equal(
-  confirmedRecruitSchedule(
-    { ...example, confirmedSchedule: { scheduledAt: '2027-01-07T20:00:00', timeZone: seoul } },
-    'ko',
-    east,
-  ),
-  undefined,
-);
-assert.equal(
-  confirmedRecruitSchedule(
-    { ...example, confirmedSchedule: { scheduledAt: '2027-01-07T11:00:00Z', timeZone: 'invalid' } },
-    'ko',
-    east,
-  ),
-  undefined,
-);
 console.log(
-  '시간대 회귀 검사 통과: 프로필 우선, 날짜 이동, DST, 밴쿠버 PCT·LA 겨울 시차, 지역 전환, UTC 저장, 반복 기준, 확정 일정만 변환',
+  '시간대 회귀 검사 통과: 프로필 우선, 날짜 이동, DST, 밴쿠버 PCT·LA 겨울 시차, 지역 전환, UTC 저장, 반복 기준',
 );
 
 // 전 세계 입력과 반복 회차의 현지 시각 유지.
@@ -347,6 +321,15 @@ const counts = countCrewTimeZones([
 ]);
 assert.equal(counts.reduce((sum, row) => sum + row.count, 0), 3);
 assert.equal(counts.find((row) => row.key === 'unknown')?.count, 1);
+// 헤더는 한 명뿐인 지역도 포함하되, 미사용 인기 도시·이전 선택값을 끼워 넣지 않는다.
+const memberZones = usedMemberTimeZones([
+  { email: 'a@test', timeZone: london }, { email: 'a@test', timeZone: london },
+  { email: 'b@test', timeZone: null }, { email: 'c@test', timeZone: kathmandu },
+  { email: 'd@test', timeZone: 'invalid' }, { email: 'e@test', timeZone: seoul },
+]);
+assert.deepEqual(memberTimeZones(east, 'ko', memberZones), [seoul, london, kathmandu]);
+assert.deepEqual(memberTimeZones(east, 'ko', usedMemberTimeZones([])), []);
+assert(memberTimeZones('', 'ko').length > 300); // 온보딩·행사 선택기는 전체 목록을 유지한다.
 const manyZones = [seoul, east, west, london, kathmandu, 'Asia/Tokyo'].map((key, index) => ({ key, count: 10 - index }));
 assert.equal(groupTimeZones(manyZones.slice(0, 5)).rest.length, 0);
 assert.equal(groupTimeZones(manyZones).rows.length, 5);
@@ -364,3 +347,123 @@ for (const zone of [london, kathmandu, east, vancouver]) {
 }
 assert.equal(wallTime('2027-01-07T07:30:00Z', vancouver), '2027-01-07T00:30');
 console.log('전 세계 시간대·반 기준 반복·조건부 서머타임 안내·Others·행사 시각 보존 검사 통과');
+
+// 기록 날짜의 서머타임, 날짜 경계, 45분 오프셋과 계정별 설정 격리.
+assert.equal(formatConsoleTimestamp('2026-07-01T12:00:00Z', 'America/Toronto'), '2026-07-01 08:00 EDT');
+assert.equal(formatConsoleTimestamp('2026-12-01T12:00:00Z', 'America/Toronto'), '2026-12-01 07:00 EST');
+assert.equal(formatConsoleTimestamp('2026-07-01T23:30:00Z', 'Asia/Seoul'), '2026-07-02 08:30 KST');
+assert.match(formatConsoleTimestamp('2026-07-01T23:30:00Z', 'Asia/Kathmandu'), /^2026-07-02 05:15 /);
+assert.equal(formatConsoleTimestamp('invalid', 'Asia/Seoul'), 'invalid');
+Object.defineProperty(window, 'localStorage', { value: localStorage });
+setTimeZone(seoul);
+memory.set('bo_user', JSON.stringify({ id: 1 }));
+setConsoleTimeZone(london);
+assert.equal(getConsoleTimeZone(), london);
+assert.equal(getTimeZone(), seoul);
+memory.set('bo_user', JSON.stringify({ id: 2 }));
+assert.equal(getConsoleTimeZone(), seoul);
+setConsoleTimeZone(kathmandu);
+memory.set('bo_user', JSON.stringify({ id: 1 }));
+assert.equal(getConsoleTimeZone(), london);
+setConsoleTimeZone('invalid');
+assert.equal(getConsoleTimeZone(), london);
+memory.delete('bo_user');
+assert.equal(getConsoleTimeZone(), seoul);
+console.log('백오피스 기록 약칭·계정별 표시 설정·회원 시간대 격리 검사 통과');
+
+// 같은 행사의 지역별 날짜는 달라도 예정 여부·실제 순서는 같다.
+const auditEvent = { ...createEventPreviewState(new Date('2026-11-01T00:00:00Z')).events[0]!,
+  id: 'zone-audit', publishedAt: '2026-10-01T00:00:00Z', startsAt: '2026-12-11T00:00:00Z' };
+const auditNow = Date.parse('2026-11-22T02:00:00Z');
+assert.equal(upcomingEvents([auditEvent], 'America/Toronto', auditNow)[0]?.date, '2026-12-10');
+assert.equal(upcomingEvents([auditEvent], seoul, auditNow)[0]?.date, '2026-12-11');
+assert.equal(upcomingEvents([{ ...auditEvent, status: 'CANCELLED' }], seoul, auditNow).length, 0);
+assert.equal(upcomingEvents([{ ...auditEvent, publishedAt: undefined }], seoul, auditNow).length, 0);
+assert.equal(upcomingEvents([auditEvent], seoul, Date.parse(auditEvent.startsAt) + 1).length, 0);
+assert.equal(daysUntil('2026-12-31', wallParts(new Date(auditNow), 'America/Toronto').date), 40);
+assert.equal(daysUntil('2026-12-31', wallParts(new Date(auditNow), seoul).date), 39);
+// UTC 날짜는 내일이어도 아직 시작하지 않은 회차를 기본 출석 대상으로 고르지 않는다.
+const attendanceMeetings = [
+  { id: 'future', no: 2, date: '2026-11-21', scheduledAt: '2026-11-22T03:00:00Z' },
+  { id: 'started', no: 1, date: '2026-11-21', scheduledAt: '2026-11-22T01:00:00Z' },
+];
+assert.equal(latestStartedMeeting(attendanceMeetings, (m) => new Date(m.scheduledAt), auditNow)?.id, 'started');
+console.log('대시보드 행사 날짜·D-day·출석 기본 회차 경계 검사 통과');
+
+// 모집 범위는 반의 시각과 독립적이며, 전체/선택/미정을 구분한다.
+const selectedRecruit = { ...studies[0]!, recruitmentTimeZones: { mode: 'selected' as const, zones: [seoul, west] } };
+const londonRecruit = { ...studies[1]!, recruitmentTimeZones: { mode: 'selected' as const, zones: [london] } };
+const allRecruit = { ...studies[2]!, recruitmentTimeZones: { mode: 'all' as const, zones: [] } };
+const unsetRecruit = { ...studies[3]!, recruitmentTimeZones: { mode: 'unset' as const, zones: [] } };
+assert(matchesRecruitmentZone(selectedRecruit, seoul));
+assert(matchesRecruitmentZone(selectedRecruit, west));
+assert(!matchesRecruitmentZone(selectedRecruit, london));
+assert(matchesRecruitmentZone(allRecruit, london));
+assert(matchesRecruitmentZone(allRecruit, kathmandu));
+assert(matchesRecruitmentZone(unsetRecruit, seoul));
+assert(matchesRecruitmentZone(unsetRecruit, west));
+assert(matchesRecruitmentZone(unsetRecruit, london));
+assert(matchesRecruitmentZone(unsetRecruit, 'all'));
+assert.deepEqual(recruitmentZoneOptions([selectedRecruit, londonRecruit, allRecruit, unsetRecruit], 'ko'), [seoul, west, london]);
+assert.deepEqual(recruitmentZoneOptions([allRecruit, unsetRecruit], 'ko'), []);
+assert.deepEqual(recruitmentTimeZones({ ...studies[0]!, timezone: 'PST' }), { mode: 'selected', zones: [west] });
+assert.deepEqual(recruitmentTimeZones({ ...studies[0]!, timezone: 'both' }), { mode: 'selected', zones: [seoul, west] });
+assert.equal(recruitmentZoneLabel(allRecruit, 'ko'), '모든 시간대에서 모집');
+assert.equal(recruitmentZoneLabel(unsetRecruit, 'ko'), '미정');
+assert.deepEqual(meetingsOf(selectedRecruit), meetingsOf({ ...selectedRecruit, recruitmentTimeZones: allRecruit.recruitmentTimeZones }));
+console.log('모집 시간대: 복수 지역 OR·전체 및 미정 포함·기존 동시 진행·반 일정 독립 검사 통과');
+
+// 전체 점검: 검색 별칭, 사라진 헤더 옵션, 다음 기수의 최신 모집 범위.
+assert(zoneSearchText(west).split(/\s+/).includes('la'));
+assert(zoneSearchText(vancouver).includes('밴쿠버'));
+// 회원 후보에 없는 유효 지역도 헤더 저장값으로 유지한다.
+const previousConsoleZone = getConsoleTimeZone();
+setConsoleTimeZone('Pacific/Auckland');
+assert.equal(getConsoleTimeZone(), 'Pacific/Auckland');
+setConsoleTimeZone(previousConsoleZone);
+assert.match(recruitBadge({ ...studies[0]!, status: 'recruiting', recruitment: { status: 'open', deadline: '2099-12-31T14:59:59Z' } }, 'ko', seoul, Date.parse('2099-12-30T00:00:00Z')).label, /D-1/);
+const projectRecruitment = createRecruitmentProjector();
+const firstProjection = projectRecruitment([studies[0]!, studies[1]!], { [studies[0]!.id]: allRecruit.recruitmentTimeZones });
+const otherStudySaved = projectRecruitment([studies[0]!, studies[1]!], { [studies[0]!.id]: allRecruit.recruitmentTimeZones, [studies[1]!.id]: selectedRecruit.recruitmentTimeZones });
+assert.strictEqual(firstProjection[0], otherStudySaved[0]);
+assert.notStrictEqual(firstProjection[1], otherStudySaved[1]);
+saveRecruitmentZones(studies[0]!.id, allRecruit.recruitmentTimeZones);
+assert.equal(recruitmentTimeZones(withSavedRecruitmentZones(studies[0]!)).mode, 'all');
+const brokenRecruit = { ...studies[0]!, recruitmentTimeZones: { mode: 'selected' as const, zones: ['invalid'] } };
+assert.equal(recruitmentZoneLabel(brokenRecruit, 'ko'), '미정');
+assert(matchesRecruitmentZone(brokenRecruit, east));
+console.log('추가 점검: D-day·검색 별칭·헤더 후보·저장 입력 보존·새 기수 최신값 검사 통과');
+
+// 정확한 마감 순간은 지역과 무관하고, D-day만 현지 날짜를 따른다.
+const cutoff = Date.parse('2026-12-01T01:00:00Z');
+const timedRecruit = { ...studies[0]!, status: 'recruiting' as const, recruitment: { status: 'open' as const, deadline: '2026-12-01T01:00:00Z' } };
+assert.equal(recruitState(timedRecruit, cutoff - 1), 'apply');
+assert.equal(recruitState(timedRecruit, cutoff), 'closed');
+assert.equal(recruitState(timedRecruit, cutoff + 1), 'closed');
+assert.equal(recruitmentDeadlineLabel(timedRecruit, seoul), '2026-12-01 10:00 KST');
+assert.equal(recruitmentDeadlineLabel(timedRecruit, west), '2026-11-30 17:00 PST');
+const before = Date.parse('2026-11-30T14:00:00Z');
+assert.equal(recruitmentDaysLeft(timedRecruit, seoul, before), 1);
+assert.equal(recruitmentDaysLeft(timedRecruit, west, before), 0);
+for (const zone of [seoul, west, 'America/Toronto']) {
+  assert.equal(recruitBadge(timedRecruit, 'ko', zone, cutoff).label, '모집 마감');
+}
+assert.equal(recruitState({ ...timedRecruit, recruitment: { ...timedRecruit.recruitment, status: 'closed' } }, before), 'closed');
+assert.equal(recruitmentDeadlineAt({ ...timedRecruit, id: 'unknown-legacy', recruitment: { status: 'open', deadline: '2026-12-01' } }), undefined);
+assert.equal(recruitmentDeadlineAt({ ...timedRecruit, recruitment: { status: 'open', deadline: '2026-12-01T10:00:00+09:00' } }), timedRecruit.recruitment.deadline.replace('Z', '.000Z'));
+// 저장은 한 회원을 옮긴다. 이전 화면의 후보 스냅샷은 유지, 다음 조회만 새 후보 반영.
+const uniqueZone = 'Pacific/Auckland';
+const email = Object.keys(seedMemberTimeZones)[0]!;
+const snapshot = readMemberTimeZones();
+const total = Object.keys(snapshot).length;
+saveMemberTimeZone(email.toUpperCase(), uniqueZone);
+assert.equal(Object.keys(readMemberTimeZones()).length, total);
+assert.notEqual(snapshot[email], uniqueZone);
+assert.equal(readMemberTimeZones()[email], uniqueZone);
+saveMemberTimeZone(email, 'not-a-zone');
+assert.equal(readMemberTimeZones()[email], uniqueZone);
+saveMemberTimeZone(email, snapshot[email]!);
+setTimeZone(uniqueZone, 'preview-timezone-test@example.com');
+assert.equal(readMemberTimeZones()['preview-timezone-test@example.com'], uniqueZone);
+assert.equal(countCrewTimeZones([{email:'preview-timezone-test@example.com'}, {email:'PREVIEW-TIMEZONE-TEST@example.com'}])[0]?.count, 1);
+console.log('회원 설정 집계 연결·스냅샷 유지·마감 순간 경계·지역별 D-day 검사 통과');

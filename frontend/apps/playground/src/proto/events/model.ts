@@ -342,7 +342,7 @@ function eventNoticeValues(event: PreviewEvent, channel: EventChannel | 'ALL', d
     eventTitle: event.title,
     channel: channel === 'ALL' ? FORMAT_LABEL[event.format] : CHANNEL_LABEL[channel],
     eventSchedule: event.endsAt
-      ? `${formatDate(event.startsAt, displayTimeZone, 'ko-KR', false)} ~ ${formatDate(event.endsAt, displayTimeZone)}`
+      ? `${formatDate(event.startsAt, displayTimeZone)} ~ ${formatDate(event.endsAt, displayTimeZone)}`
       : formatDate(event.startsAt, displayTimeZone),
     participation: modes.map((mode) => {
       const detail = mode === 'OFFLINE' ? event.location : event.onlineUrl || '온라인 참여 링크는 추후 안내드립니다.';

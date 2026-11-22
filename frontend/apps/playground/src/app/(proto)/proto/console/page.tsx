@@ -1,15 +1,22 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
+import { readMemberTimeZones, seedMemberTimeZones } from '@/proto/lib/member-timezone-store';
+
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
+
 import { AttendanceTrend, Card, CategoryStudyCard, RegionDonut } from '@console/components/DashboardCharts';
 import { KpiCard } from '@console/components/KpiCard';
 import { StudyStatusBoard } from '@console/components/StudyStatusBoard';
-import { aggregate } from '@console/lib/dashboard';
-import { tx } from '@console/lib/l10n';
-import { events } from '@studyclub/mock';
-import { todayISO } from '@studyclub/utils';
+import { aggregate, upcomingEvents } from '@console/lib/dashboard';
+import { formatConsoleTimestamp } from '@console/lib/display-timezone';
+import { wallParts } from '@core/lib/meetings';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
+
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { useEventWorkspace } from '@/proto/events/EventWorkspace';
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 // 프로토는 /proto/console 아래 매달린다.
@@ -25,12 +32,16 @@ const BASE = '/proto/console';
  * 최신인지 매번 확인하게 된다.
  */
 export default function Dashboard() {
+  const [members, setMembers] = useState(seedMemberTimeZones);
+  useEffect(() => setMembers(readMemberTimeZones()), []);
   const studies = useMswStudies();
-  const { updatedAt, kpi, board, regions, categories, trend } = aggregate(todayISO(), studies);
-  const upcoming = events
-    .filter((e) => e.date >= todayISO())
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map((e) => ({ id: e.id, title: tx(e.title), date: e.date }));
+  useRecruitmentClock(studies);
+  const zone = useDisplayTimeZone();
+  const today = wallParts(new Date(), zone).date;
+  const updatedAt = useMemo(() => new Date().toISOString(), [studies, zone, members]);
+  const { kpi, board, regions, categories, trend } = aggregate(today, studies, zone, members);
+  const { state: eventState, now } = useEventWorkspace();
+  const upcoming = upcomingEvents(eventState?.events ?? [], zone, now);
 
   return (
     <div>
@@ -38,7 +49,7 @@ export default function Dashboard() {
       <header data-anno='1' className='mb-5 flex flex-wrap items-baseline justify-between gap-2'>
         <h1 className='type-headline-md'>대시보드</h1>
         <p data-anno='1-1' className='tnum type-label-sm text-fg-muted'>
-          전기간 기준 · {updatedAt} 갱신
+          전기간 기준 · {formatConsoleTimestamp(updatedAt, zone)} 갱신
         </p>
       </header>
 
@@ -71,7 +82,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <StudyStatusBoard ongoing={board.ongoing} recruiting={board.recruiting} events={upcoming} />
+      <StudyStatusBoard ongoing={board.ongoing} recruiting={board.recruiting} events={upcoming} today={today} />
 
       <div className='mt-6 grid items-start gap-6 lg:grid-cols-10'>
         <div className='flex flex-col gap-6 lg:col-span-4'>
