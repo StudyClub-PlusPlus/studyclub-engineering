@@ -24,7 +24,7 @@ export function dummyDays(c: Crew): WeekdayKey[] {
 
 const NA_ZONES = ['America/Los_Angeles', 'America/New_York', 'America/Vancouver'] as const;
 
-/** 북미는 서부 · 동부 · 밴쿠버로 나눈다. 기타 지역은 온보딩 전(시간대 없음)으로 둔다 — 셈에서 빠지는 경우를 보이려고 */
+/** 북미는 서부 · 동부 · 밴쿠버로 나눈다. 기타 지역은 온보딩 전(시간대 없음)으로 둔다 — 칸판은 이 사람을 KST 로 센다 */
 export function dummyTimeZone(c: Crew): string | null {
   if (c.region === 'KR') return 'Asia/Seoul';
   if (c.region === 'NA') return NA_ZONES[seedOf(c.id) % NA_ZONES.length]!;

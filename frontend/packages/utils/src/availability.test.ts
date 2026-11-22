@@ -74,7 +74,7 @@ describe('availabilityOverlap', () => {
     expect(at(r, 0, 7).ids).toEqual(['kr']);
   });
 
-  it('시간대가 없거나 요일이 없는 사람은 칸에 넣지 않고, 시간대 없는 수를 따로 센다', () => {
+  it('시간대가 없거나 읽을 수 없으면 KST 로 세고, 요일이 없는 사람은 넣지 않는다', () => {
     const r = availabilityOverlap(
       [
         { id: 1, days: ['mon'], timeZone: null },
@@ -82,12 +82,13 @@ describe('availabilityOverlap', () => {
         { id: 3, days: ['mon'], timeZone: 'Not/AZone' },
         { id: 4, days: ['wed'], timeZone: 'Asia/Seoul' },
       ],
-      { baseZone: 'Asia/Seoul', excludeNight: false, now: NOV },
+      { baseZone: 'America/Los_Angeles', excludeNight: false, now: NOV },
     );
-    expect(r.counted).toBe(1);
-    expect(r.noZone).toBe(2);
-    expect(at(r, 0, 12).ids).toEqual([]);
-    expect(at(r, 2, 12).ids).toEqual([4]);
+    expect(r.counted).toBe(3);
+    // KST 월 0시 = PT 일 7시(PST) — 시간대 없는 1 · 3 은 KST 월요일로 들어간다
+    expect(at(r, 6, 7).ids).toEqual([1, 3]);
+    expect(at(r, 6, 7).byZone).toEqual({ 'Asia/Seoul': 2 });
+    expect(at(r, 6, 6).ids).toEqual([]);
   });
 
   it('여러 사람이 겹치면 칸 인원과 최대값이 커진다', () => {

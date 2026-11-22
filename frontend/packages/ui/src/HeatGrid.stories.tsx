@@ -50,3 +50,17 @@ export const Selectable: Story = {
 export const Empty: Story = {
   args: { value: () => 0, max: 0, describe: (r: number, c: number) => `${DAYS[r]} ${c}시 · 0명` },
 };
+
+const HOURS = Array.from({ length: 24 }, (_, h) => ({ key: String(h), label: String(h) }));
+const NAMES = ['지우', '민준', '서연', '하준', '도윤', '수아', '예준'];
+
+/** 시각을 줄, 요일을 열로 — 말풍선(`tooltip`)에 그 칸에 든 사람 이름을 나열한다. */
+export const HoursByDays: Story = {
+  args: {
+    rows: HOURS,
+    columns: ROWS,
+    value: (h: number, d: number) => sample(d, h),
+    describe: (h: number, d: number) => `${DAYS[d]} ${h}시 · ${sample(d, h)}명`,
+    tooltip: (h: number, d: number) => NAMES.slice(0, sample(d, h)).join(', ') || '없음',
+  },
+};

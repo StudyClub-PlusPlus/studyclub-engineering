@@ -24,6 +24,8 @@ export interface HeatGridProps {
   unit?: string;
   /** 아무 칸에도 올라가 있지 않을 때 격자 아래 한 줄 */
   hint?: ReactNode;
+  /** 칸에 마우스 · 포커스를 올리면 칸 옆에 띄우는 말풍선 내용 (예: 그 칸에 든 사람 이름). 없으면 띄우지 않는다. */
+  tooltip?: (row: number, col: number) => ReactNode;
   className?: string;
 }
 
@@ -49,13 +51,31 @@ export function HeatGrid({
   onSelect,
   unit = '',
   hint,
+  tooltip,
   className,
 }: HeatGridProps) {
   const [active, setActive] = useState<HeatGridCell | null>(null);
+  const [tipAt, setTipAt] = useState<{ top: number; left: number; flip: boolean } | null>(null);
+  const boxRef = useRef<HTMLDivElement | null>(null);
   const [focus, setFocus] = useState<HeatGridCell>(selected ?? { row: 0, col: 0 });
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const cols = columns.length;
   const shown = active ?? selected ?? null;
+
+  function enter(cell: HeatGridCell, el: HTMLElement) {
+    setActive(cell);
+    const box = boxRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const r = el.getBoundingClientRect();
+    // 칸 오른쪽에 띄우고, 오른쪽 자리가 모자라면 왼쪽에 띄운다
+    const flip = r.right + 224 > box.right;
+    setTipAt({ top: r.top - box.top + r.height / 2, left: flip ? r.left - box.left : r.right - box.left, flip });
+  }
+
+  function leave() {
+    setActive(null);
+    setTipAt(null);
+  }
 
   function move(ev: KeyboardEvent, row: number, col: number) {
     const delta: Record<string, [number, number]> = {
@@ -76,19 +96,19 @@ export function HeatGrid({
     if (!next) return;
     ev.preventDefault();
     setFocus(next);
-    setActive(next);
     refs.current[next.row * cols + next.col]?.focus();
   }
 
   return (
-    <div className={cx('min-w-0', className)}>
+    <div ref={boxRef} className={cx('relative min-w-0', className)}>
       <div className='overflow-x-auto pb-1'>
         <div
           role='grid'
           aria-label={ariaLabel}
-          className='grid min-w-[36rem] gap-0.5'
-          style={{ gridTemplateColumns: `2rem repeat(${cols}, minmax(0, 1fr))` }}
-          onMouseLeave={() => setActive(null)}
+          // 열이 많으면(시각 24칸) 좁은 화면에서 가로로 민다. 열이 적으면(요일 7칸) 그대로 줄어든다
+          className={cx('grid gap-0.5', cols > 12 ? 'min-w-[36rem]' : 'min-w-[16rem]')}
+          style={{ gridTemplateColumns: `2.5rem repeat(${cols}, minmax(0, 1fr))` }}
+          onMouseLeave={leave}
         >
           <div role='row' className='contents'>
             <span role='columnheader' aria-hidden className='h-5' />
@@ -96,7 +116,10 @@ export function HeatGrid({
               <span
                 key={c.key}
                 role='columnheader'
-                className='tnum h-5 overflow-visible whitespace-nowrap type-label-sm text-fg-muted'
+                className={cx(
+                  'tnum h-5 overflow-visible whitespace-nowrap type-label-sm text-fg-muted',
+                  cols <= 12 && 'text-center',
+                )}
               >
                 {c.label}
               </span>
@@ -104,7 +127,7 @@ export function HeatGrid({
           </div>
           {rows.map((r, ri) => (
             <div key={r.key} role='row' className='contents'>
-              <span role='rowheader' className='flex items-center type-label-sm text-fg-secondary'>
+              <span role='rowheader' className='tnum flex items-center type-label-sm text-fg-secondary'>
                 {r.label}
               </span>
               {columns.map((c, ci) => {
@@ -128,12 +151,12 @@ export function HeatGrid({
                         isSelected && 'outline-2 outline-offset-1 outline-fg',
                         onSelect ? 'cursor-pointer' : 'cursor-default',
                       )}
-                      onMouseEnter={() => setActive({ row: ri, col: ci })}
-                      onFocus={() => {
+                      onMouseEnter={(ev) => enter({ row: ri, col: ci }, ev.currentTarget)}
+                      onFocus={(ev) => {
                         setFocus({ row: ri, col: ci });
-                        setActive({ row: ri, col: ci });
+                        enter({ row: ri, col: ci }, ev.currentTarget);
                       }}
-                      onBlur={() => setActive(null)}
+                      onBlur={leave}
                       onKeyDown={(ev) => move(ev, ri, ci)}
                       onClick={() => onSelect?.(isSelected ? null : { row: ri, col: ci })}
                     />
@@ -144,6 +167,19 @@ export function HeatGrid({
           ))}
         </div>
       </div>
+      {tooltip && active && tipAt && (
+        <div
+          role='tooltip'
+          className={cx(
+            'pointer-events-none absolute z-30 w-52 max-w-[calc(100vw-2rem)] -translate-y-1/2 rounded-card border border-border bg-surface-raised p-3 shadow-md',
+            tipAt.flip ? '-translate-x-full -ml-2' : 'ml-2',
+          )}
+          style={{ top: tipAt.top, left: tipAt.left }}
+        >
+          <p className='type-label-sm font-semibold text-fg'>{describe(active.row, active.col)}</p>
+          <div className='mt-1 type-label-sm text-fg-secondary'>{tooltip(active.row, active.col)}</div>
+        </div>
+      )}
       <div className='mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1'>
         <p aria-live='polite' className='min-h-5 type-body-sm text-fg'>
           {shown ? describe(shown.row, shown.col) : <span className='text-fg-muted'>{hint}</span>}

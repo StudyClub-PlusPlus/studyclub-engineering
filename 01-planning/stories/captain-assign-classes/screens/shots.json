@@ -3,7 +3,7 @@
     {
       "story": "captain-assign-classes",
       "name": "availability-board",
-      "title": "신청자 탭 — 참여 가능 시간 (KST 기준 · 현지 밤 빼기) · 참여 가능 요일 열",
+      "title": "신청자 탭 — 참여 가능 시간 (시각 × 요일 · KST 기준 · 현지 밤 빼기)",
       "path": "/proto/console/studies/1",
       "viewport": "desktop",
       "click": ["신청자"],
@@ -11,12 +11,22 @@
     },
     {
       "story": "captain-assign-classes",
-      "name": "availability-picked",
-      "title": "칸을 고르면 그 시각에 되는 크루만 명단에 남는다",
+      "name": "availability-hover",
+      "title": "칸에 올리면 그 시각에 되는 크루 닉네임을 말풍선으로 보인다",
       "path": "/proto/console/studies/1",
       "viewport": "desktop",
-      "click": ["신청자", "목 21시 KST · 9명"],
-      "scrollTo": "[data-anno~=\"class:3\"]"
+      "click": ["신청자"],
+      "scrollTo": "[data-anno~=\"class:3\"]",
+      "hover": "토 21시 KST · 11명"
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-picked",
+      "title": "칸을 고르면 그 시각에 되는 크루만 명단에 남는다 · 명단의 참여 가능 요일 열",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": ["신청자", "목 21시 KST · 10명"],
+      "scrollTo": "[data-anno~=\"class:4\"]"
     },
     {
       "story": "captain-assign-classes",
@@ -30,11 +40,12 @@
     {
       "story": "captain-assign-classes",
       "name": "availability-mobile",
-      "title": "모바일 — 격자만 가로로 민다",
+      "title": "모바일 — 요일 7열이라 칸판은 화면에 맞고, 명단 표는 가로로 민다",
       "path": "/proto/console/studies/1",
       "viewport": "mobile",
       "click": ["신청자"],
-      "scrollTo": "[data-anno~=\"class:3\"]"
+      "scrollTo": "[data-anno~=\"class:4\"], [data-anno~=\"class:5\"]",
+      "fullPage": false
     }
   ]
 }

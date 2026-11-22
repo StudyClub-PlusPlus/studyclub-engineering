@@ -97,7 +97,7 @@ function ParticipantAssignment({
     () =>
       filtered
         .filter((p) => p.status === 'ACTIVE' || p.status === 'PAUSED')
-        .map((p) => ({ id: p.participantId, days: p.availableDays, timeZone: p.timeZone })),
+        .map((p) => ({ id: p.participantId, name: p.nickname, days: p.availableDays, timeZone: p.timeZone })),
     [filtered],
   );
   const rows = timePick ? filtered.filter((p) => timePick.ids.includes(p.participantId)) : filtered;
@@ -164,6 +164,8 @@ function ParticipantAssignment({
           </p>
         )}
         <TableCard
+          // 칸이 많아 좁은 화면에서 줄이지 않고 가로로 민다
+          tableClassName='min-w-[64rem]'
           top={
             <TableActionBar
               position='top'

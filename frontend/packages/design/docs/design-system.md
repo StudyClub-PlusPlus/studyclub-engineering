@@ -516,7 +516,7 @@ IconButton 만 xs 24px/radius8/아이콘14 가 있다 — 표 칸 · 글줄 안�
 | Nav | 사이트=상단 가로 네비(surface-raised + border 하단), 콘솔=좌측 사이드바(page-bg, active primary-light/primary-dark) |
 | Empty State | 일러스트/아이콘 + 안내 카피(~해요체) + 주요 CTA. 예: "아직 신청한 스터디가 없어요" |
 | Help Popover | 제목 · 값 옆 IconButton xs(「?」, 기준 안내는 ⓘ)를 누르면 아래 1.5 간격에 뜬다. surface-raised · border · radius-card · shadow-md · p-3, 폭 18rem(화면 폭 -2rem 상한), 글자 type-label-sm text-secondary. 바깥 클릭 · 포커스 이동 · Esc 로 닫고 Esc 는 단추로 포커스를 돌린다. align으로 선호 정렬을 정하고, 화면 양쪽에 최소 16px 여백이 남도록 위치를 자동 보정한다. 화면 크기 변경·스크롤에도 위치를 다시 맞춘다. 늘 펼쳐 두는 안내문 대신 쓴다 |
-| Heat Grid | 행 × 열 칸(예: 요일 × 시각)의 많고 적음을 §2-7 히트 단계로 칠한다. 칸 사이 2px 간격 · 칸 radius-xs(2px) · 행 머리 type-label-sm text-secondary · 열 머리는 몇 칸마다만 type-label-sm text-muted. 칸은 누르는 단추 — 고른 칸은 2px `fg` 테두리 + `aria-pressed`, 다시 누르면 풀린다. 마우스 · 포커스가 올라간 칸의 설명을 격자 아래 한 줄(aria-live)에 보이고, 화살표 키로 칸을 옮긴다(로빙 tabindex). 아래에 「적음 → 많음」 범례와 최대값. 좁은 화면은 격자만 가로 스크롤 |
+| Heat Grid | 행 × 열 칸(예: 요일 × 시각)의 많고 적음을 §2-7 히트 단계로 칠한다. 칸 사이 2px 간격 · 칸 radius-xs(2px) · 행 머리 type-label-sm text-secondary · 열 머리는 몇 칸마다만 type-label-sm text-muted. 칸은 누르는 단추 — 고른 칸은 2px `fg` 테두리 + `aria-pressed`, 다시 누르면 풀린다. 마우스 · 포커스가 올라간 칸의 설명을 격자 아래 한 줄(aria-live)에 보이고, `tooltip` 을 주면 칸 옆에 말풍선(surface-raised · border · radius-card · shadow-md, 자리가 모자라면 왼쪽)으로 설명과 내용(예: 사람 이름)을 띄우며, 화살표 키로 칸을 옮긴다(로빙 tabindex). 아래에 「적음 → 많음」 범례와 최대값. 열이 12칸을 넘으면 좁은 화면에서 격자만 가로 스크롤 |
 | Pagination / Segmented | segmented control은 track cloud, active surface-raised + shadow-xs |
 
 ---

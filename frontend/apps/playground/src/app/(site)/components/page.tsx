@@ -785,6 +785,7 @@ export default function ComponentsCatalog() {
 }
 
 const HEAT_DAYS = ['월', '화', '수', '목', '금', '토', '일'];
+const HEAT_NAMES = ['지우', '민준', '서연', '하준', '도윤', '수아', '예준'];
 
 function heatSample(row: number, col: number): number {
   const evening = col >= 19 && col <= 22 ? 4 : col >= 9 && col <= 18 ? 2 : col >= 7 ? 1 : 0;
@@ -806,6 +807,17 @@ function HeatGridDemo() {
         hint='칸에 올리면 인원이 보입니다'
         selected={cell}
         onSelect={setCell}
+      />
+      <HeatGrid
+        aria-label='참여 가능 인원 · 시각 × 요일 (말풍선)'
+        rows={Array.from({ length: 24 }, (_, h) => ({ key: String(h), label: String(h) }))}
+        columns={HEAT_DAYS.map((d) => ({ key: d, label: d }))}
+        value={(h, d) => heatSample(d, h)}
+        max={7}
+        unit='명'
+        describe={(h, d) => `${HEAT_DAYS[d]} ${h}시 · ${heatSample(d, h)}명`}
+        tooltip={(h, d) => HEAT_NAMES.slice(0, heatSample(d, h)).join(', ') || '없음'}
+        hint='칸에 올리면 이름이 보입니다'
       />
       <HeatGrid
         aria-label='빈 격자'

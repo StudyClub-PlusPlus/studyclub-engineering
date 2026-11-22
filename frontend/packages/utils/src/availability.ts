@@ -22,10 +22,13 @@ export const WEEKDAY_LABELS_KO: Record<WeekdayKey, string> = {
 /** 「현지 밤 빼기」 — 현지 0시 이상 이 시각 미만은 셈에서 뺀다. */
 export const NIGHT_END_HOUR = 7;
 
+/** 프로필 시간대가 없거나 읽을 수 없는 사람은 한국 시간으로 본다. */
+export const DEFAULT_AVAILABILITY_ZONE = 'Asia/Seoul';
+
 export type AvailabilityPerson<Id = string | number> = {
   id: Id;
   days: readonly string[];
-  /** IANA 시간대. 없으면 현지 요일을 알 수 없어 셈에서 뺀다. */
+  /** IANA 시간대. 없거나 읽을 수 없으면 {@link DEFAULT_AVAILABILITY_ZONE}(KST)로 본다. */
   timeZone: string | null;
 };
 
@@ -44,10 +47,8 @@ export type AvailabilityOverlap<Id = string | number> = {
   cells: OverlapCell<Id>[][];
   /** 한 칸의 최대 인원 — 진하기의 기준 */
   max: number;
-  /** 셈에 든 사람 수 */
+  /** 셈에 든 사람 수 — 요일을 하나 이상 고른 사람 */
   counted: number;
-  /** 시간대가 없어 뺀 사람 수 (요일은 있음) */
-  noZone: number;
   /** 기준 주의 월요일 (기준 시간대, yyyy-mm-dd) */
   weekStart: string;
 };
@@ -81,9 +82,25 @@ function formatterOf(zone: string): Intl.DateTimeFormat {
   return f;
 }
 
-const WEEKDAY_INDEX: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+const WEEKDAY_INDEX: Record<string, number> = {
+  Mon: 0,
+  Tue: 1,
+  Wed: 2,
+  Thu: 3,
+  Fri: 4,
+  Sat: 5,
+  Sun: 6,
+};
 
-type ZonedParts = { y: number; m: number; d: number; hour: number; minute: number; second: number; weekday: number };
+type ZonedParts = {
+  y: number;
+  m: number;
+  d: number;
+  hour: number;
+  minute: number;
+  second: number;
+  weekday: number;
+};
 
 function partsOf(zone: string, at: number): ZonedParts {
   const get: Record<string, string> = {};
@@ -134,8 +151,11 @@ export function availabilityOverlap<Id extends string | number>(
   const monday = new Date(Date.UTC(today.y, today.m - 1, today.d - today.weekday));
 
   const withDays = people.filter((p) => p.days.some((k) => (WEEKDAY_KEYS as readonly string[]).includes(k)));
-  const zoned = withDays.filter((p) => isValidTimeZone(p.timeZone));
-  const zones = [...new Set(zoned.map((p) => p.timeZone as string))];
+  const zoned = withDays.map((p) => ({
+    ...p,
+    timeZone: isValidTimeZone(p.timeZone) ? p.timeZone : DEFAULT_AVAILABILITY_ZONE,
+  }));
+  const zones = [...new Set(zoned.map((p) => p.timeZone))];
 
   const cells: OverlapCell<Id>[][] = [];
   let max = 0;
@@ -148,11 +168,11 @@ export function availabilityOverlap<Id extends string | number>(
       const ids: Id[] = [];
       const byZone: Record<string, number> = {};
       for (const p of zoned) {
-        const lp = local.get(p.timeZone as string)!;
+        const lp = local.get(p.timeZone)!;
         if (excludeNight && lp.hour < NIGHT_END_HOUR) continue;
         if (!p.days.includes(WEEKDAY_KEYS[lp.weekday]!)) continue;
         ids.push(p.id);
-        byZone[p.timeZone as string] = (byZone[p.timeZone as string] ?? 0) + 1;
+        byZone[p.timeZone] = (byZone[p.timeZone] ?? 0) + 1;
       }
       if (ids.length > max) max = ids.length;
       row.push({ day, hour, ids, byZone });
@@ -164,7 +184,6 @@ export function availabilityOverlap<Id extends string | number>(
     cells,
     max,
     counted: zoned.length,
-    noZone: withDays.length - zoned.length,
     weekStart: ymd(monday.getUTCFullYear(), monday.getUTCMonth() + 1, monday.getUTCDate()),
   };
 }

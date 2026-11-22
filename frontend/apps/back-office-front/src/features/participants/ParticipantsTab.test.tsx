@@ -593,7 +593,7 @@ describe('참여 가능 시간', () => {
     await userEvent.click(await screen.findByRole('button', { name: '월 12시 KST · 1명' }));
     await userEvent.click(screen.getByRole('tab', { name: 'PCT' }));
     expect(screen.queryByText(/에 되는 크루 \d+명/)).not.toBeInTheDocument();
-    expect(screen.getByRole('grid', { name: '참여 가능 인원 · 요일 × 시각 (PCT)' })).toBeVisible();
+    expect(screen.getByRole('grid', { name: '참여 가능 인원 · 시각 × 요일 (PCT)' })).toBeVisible();
     expect(within(screen.getByRole('table')).getByText('북미캡틴')).toBeVisible();
   });
 
@@ -612,14 +612,23 @@ describe('참여 가능 시간', () => {
     expect(screen.queryByText(/에 되는 크루 \d+명/)).not.toBeInTheDocument();
   });
 
-  it('시간대가 없는 크루는 세지 않고 그 수를 알린다', async () => {
+  it('시간대가 없는 크루는 KST 로 세고, 따로 알리지 않는다', async () => {
     mount({
       ...withDays,
       participants: withDays.participants.map((p) => (p.participantId === 42 ? { ...p, timeZone: null } : p)),
     });
-    expect(
-      await screen.findByText('시간대가 없는 1명은 빼고 셌습니다 — 프로필에서 시간대를 정하지 않은 크루입니다.'),
-    ).toBeVisible();
+    // 북미캡틴이 KST 월요일로 들어가 한국크루와 겹친다
+    expect(await screen.findByRole('button', { name: '월 12시 KST · 2명' })).toBeVisible();
+    expect(screen.queryByText(/시간대가 없는/)).not.toBeInTheDocument();
+  });
+
+  it('칸에 올리면 그 시각에 되는 크루 닉네임을 말풍선으로 보인다', async () => {
+    mount(withDays);
+    await userEvent.hover(await screen.findByRole('button', { name: '월 12시 KST · 1명' }));
+    const tip = screen.getByRole('tooltip');
+    expect(tip).toHaveTextContent('월 12시 KST · 1명');
+    expect(tip).toHaveTextContent('한국크루');
+    expect(tip).not.toHaveTextContent('북미캡틴');
   });
 });
 

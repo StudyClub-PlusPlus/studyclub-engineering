@@ -95,7 +95,7 @@ export function CrewTab({
   );
   // 참여 가능 시간은 반 · 지역 필터로 좁힌 명단을 센다 — 「기본반에 남은 사람끼리 언제 되나」를 본다
   const people = useMemo(
-    () => filtered.map((c) => ({ id: c.id, days: dummyDays(c), timeZone: dummyTimeZone(c) })),
+    () => filtered.map((c) => ({ id: c.id, name: c.name, days: dummyDays(c), timeZone: dummyTimeZone(c) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 명단 구성이 바뀔 때만 다시 센다
     [filtered.map((c) => c.id).join()],
   );
@@ -325,6 +325,8 @@ export function CrewTab({
         </div>
         <div className='mt-2'>
           <TableCard
+            // 칸이 많아 좁은 화면에서 줄이지 않고 가로로 민다
+            tableClassName='min-w-[64rem]'
             top={
               // 표 맨 위 작업 바 — 한 줄. 왼쪽은 고른 크루에 하는 일, 오른쪽은 저장 (POL-0008). 일정 · 출석 표와 같은 자리 · 같은 모양
               active.length > 0 ? (
