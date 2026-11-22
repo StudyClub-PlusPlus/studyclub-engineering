@@ -218,6 +218,8 @@ test('참여 가능 시간: 칸을 골라 그 시각에 되는 크루만 남기�
   await expect(daysCell('이네비')).toHaveText('월');
   await expect(daysCell('박캡틴')).toHaveText('-');
 
+  // 표는 처음에 접혀 있다 — 펼쳐서 칸을 고른다
+  await board.getByRole('button', { name: '표 펼치기' }).click();
   // KST 월 12시 = 뉴욕 일요일 밤 → 서울의 김크루만. KST 화 12시 = 뉴욕 월요일 밤 → 이네비만
   await expect(board.getByRole('button', { name: '화 12시 KST · 1명' })).toBeVisible();
   await board.getByRole('button', { name: '월 12시 KST · 1명' }).click();

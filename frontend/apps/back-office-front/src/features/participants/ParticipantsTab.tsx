@@ -304,7 +304,8 @@ function ParticipantAssignment({
                   </td>
                   <td>{p.discordNickname ?? '-'}</td>
                   <td>{p.email}</td>
-                  <td title={p.timeZone ?? undefined}>{p.timeZone ? zoneLabel(p.timeZone) : '-'}</td>
+                  {/* 시간대 없는 크루 — 칸판은 KST 로 세지만 명단은 「미설정」 그대로 보인다 (#527 과 맞춤) */}
+                  <td title={p.timeZone ?? undefined}>{p.timeZone ? zoneLabel(p.timeZone) : '미설정'}</td>
                   {/* 크루가 고른 현지 요일 그대로 — 기준 시간대로 옮기면 하루가 이틀에 걸친다 */}
                   <td className='whitespace-nowrap'>{availableDaysText(p.availableDays) || '-'}</td>
                   <td>

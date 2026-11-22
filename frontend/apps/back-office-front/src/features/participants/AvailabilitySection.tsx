@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useState } from 'react';
 
-import { Button, FilterChip, HeatGrid, HelpPopover, Segmented, Switch, type HeatGridCell } from '@studyclub/ui';
+import { Button, FilterChip, HeatGrid, HelpPopover, Switch, type HeatGridCell } from '@studyclub/ui';
 import {
   NIGHT_END_HOUR,
   WEEKDAY_KEYS,
@@ -13,7 +13,8 @@ import {
 } from '@studyclub/utils';
 import { ArrowDown, ChevronDown } from 'lucide-react';
 
-import { DISPLAY_ZONES, zoneLabel } from '@/features/schedule/time';
+import { zoneLabel } from '@/features/schedule/time';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /** 고른 시각 — 칸 하나면 `hour` 만, 「가장 많이 되는 시간」 구간이면 `endHour` 까지 */
 export type AvailabilityPick = { day: number; hour: number; endHour?: number; baseZone: string; ids: number[] };
@@ -47,11 +48,12 @@ export function AvailabilitySection({
   /** 「명단에서 보기」가 스크롤해 갈 명단 영역의 id */
   rosterId: string;
 }) {
-  const [baseZone, setBaseZone] = useState<string>(DISPLAY_ZONES[0].iana);
+  // 기준 시간대 = 백오피스 표시 시간대(지금은 운영자 프로필, 없으면 서울 · 헤더 시간대가 생기면 그것). 칸판에 따로 고르는 칸을 두지 않는다
+  const baseZone = useDisplayTimeZone();
   const [excludeNight, setExcludeNight] = useState(true);
   const [showNightRows, setShowNightRows] = useState(false);
-  // 표만 접는다 — 「가장 많이 되는 시간」과 고른 시각 줄은 접어도 남는다
-  const [gridOpen, setGridOpen] = useState(true);
+  // 처음엔 표를 접어 둔다(간단히 보기) — 「가장 많이 되는 시간」과 고른 시각 줄은 접어도 남는다
+  const [gridOpen, setGridOpen] = useState(false);
   const gridId = useId();
   const hours = showNightRows ? ALL_HOURS : DAY_HOURS;
   const overlap = useMemo(
@@ -86,7 +88,7 @@ export function AvailabilitySection({
     onPick({ day: cell.col, hour, baseZone, ids: cellAt(hour, cell.col).ids });
   }
 
-  // 기준 · 새벽 빼기 · 줄 보기를 바꾸면 고른 칸의 사람이 달라질 수 있다 — 고른 칸은 푼다
+  // 새벽 빼기 · 줄 보기를 바꾸면 고른 칸의 사람이 달라질 수 있다 — 고른 칸은 푼다
   function change<T>(set: (v: T) => void) {
     return (v: T) => {
       set(v);
@@ -104,22 +106,15 @@ export function AvailabilitySection({
         <h2 className='flex items-center gap-1.5 font-semibold'>
           참여 가능 시간
           <span className='tnum type-label-lg text-fg-muted'>{overlap.counted}명</span>
+          <span className='type-label-sm font-normal text-fg-muted'>{zoneLabel(baseZone)} 기준</span>
           <HelpPopover label='참여 가능 시간 설명'>
             신청서는 요일만 받습니다. 고른 요일은 그 크루 현지의 하루 전체로 보고, 기준 시간대의 요일 · 시각으로 옮겨
-            셉니다. 프로필 시간대가 없는 크루는 한국 시간으로 봅니다. 북미 서머타임은 이번 주 날짜로 계산합니다. 「크루
-            새벽 빼기」는 크루 현지 0~{NIGHT_END_HOUR}시를 세지 않고, 「0~6시 줄 보기」는 기준 시간대의 0~6시 줄을
-            펼칩니다.
+            셉니다. 기준은 백오피스 표시 시간대입니다. 프로필 시간대가 없는 크루는 한국 시간으로 봅니다. 북미 서머타임은
+            이번 주 날짜로 계산합니다. 「크루 새벽 빼기」는 크루 현지 0~{NIGHT_END_HOUR}시를 세지 않고, 「0~6시 줄
+            보기」는 기준 시간대의 0~6시 줄을 펼칩니다.
           </HelpPopover>
         </h2>
         <div className='ml-auto flex flex-wrap items-center gap-3'>
-          <Segmented
-            size='sm'
-            shape='pill'
-            aria-label='기준 시간대'
-            options={DISPLAY_ZONES.map((z) => ({ value: z.iana as string, label: z.label }))}
-            value={baseZone}
-            onChange={change(setBaseZone)}
-          />
           <Switch label='크루 새벽 빼기' checked={excludeNight} onCheckedChange={change(setExcludeNight)} />
           <Switch label='0~6시 줄 보기' checked={showNightRows} onCheckedChange={change(setShowNightRows)} />
         </div>

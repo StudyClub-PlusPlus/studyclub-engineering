@@ -2,12 +2,24 @@
   "shots": [
     {
       "story": "captain-assign-classes",
-      "name": "availability-board",
-      "title": "신청자 탭 — 참여 가능 시간 (가장 많이 되는 시간 · 칸 안 인원 · KST 기준)",
+      "name": "availability-simple",
+      "title": "신청자 탭 — 처음엔 표를 접고 「가장 많이 되는 시간」만 (간단히 보기)",
       "path": "/proto/console/studies/1",
       "viewport": "desktop",
       "click": [
         "신청자"
+      ],
+      "scrollTo": "[data-anno~=\"class:3\"]"
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-board",
+      "title": "「표 펼치기」 — 시각 × 요일 칸 · 칸 안 인원 (기준: 백오피스 표시 시간대)",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": [
+        "신청자",
+        "표 펼치기"
       ],
       "scrollTo": "[data-anno~=\"class:3\"]"
     },
@@ -18,7 +30,8 @@
       "path": "/proto/console/studies/1",
       "viewport": "desktop",
       "click": [
-        "신청자"
+        "신청자",
+        "표 펼치기"
       ],
       "scrollTo": "[data-anno~=\"class:3\"]",
       "hover": "토 21시 KST · 11명"
@@ -44,21 +57,10 @@
       "viewport": "desktop",
       "click": [
         "신청자",
+        "표 펼치기",
         "목 21시 KST · 10명"
       ],
       "scrollTo": "[data-anno~=\"class:4\"]"
-    },
-    {
-      "story": "captain-assign-classes",
-      "name": "availability-pt",
-      "title": "기준 시간대 PT — 같은 신청자가 PT 의 요일 · 시각으로 다시 놓인다",
-      "path": "/proto/console/studies/1",
-      "viewport": "desktop",
-      "click": [
-        "신청자",
-        "PT"
-      ],
-      "scrollTo": "[data-anno~=\"class:3\"]"
     },
     {
       "story": "captain-assign-classes",
@@ -67,7 +69,8 @@
       "path": "/proto/console/studies/1",
       "viewport": "mobile",
       "click": [
-        "신청자"
+        "신청자",
+        "표 펼치기"
       ],
       "scrollTo": "[data-anno~=\"class:4\"], [data-anno~=\"class:5\"]",
       "fullPage": false
