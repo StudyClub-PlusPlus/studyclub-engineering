@@ -599,8 +599,12 @@ describe('참여 가능 시간', () => {
 
   it('현지 밤 빼기를 끄면 크루 현지 새벽 칸도 센다', async () => {
     mount(withDays);
+    // 기준 시간대 0 ~ 6시 줄은 처음엔 숨기고, 「밤 시간 보기」로 펼친다
+    expect(await screen.findByRole('button', { name: '월 7시 KST · 1명' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /^월 3시 KST/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('switch', { name: '밤 시간(0~7시) 보기' }));
     // KST 월 3시 — 한국크루 현지 새벽
-    expect(await screen.findByRole('button', { name: '월 3시 KST · 0명' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '월 3시 KST · 0명' })).toBeVisible();
     await userEvent.click(screen.getByRole('switch', { name: '현지 밤(0~7시) 빼기' }));
     expect(screen.getByRole('button', { name: '월 3시 KST · 1명' })).toBeVisible();
   });

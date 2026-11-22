@@ -14,8 +14,9 @@ import {
 
 export type AvailabilityPick = { day: number; hour: number; baseZone: string; ids: string[] };
 
-// 시각을 줄(0 ~ 23시, 모두 적는다), 요일을 열로 둔다
-const ROWS = Array.from({ length: 24 }, (_, h) => ({ key: String(h), label: String(h) }));
+// 시각을 줄(모두 적는다), 요일을 열로 둔다. 기준 시간대 0 ~ 6시는 스터디를 열지 않는 시각이라 처음엔 숨긴다
+const ALL_HOURS = Array.from({ length: 24 }, (_, h) => h);
+const DAY_HOURS = ALL_HOURS.filter((h) => h >= NIGHT_END_HOUR);
 const COLS = WEEKDAY_KEYS.map((k) => ({ key: k, label: WEEKDAY_LABELS_KO[k] }));
 
 /** 『월 21시 KST』 */
@@ -38,13 +39,18 @@ export function AvailabilityBoard({
 }) {
   const [baseZone, setBaseZone] = useState<string>(SCHEDULE_ZONES[0]!.iana);
   const [excludeNight, setExcludeNight] = useState(true);
+  const [showNightRows, setShowNightRows] = useState(false);
+  const hours = showNightRows ? ALL_HOURS : DAY_HOURS;
   const overlap = useMemo(
     () => availabilityOverlap(people, { baseZone, excludeNight }),
     [people, baseZone, excludeNight],
   );
   const names = useMemo(() => new Map(people.map((p) => [p.id, p.name])), [people]);
-  const selected = pick && pick.baseZone === baseZone ? { row: pick.hour, col: pick.day } : null;
   const cellAt = (hour: number, day: number) => overlap.cells[day]![hour]!;
+  const pickRow = pick && pick.baseZone === baseZone ? hours.indexOf(pick.hour) : -1;
+  const selected = pick && pickRow >= 0 ? { row: pickRow, col: pick.day } : null;
+  // 진하기의 기준은 보이는 줄의 최대 인원
+  const max = Math.max(0, ...hours.flatMap((h) => WEEKDAY_KEYS.map((_, d) => cellAt(h, d).ids.length)));
 
   function describe(hour: number, day: number): string {
     const cell = cellAt(hour, day);
@@ -62,7 +68,8 @@ export function AvailabilityBoard({
 
   function select(cell: HeatGridCell | null) {
     if (!cell) return onPick(null);
-    onPick({ day: cell.col, hour: cell.row, baseZone, ids: cellAt(cell.row, cell.col).ids });
+    const hour = hours[cell.row]!;
+    onPick({ day: cell.col, hour, baseZone, ids: cellAt(hour, cell.col).ids });
   }
 
   // 기준 · 밤 빼기를 바꾸면 고른 칸의 사람이 달라진다 — 고른 칸은 푼다
@@ -72,6 +79,10 @@ export function AvailabilityBoard({
   }
   function changeNight(next: boolean) {
     setExcludeNight(next);
+    onPick(null);
+  }
+  function changeNightRows(next: boolean) {
+    setShowNightRows(next);
     onPick(null);
   }
 
@@ -108,18 +119,25 @@ export function AvailabilityBoard({
               onCheckedChange={changeNight}
             />
           </span>
+          <span data-anno='class:3-6'>
+            <Switch
+              label={`밤 시간(0~${NIGHT_END_HOUR}시) 보기`}
+              checked={showNightRows}
+              onCheckedChange={changeNightRows}
+            />
+          </span>
         </div>
       </div>
       <div data-anno='class:3-4'>
         <HeatGrid
           aria-label={`참여 가능 인원 · 시각 × 요일 (${zoneSymbol(baseZone)})`}
-          rows={ROWS}
+          rows={hours.map((h) => ({ key: String(h), label: String(h) }))}
           columns={COLS}
-          value={(h, d) => cellAt(h, d).ids.length}
-          max={overlap.max}
+          value={(r, d) => cellAt(hours[r]!, d).ids.length}
+          max={max}
           unit='명'
-          describe={describe}
-          tooltip={who}
+          describe={(r, d) => describe(hours[r]!, d)}
+          tooltip={(r, d) => who(hours[r]!, d)}
           selected={selected}
           onSelect={select}
           hint='칸을 누르면 그 시각에 되는 크루만 명단에 남습니다.'
