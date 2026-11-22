@@ -20,7 +20,7 @@ const NAV: Array<{
 }> = [
   { href: '/', label: '대시보드', icon: LayoutDashboard, exact: true },
   { href: '/studies', label: '스터디', icon: BookOpen },
-  // feature 플래그가 false 이면 렌더에서 숨긴다 (FEATURES.EVENTS = true 로 바꾸면 메뉴 노출)
+  // feature 플래그가 false 이면 렌더에서 숨긴다
   { href: '/events', label: '행사', icon: CalendarDays, feature: 'EVENTS' },
   // 스터디원 + 운영진을 "유저" 하나로 통합 (실제 DB 유저 표시)
   { href: '/users', label: '유저', icon: Users },

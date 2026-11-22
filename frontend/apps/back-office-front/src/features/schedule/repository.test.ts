@@ -109,6 +109,6 @@ describe('일정 API 전송', () => {
           new Response(JSON.stringify({ errorCode: 'FORBIDDEN', errorMessage: '권한이 없습니다.' }), { status: 403 }),
         ),
     );
-    await expect(repository.deleteMeetings(10, 3, [7])).rejects.toEqual(new ApiError(403, '권한이 없습니다.'));
+    await expect(repository.deleteMeetings(10, 3, [7])).rejects.toEqual(new ApiError(403, '권한이 없습니다.', 'FORBIDDEN'));
   });
 });
