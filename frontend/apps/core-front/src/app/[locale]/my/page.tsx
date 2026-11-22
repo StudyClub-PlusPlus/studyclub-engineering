@@ -9,6 +9,7 @@ import type { Locale } from '@studyclub/types';
 
 import { getUser, type SessionUser } from '@/features/auth/auth';
 import { IS_DEV, syncPreview } from '@/features/auth/preview';
+import { MyEventsSection } from '@/features/events/MyEventsSection';
 import { ProfileCard } from '@/features/profile/ProfileCard';
 import { PAGE } from '@/lib/layout';
 
@@ -50,6 +51,7 @@ export default function MyPage() {
       <h1 className='type-headline-lg'>마이페이지</h1>
 
       <ProfileCard user={user} locale={locale} onUserChange={setUser} />
+      <MyEventsSection locale={locale} />
     </div>
   );
 }

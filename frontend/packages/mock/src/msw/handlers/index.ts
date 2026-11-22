@@ -16,6 +16,7 @@ import {
   adminStudiesHandlers,
   adminStudyProgramsHandlers,
 } from "./studies";
+import { eventsHandlers, myEventsHandlers } from "./events";
 
 export { registerHandlers, type MockHandlerGroup } from "../utils";
 export {
@@ -47,6 +48,8 @@ export { studyNoticesHandlers, resetMockNotices } from "./notices";
 
 export const mockHandlerGroups: MockHandlerGroup[] = [
   analyticsHandlers,
+  eventsHandlers,
+  myEventsHandlers,
   studiesHandlers,
   adminStudiesHandlers,
   adminStudyProgramsHandlers,

@@ -4,6 +4,6 @@
  * API 준비 후 true 로 바꾼다.
  */
 export const FEATURES: Record<'EVENTS', boolean> = {
-  /** 행사 목록·상세. TODO(api): GET /api/events 준비되면 true 로 바꾼다. */
-  EVENTS: false,
+  /** 행사 목록·상세 — event-registration API (`GET /api/events` 등) */
+  EVENTS: true,
 };

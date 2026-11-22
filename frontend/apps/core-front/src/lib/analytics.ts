@@ -103,6 +103,7 @@ export type AnalyticsEvent =
       name: 'Event Card Clicked';
       props: { event_id: string; event_title_ko: string; source: 'landing' | 'events_list' };
     }
+  | { name: 'Event Apply Form Opened'; props: { event_id: string } }
 
   // ── Study application ────────────────────────────────────────────────────────
   | { name: 'Study Apply CTA Clicked'; props: StudyBaseProps & { has_external_form: boolean } }
