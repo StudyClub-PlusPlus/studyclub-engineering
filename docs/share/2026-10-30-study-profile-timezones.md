@@ -1,4 +1,6 @@
 ---
+
+> 후속 개정: [2026-11-22 시간대 확장 PRD](../../01-planning/stories/timezone-expansion/PRD.md). 이 문서는 당시 결정 기록이다. 제한된 4개 지역·내 시간 기준 반복·백오피스 프로필 우선은 후속 정책으로 대체한다.
 상태: 결정됨
 반영:
   - 01-planning/_registry/policies/POL-0006-timezone.md — 됨 (이 PR)

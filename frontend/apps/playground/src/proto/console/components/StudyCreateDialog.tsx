@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   EMPTY_FORM,
@@ -15,6 +15,7 @@ import type { Study } from '@studyclub/types';
 import { Button, Modal } from '@studyclub/ui';
 
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { saveRecruitmentZones } from '@/proto/lib/recruitment-zone-store';
 import { STUDY_CREATE_SPEC as SPEC } from '@/proto/specs/study-create';
 
 /**
@@ -63,18 +64,20 @@ export function StudyCreateDialog({
 }) {
   const editing = Boolean(study);
   const [form, setForm] = useState<StudyFormValues>(EMPTY_FORM);
+  const dirty = useRef(false);
   const [errors, setErrors] = useState<StudyFormErrors>({});
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || dirty.current) return;
     setForm(study ? studyToForm(study) : nextOf ? nextCohortForm(nextOf) : EMPTY_FORM);
     setErrors({});
     setDone(false);
   }, [open, study, nextOf]);
 
   function close() {
+    dirty.current = false;
     setForm(EMPTY_FORM);
     setErrors({});
     setDone(false);
@@ -89,6 +92,7 @@ export function StudyCreateDialog({
     setSaving(true);
     // TODO(api): POST /api/studies — 저장 대상 테이블이 없어 화면 상태로만 처리
     await new Promise((r) => setTimeout(r, 400));
+    if (study) saveRecruitmentZones(study.id, form.recruitmentTimeZones);
     setSaving(false);
     setDone(true);
   }
@@ -119,7 +123,7 @@ export function StudyCreateDialog({
               : '등록되었습니다. 아직 사이트에 보이지 않습니다 — 목록에서 공개를 켜세요.'}
           </p>
         ) : (
-          <StudyForm mode={nextOf ? 'edit' : 'create'} value={form} errors={errors} onChange={setForm} />
+          <StudyForm mode={nextOf ? 'edit' : 'create'} value={form} errors={errors} onChange={(next) => { dirty.current = true; setForm(next); }} />
         )}
       </Modal>
     </>

@@ -1,10 +1,11 @@
 import type { Locale } from '@core/lib/content';
 import { usesVancouverPacificTime } from '@core/lib/time-zone-rules';
+import { zoneLabel } from '@core/lib/time-zones';
 import { ZONES } from '@core/lib/zones';
 
 const CITY: Record<string, { ko: string; en: string; symbol: string }> = {
   'Asia/Seoul': { ko: '서울', en: 'Seoul', symbol: 'KST' },
-  'America/New_York': { ko: '뉴욕·토론토', en: 'New York · Toronto', symbol: 'ET' },
+  'America/New_York': { ko: '뉴욕', en: 'New York', symbol: 'ET' },
   'America/Toronto': { ko: '토론토', en: 'Toronto', symbol: 'ET' },
   'America/Vancouver': { ko: '밴쿠버', en: 'Vancouver', symbol: 'PCT' },
   'America/Los_Angeles': { ko: 'LA', en: 'LA', symbol: 'PT' },
@@ -48,7 +49,7 @@ export function zoneAbbreviation(zone: string, at: Date): string {
 }
 
 export function scheduleZoneTitle(zone: string, locale: Locale = 'ko', at?: Date): string {
-  const city = CITY[zone]?.[locale] ?? zone.split('/').at(-1)?.replaceAll('_', ' ') ?? zone;
+  const city = CITY[zone]?.[locale] ?? zoneLabel(zone, locale);
   return `${city}(${at ? zoneAbbreviation(zone, at) : zoneSymbol(zone)})`;
 }
 

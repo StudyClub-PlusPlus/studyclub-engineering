@@ -664,6 +664,12 @@ try {
   assert.doesNotMatch(formatDate('2026-11-14T00:00:00.000Z', 'America/Toronto'), /GMT/);
   const profileZonePreview = renderEventNoticePreview(state.eventTemplates[0], state.events[0], 'ALL', '안내', 'Asia/Seoul');
   assert.match(profileZonePreview.body, /KST/);
+  const dstRangePreview = renderEventNoticePreview(
+    { ...state.eventTemplates[0], body: '{{eventSchedule}}', format: 'TEXT' },
+    { ...state.events[0], startsAt: '2026-11-01T05:30:00Z', endsAt: '2026-11-01T06:30:00Z' },
+    'ALL', '', 'America/Toronto',
+  );
+  assert.match(dstRangePreview.body, /01:30 EDT.*01:30 EST/);
   const zoned = createState(new Date(now), noticeBody);
   zoned.registrations.find((row) => row.id === 'sample-1').timeZone = 'Asia/Seoul';
   const approvedWithZone = transition(zoned, { type: 'DECIDE', registrationId: 'sample-1', status: 'CONFIRMED' }, now);

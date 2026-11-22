@@ -249,7 +249,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
       }
       // Playground completion only. Never send a real consent or registration request.
       resetMemberData();
-      setTimeZone(draft.timeZone);
+      setTimeZone(draft.timeZone, 'crew@example.com');
       setMarketing(draft.marketingAgreed);
       setUser({
         id: -1001,
@@ -342,6 +342,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
         </div>
 
         <TimeZonePicker
+          prioritizeCountries
           value={draft.timeZone}
           onChange={(value) => update('timeZone', value)}
           locale={locale}

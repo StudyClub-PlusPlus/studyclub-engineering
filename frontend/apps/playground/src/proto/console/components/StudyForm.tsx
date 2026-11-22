@@ -4,10 +4,16 @@ import { useRef, type ChangeEvent } from 'react';
 
 import { tx } from '@console/lib/l10n';
 import { MARKDOWN_HINT } from '@core/components/ApplicationFormUi';
+import { recruitmentTimeZones } from '@core/lib/recruitment-timezones';
+import { isValidZone } from '@core/lib/schedule-timezone';
 import { latestCohort, programs } from '@studyclub/mock';
-import { type Study, type StudyKind, type StudyTimezone } from '@studyclub/types';
+import { type Study, type StudyKind, type RecruitmentTimeZones } from '@studyclub/types';
 import { Button, Checkbox, Input, Select, Textarea, FilterChip } from '@studyclub/ui';
 import { STUDY_CATEGORIES, categoriesOf, toISODate } from '@studyclub/utils';
+
+import { RecruitmentTimeZoneField } from './RecruitmentTimeZoneField';
+import { recruitmentDeadlineDate } from '@/proto/lib/recruitment-deadline';
+import { withSavedRecruitmentZones } from '@/proto/lib/recruitment-zone-store';
 
 /**
  * 스터디 입력 폼 — **등록 팝업과 정보 탭이 나눠 쓴다.**
@@ -28,9 +34,6 @@ import { STUDY_CATEGORIES, categoriesOf, toISODate } from '@studyclub/utils';
  */
 
 export const KIND_LABEL: Record<StudyKind, string> = { study: '스터디', club: '클럽' };
-
-/** 「미정」을 빈 문자열로 다루는 게 폼 상태 전체와 일관된다 — 다른 선택 입력(카테고리 제외)도 빈 값이 「안 정함」이다. */
-export const TIMEZONE_LABEL: Record<StudyTimezone, string> = { KST: 'KST', PST: 'PST', both: '동시 진행(KST·PST)' };
 
 export type FormMode = 'create' | 'edit';
 
@@ -99,8 +102,8 @@ export type StudyFormValues = {
    * 실제로 회차를 만드는 요일·시간은 여기가 아니라 **반**이 갖는다 (크루 탭에서 정한다).
    */
   schedule: string;
-  /** STUDY.TIMEZONE. 빈 문자열 = 미정. 「진행 일정」과 달리 KST·PST·동시 진행 중 하나를 고르는 값이다. */
-  timezone: StudyTimezone | '';
+  /** 모집 범위이며 반 일정의 기준 시간대는 바꾸지 않는다. */
+  recruitmentTimeZones: RecruitmentTimeZones;
   /**
    * STUDY.THUMBNAIL_URL. 선택 입력 — 비우면 목록·상세가 카테고리 기반 기본 이미지를 쓴다.
    * 업로드한 파일의 미리보기 값(blob: URL)이 프로토타입 한정으로 여기 들어간다 — 실제 업로드
@@ -128,7 +131,7 @@ export const EMPTY_FORM: StudyFormValues = {
   capacity: '',
   unlimited: true,
   schedule: '',
-  timezone: '',
+  recruitmentTimeZones: { mode: 'unset', zones: [] },
   thumbnail: '',
   startAt: '',
   discordUrl: '',
@@ -146,7 +149,8 @@ export const EMPTY_FORM: StudyFormValues = {
  */
 export function cohortDefaults(programId: string): Partial<StudyFormValues> {
   const program = programs.find((p) => p.id === programId);
-  const latest = latestCohort(programId);
+  const latestSource = latestCohort(programId);
+  const latest = latestSource ? withSavedRecruitmentZones(latestSource) : undefined;
   return {
     programId,
     kind: 'club',
@@ -155,9 +159,7 @@ export function cohortDefaults(programId: string): Partial<StudyFormValues> {
       summary: tx(latest.summary),
       description: tx(latest.description),
       category: categoriesOf(latest)[0] ?? '',
-      // 시간대는 모임이 실제로 도는 기준이라 채널·드라이브와 같은 이유로 최신 기수 값을 물려준다 —
-      // 기수가 바뀌었다고 클럽이 갑자기 다른 시간대로 옮겨가지는 않는다.
-      timezone: latest.timezone ?? '',
+      recruitmentTimeZones: recruitmentTimeZones(latest),
       thumbnail: latest.image ?? '',
       discordUrl: latest.discord_url ?? '',
       driveUrl: latest.driveUrl ?? '',
@@ -166,8 +168,8 @@ export function cohortDefaults(programId: string): Partial<StudyFormValues> {
 }
 
 /** 기존 스터디를 폼 값으로 되돌린다. 화면에 보이는 값과 폼 값이 같아야 편집이 성립한다. */
-export function studyToForm(study: Study): StudyFormValues {
-  const deadline = toISODate(study.recruitment?.deadline) ?? '';
+export function studyToForm(study: Study, zone = 'Asia/Seoul'): StudyFormValues {
+  const deadline = recruitmentDeadlineDate(study, zone) ?? '';
   return {
     programMode: 'existing',
     programId: study.program?.id ?? '',
@@ -180,7 +182,7 @@ export function studyToForm(study: Study): StudyFormValues {
     capacity: study.recruitment?.capacity ? String(study.recruitment.capacity) : '',
     unlimited: !study.recruitment?.capacity,
     schedule: tx(study.schedule),
-    timezone: study.timezone ?? '',
+    recruitmentTimeZones: recruitmentTimeZones(study),
     thumbnail: study.image ?? '',
     startAt: toISODate(study.startAt) ?? '',
     discordUrl: study.discord_url ?? '',
@@ -200,6 +202,8 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
   if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim()))
     e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
+  if (f.recruitmentTimeZones.mode === 'selected' && (!f.recruitmentTimeZones.zones.length || !f.recruitmentTimeZones.zones.every(isValidZone)))
+    e.recruitmentTimeZones = '시간대를 하나 이상 선택하세요.';
   const isUrl = (v: string) => /^https?:\/\/.+/i.test(v.trim());
   if (f.discordUrl.trim() && !isUrl(f.discordUrl)) e.discordUrl = 'http(s):// 로 시작하는 주소를 입력하세요.';
   if (f.driveUrl.trim() && !isUrl(f.driveUrl)) e.driveUrl = 'http(s):// 로 시작하는 주소를 입력하세요.';
@@ -285,13 +289,13 @@ export function StudyForm({
           label='진행 일정'
           value={value.schedule}
           onChange={(ev) => set('schedule', ev.target.value)}
-          placeholder='매주 목 20:00 · 8주 과정'
+          placeholder='매주 목 20:00 KST · 8주 과정'
           labelHint={<span data-anno='6-1'>비우면 신청 화면에 일정 미정으로 안내합니다</span>}
         />
       </div>
 
       <div data-anno='16'>
-        <TimezoneField value={value.timezone} onChange={(next) => set('timezone', next)} />
+        <RecruitmentTimeZoneField value={value.recruitmentTimeZones} onChange={(next) => set('recruitmentTimeZones', next)} error={errors.recruitmentTimeZones} />
       </div>
 
       <div className='grid gap-3 sm:grid-cols-2'>
@@ -474,50 +478,6 @@ function CategoryField({
       </div>
 
       {error && <p className='type-label-sm text-error-600'>{error}</p>}
-    </div>
-  );
-}
-
-/**
- * 시간대 — **선택 입력.** 「진행 일정」(요일·시간 문구)과는 다른 축이다 — 이건 어느 시간대를
- * 기준으로 도는가 하나만 고르는 값이고, 몇 시인지는 진행 일정이 말한다.
- *
- * 「미정」을 명시적인 선택지로 둔다 — 셋 중 아무거나 강제로 고르게 하면 실제로는 모르는데
- * 아는 것처럼 값이 채워진다. 값이 없으면 사이트에서 「시간대 미정」으로 정직하게 보인다.
- */
-function TimezoneField({
-  value,
-  onChange,
-}: {
-  value: StudyTimezone | '';
-  onChange: (next: StudyTimezone | '') => void;
-}) {
-  const options: { key: StudyTimezone | ''; label: string }[] = [
-    { key: '', label: '미정' },
-    { key: 'KST', label: 'KST' },
-    { key: 'PST', label: 'PST' },
-    { key: 'both', label: '동시 진행(KST·PST)' },
-  ];
-  return (
-    <div className='flex flex-col gap-1.5'>
-      <span className='type-label-lg text-neutral-800'>시간대</span>
-      <div role='radiogroup' aria-label='시간대' className='flex flex-wrap gap-1.5'>
-        {options.map((o) => {
-          const on = value === o.key;
-          return (
-            <FilterChip
-              key={o.key || 'unset'}
-              role='radio'
-              selected={on}
-              selectMode='single'
-              onClick={() => onChange(o.key)}
-            >
-              {o.label}
-            </FilterChip>
-          );
-        })}
-      </div>
-      <span className='type-label-sm text-fg-muted'>모임이 실제로 도는 요일·시간은 「진행 일정」에서 문구로 알립니다</span>
     </div>
   );
 }

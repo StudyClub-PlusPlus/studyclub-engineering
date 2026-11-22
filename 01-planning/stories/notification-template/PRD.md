@@ -1,5 +1,7 @@
 # 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다.
 
+> 시간대 공통 규칙: [확장 PRD](../timezone-expansion/PRD.md).
+
 기준 프로토타입: 운영 콘솔 › 알림 › 알림 템플릿 — https://playground.studyclub.life/proto/console/notifications/templates
 
 관련 결정: [10-29 알림 템플릿 삭제는 서버가 막지 않는다 — 운영 규칙으로 다룬다](../../../docs/share/2026-10-29-notification-template-ops-rules.md)
@@ -44,6 +46,8 @@ flowchart LR
 
 <!-- spec:start template -->
 
+> 마지막 수정 시각은 공통 헤더에서 고른 시간대로 표시하고, 기록 날짜에 맞는 시간대 약칭을 붙인다
+>
 > 삭제 확인 단계에서는 취소 버튼에 실제 포커스가 잡히며 Enter로 편집 화면에 돌아간다
 >
 > 문구를 **보고, 더하고, 고치고, 지운다.** 추가 팝업이 곧 편집 팝업이다 — 전문을 보는 화면을 따로 두지 않는다
