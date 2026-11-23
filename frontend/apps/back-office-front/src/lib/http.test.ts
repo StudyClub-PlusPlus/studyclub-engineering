@@ -96,4 +96,17 @@ describe('HTTP response contracts', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Bad gateway', { status: 502 })));
     await expect(http('/list', apiNotificationPageSchema)).rejects.toBeInstanceOf(ApiError);
   });
+  it('keeps the backend errorCode so screens can branch on it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ errorCode: 'EVENT_VERSION_CONFLICT', errorMessage: '버전' }), { status: 409 }),
+      ),
+    );
+    await expect(http('/list', apiNotificationPageSchema)).rejects.toMatchObject({
+      status: 409,
+      code: 'EVENT_VERSION_CONFLICT',
+      message: '버전',
+    });
+  });
 });

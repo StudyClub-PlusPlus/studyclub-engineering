@@ -227,7 +227,7 @@ stateDiagram-v2
 
 ### 프론트엔드 사용처
 
-- back-office-front 행사 상세 「참가자」 탭 (아직 없음). `features/events/queries.ts` → `useEventRegistrations(eventId, page)`
+- back-office-front 행사 상세 「참가자」 탭 (`features/events/ParticipantsTab.tsx`). `features/events/queries.ts` → `useEventRegistrations(eventId, page)`
 - 근거 시안: `frontend/apps/playground/src/proto/events/EventAdminDetail.tsx` 참가자 표 · 탭 배지 `확인 대기 N` · 「전체 신청 이력 N건」
 
 ---

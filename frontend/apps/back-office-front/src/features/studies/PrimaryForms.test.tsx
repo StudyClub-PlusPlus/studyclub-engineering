@@ -1,8 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { EMPTY_EVENT } from '@/features/events/EventForm';
-import { eventFormSchema } from '@/features/events/form-schema';
 import { discordLinkSchema } from '@/features/studies/discord-link-schema';
 import { EMPTY_FORM } from '@/features/studies/form-schema';
 import { useStudyForm } from '@/features/studies/StudyForm';
@@ -40,21 +38,7 @@ describe('스터디 RHF 상태', () => {
   });
 });
 
-describe('행사·디스코드 스키마', () => {
-  it('행사의 필수 입력만 검증하고 선택 링크는 기존대로 허용한다', () => {
-    expect(eventFormSchema.safeParse(EMPTY_EVENT).success).toBe(false);
-    const validEvent = {
-      ...EMPTY_EVENT,
-      title: '행사',
-      summary: '소개',
-      type: 'talk',
-      date: '2026-11-01',
-      link: '외부 신청 링크',
-    };
-    expect(eventFormSchema.safeParse(validEvent).success).toBe(true);
-    expect(eventFormSchema.safeParse({ ...validEvent, title: '  ' }).success).toBe(false);
-  });
-
+describe('디스코드 스키마', () => {
   it('디스코드 이름은 공백 제거 후 필수·96자 제한을 검증한다', () => {
     expect(discordLinkSchema.safeParse({ name: '  ' }).success).toBe(false);
     expect(discordLinkSchema.parse({ name: ' 이름 ' })).toEqual({ name: '이름' });

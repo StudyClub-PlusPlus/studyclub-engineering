@@ -1,176 +1,49 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 
-import type { StudyclubEvent } from '@studyclub/types';
-import { Badge, Input, Select, cx } from '@studyclub/ui';
-import { Search } from 'lucide-react';
+import { Badge } from '@studyclub/ui';
 
 import { TableCard } from '@/components/ui';
-import { EventDialog } from '@/features/events/EventDialog';
-import { EVENT_TYPES } from '@/features/events/EventForm';
-import { EVENT_TYPE_LABEL, tx } from '@/lib/l10n';
-import { useDebouncedValue } from '@/lib/use-debounced-value';
-import { useUrlState } from '@/lib/use-url-state';
+import { DISPLAY_STATUS_TONE, formatInstant } from '@/features/events/format';
+import { DISPLAY_STATUS_LABEL, type EventListItem } from '@/features/events/types';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
-/**
- * 행사 관리 목록 — 스터디 목록과 같은 규칙.
- *
- * - 필터는 한 줄, 전부 같은 셀렉트. 기본값 라벨에 축 이름을 넣어 라벨 없이도 무엇을 거르는지 보인다
- * - 행에 편집·삭제 버튼을 두지 않는다. 행사명을 누르면 등록 때와 **같은 팝업**이 열리고 삭제도 그 안에 있다
- * - 예정된 행사가 위 — 운영자가 손대야 할 것부터 보인다
- */
-
-const TODAY = new Date().toISOString().slice(0, 10);
-
-const TYPE_OPTIONS = [
-  { value: 'all', label: '타입 전체' },
-  ...EVENT_TYPES.map((t) => ({ value: t as string, label: EVENT_TYPE_LABEL[t] })),
-];
-
-type WhenFilter = 'all' | 'upcoming' | 'past';
-
-const WHEN_OPTIONS: { value: WhenFilter; label: string }[] = [
-  { value: 'all', label: '시점 전체' },
-  { value: 'upcoming', label: '예정' },
-  { value: 'past', label: '종료' },
-];
-
-/** 필터 셀렉트 — 스터디 목록과 같은 생김새. */
-function FilterSelect<T extends string>({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: T;
-  onChange: (v: T) => void;
-  options: { value: T; label: string }[];
-}) {
+export function EventsTable({ rows }: { rows: EventListItem[] }) {
+  const zone = useDisplayTimeZone();
   return (
-    <Select
-      size='sm'
-      aria-label={label}
-      value={value}
-      onChange={(e) => onChange(e.target.value as T)}
-      // 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다 (스터디 목록 FilterSelect 와 같다)
-      className={cx(
-        'w-auto shrink-0',
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
-      )}
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </Select>
-  );
-}
-
-/** URL 쿼리 — `?type=talk&when=past&q=…`. 기본값은 싣지 않는다. */
-const URL_DEFAULTS = { q: '', type: 'all', when: 'all' };
-const URL_ALLOWED = { type: TYPE_OPTIONS.map((o) => o.value), when: WHEN_OPTIONS.map((o) => o.value) };
-
-export function EventsTable({ events }: { events: StudyclubEvent[] }) {
-  // 조건은 URL 이 정본이다. 입력칸 글자만 화면 state 로 두고, 멈추면(300ms) URL 에 쓴다
-  const [filters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
-  const type = filters.type;
-  const when = filters.when as WhenFilter;
-  const [query, setQuery] = useState(filters.q);
-  const debouncedQuery = useDebouncedValue(query, 300);
-  useEffect(() => {
-    if (debouncedQuery !== filters.q) setFilters({ q: debouncedQuery });
-  }, [debouncedQuery, filters.q, setFilters]);
-  const [editing, setEditing] = useState<StudyclubEvent | null>(null);
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return (
-      events
-        .filter((e) => {
-          if (type !== 'all' && e.type !== type) return false;
-          if (when === 'upcoming' && e.date < TODAY) return false;
-          if (when === 'past' && e.date >= TODAY) return false;
-          if (q && !`${tx(e.title)} ${tx(e.summary)}`.toLowerCase().includes(q)) return false;
-          return true;
-        })
-        // 예정된 행사가 먼저(가까운 순), 그 뒤에 종료된 행사(최근 순)
-        .sort((a, b) => {
-          const ua = a.date >= TODAY ? 0 : 1;
-          const ub = b.date >= TODAY ? 0 : 1;
-          if (ua !== ub) return ua - ub;
-          return ua === 0 ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
-        })
-    );
-  }, [events, query, type, when]);
-
-  return (
-    <div>
-      <div className='mb-5 flex flex-wrap items-center gap-2'>
-        <Input
-          type='search'
-          size='sm'
-          aria-label='행사 검색'
-          leadingIcon={<Search size={15} />}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder='행사명 · 한 줄 소개 검색'
-          className='w-56'
-        />
-        <FilterSelect label='종류' value={type} onChange={(v) => setFilters({ type: v })} options={TYPE_OPTIONS} />
-        <FilterSelect label='시기' value={when} onChange={(v) => setFilters({ when: v })} options={WHEN_OPTIONS} />
-        <span className='ml-auto type-label-sm text-fg-muted'>{rows.length}개</span>
-      </div>
-
-      <TableCard>
-        <thead>
-          <tr>
-            <th>행사</th>
-            <th className='whitespace-nowrap'>타입</th>
-            <th className='whitespace-nowrap'>날짜</th>
-            <th className='whitespace-nowrap'>장소</th>
-            <th className='whitespace-nowrap'>상태</th>
+    <TableCard>
+      <thead>
+        <tr>
+          <th>행사</th>
+          <th>일정</th>
+          <th>상태</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((event) => (
+          <tr key={event.eventId}>
+            <td className='min-w-56'>
+              <Link className='font-semibold hover:text-brand hover:underline' href={`/events/${event.eventId}`}>
+                {event.title}
+              </Link>
+            </td>
+            <td className='min-w-40 type-body-sm text-fg-secondary'>{formatInstant(event.startsAt, zone)}</td>
+            <td>
+              <Badge tone={DISPLAY_STATUS_TONE[event.displayStatus]} dot>
+                {DISPLAY_STATUS_LABEL[event.displayStatus]}
+              </Badge>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {rows.map((e) => {
-            const upcoming = e.date >= TODAY;
-            return (
-              <tr key={e.id}>
-                <td className='w-[42%] max-w-0'>
-                  <button
-                    // ui-native: 표의 제목 칸 — 누르면 그 줄을 여는 글자 링크
-                    type='button'
-                    onClick={() => setEditing(e)}
-                    className='block w-full truncate text-left font-semibold underline-offset-4 hover:text-brand hover:underline'
-                  >
-                    {tx(e.title)}
-                  </button>
-                </td>
-                <td className='whitespace-nowrap text-fg-secondary'>{EVENT_TYPE_LABEL[e.type] ?? e.type}</td>
-                <td className='tnum whitespace-nowrap text-fg-secondary'>{e.date}</td>
-                <td className='whitespace-nowrap text-fg-secondary'>{e.location ? tx(e.location) : '온라인'}</td>
-                <td>
-                  <Badge tone={upcoming ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
-                    {upcoming ? '예정' : '종료'}
-                  </Badge>
-                </td>
-              </tr>
-            );
-          })}
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={5} className='text-center text-fg-muted'>
-                조건에 맞는 행사가 없습니다.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </TableCard>
-
-      <EventDialog open={editing !== null} event={editing ?? undefined} onClose={() => setEditing(null)} />
-    </div>
+        ))}
+        {rows.length === 0 && (
+          <tr>
+            <td colSpan={3} className='py-10 text-center text-fg-muted'>
+              아직 등록한 행사가 없습니다. 첫 행사를 만들어 보세요.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </TableCard>
   );
 }

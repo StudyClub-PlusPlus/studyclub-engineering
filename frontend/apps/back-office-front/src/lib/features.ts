@@ -4,6 +4,6 @@
  * API 준비 후 true 로 바꾼다.
  */
 export const FEATURES: Record<'EVENTS', boolean> = {
-  /** 행사 관리. TODO(api): POST/GET/PATCH/DELETE /api/events 준비되면 true 로 바꾼다. */
-  EVENTS: false,
+  /** 행사 관리 (/api/admin/events). 백엔드 API 가 있는 환경에서 사이드바 메뉴를 노출한다. */
+  EVENTS: true,
 };
