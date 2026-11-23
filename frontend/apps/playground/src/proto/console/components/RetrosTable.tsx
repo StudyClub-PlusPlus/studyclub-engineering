@@ -218,9 +218,10 @@ export function RetrosTable() {
     setPage(1);
   };
   const visible = RETRO_SECTIONS.filter((s) => cols.includes(s.key));
-  // 고정 열(스터디 200 · 참여자 110 · 반 90 · 회차 80 · 작성일 140) + 문항 열 380씩. 열이 적으면 화면 폭을 채운다
-  const tableWidth = 620 + 380 * visible.length;
-  const span = 5 + visible.length;
+  // 한 사람의 세 문항이 한 줄에 다 보이게 — 고정 열을 줄이고(스터디 · 회차 160 · 참여자 80 · 작성일 92)
+  // 문항 열은 남는 폭을 나눠 쓴다. 콘솔 본문 폭(약 975)이면 세 문항이 다 들어가고, 더 좁은 화면에서만 가로로 민다
+  const tableWidth = 332 + 200 * visible.length;
+  const span = 3 + visible.length;
   const shown = view === 'question' ? opinions : tableRows;
   const pageRows = tableRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const pageOpinions = opinions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -430,23 +431,19 @@ export function RetrosTable() {
               style={{ minWidth: tableWidth }}
             >
               <colgroup>
-                <col className='w-[200px]' />
-                <col className='w-[110px]' />
-                <col className='w-[90px]' />
+                <col className='w-[160px]' />
                 <col className='w-[80px]' />
                 {visible.map((s) => (
-                  <col key={s.key} className='w-[380px]' />
+                  <col key={s.key} />
                 ))}
-                <col className='w-[140px]' />
+                <col className='w-[92px]' />
               </colgroup>
               <thead>
                 <tr>
-                  <th className={cx(sticky, 'left-0')}>스터디</th>
-                  <th className={cx(sticky, 'left-[200px] shadow-[4px_0_6px_-4px_var(--color-border-strong)]')}>
+                  <th className={cx(sticky, 'left-0')}>스터디 · 회차</th>
+                  <th className={cx(sticky, 'left-[160px] shadow-[4px_0_6px_-4px_var(--color-border-strong)]')}>
                     참여자
                   </th>
-                  <th>반</th>
-                  <th>회차</th>
                   {visible.map((s) => {
                     const active = likeSort?.section === s.key ? likeSort.dir : null;
                     return (
@@ -485,24 +482,43 @@ export function RetrosTable() {
                 )}
                 {pageRows.map((r) => (
                   <tr key={`${r.studyId}-${r.meetingId}-${r.authorId}`} className='align-top'>
-                    <td className={cx(sticky, 'left-0')}>{r.studyTitle}</td>
+                    {/* 스터디 · 반 · 회차를 한 칸에 — 따로 열을 두면 문항 칸이 좁아진다 */}
+                    <td className={cx(sticky, 'left-0')}>
+                      <span className='line-clamp-2 break-words' title={r.studyTitle}>
+                        {r.studyTitle}
+                      </span>
+                      <span className='tnum mt-0.5 block type-label-sm text-fg-muted'>
+                        {r.group} · {r.meetingLabel}
+                      </span>
+                    </td>
                     <td
                       className={cx(
                         sticky,
-                        'left-[200px] font-semibold shadow-[4px_0_6px_-4px_var(--color-border-strong)]',
+                        'left-[160px] break-words font-semibold shadow-[4px_0_6px_-4px_var(--color-border-strong)]',
                       )}
                     >
                       {r.authorName}
                     </td>
-                    <td className='whitespace-nowrap'>{r.group}</td>
-                    <td className='tnum whitespace-nowrap'>{r.meetingLabel}</td>
                     {visible.map((s) => (
                       <td key={s.key}>
                         <AnswerCell row={r} section={s.key} />
                       </td>
                     ))}
-                    <td className='tnum whitespace-nowrap text-fg-secondary'>
-                      {r.retro ? shortDateTime(r.retro.writtenAt, zone, true) : '-'}
+                    {/* 날짜와 시각을 두 줄로 — 칸 폭을 줄인다 */}
+                    <td className='tnum text-fg-secondary'>
+                      {r.retro
+                        ? (() => {
+                            const [date, ...time] = shortDateTime(r.retro.writtenAt, zone, true).split(' ');
+                            return (
+                              <>
+                                <span className='block whitespace-nowrap'>{date}</span>
+                                <span className='block whitespace-nowrap type-label-sm text-fg-muted'>
+                                  {time.join(' ')}
+                                </span>
+                              </>
+                            );
+                          })()
+                        : '-'}
                     </td>
                   </tr>
                 ))}
