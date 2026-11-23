@@ -1,6 +1,5 @@
 'use client';
 
-import { isReusedDraft } from '../lib/reused-drafts';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -19,6 +18,7 @@ import { Badge, Button, Input, Modal, Pagination, Select, cx } from '@studyclub/
 import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, toISODate, todayISO } from '@studyclub/utils';
 import { Check, Minus, Search } from 'lucide-react';
 
+import { isReusedDraft } from '../lib/reused-drafts';
 import { recruitState, recruitmentDeadlineAt, recruitmentDeadlineLabel } from '@/proto/lib/recruitment-deadline';
 import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 

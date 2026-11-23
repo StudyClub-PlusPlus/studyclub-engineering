@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Study } from '@studyclub/types';
-import { readReusedDrafts } from '../lib/reused-drafts';
-import { StudiesTable } from '@console/components/StudiesTable';
 
+import { StudiesTable } from '@console/components/StudiesTable';
+import type { Study } from '@studyclub/types';
+
+import { readReusedDrafts } from '../lib/reused-drafts';
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /** TODO(api): GET /api/studies 또는 /api/admin/studies — 스터디 목록 연동 */
