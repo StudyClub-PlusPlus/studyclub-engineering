@@ -122,8 +122,9 @@ export function GroupTimeDialog({
           </div>
         </div>
 
-        <div className='flex flex-col gap-2'>
-          <div className='w-48'>
+        {/* 시각 · 시간대를 한 줄에 반씩 — 라벨은 시각 칸 위에 하나, 시간대 칸은 아래 끝을 맞춘다. 둘 다 sm(32px) */}
+        <div className='grid grid-cols-2 items-end gap-2'>
+          <div className='min-w-0'>
             <TimePicker
               size='sm'
               label='스터디 시간'
@@ -131,16 +132,15 @@ export function GroupTimeDialog({
               onChange={(value) => setValue('time', value, { shouldDirty: true, shouldValidate: touched })}
             />
           </div>
-          <div className='flex flex-col gap-2'>
-            <TimeZonePicker
-              size='sm'
-              label='시간대'
-              hideLabel
-              value={time.tz}
-              onChange={(zone) => setValue('tz', zone as StudyTz, { shouldDirty: true, shouldValidate: touched })}
-              options={STUDY_TZS.map((tz) => ({ value: tz.key, label: ZONE_PLACE[tz.key], detail: utcOffset(tz.key) }))}
-            />
-          </div>
+          <TimeZonePicker
+            className='min-w-0'
+            size='sm'
+            label='시간대'
+            hideLabel
+            value={time.tz}
+            onChange={(zone) => setValue('tz', zone as StudyTz, { shouldDirty: true, shouldValidate: touched })}
+            options={STUDY_TZS.map((tz) => ({ value: tz.key, label: ZONE_PLACE[tz.key], detail: utcOffset(tz.key) }))}
+          />
         </div>
 
         {/* 반대편 시각을 같이 적는다 — 목 21:00 KST 는 미국에서 수요일이다 */}
