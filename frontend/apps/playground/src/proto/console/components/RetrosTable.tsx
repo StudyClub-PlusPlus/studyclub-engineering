@@ -9,7 +9,7 @@ import { dateWithDow, scheduleAccessOf, wallParts } from '@core/lib/meetings';
 import { RETRO_SECTIONS, retroRowsOf, shortDateTime, type RetroRow, type RetroSection } from '@core/lib/retros';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { Study } from '@studyclub/types';
-import { Button, Input, Pagination, Segmented, Select, cx } from '@studyclub/ui';
+import { Button, FilterChip, Input, Pagination, Segmented, Select, cx } from '@studyclub/ui';
 import { Download, Search, ThumbsUp } from 'lucide-react';
 
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
@@ -19,7 +19,7 @@ import { useMswStudies } from '@/proto/lib/use-msw-studies';
  *
  * 처음엔 「문항별」 — 문항 하나(기본 개선할 점)의 답을 세로로 모아 최근 것부터 읽는다.
  * 캡틴이 먼저 찾는 건 「최근에 어떤 개선 의견이 나왔나」라서, 사람마다 세 문항을 옆으로 늘어놓은 표보다 앞에 둔다.
- * 「표」는 한 사람의 세 문항을 한 줄로 보는 용도 — 참여자별 · 회차별로 줄을 세우고, 가로로 민다.
+ * 「표」는 한 사람의 문항을 한 줄로 보는 용도 — 보일 문항 열을 고르고, 참여자별 · 회차별 · 최신순 · 공감순으로 줄을 세운다.
  * TODO(api): GET /api/admin/retros?studyId&meetingId&q&section&sort&offset&limit — 캡틴 전용
  *            section=improve|good|feeling 이면 그 문항을 쓴 회고만, sort=recent|likes
  *            GET /api/admin/retros/export.csv — 같은 조건
@@ -27,7 +27,7 @@ import { useMswStudies } from '@/proto/lib/use-msw-studies';
 const PAGE_SIZE = 20;
 
 type View = 'question' | 'table';
-type Sort = 'participant' | 'meeting';
+type Sort = 'participant' | 'meeting' | 'recent' | 'likes';
 type Order = 'recent' | 'likes';
 /** 문항별 보기의 고르는 순서 — 개선할 점이 먼저다. 표 · CSV 의 열 순서(RETRO_SECTIONS)는 그대로. */
 const PICK_ORDER: RetroSection[] = ['improve', 'good', 'feeling'];
@@ -103,22 +103,16 @@ function OpinionList({ rows, section, zone }: { rows: Row[]; section: RetroSecti
   );
 }
 
-function csvOf(rows: Row[], zone: string): string {
+function csvOf(rows: Row[], zone: string, cols: RetroSection[]): string {
+  const sections = RETRO_SECTIONS.filter((s) => cols.includes(s.key));
   const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-  const head = [
-    '스터디',
-    '반',
-    '회차',
-    '참여자',
-    ...RETRO_SECTIONS.flatMap((s) => [s.label, `${s.label} 👍`]),
-    '작성일',
-  ];
+  const head = ['스터디', '반', '회차', '참여자', ...sections.flatMap((s) => [s.label, `${s.label} 👍`]), '작성일'];
   const body = rows.map((r) => [
     r.studyTitle,
     r.group,
     r.meetingLabel,
     r.authorName,
-    ...RETRO_SECTIONS.flatMap((s) => [r.retro?.[s.key] ?? '', r.retro?.[s.key] ? r.retro.likes[s.key] : '']),
+    ...sections.flatMap((s) => [r.retro?.[s.key] ?? '', r.retro?.[s.key] ? r.retro.likes[s.key] : '']),
     r.retro ? shortDateTime(r.retro.writtenAt, zone, true) : '',
   ]);
   return '﻿' + [head, ...body].map((line) => line.map(esc).join(',')).join('\n');
@@ -136,7 +130,9 @@ export function RetrosTable() {
   const [input, setInput] = useState('');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('participant');
-  // 문항 열 머리를 누르면 그 문항의 👍 수로 줄을 세운다. 참여자별 · 회차별을 다시 고르면 풀린다.
+  // 표에 보일 문항 열 — 하나는 늘 남는다. 순서는 RETRO_SECTIONS(좋았던 점 · 개선할 점 · 소감) 그대로.
+  const [cols, setCols] = useState<RetroSection[]>(RETRO_SECTIONS.map((s) => s.key));
+  // 문항 열 머리를 누르면 그 문항의 👍 수로 줄을 세운다. 줄 순서를 다시 고르면 풀린다.
   const [likeSort, setLikeSort] = useState<{ section: RetroSection; dir: SortDir } | null>(null);
   const [page, setPage] = useState(1);
   // 가로 스크롤바를 표 위에도 둔다 — 스터디 표와 같다. 20줄이면 아래 스크롤바가 화면 밖이다.
@@ -175,29 +171,13 @@ export function RetrosTable() {
   }, [all, studyId]);
 
   const filtered = useMemo(() => {
-    const rows = (all ?? []).filter(
+    return (all ?? []).filter(
       (r) =>
         (studyId === 'all' || r.studyId === studyId) &&
         (meetingId === 'all' || r.meetingId === meetingId) &&
         (!q || r.authorName.includes(q)),
     );
-    return rows.sort((a, b) => {
-      if (likeSort) {
-        // 그 문항을 비운 회고(소감)는 방향과 상관없이 맨 뒤
-        const la = a.retro?.[likeSort.section] ? a.retro.likes[likeSort.section] : -1;
-        const lb = b.retro?.[likeSort.section] ? b.retro.likes[likeSort.section] : -1;
-        if (la !== lb) {
-          if (la < 0 || lb < 0) return lb - la;
-          return likeSort.dir === 'desc' ? lb - la : la - lb;
-        }
-      }
-      const byStudy = a.studyTitle.localeCompare(b.studyTitle, 'ko');
-      if (byStudy) return byStudy;
-      const byName = a.authorName.localeCompare(b.authorName, 'ko');
-      const byMeeting = a.meetingNo - b.meetingNo;
-      return sort === 'participant' ? byName || byMeeting : byMeeting || byName;
-    });
-  }, [all, studyId, meetingId, q, sort, likeSort]);
+  }, [all, studyId, meetingId, q]);
 
   // 표 · CSV 에는 쓴 회고만 — 안 쓴 사람은 줄로 보이지 않고 작성률로만 센다.
   const written = filtered.filter((r) => r.retro);
@@ -213,12 +193,57 @@ export function RetrosTable() {
     .sort((a, b) =>
       order === 'likes' ? b.retro!.likes[section] - a.retro!.likes[section] || recent(a, b) : recent(a, b),
     );
-  const shown = view === 'question' ? opinions : written;
-  const pageRows = written.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // 표 — 보이는 문항을 하나도 안 쓴 줄(소감만 보일 때 소감을 비운 회고)은 뺀다.
+  const likesOf = (r: Row) => cols.reduce((n, c) => n + (r.retro![c] ? r.retro!.likes[c] : 0), 0);
+  const tableRows = written
+    .filter((r) => cols.some((c) => r.retro![c]))
+    .sort((a, b) => {
+      if (likeSort) {
+        // 그 문항을 비운 회고(소감)는 방향과 상관없이 맨 뒤
+        const la = a.retro![likeSort.section] ? a.retro!.likes[likeSort.section] : -1;
+        const lb = b.retro![likeSort.section] ? b.retro!.likes[likeSort.section] : -1;
+        if (la !== lb) {
+          if (la < 0 || lb < 0) return lb - la;
+          return likeSort.dir === 'desc' ? lb - la : la - lb;
+        }
+      }
+      if (sort === 'recent') return recent(a, b);
+      // 공감순 = 보이는 문항의 👍 합. 같으면 최신순
+      if (sort === 'likes') return likesOf(b) - likesOf(a) || recent(a, b);
+      const byStudy = a.studyTitle.localeCompare(b.studyTitle, 'ko');
+      if (byStudy) return byStudy;
+      const byName = a.authorName.localeCompare(b.authorName, 'ko');
+      const byMeeting = a.meetingNo - b.meetingNo;
+      return sort === 'participant' ? byName || byMeeting : byMeeting || byName;
+    });
+  const toggleCol = (c: RetroSection) => {
+    const next = cols.includes(c) ? cols.filter((x) => x !== c) : [...cols, c];
+    if (next.length === 0) return;
+    setCols(RETRO_SECTIONS.map((s) => s.key).filter((k) => next.includes(k)));
+    if (likeSort && !next.includes(likeSort.section)) setLikeSort(null);
+    setPage(1);
+  };
+  const visible = RETRO_SECTIONS.filter((s) => cols.includes(s.key));
+  // 고정 열(스터디 200 · 참여자 110 · 반 90 · 회차 80 · 작성일 140) + 문항 열 380씩. 열이 적으면 화면 폭을 채운다
+  const tableWidth = 620 + 380 * visible.length;
+  const span = 5 + visible.length;
+  const shown = view === 'question' ? opinions : tableRows;
+  const pageRows = tableRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const pageOpinions = opinions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const download = () => {
-    const url = URL.createObjectURL(new Blob([csvOf(written, zone)], { type: 'text/csv;charset=utf-8' }));
+    const url = URL.createObjectURL(
+      new Blob(
+        [
+          csvOf(
+            view === 'table' ? tableRows : written,
+            zone,
+            view === 'table' ? cols : RETRO_SECTIONS.map((s) => s.key),
+          ),
+        ],
+        { type: 'text/csv;charset=utf-8' },
+      ),
+    );
     const a = document.createElement('a');
     a.href = url;
     a.download = '회고.csv';
@@ -336,20 +361,45 @@ export function RetrosTable() {
             </div>
           </div>
         ) : (
-          <div data-anno='retros:1-1'>
-            <Segmented<Sort>
-              size='sm'
-              value={sort}
-              onChange={(v) => {
-                setSort(v);
-                setLikeSort(null);
-                setPage(1);
-              }}
-              options={[
-                { value: 'participant', label: '참여자별' },
-                { value: 'meeting', label: '회차별' },
-              ]}
-            />
+          <div className='flex flex-wrap items-center gap-2'>
+            <div
+              data-anno='retros:10'
+              role='group'
+              aria-label='보일 문항'
+              className='flex flex-wrap items-center gap-1.5'
+            >
+              {RETRO_SECTIONS.map((s) => {
+                const on = cols.includes(s.key);
+                return (
+                  <FilterChip
+                    key={s.key}
+                    selected={on}
+                    // 마지막 남은 열은 끌 수 없다 — 문항 없는 표가 되지 않게
+                    disabled={on && cols.length === 1}
+                    onClick={() => toggleCol(s.key)}
+                  >
+                    {s.label} {count(s.key)}
+                  </FilterChip>
+                );
+              })}
+            </div>
+            <div data-anno='retros:1-1'>
+              <Segmented<Sort>
+                size='sm'
+                value={sort}
+                onChange={(v) => {
+                  setSort(v);
+                  setLikeSort(null);
+                  setPage(1);
+                }}
+                options={[
+                  { value: 'participant', label: '참여자별' },
+                  { value: 'meeting', label: '회차별' },
+                  { value: 'recent', label: '최신순' },
+                  { value: 'likes', label: '공감순' },
+                ]}
+              />
+            </div>
           </div>
         )}
         {/* 좁힌 뒤의 건수 — 스터디 · 유저 표처럼 오른쪽 위. 무엇을 세는지 목록과 붙어 있어야 분명하다 */}
@@ -383,15 +433,18 @@ export function RetrosTable() {
             <div style={{ width: scroll.width, height: 1 }} />
           </div>
           <div ref={scroll.bodyRef} onScroll={scroll.onBodyScroll} data-anno='retros:3' className='overflow-x-auto'>
-            <table className='bo-table min-w-[105rem] table-fixed border-separate border-spacing-0'>
+            <table
+              className='bo-table w-full table-fixed border-separate border-spacing-0'
+              style={{ minWidth: tableWidth }}
+            >
               <colgroup>
                 <col className='w-[200px]' />
                 <col className='w-[110px]' />
                 <col className='w-[90px]' />
                 <col className='w-[80px]' />
-                <col className='w-[380px]' />
-                <col className='w-[380px]' />
-                <col className='w-[380px]' />
+                {visible.map((s) => (
+                  <col key={s.key} className='w-[380px]' />
+                ))}
                 <col className='w-[140px]' />
               </colgroup>
               <thead>
@@ -402,7 +455,7 @@ export function RetrosTable() {
                   </th>
                   <th>반</th>
                   <th>회차</th>
-                  {RETRO_SECTIONS.map((s) => {
+                  {visible.map((s) => {
                     const active = likeSort?.section === s.key ? likeSort.dir : null;
                     return (
                       <th key={s.key} aria-sort={active ? (active === 'asc' ? 'ascending' : 'descending') : undefined}>
@@ -426,14 +479,14 @@ export function RetrosTable() {
                 {all === null &&
                   Array.from({ length: 6 }, (_, i) => (
                     <tr key={i}>
-                      <td colSpan={8}>
+                      <td colSpan={span}>
                         <span className='block h-4 animate-pulse rounded bg-surface-2' />
                       </td>
                     </tr>
                   ))}
-                {all !== null && written.length === 0 && (
+                {all !== null && tableRows.length === 0 && (
                   <tr>
-                    <td colSpan={8} className='py-12 text-center text-fg-muted'>
+                    <td colSpan={span} className='py-12 text-center text-fg-muted'>
                       조건에 맞는 회고가 없어요.
                     </td>
                   </tr>
@@ -451,7 +504,7 @@ export function RetrosTable() {
                     </td>
                     <td className='whitespace-nowrap'>{r.group}</td>
                     <td className='tnum whitespace-nowrap'>{r.meetingLabel}</td>
-                    {RETRO_SECTIONS.map((s) => (
+                    {visible.map((s) => (
                       <td key={s.key}>
                         <AnswerCell row={r} section={s.key} />
                       </td>
