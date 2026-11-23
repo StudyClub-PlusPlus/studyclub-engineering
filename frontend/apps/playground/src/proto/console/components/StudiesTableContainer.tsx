@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import type { Study } from '@studyclub/types';
+import { readReusedDrafts } from '../lib/reused-drafts';
 import { StudiesTable } from '@console/components/StudiesTable';
 
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
@@ -8,5 +11,14 @@ import { useMswStudies } from '@/proto/lib/use-msw-studies';
 export function StudiesTableContainer() {
   const studies = useMswStudies();
 
-  return <StudiesTable studies={studies} />;
+  const [drafts, setDrafts] = useState<Study[]>([]);
+  useEffect(() => {
+    try {
+      setDrafts(readReusedDrafts());
+    } catch {
+      setDrafts([]);
+    }
+  }, []);
+
+  return <StudiesTable studies={[...drafts, ...studies]} />;
 }

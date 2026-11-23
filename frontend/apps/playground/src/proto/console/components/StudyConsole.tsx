@@ -128,6 +128,7 @@ export function StudyConsole({ study }: { study: Study }) {
   // 일정 탭은 고칠 곳이 둘이다 — 일정 표와 반 규칙. 어느 쪽이든 저장 전이면 나가기 전에 묻는다.
   const scheduleDirty = tableDirty || rulesDirty;
   const [leave, setLeave] = useState<LeaveIntent | null>(null);
+  const [reuseOpen, setReuseOpen] = useState(false);
   const [nextOpen, setNextOpen] = useState(false);
   /** 출석 탭의 「회차 추가」로 넘어왔으면 일정 탭에서 회차 추가 창을 바로 연다. */
   const [addOnOpen, setAddOnOpen] = useState(false);
@@ -197,6 +198,8 @@ export function StudyConsole({ study }: { study: Study }) {
     return total === 0 ? undefined : Math.round((score / total) * 100);
   }, [classes, study, meetings, active, assign, navigators, left, books]);
   useRecruitmentClock([study]);
+  const lifecycle = lifecycleState(study);
+  const reusable = (study.program?.kind ?? study.kind) === 'study' && (lifecycle === 'ENDED' || lifecycle === 'CLOSED');
   const open = recruitState(study) === 'apply';
   const deadline = recruitmentDeadlineLabel(study, zone);
   const dday = recruitmentDaysLeft(study, zone);
@@ -376,6 +379,11 @@ export function StudyConsole({ study }: { study: Study }) {
         <div className='flex shrink-0 flex-col items-end gap-2'>
           <div data-anno='attendee:1-2' className='flex items-center gap-2'>
             {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
+            {reusable && (
+              <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setReuseOpen(true)}>
+                재사용해 새 스터디 만들기
+              </Button>
+            )}
             {study.program?.kind === 'club' && (
               <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setNextOpen(true)}>
                 다음 기수 만들기
@@ -637,6 +645,7 @@ export function StudyConsole({ study }: { study: Study }) {
         {tab === 'info' && <StudyInfoTab study={study} />}
       </div>
 
+      {reusable && <StudyCreateDialog open={reuseOpen} onClose={() => setReuseOpen(false)} reuseOf={study} />}
       <StudyCreateDialog open={nextOpen} onClose={() => setNextOpen(false)} nextOf={study} />
 
       <Modal
