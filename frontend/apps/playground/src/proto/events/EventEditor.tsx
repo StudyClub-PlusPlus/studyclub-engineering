@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 
-import { TimeZonePicker } from '@core/components/TimeZonePicker';
+import { TimeZoneField } from '@core/components/TimeZoneField';
 import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { localDateTime } from '@core/lib/time-zone-preview';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { PreviewEvent } from '@studyclub/types';
-import { Button, Input, Select, Textarea } from '@studyclub/ui';
+import { Button, DatePicker, Input, Select, Textarea, TimePicker } from '@studyclub/ui';
 
 import { EventQuestionEditor } from './EventQuestionEditor';
 import { EVENT_LIMITS, resolveEventInput, wallTime } from './model';
@@ -60,25 +60,35 @@ export function EventEditor({
     set('timeZone', timeZone);
   }
 
+  /** 날짜 · 시각을 따로 고르므로 한쪽만 있어도 남긴다 — 다 고르기 전까지 resolveEventInput 이 오류로 본다. */
+  function changeWall(field: DateField, day: string, time: string) {
+    setDates({ ...dates, [field]: day || time ? `${day}T${time}` : '' });
+    setOccurrences({ ...occurrences, [field]: undefined });
+  }
+
   function renderDate(field: DateField, label: string, required: boolean, helper?: string) {
     const { choices, errors, iso } = resolvedDates[field];
     const ambiguous = choices.length > 1;
     // 기존 일정에는 초 단위가 있을 수 있지만 선택지는 분 단위로 보여준다.
     const chosen = choices.find(({ scheduledAt }) => Math.abs(Date.parse(scheduledAt) - Date.parse(iso ?? '')) < 60_000);
+    const [day = '', time = ''] = dates[field].split('T');
+    const message = !readOnly && dates[field] && !ambiguous ? errors.time : undefined;
+    const hint = readOnly ? undefined : helper;
     return (
       <div className='space-y-2'>
-        <Input
-          label={label}
-          type='datetime-local'
-          required={required}
-          value={dates[field]}
-          error={!readOnly && dates[field] && !ambiguous ? errors.time : undefined}
-          helper={readOnly ? undefined : helper}
-          onChange={(e) => {
-            setDates({ ...dates, [field]: e.target.value });
-            setOccurrences({ ...occurrences, [field]: undefined });
-          }}
-        />
+        <fieldset className='flex flex-col gap-1.5'>
+          <legend className='mb-1.5 type-label-lg text-ink'>
+            {label}
+            {required && <span className='ml-0.5 text-danger-fg' aria-hidden='true'>*</span>}
+          </legend>
+          <div className='grid grid-cols-[minmax(0,1fr)_8rem] gap-2'>
+            <DatePicker aria-label={`${label} 날짜`} required={required} value={day} onChange={(value) => changeWall(field, value, time)} />
+            <TimePicker aria-label={`${label} 시각`} required={required} value={time} onChange={(value) => changeWall(field, day, value)} />
+          </div>
+          {(message || hint) && (
+            <p className={message ? 'type-label-sm text-danger-fg' : 'type-label-sm text-fg-muted'}>{message ?? hint}</p>
+          )}
+        </fieldset>
         {iso && viewerZone !== draft.timeZone && (
           <p className='type-label-sm text-fg-muted' aria-live='polite'>
             {scheduleZoneTitle(viewerZone, 'ko', new Date(iso))} 기준 · {localDateTime(new Date(iso), viewerZone)}
@@ -157,7 +167,7 @@ export function EventEditor({
             value={draft.description}
             onChange={(e) => set('description', e.target.value)}
           />
-          <TimeZonePicker
+          <TimeZoneField
             label='기준 시간대' locale='ko' compact prioritizeCountries required={false} annotation={false}
             value={draft.timeZone} disabled={readOnly || unresolvedDate} onChange={changeTimeZone}
             error={!readOnly && unresolvedDate ? '날짜·시각 입력을 완료한 뒤 시간대를 변경해 주세요.' : undefined}

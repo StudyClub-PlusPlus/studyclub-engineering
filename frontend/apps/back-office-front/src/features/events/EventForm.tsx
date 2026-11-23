@@ -1,7 +1,7 @@
 'use client';
 
 import type { StudyclubEvent } from '@studyclub/types';
-import { Input, Select } from '@studyclub/ui';
+import { Input, Select, DatePicker } from '@studyclub/ui';
 
 import { eventFormSchema, EventFormValues } from '@/features/events/form-schema';
 import { EVENT_TYPE_LABEL, tx } from '@/lib/l10n';
@@ -71,12 +71,11 @@ export function EventForm({
             </option>
           ))}
         </Select>
-        <Input
+        <DatePicker
           label='날짜'
-          type='date'
           required
           value={value.date}
-          onChange={(ev) => set('date', ev.target.value)}
+          onChange={(value) => set('date', value)}
           error={errors.date}
         />
       </div>

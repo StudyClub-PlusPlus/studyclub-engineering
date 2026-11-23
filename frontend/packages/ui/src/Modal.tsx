@@ -68,6 +68,9 @@ export function Modal({
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        // 창 안의 팝오버(달력 · 시각 · 시간대 목록)가 먼저 받은 Esc 는 그 팝오버만 닫는다.
+        // Next 앱은 React 이벤트를 document 에 달아 stopPropagation 으로는 이 리스너를 못 막는다
+        if (e.defaultPrevented) return;
         e.preventDefault();
         onCloseRef.current();
         return;

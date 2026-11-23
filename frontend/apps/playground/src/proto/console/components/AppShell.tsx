@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState, useSyncExternalStore, type ReactNode } 
 
 import { Sidebar } from '@console/components/Sidebar';
 import { getConsoleTimeZone, setConsoleTimeZone, subscribeConsoleTimeZone } from '@console/lib/display-timezone';
-import { TimeZonePicker } from '@core/components/TimeZonePicker';
+import { TimeZoneField } from '@core/components/TimeZoneField';
 import { DisplayTimeZoneContext } from '@core/lib/use-display-timezone';
 
 import { MemberTimeZonesContext, useMemberTimeZones } from '@/proto/lib/use-member-timezones';
@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className='type-label-lg'>StudyClub Back Office</div>
             <div className='flex min-w-0 items-center gap-3'>
               <div className='w-60 max-w-[45vw]' title={locked.ids.size ? '편집 중인 날짜와 시간을 저장하거나 취소한 뒤 변경해 주세요.' : undefined}>
-                <TimeZonePicker label='백오피스 시간대' locale='ko' value={zone} onChange={setConsoleTimeZone}
+                <TimeZoneField label='백오피스 시간대' locale='ko' value={zone} onChange={setConsoleTimeZone}
                   allowedZones={memberZones} allowWorldwide disabled={locked.ids.size > 0} hideLabel compact prioritizeCountries annotation={false} />
               </div>
               <span className='shrink-0 rounded-full bg-(--color-surface-subtle) px-2.5 py-1 type-label-sm text-(--color-fg-muted)'>

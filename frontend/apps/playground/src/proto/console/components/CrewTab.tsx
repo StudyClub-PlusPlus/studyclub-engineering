@@ -11,7 +11,7 @@ import { EMPTY_RULE } from '@console/lib/schedule';
 import { captainOptions } from '@console/lib/users';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { type Crew } from '@studyclub/types';
-import { Badge, Button, Checkbox, Input, Select, SelectionCount, TableActionBar, cx, toast } from '@studyclub/ui';
+import { Badge, Button, Checkbox, Input, Select, SelectionCount, TableActionBar, TimeZonePicker, cx, toast } from '@studyclub/ui';
 import { Loader2, Plus } from 'lucide-react';
 
 /**
@@ -260,31 +260,38 @@ export function CrewTab({
         </ul>
       </section>
       <section data-anno='attendee:3'>
-        <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
+        {/* 시간대 필터는 제목 줄 오른쪽 끝 */}
+        <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
           <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 type-title-lg'>
             참여 크루
             {/* 반 제목 옆 개수와 같은 모양 — 숫자만. 필터와 상관없이 전체 인원 */}
             <span className='tnum type-label-lg text-fg-muted'>{active.length}</span>
           </h2>
+          <TimeZonePicker
+            data-anno='attendee:3-3'
+            className='w-64'
+            label='시간대'
+            hideLabel
+            size='md'
+            value={regionFilter}
+            onChange={setRegionFilter}
+            options={[
+              { value: 'all', label: '전체 시간대' },
+              ...zoneOptions.map((zone) => ({ value: zone, label: crewZoneLabel(zone) })),
+            ]}
+          />
         </div>
-        {/* 필터는 제목 아래 줄, 왼쪽부터 반 · 시간대 드롭다운 */}
-        <div data-anno='attendee:3-3' className='mt-2 flex flex-wrap items-center gap-2'>
-          {/* 반이 하나면 거를 것이 없다 */}
-          {classes.length > 1 && (
+        {/* 반이 하나면 거를 것이 없다 */}
+        {classes.length > 1 && (
+          <div className='mt-2 flex flex-wrap items-center gap-2'>
             <FilterSelect
               label='반'
               value={classFilter}
               onChange={setClassFilter}
               options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
             />
-          )}
-          <FilterSelect
-            label='시간대'
-            value={regionFilter}
-            onChange={(v) => setRegionFilter(v as typeof regionFilter)}
-            options={zoneOptions.map((zone) => ({ value: zone, label: crewZoneLabel(zone) }))}
-          />
-        </div>
+          </div>
+        )}
         <div className='mt-2'>
           <TableCard
             top={
