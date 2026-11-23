@@ -7,7 +7,7 @@ import type { Locale, Operator, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { recruitState } from '@core/lib/recruit';
 import { matchesRecruitmentZone, recruitmentLocationLabel, recruitmentZoneOptions } from '@core/lib/recruitment-timezones';
-import { Select, Button, FilterChip, Segmented } from '@studyclub/ui';
+import { Button, FilterChip, Segmented, TimeZonePicker } from '@studyclub/ui';
 import { Search, X } from 'lucide-react';
 
 import { StudyListCard } from './StudyListCard';
@@ -72,31 +72,6 @@ function FilterOption({
     <FilterChip selected={active} selectMode='single' onClick={onClick}>
       {children}
     </FilterChip>
-  );
-}
-
-function FilterSelect<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <Select
-      aria-label='모집 시간대 필터'
-      value={value}
-      onChange={(event) => onChange(event.target.value as T)}
-      className='h-9 w-fit rounded-lg border border-border bg-bg type-label-lg text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </Select>
   );
 }
 
@@ -211,7 +186,12 @@ export function StudyBrowser({
             />
           </span>
           <div data-anno='3'>
-            <FilterSelect
+            <TimeZonePicker
+              className='w-40'
+              size='sm'
+              label={locale === 'ko' ? '모집 시간대 필터' : 'Recruiting time zone filter'}
+              hideLabel
+              locale={locale}
               value={timezone}
               options={[{ value: 'all', label: locale === 'ko' ? '시간대 전체' : 'All time zones' }, ...timezoneOptions]}
               onChange={setTimezone}

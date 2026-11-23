@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Modal, TimeSelect } from '@studyclub/ui';
+import { Button, DatePicker, Modal, TimePicker } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import { kickoffSchema, type KickoffValues } from '@/features/schedule/form-schemas';
@@ -73,15 +73,14 @@ export function KickoffDialog({
         </p>
         {/* Input 은 칸 너비를 꽉 채운다(w-full) — 두 칸이 창 너비를 반씩 나눈다 */}
         <div className='grid gap-3 sm:grid-cols-2'>
-          <Input
-            type='date'
+          <DatePicker
             label='일자'
             required
             value={date}
             error={shown.date?.message}
-            onChange={(ev) => change('date', ev.target.value)}
+            onChange={(value) => change('date', value)}
           />
-          <TimeSelect
+          <TimePicker
             label={`시작 시각 (${zoneLabel(tz)})`}
             required
             value={time}

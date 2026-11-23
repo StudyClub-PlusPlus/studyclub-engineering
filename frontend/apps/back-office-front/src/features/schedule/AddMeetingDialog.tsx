@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Input, Modal, FilterChip, TimeSelect } from '@studyclub/ui';
+import { Button, Input, Modal, FilterChip, TimePicker, DatePicker } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import { meetingSchema, type MeetingValues } from '@/features/schedule/form-schemas';
@@ -127,15 +127,14 @@ export function AddMeetingDialog({
     >
       <div className='flex flex-col gap-4 py-2'>
         <div className='grid gap-3 sm:grid-cols-2'>
-          <Input
-            type='date'
+          <DatePicker
             label={draft.repeat === 'none' ? '일자' : '시작 일자'}
             required
             value={draft.date}
             error={errors.date?.message}
-            onChange={(ev) => change({ date: ev.target.value })}
+            onChange={(value) => change({ date: value })}
           />
-          <TimeSelect
+          <TimePicker
             label={`시작 시각 (${zoneLabel(tz)})`}
             required
             value={draft.time}
@@ -181,8 +180,7 @@ export function AddMeetingDialog({
 
         {draft.repeat !== 'none' && (
           <div className='sm:max-w-[18rem]'>
-            <Input
-              type='date'
+            <DatePicker
               label='종료일'
               labelHint={`이 날까지 · 시작부터 최대 ${REPEAT_SPAN_LABEL}`}
               required
@@ -190,7 +188,7 @@ export function AddMeetingDialog({
               max={maxUntil(draft.date)}
               value={draft.until}
               error={errors.until?.message}
-              onChange={(ev) => change({ until: ev.target.value })}
+              onChange={(value) => change({ until: value })}
             />
           </div>
         )}

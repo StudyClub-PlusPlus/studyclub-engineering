@@ -8,7 +8,7 @@ import { recruitmentTimeZones } from '@core/lib/recruitment-timezones';
 import { isValidZone } from '@core/lib/schedule-timezone';
 import { latestCohort, programs } from '@studyclub/mock';
 import { type Study, type StudyKind, type RecruitmentTimeZones } from '@studyclub/types';
-import { Button, Checkbox, Input, Select, Textarea, FilterChip } from '@studyclub/ui';
+import { Button, Checkbox, Input, Select, Textarea, FilterChip, DatePicker } from '@studyclub/ui';
 import { STUDY_CATEGORIES, categoriesOf, toISODate } from '@studyclub/utils';
 
 import { RecruitmentTimeZoneField } from './RecruitmentTimeZoneField';
@@ -302,12 +302,11 @@ export function StudyForm({
 
       <div className='grid gap-3 sm:grid-cols-2'>
         <div data-anno='7'>
-          <Input
-            type='date'
+          <DatePicker
             label='모집 마감일'
             required
             value={value.deadline}
-            onChange={(ev) => set('deadline', ev.target.value)}
+            onChange={(value) => set('deadline', value)}
             error={errors.deadline}
           />
         </div>
@@ -343,11 +342,10 @@ export function StudyForm({
       */}
       <div className='grid gap-3 sm:grid-cols-2'>
         <div data-anno='13'>
-          <Input
-            type='date'
+          <DatePicker
             label='진행 시작일'
             value={value.startAt}
-            onChange={(ev) => set('startAt', ev.target.value)}
+            onChange={(value) => set('startAt', value)}
             helper='모임이 실제로 시작하는 날. 미정이면 비워 둡니다'
           />
         </div>

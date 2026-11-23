@@ -3,12 +3,12 @@
 import { useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Modal, Select, FilterChip, TimeSelect } from '@studyclub/ui';
+import { Button, Modal, FilterChip, TimePicker, TimeZonePicker } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import { groupTimeSchema, type GroupTimeValues } from '@/features/schedule/form-schemas';
 import { hasTime, type GroupTime, type ScheduleGroup } from '@/features/schedule/meetings';
-import { DOW_LABEL, otherClock, STUDY_TZS, type StudyTz } from '@/features/schedule/time';
+import { DOW_LABEL, otherClock, STUDY_TZS, type StudyTz, utcOffset, ZONE_PLACE } from '@/features/schedule/time';
 
 /**
  * 반의 스터디 시간(요일 · 시각 · 시간대) — 「스터디 시간 정하기」(처음) · 「스터디 시간 수정」(있을 때) (일정 탭 14-1).
@@ -124,7 +124,7 @@ export function GroupTimeDialog({
 
         <div className='flex flex-col gap-2'>
           <div className='w-48'>
-            <TimeSelect
+            <TimePicker
               size='sm'
               label='스터디 시간'
               value={time.time}
@@ -132,20 +132,14 @@ export function GroupTimeDialog({
             />
           </div>
           <div className='flex flex-col gap-2'>
-            <Select
+            <TimeZonePicker
               size='sm'
-              aria-label='시간대'
+              label='시간대'
+              hideLabel
               value={time.tz}
-              onChange={(ev) =>
-                setValue('tz', ev.target.value as StudyTz, { shouldDirty: true, shouldValidate: touched })
-              }
-            >
-              {STUDY_TZS.map((tz) => (
-                <option key={tz.key} value={tz.key}>
-                  {tz.label}
-                </option>
-              ))}
-            </Select>
+              onChange={(zone) => setValue('tz', zone as StudyTz, { shouldDirty: true, shouldValidate: touched })}
+              options={STUDY_TZS.map((tz) => ({ value: tz.key, label: ZONE_PLACE[tz.key], detail: utcOffset(tz.key) }))}
+            />
           </div>
         </div>
 
