@@ -133,7 +133,7 @@ erDiagram
 
 ## GET /api/admin/retros
 
-쿼리: `studyId` · `meetingId`(studyId 가 있을 때만) · `q`(참여자 이름 부분 일치) · `section=GOOD|IMPROVE|FEELING`(선택, 문항별 보기 — 그 문항을 쓴 회고만) · `sections=GOOD,IMPROVE,FEELING`(선택, 표 보기의 보이는 문항 — 하나도 안 쓴 회고는 뺀다. 없으면 셋 다) · `sort=PARTICIPANT|MEETING|RECENT|LIKES` · `likeSort=GOOD|IMPROVE|FEELING`(선택, 표 보기에서 그 문항 👍 수로 먼저 세운다) · `likeDir=DESC|ASC`(기본 DESC) · `offset` · `limit`(기본 20)
+쿼리: `studyId` · `meetingId`(studyId 가 있을 때만) · `q`(참여자 이름 부분 일치) · `section=GOOD|IMPROVE|FEELING`(선택, 문항별 보기 — 그 문항을 쓴 회고만) · `sections=GOOD,IMPROVE,FEELING`(선택, 표 보기의 보이는 문항 — 하나도 안 쓴 회고는 뺀다. 없으면 셋 다) · `sort=RECENT|LIKES`(기본 RECENT) · `likeSort=GOOD|IMPROVE|FEELING`(선택, 표 보기에서 그 문항 👍 수로 먼저 세운다) · `likeDir=DESC|ASC`(기본 DESC) · `offset` · `limit`(기본 20)
 
 ```json
 {
@@ -165,7 +165,7 @@ erDiagram
 - `summary` 의 `rows` · `closedRows` 는 작성률 분모라 쓸 사람 전체(끝난 회차 × 쓸 사람)로 센다. `total` 은 `items` 건수(쓴 회고)
 - `summary` 는 좁힌 조건 전체로 센다
 - `closed` = 작성 기한이 지났다. 작성률은 `closedWritten ÷ closedRows` — 기한 전 회차는 아직 쓸 수 있어 세지 않는다 (`closedRows` 가 0 이면 작성률 없음)
-- 정렬: 스터디 이름 → (PARTICIPANT) 이름 → 회차 번호 / (MEETING) 회차 번호 → 이름
+- 정렬: (RECENT) writtenAt 내림차순 / (LIKES) 아래 규칙
 - `section` 이 있으면(문항별 보기) 그 문항이 빈 회고는 빼고, `total` 도 그 건수다. `sort` 는 `RECENT`(writtenAt 내림차순, 기본) · `LIKES`(그 문항 👍 내림차순, 같으면 RECENT). 표 보기에서도 `RECENT` · `LIKES` 를 쓴다 — 표의 `LIKES` 는 `sections` 문항 👍 합. `likeSort` 가 있으면 그것이 먼저다
 - 시각은 모두 UTC(ISO 8601). 날짜 · 시각 표시는 화면이 보는 쪽 시간대로 바꾼다 — `meetingStartAt` 으로 회차 날짜를 구한다 (반 시간대 날짜를 내려주지 않는다)
 

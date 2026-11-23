@@ -19,7 +19,7 @@ import { useMswStudies } from '@/proto/lib/use-msw-studies';
  *
  * 처음엔 「문항별」 — 문항 하나(기본 개선할 점)의 답을 세로로 모아 최근 것부터 읽는다.
  * 캡틴이 먼저 찾는 건 「최근에 어떤 개선 의견이 나왔나」라서, 사람마다 세 문항을 옆으로 늘어놓은 표보다 앞에 둔다.
- * 「표」는 한 사람의 문항을 한 줄로 보는 용도 — 보일 문항 열을 고르고, 참여자별 · 회차별 · 최신순 · 공감순으로 줄을 세운다.
+ * 「표」는 한 사람의 문항을 한 줄로 보는 용도 — 보일 문항 열을 고르고, 최신순 · 공감순으로 줄을 세운다.
  * TODO(api): GET /api/admin/retros?studyId&meetingId&q&section&sort&offset&limit — 캡틴 전용
  *            section=improve|good|feeling 이면 그 문항을 쓴 회고만, sort=recent|likes
  *            GET /api/admin/retros/export.csv — 같은 조건
@@ -27,7 +27,7 @@ import { useMswStudies } from '@/proto/lib/use-msw-studies';
 const PAGE_SIZE = 20;
 
 type View = 'question' | 'table';
-type Sort = 'participant' | 'meeting' | 'recent' | 'likes';
+type Sort = 'recent' | 'likes';
 type Order = 'recent' | 'likes';
 /** 문항별 보기의 고르는 순서 — 개선할 점이 먼저다. 표 · CSV 의 열 순서(RETRO_SECTIONS)는 그대로. */
 const PICK_ORDER: RetroSection[] = ['improve', 'good', 'feeling'];
@@ -129,7 +129,7 @@ export function RetrosTable() {
   const [meetingId, setMeetingId] = useState('all');
   const [input, setInput] = useState('');
   const [q, setQ] = useState('');
-  const [sort, setSort] = useState<Sort>('participant');
+  const [sort, setSort] = useState<Sort>('recent');
   // 표에 보일 문항 열 — 하나는 늘 남는다. 순서는 RETRO_SECTIONS(좋았던 점 · 개선할 점 · 소감) 그대로.
   const [cols, setCols] = useState<RetroSection[]>(RETRO_SECTIONS.map((s) => s.key));
   // 문항 열 머리를 누르면 그 문항의 👍 수로 줄을 세운다. 줄 순서를 다시 고르면 풀린다.
@@ -207,14 +207,8 @@ export function RetrosTable() {
           return likeSort.dir === 'desc' ? lb - la : la - lb;
         }
       }
-      if (sort === 'recent') return recent(a, b);
       // 공감순 = 보이는 문항의 👍 합. 같으면 최신순
-      if (sort === 'likes') return likesOf(b) - likesOf(a) || recent(a, b);
-      const byStudy = a.studyTitle.localeCompare(b.studyTitle, 'ko');
-      if (byStudy) return byStudy;
-      const byName = a.authorName.localeCompare(b.authorName, 'ko');
-      const byMeeting = a.meetingNo - b.meetingNo;
-      return sort === 'participant' ? byName || byMeeting : byMeeting || byName;
+      return sort === 'likes' ? likesOf(b) - likesOf(a) || recent(a, b) : recent(a, b);
     });
   const toggleCol = (c: RetroSection) => {
     const next = cols.includes(c) ? cols.filter((x) => x !== c) : [...cols, c];
@@ -393,8 +387,6 @@ export function RetrosTable() {
                   setPage(1);
                 }}
                 options={[
-                  { value: 'participant', label: '참여자별' },
-                  { value: 'meeting', label: '회차별' },
                   { value: 'recent', label: '최신순' },
                   { value: 'likes', label: '공감순' },
                 ]}
