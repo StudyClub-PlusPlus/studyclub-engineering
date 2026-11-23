@@ -381,7 +381,7 @@ export function StudyConsole({ study }: { study: Study }) {
             {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
             {reusable && (
               <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setReuseOpen(true)}>
-                재사용해 새 스터디 만들기
+                이 내용으로 새 스터디
               </Button>
             )}
             {study.program?.kind === 'club' && (

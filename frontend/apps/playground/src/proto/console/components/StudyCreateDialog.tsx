@@ -127,7 +127,7 @@ export function StudyCreateDialog({
         open={open}
         onClose={close}
         title={
-          reuseOf ? '재사용해 새 스터디 만들기' : editing ? '스터디 편집' : nextOf ? '다음 기수 만들기' : '스터디 등록'
+          reuseOf ? '이 내용으로 새 스터디' : editing ? '스터디 편집' : nextOf ? '다음 기수 만들기' : '스터디 등록'
         }
         size='lg'
         footer={

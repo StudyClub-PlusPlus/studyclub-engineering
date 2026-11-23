@@ -303,7 +303,6 @@ export function StudyForm({
       <div className='grid gap-3 sm:grid-cols-2'>
         <div data-anno='7'>
           <Input
-            id='deadline'
             type='date'
             label='모집 마감일'
             required
@@ -345,7 +344,6 @@ export function StudyForm({
       <div className='grid gap-3 sm:grid-cols-2'>
         <div data-anno='13'>
           <Input
-            id='startAt'
             type='date'
             label='진행 시작일'
             value={value.startAt}
