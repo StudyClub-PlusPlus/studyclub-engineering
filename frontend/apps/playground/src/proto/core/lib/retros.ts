@@ -70,7 +70,7 @@ export type Retro = RetroAnswers & {
   liked: Record<RetroSection, boolean>;
 };
 
-/** 회차 한 줄의 회고 상태 — 스터디 일정 회고 칸과 회고 탭 머리가 쓴다. */
+/** 회차 한 줄의 회고 상태 — 회고 탭 머리와 회고 탭 점이 쓴다. */
 export type RetroMeetingStatus = {
   meeting: ProtoMeeting;
   label: string;
