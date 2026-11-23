@@ -31,7 +31,7 @@ export function toMeetings(res: ApiGroupMeetings): Meeting[] {
 
 /** 발표자 칸에 이름을 적을 사람 — 후보에 더해, 참여를 중단했어도 지난 회차에 이름이 남은 사람. */
 export function toPeople(res: ApiGroupMeetings): Person[] {
-  const byId = new Map(res.participants.map((p) => [String(p.participantId), p.name]));
+  const byId = new Map(res.participants.map((p) => [String(p.participantId), p.name ?? '(알 수 없음)']));
   for (const m of res.meetings) {
     for (const p of [m.presenter1, m.presenter2]) {
       if (p && !byId.has(String(p.participantId))) byId.set(String(p.participantId), p.name ?? '(알 수 없음)');
