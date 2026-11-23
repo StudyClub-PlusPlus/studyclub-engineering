@@ -74,6 +74,17 @@
       ],
       "scrollTo": "[data-anno~=\"class:4\"], [data-anno~=\"class:5\"]",
       "fullPage": false
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "results-days",
+      "title": "신청 결과 — 참여 가능한 요일은 응답 그대로 막대 하나, 함께 모일 시간은 신청자 탭으로",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": [
+        "신청 결과"
+      ],
+      "scrollTo": "[data-anno~=\"results:5\"]"
     }
   ]
 }

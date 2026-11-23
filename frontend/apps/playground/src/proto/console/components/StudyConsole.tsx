@@ -633,7 +633,7 @@ export function StudyConsole({ study }: { study: Study }) {
             })()
           ))}
         {tab === 'form' && <ApplicationFormTab study={study} />}
-        {tab === 'results' && <ResultsTab study={study} crew={crew} />}
+        {tab === 'results' && <ResultsTab study={study} crew={crew} onGoCrew={() => requestTab('crew')} />}
         {tab === 'info' && <StudyInfoTab study={study} />}
       </div>
 
