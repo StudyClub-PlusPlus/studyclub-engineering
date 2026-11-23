@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
 import { buildGoogleAuthUrl, isConfigured, setUser } from '@/features/auth/auth';
 import { loginResponseSchema } from '@/features/auth/response-schema';
+import { safeNext } from '@/lib/safe-next';
 
 // useSearchParams() 는 next build 프리렌더 시 Suspense 경계가 필요.
 export default function BackOfficeLoginPage() {
@@ -13,11 +14,6 @@ export default function BackOfficeLoginPage() {
       <BackOfficeLoginForm />
     </Suspense>
   );
-}
-
-/** `next` 는 누구나 고칠 수 있다 — 이 사이트 안 경로(`/` 하나로 시작)만 받는다. `//x`·`/\x` 는 다른 사이트로 간다. */
-function safeNext(next: string | null): string {
-  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : '/';
 }
 
 function BackOfficeLoginForm() {

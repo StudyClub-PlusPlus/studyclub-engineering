@@ -61,3 +61,21 @@ it('선택지와 기타 삭제는 저장을 누를 때까지 서버에 반영하
   await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
   expect(onSave.mock.calls[0][0].questions[0]).toMatchObject({ options: ['오후'], allowOther: false });
 });
+
+it('지원자 폼에 붙는 기본 문항인 참여 가능한 요일을 고칠 수 없게 보여 준다', () => {
+  render(
+    <ApplicationFormEditor
+      initialValues={{ title: '제목', description: '', questions: [] }}
+      title='제목'
+      summary=''
+      readOnly={false}
+      saving={false}
+      saved={false}
+      onSave={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('참여 가능한 요일')).toBeTruthy();
+  for (const day of ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']) {
+    expect(screen.getByRole('checkbox', { name: day })).toHaveProperty('disabled', true);
+  }
+});

@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 
-import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
+import { TimeZoneField, zoneName } from '@core/components/TimeZoneField';
 import { useDiscordLink } from '@core/components/useDiscordLink';
 import { getUser, type SessionUser } from '@core/lib/auth';
 import { type Locale } from '@core/lib/content';
@@ -266,7 +266,7 @@ export default function MyPage() {
           <Field label='시간대' anno='profile:3' saved={false}>
             {editing ? (
               <div className='w-full max-w-xs'>
-                <TimeZonePicker value={draftZone} onChange={setDraftZone} locale={locale} hideLabel />
+                <TimeZoneField value={draftZone} onChange={setDraftZone} locale={locale} hideLabel prioritizeCountries />
               </div>
             ) : (
               <span className='font-semibold text-fg'>{zoneName(timeZone, locale) ?? timeZone}</span>

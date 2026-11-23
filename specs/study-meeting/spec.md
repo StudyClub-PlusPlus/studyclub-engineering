@@ -1,5 +1,7 @@
 # 스터디 회차(미팅) API Spec
 
+> 시간대 확장 (2026-11-22): 시간대 확장의 조회·기존 회차 수정·신규 입력 기준은 회차 등록 PRD §8을 따른다. 기존 API의 UTC 전달·반 날짜 검증 계약은 유지한다. [확장 PRD](../../01-planning/stories/timezone-expansion/PRD.md) · [회차 등록 PRD](../../01-planning/stories/navigator-register-sessions/PRD.md#8-시간대).
+
 > ERD: [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
 > Story PRD: [회차 등록](../../01-planning/stories/navigator-register-sessions/PRD.md) · [크루 발표자 신청](../../01-planning/stories/crew-apply-presenter/PRD.md)
 > 갱신: 2026-11-16 — 담당 캡틴 판정을 `STUDY.CREATED_BY` 에서 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md)). 처음 값은 만든 캡틴, 백오피스 신청자 탭에서 바꾼다

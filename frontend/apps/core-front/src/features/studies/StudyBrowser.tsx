@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { Locale, Study } from '@studyclub/types';
-import { Select, Button, FilterChip, Segmented } from '@studyclub/ui';
+import { Button, FilterChip, Segmented, TimeZonePicker } from '@studyclub/ui';
 import { CATEGORY_DISPLAY } from '@studyclub/utils';
 import { Search, X } from 'lucide-react';
 
@@ -28,9 +28,10 @@ const CATEGORY_OPTIONS: { value: string; label: string }[] = [
   { value: 'all', label: '전체' },
   ...Object.entries(CATEGORY_DISPLAY).map(([value, label]) => ({ value, label })),
 ];
+/** 값은 API enum, 라벨은 playground 모집 시간대 필터와 같은 지역 이름(한국 · 미국 · LA). 서버가 아직 KST · PST · BOTH 로만 거른다. */
 const TIMEZONE_OPTIONS: { value: TimezoneFilter; label: string }[] = [
-  { value: 'KST', label: 'KST' },
-  { value: 'PST', label: 'PST' },
+  { value: 'KST', label: '한국' },
+  { value: 'PST', label: '미국 · LA' },
   { value: 'both', label: '동시 모집' },
 ];
 
@@ -57,30 +58,6 @@ const URL_ALLOWED = {
   category: CATEGORY_OPTIONS.map((o) => o.value),
   tz: ['all', ...TIMEZONE_OPTIONS.map((o) => o.value)],
 };
-
-function FilterSelect<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <Select
-      value={value}
-      onChange={(event) => onChange(event.target.value as T)}
-      className='h-9 w-fit rounded-lg border border-border bg-bg type-label-lg text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </Select>
-  );
-}
 
 function FilterRow({ children, ...rest }: React.ComponentPropsWithoutRef<'div'>) {
   return (
@@ -182,10 +159,14 @@ export function StudyBrowser({
             className='shrink-0'
           />
           <div>
-            <FilterSelect
+            <TimeZonePicker
+              className='w-40'
+              size='sm'
+              label='모집 시간대 필터'
+              hideLabel
               value={timezone}
-              options={[{ value: 'all' as const, label: '시간대 전체' }, ...TIMEZONE_OPTIONS]}
-              onChange={(tz) => setFilters({ tz })}
+              options={[{ value: 'all', label: '시간대 전체' }, ...TIMEZONE_OPTIONS]}
+              onChange={(tz) => setFilters({ tz: tz as TimezoneFilter })}
             />
           </div>
           <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border bg-bg px-1 transition-[border-color,width] duration-200 focus-within:border-border-interactive sm:ml-auto sm:w-[200px] sm:focus-within:w-full lg:focus-within:w-[312px]'>

@@ -53,7 +53,10 @@ class AdminAccountRoleServiceTest {
                 new AdminAccountRoleService(
                         accountRepository,
                         studyRepository,
-                        new AdminAuditRecorder(auditRepository, new ClientIpResolver(""), 1));
+                        new AdminAuditRecorder(auditRepository, new ClientIpResolver(""), 1),
+                        // 요청자(1)가 최고 관리자 — 캡틴 내리기는 최고 관리자만 된다
+                        new SuperAdmins(
+                                accountRepository, " UNIT-" + ACTOR_ID + "@example.com , "));
     }
 
     @Test
@@ -225,6 +228,60 @@ class AdminAccountRoleServiceTest {
         var order = inOrder(accountRepository);
         order.verify(accountRepository).findAllAdminsForUpdate();
         order.verify(accountRepository).findByIdForUpdate(TARGET_ID);
+    }
+
+    @Test
+    @DisplayName("최고 관리자는 내릴 수 없다 — SUPER_ADMIN_LOCKED(403), 값도 감사 기록도 그대로")
+    void rejectsDemotingSuperAdmin() {
+        Account actor = account(ACTOR_ID, SystemRole.ADMIN);
+        Account target = account(TARGET_ID, SystemRole.ADMIN);
+        givenAdmins(actor, target);
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
+        AdminAccountRoleService both =
+                serviceWithSuperAdmins("unit-1@example.com,unit-2@example.com");
+
+        assertThatThrownBy(() -> both.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.MEMBER))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        e -> {
+                            assertThat(e.errorCode()).isEqualTo(ErrorCode.SUPER_ADMIN_LOCKED);
+                            assertThat(e.errorCode().status()).isEqualTo(403);
+                        });
+        assertThat(target.getSystemRole()).isEqualTo(SystemRole.ADMIN);
+        verify(auditRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("최고 관리자가 아니면 캡틴을 내릴 수 없다 — NOT_SUPER_ADMIN(403). 크루를 올리는 것은 된다")
+    void nonSuperAdminCannotDemote() {
+        Account actor = account(ACTOR_ID, SystemRole.ADMIN);
+        Account target = account(TARGET_ID, SystemRole.ADMIN);
+        givenAdmins(actor, target);
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
+        AdminAccountRoleService none = serviceWithSuperAdmins("");
+
+        assertThatThrownBy(() -> none.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.MEMBER))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        e -> {
+                            assertThat(e.errorCode()).isEqualTo(ErrorCode.NOT_SUPER_ADMIN);
+                            assertThat(e.errorCode().status()).isEqualTo(403);
+                        });
+        assertThat(target.getSystemRole()).isEqualTo(SystemRole.ADMIN);
+        verify(auditRepository, never()).save(any());
+
+        Account crew = account(3L, SystemRole.MEMBER);
+        when(accountRepository.findByIdForUpdate(3L)).thenReturn(Optional.of(crew));
+        none.changeSystemRole(ACTOR_ID, 3L, SystemRole.ADMIN);
+        assertThat(crew.getSystemRole()).isEqualTo(SystemRole.ADMIN);
+    }
+
+    private AdminAccountRoleService serviceWithSuperAdmins(String raw) {
+        return new AdminAccountRoleService(
+                accountRepository,
+                studyRepository,
+                new AdminAuditRecorder(auditRepository, new ClientIpResolver(""), 1),
+                new SuperAdmins(accountRepository, raw));
     }
 
     private void givenAdmins(Account... admins) {

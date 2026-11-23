@@ -1,5 +1,7 @@
 # 크루는 스터디 상세 정보를 볼 수 있다.
 
+> 시간대 공통 규칙: [확장 PRD](../timezone-expansion/PRD.md).
+
 기준 프로토타입: 스터디 상세 (playground 사용자 사이트 · 스터디 상세)
 
 관련 결정: [09-30 모집 마감 시각은 필수다](../../../docs/share/2026-09-30-null-recruit-deadline.md)
@@ -50,7 +52,7 @@ flowchart LR
   - 모집이 끝났으면 `모집 마감`
 - **정책**
   - 문구는 `recruitBadge(study, locale)` 한 곳이다. 목록과 여기서 따로 계산하지 않는다
-  - `D-N`은 마감일에서 오늘을 뺀 일수다. 0 이하면 `D-DAY`
+  - `D-N`은 회원 시간대의 마감 날짜와 오늘 날짜 차이다. 아직 마감 전인 당일만 `D-DAY`, 마감 순간부터 모집 마감
   - 마감까지 3일 이하면 마감 임박으로 구분한다. 구분 값은 `D-N` 숫자다. 색만으로 구분하지 않는다
   - 마감 임박 기준은 3일이다
 - **데이터**: `study.status`, `study.recruitment.deadline`
@@ -70,17 +72,11 @@ flowchart LR
 - **내용**: 한 줄 소개. 보는 언어의 문구
 - **데이터**: `study.summary`
 
-### 6. 일정·시간대
+### 6. 일정·모집 시간대
 
-- **내용**
-  - 일정이 있으면 일정 문구와 시간대를 함께 알려 준다
-  - 일정이 없으면 시간대만 알려 준다
-  - 시간대 문구는 `KST`, `PST`, `동시 진행(KST·PST)`. 알 수 없으면 `시간대 미정`
-- **정책**
-  - 시간대는 `studyTimezone(study)` 한 곳이다. 목록·상세가 같은 함수를 쓴다. 목록 필터는 서버가 같은 순서로 판정한다
-  - 운영자가 고른 값(`study.timezone`, `STUDY.TIMEZONE`)이 있으면 그대로 쓴다
-  - 값이 없으면(`null`) 일정·킥오프 문구의 `KST` / `PST`·`PDT` 표기로 추정한다. 표기도 없으면 `시간대 미정` — `동시 진행`이라 단정하지 않는다
-- **데이터**: `study.timezone`, `study.schedule`, `study.recruitment.kickoff`
+- 진행 일정은 운영자가 입력한 문구 그대로 표시. 프로필에 따른 자동 환산·가상 확정 일정 없음.
+- 모집 범위는 선택 지역 / 모든 시간대에서 모집 / 미정. 반 기준 시간대와 별개.
+- 마감은 회원 시간대의 날짜·시각·해당 날짜 약칭으로 표시. 실제 신청 가능 여부는 동일한 UTC 순간으로 판정.
 
 ### 7. 스터디 소개
 
@@ -96,7 +92,7 @@ flowchart LR
 - **내용**: `시작 예정일 {날짜}`. 값이 없으면 `시작 예정일 미정`
 - **정책**
   - 표시 값은 `studyStartValue(study, locale)` 한 곳이다. 목록과 여기서 따로 계산하지 않는다
-  - 모집 마감일은 여기 두지 않는다. 모집 상태(2)가 이미 `D-N`·`모집 마감`으로 말한다
+  - 시작 예정일과 별도로 마감 일시를 회원 시간대와 약칭으로 표시한다
 - **데이터**: `study.start_at`
 
 ### 9. 신청
@@ -186,7 +182,7 @@ erDiagram
 - 모집 열림: `recruitState(study)` — [study-recruit-status/spec.md](../../../specs/study-recruit-status/spec.md#판정-규칙)
 - 모집 상태 문구: `recruitBadge(study, locale)` — 목록과 같다
 - 시작일 표시: `studyStartValue(study, locale)` — `START_AT`가 없으면 `미정`
-- 시간대: `studyTimezone(study)` — `STUDY.TIMEZONE` 이 있으면 그 값, 없으면 일정·킥오프 문구의 `KST` / `PST`·`PDT`. 그마저 없으면 시간대 미정
+- 모집 시간대: 저장된 모드·지역을 표시한다. 일정 문구에서 추정하지 않는다(확장 PRD §4).
 
 ### API
 

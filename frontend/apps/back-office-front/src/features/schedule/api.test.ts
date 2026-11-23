@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { toMeetings, toPeople, toUpdateBody } from '@/features/schedule/api';
 import type { ApiGroupMeetings } from '@/features/schedule/repository';
+import { apiGroupMeetingsSchema } from '@/features/schedule/response-schema';
 
 const res: ApiGroupMeetings = {
   studyGroup: {
@@ -66,6 +67,18 @@ describe('반 회차 목록 응답', () => {
       { id: '78', name: '건우' },
       { id: '90', name: '떠난크루' },
     ]);
+  });
+});
+
+describe('디스코드 닉네임이 없는 참여자', () => {
+  const noName = { ...res, participants: [{ participantId: 81, name: null }] } as unknown as ApiGroupMeetings;
+
+  it('후보의 name 이 null 이어도 응답을 받아들인다 (스펙: 닉네임 없는 계정은 null)', () => {
+    expect(apiGroupMeetingsSchema.safeParse(noName).success).toBe(true);
+  });
+
+  it('이름이 없는 후보는 「(알 수 없음)」으로 적는다', () => {
+    expect(toPeople(noName)).toContainEqual({ id: '81', name: '(알 수 없음)' });
   });
 });
 

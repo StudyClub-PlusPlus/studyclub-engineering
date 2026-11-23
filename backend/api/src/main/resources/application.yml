@@ -44,6 +44,11 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
 
+# 최고 관리자 (specs/admin-users 「최고 관리자」). 콤마로 여러 명. 부팅 때 이 사람들은 캡틴이 되고, 화면 · API 로는 못 내린다.
+# 캡틴을 크루로 내리는 것은 최고 관리자만 한다. 비면 최고 관리자 없음. 값은 env 로만 (PUBLIC 레포).
+super-admin:
+  emails: ${SUPER_ADMIN_EMAILS:}
+
   # 구글 OAuth (GCP 콘솔에서 클라이언트 생성 후 env 로 주입 — 비어있어도 부팅됨)
 google:
   client-id: ${GOOGLE_CLIENT_ID:}

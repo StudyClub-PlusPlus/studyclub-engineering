@@ -35,7 +35,7 @@ export default async function NoticesPage({
       <div className='mt-10 border-t-2 border-(--color-fg)'>
         <div className='hidden items-center gap-6 border-b border-(--color-border) px-2 py-3 type-label-sm text-(--color-fg-muted) sm:flex'>
           <span className='flex-1'>{t({ ko: '제목', en: 'Title' }, locale)}</span>
-          <span className='w-28 text-right'>{t({ ko: '게시일', en: 'Posted' }, locale)}</span>
+          <span className='w-28 text-center'>{t({ ko: '게시일', en: 'Posted' }, locale)}</span>
         </div>
         {rows.length === 0 ? (
           <p className='border-b border-(--color-border) py-20 text-center type-body-sm text-(--color-fg-muted)'>
@@ -49,9 +49,9 @@ export default async function NoticesPage({
                   href={`${base}/${n.id}`}
                   className='flex flex-col gap-1 px-2 py-5 transition-colors hover:bg-(--color-surface-subtle) sm:flex-row sm:items-center sm:gap-6'
                 >
-                  {/* 제목은 남는 폭을 다 쓰고 한 줄로 자른다. 게시일은 고정폭·줄바꿈 없음 */}
+                  {/* 제목은 남는 폭을 다 쓰고 한 줄로 자른다. 게시일은 고정폭 칸 안에서 가운데 */}
                   <span className='min-w-0 flex-1 truncate type-title-md'>{t(n.title, locale)}</span>
-                  <time className='shrink-0 whitespace-nowrap type-body-sm tabular-nums text-(--color-fg-muted) sm:w-28 sm:text-right'>
+                  <time className='shrink-0 whitespace-nowrap type-body-sm tabular-nums text-(--color-fg-muted) sm:w-28 sm:text-center'>
                     {n.date}
                   </time>
                 </Link>

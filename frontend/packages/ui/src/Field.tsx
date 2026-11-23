@@ -1,7 +1,14 @@
 'use client';
 
 import { useId, useLayoutEffect, useRef, useState } from 'react';
-import type { ChangeEvent, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import type {
+  ChangeEvent,
+  InputHTMLAttributes,
+  ReactNode,
+  Ref,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from 'react';
 
 import { ChevronDown } from 'lucide-react';
 
@@ -19,10 +26,9 @@ const CONTROL_BASE = cx(
 const CONTROL_OK = 'border-border focus:border-border-interactive focus:shadow-(--ring)';
 const CONTROL_ERROR = 'border-danger-fg focus:border-danger-fg focus:shadow-(--ring-error)';
 
-function controlClass(invalid: boolean, extra?: string) {
+export function controlClass(invalid: boolean, extra?: string) {
   return cx(CONTROL_BASE, invalid ? CONTROL_ERROR : CONTROL_OK, extra);
 }
-
 
 export interface FieldShellProps {
   label?: string;
@@ -61,7 +67,18 @@ export function FieldShell({
               </span>
             )}
           </label>
-          {labelHint && <span className='shrink-0 type-label-sm text-fg-placeholder'>{labelHint}</span>}
+          {labelHint && (
+            <span
+              className={cx(
+                'flex shrink-0 type-label-sm text-fg-placeholder',
+                // 글자 수 같은 글은 라벨과 글자 바닥을 맞춘다. 체크박스 같은 요소는 바닥선이 상자 아래라 맞추면 줄이 내려가
+                // 옆 칸보다 입력칸이 낮아진다 — 가운데로 둔다
+                typeof labelHint !== 'string' && typeof labelHint !== 'number' && 'self-center',
+              )}
+            >
+              {labelHint}
+            </span>
+          )}
         </div>
       )}
       {children}
@@ -94,11 +111,14 @@ const INPUT_SIZES: Record<InputSize, string> = {
 };
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>, FieldMeta {
+  ref?: Ref<HTMLInputElement>;
   size?: InputSize;
   /** 칸 오른쪽 끝에 붙는 단위 글자(「명」 · 「원」 등). 입력값이 그 앞에서 멈추도록 오른쪽 여백을 비운다. */
   suffix?: ReactNode;
   /** 칸 왼쪽에 붙는 장식 아이콘(검색 돋보기 등). 장식이라 스크린리더는 읽지 않는다. */
   leadingIcon?: ReactNode;
+  /** 칸 오른쪽 끝의 누르는 단추(달력 · 시계 열기 등). 칸 상자 기준으로 놓이고 입력값은 그 앞에서 멈춘다. */
+  trailing?: ReactNode;
 }
 
 export function Input({
@@ -112,6 +132,7 @@ export function Input({
   size = 'md',
   suffix,
   leadingIcon,
+  trailing,
   ...rest
 }: InputProps) {
   const autoId = useId();
@@ -145,7 +166,12 @@ export function Input({
           aria-describedby={ariaDescribedBy}
           className={controlClass(
             invalid,
-            cx(INPUT_SIZES[size], leadingIcon != null && 'pl-9', suffix != null && 'pr-9', className),
+            cx(
+              INPUT_SIZES[size],
+              leadingIcon != null && 'pl-9',
+              (suffix != null || trailing != null) && 'pr-9',
+              className,
+            ),
           )}
         />
         {suffix != null && (
@@ -153,6 +179,7 @@ export function Input({
             {suffix}
           </span>
         )}
+        {trailing}
       </div>
     </FieldShell>
   );

@@ -12,7 +12,7 @@ import { useForm } from 'react-hook-form';
 
 import { profileSchema, type ProfileFormValues } from './form-schema';
 import type { MarketingConsent } from './types';
-import { TimeZonePicker, zoneName } from '@/components/TimeZonePicker';
+import { TimeZoneField, zoneName } from '@/components/TimeZoneField';
 import type { Account } from '@/features/account/types';
 import { logout, setUser, type SessionUser } from '@/features/auth/auth';
 import { isPreview } from '@/features/auth/preview';
@@ -409,7 +409,7 @@ export function ProfileCard({
           <Field label='시간대'>
             {editing ? (
               <div className='w-full max-w-xs'>
-                <TimeZonePicker
+                <TimeZoneField
                   value={draftZone}
                   onChange={(zone) => setValue('timeZone', zone, { shouldValidate: true })}
                   locale={locale}

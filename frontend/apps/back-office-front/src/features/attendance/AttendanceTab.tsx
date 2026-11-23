@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 
-import { Button, Segmented, toast } from '@studyclub/ui';
+import { Button, TimeZonePicker, toast } from '@studyclub/ui';
 import { CalendarPlus } from 'lucide-react';
 
 import { toBook, toUpdates, useGroupAttendance, useSaveAttendance } from '@/features/attendance/api';
@@ -11,7 +11,7 @@ import { toMeetings, useGroupMeetings } from '@/features/schedule/api';
 import { GroupPicker } from '@/features/schedule/GroupPicker';
 import { useScheduleGroups } from '@/features/schedule/groups';
 import { hasTime, isKickoff } from '@/features/schedule/meetings';
-import { DISPLAY_ZONES, wallParts } from '@/features/schedule/time';
+import { DISPLAY_ZONES, utcOffset, wallParts, ZONE_PLACE } from '@/features/schedule/time';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
 /**
@@ -169,13 +169,18 @@ export function AttendanceTab({
             );
           }}
           toolbar={
-            <Segmented
-              aria-label='회차 표시 시간대'
-              shape='pill'
+            <TimeZonePicker
+              className='w-48'
               size='sm'
+              label='회차 표시 시간대'
+              hideLabel
               value={zone}
-              options={DISPLAY_ZONES.map((z) => ({ value: z.iana as string, label: z.label }))}
               onChange={onZone}
+              options={DISPLAY_ZONES.map((z) => ({
+                value: z.iana,
+                label: ZONE_PLACE[z.iana],
+                detail: utcOffset(z.iana),
+              }))}
             />
           }
         />

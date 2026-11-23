@@ -19,8 +19,14 @@ test('진행 시작일이 모집 마감일보다 빠르면 등록을 막는다',
   await page.getByRole('radiogroup', { name: '카테고리', exact: true }).getByRole('radio', { name: '데이터' }).click();
   await page.locator('#deadline').fill('2026-11-10');
 
+  // 진행 시작일 달력은 모집 마감일 앞 날을 막는다. 칸에 바로 치는 값은 등록할 때 검증한다
   const startAt = page.locator('#startAt');
-  await expect(startAt).toHaveAttribute('min', '2026-11-10');
+  await page.getByRole('button', { name: '진행 시작일 달력 열기' }).click();
+  const calendar = page.getByRole('dialog', { name: '진행 시작일 날짜 고르기' });
+  await expect(calendar.getByRole('button', { name: /2026년 11월 9일/ })).toBeDisabled();
+  await expect(calendar.getByRole('button', { name: /2026년 11월 10일/ })).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(calendar).toBeHidden();
   await startAt.fill('2026-11-09');
   await page.getByRole('button', { name: '등록', exact: true }).click();
 

@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { studies as defaultStudies } from '@studyclub/mock';
 import { type Study } from '@studyclub/types';
 
+import { useRecruitmentStudies } from './recruitment-zone-store';
+
 /**
  * Playground 내에서 MSW /api/studies 응답을 실시간으로 반영하는 Hook.
  * MSW Devtool에서 프리셋(정상, 빈 목록 등)을 변경할 때 msw:config-change 이벤트를 감지하여 자동 동기화한다.
@@ -49,5 +51,5 @@ export function useMswStudies(initialStudies: Study[] = defaultStudies) {
     };
   }, []);
 
-  return studies;
+  return useRecruitmentStudies(studies);
 }

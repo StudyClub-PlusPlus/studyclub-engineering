@@ -1,19 +1,26 @@
 'use client';
 
+
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { LIFECYCLE_LABEL, LIFECYCLE_ORDER } from '@console/components/lifecycle';
 import { LifecycleBadge } from '@console/components/LifecycleBadge';
-import { TIMEZONE_LABEL } from '@console/components/StudyForm';
 import { tx } from '@console/lib/l10n';
 import { rememberStudiesListSearch } from '@console/lib/list-return';
+import { useTopScroll } from '@console/lib/use-top-scroll';
 import { studyAuthor } from '@console/lib/users';
+import { recruitmentZoneLabel } from '@core/lib/recruitment-timezones';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew, recruitCapacity } from '@studyclub/mock';
 import { type LifecycleState, type Study } from '@studyclub/types';
 import { Badge, Button, Input, Modal, Pagination, Select, cx } from '@studyclub/ui';
-import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, recruitState, toISODate, todayISO } from '@studyclub/utils';
+import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, toISODate, todayISO } from '@studyclub/utils';
 import { Check, Minus, Search } from 'lucide-react';
+
+import { isReusedDraft } from '../lib/reused-drafts';
+import { recruitState, recruitmentDeadlineAt, recruitmentDeadlineLabel } from '@/proto/lib/recruitment-deadline';
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 /**
  * 스터디 관리 목록.
@@ -24,7 +31,7 @@ import { Check, Minus, Search } from 'lucide-react';
  * 않는다 — 진행 일정은 신청 화면에 알리는 문구일 뿐 운영자가 목록에서 훑어볼 값이 아니고, 정렬·필터도 못 건다.
  * 언제 시작하는지가 궁금하면 **스터디 시작일**(`STUDY.START_AT`, 정렬 가능한 날짜)을 본다.
  * 종류(스터디/클럽)는 목록에 두지 않는다 — 칼럼도 거르는 칸도 없다.
- * 시간대(KST/PST/동시 진행)는 등록 폼에서 운영자가 직접 고르는 값이다 — 값이 없으면 「미정」이다.
+ * 모집 시간대는 전체·여러 지역·미정 중 하나이며 반 일정의 기준 시간대와 별개다.
  * 모집 상태는 「모집 종료일」과 「모집 정원」에서, 지원 현황의 분모는 「모집 정원」(비우면 제한 없음)에서 나온다.
  * 공개 상태는 등록 폼이 아니라 이 목록에서 켠다 — **모집 시작 일자가 있으면 공개**다.
  *
@@ -134,6 +141,8 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (v: stri
 
 /** 목록에 필요한 만큼만 뽑는다 — 어느 스터디를 열어야 하는지 고르기 위한 숫자. */
 function summarize(study: Study) {
+  if (isReusedDraft(study))
+    return { capacity: study.recruitment?.capacity, active: 0 };
   const { crew, capacity } = getStudyCrew(study);
   return { capacity, active: crew.length };
 }
@@ -167,7 +176,7 @@ type Column = {
   label: string;
   cellClass?: string;
   anno?: string;
-  render: (row: Row, ctx: { requestPublish: (s: Study, next: boolean) => void }) => ReactNode;
+  render: (row: Row, ctx: { zone: string; requestPublish: (s: Study, next: boolean) => void }) => ReactNode;
 };
 
 const COLUMNS: Column[] = [
@@ -188,10 +197,10 @@ const COLUMNS: Column[] = [
   },
   {
     key: 'timezone',
-    label: '시간대',
+    label: '모집 시간대',
     cellClass: 'whitespace-nowrap text-fg-secondary',
     anno: 'list:2-3',
-    render: ({ s }) => (s.timezone ? TIMEZONE_LABEL[s.timezone] : <span className='text-fg-muted'>미정</span>),
+    render: ({ s }) => <span className='block max-w-60 truncate' title={recruitmentZoneLabel(s, 'ko')}>{recruitmentZoneLabel(s, 'ko')}</span>,
   },
   {
     key: 'recruitStart',
@@ -205,7 +214,7 @@ const COLUMNS: Column[] = [
     label: '모집 종료일',
     cellClass: 'tnum whitespace-nowrap type-label-sm text-fg-secondary',
     anno: 'list:2-1',
-    render: ({ s }) => toISODate(s.recruitment?.deadline) ?? <span className='text-fg-muted'>—</span>,
+    render: ({ s }, { zone }) => recruitmentDeadlineLabel(s, zone) ?? <span className='text-fg-muted'>—</span>,
   },
   {
     key: 'recruit',
@@ -278,7 +287,7 @@ const SORT_VALUE: Record<SortKey, (s: Study) => string | number | undefined> = {
   category: (s) => categoriesOf(s)[0],
   timezone: (s) => s.timezone,
   recruitStart: (s) => startedOn(s),
-  recruitEnd: (s) => toISODate(s.recruitment?.deadline),
+  recruitEnd: (s) => recruitmentDeadlineAt(s),
   recruit: (s) => (recruitState(s) === 'apply' ? 0 : 1),
   crew: (s) => summarize(s).active,
   startAt: (s) => toISODate(s.startAt),
@@ -326,6 +335,8 @@ function SortLabel({
 }
 
 export function StudiesTable({ studies }: { studies: Study[] }) {
+  const clock = useRecruitmentClock(studies);
+  const zone = useDisplayTimeZone();
   const [patch, setPatch] = useState<Record<string, PublishPatch>>({});
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
@@ -359,37 +370,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   }, [urlReady, query, category, status, recruit, publish, form, sort, page]);
 
   // 가로 스크롤바를 표 위에도 둔다 — 행이 많으면 아래로 내려가야 스크롤바가 보인다.
-  const topScrollRef = useRef<HTMLDivElement>(null);
-  const bodyScrollRef = useRef<HTMLDivElement>(null);
-  const syncing = useRef(false);
-  const [scrollWidth, setScrollWidth] = useState(0);
+  const scroll = useTopScroll();
   /** 공개/미공개 전환 확인 팝업. 값이 있으면 열려 있다. */
   const [confirm, setConfirm] = useState<{ id: string; title: string; next: boolean } | null>(null);
-
-  useEffect(() => {
-    const el = bodyScrollRef.current;
-    if (!el) return;
-    const update = () => setScrollWidth(el.scrollWidth);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    if (el.firstElementChild) ro.observe(el.firstElementChild);
-    return () => ro.disconnect();
-  }, []);
-
-  /** 위·아래 스크롤바를 서로 맞춘다. 한쪽이 움직이면 다른 쪽을 옮기되, 되돌아오는 이벤트는 무시한다. */
-  function syncScroll(from: 'top' | 'body') {
-    if (syncing.current) {
-      syncing.current = false;
-      return;
-    }
-    const src = from === 'top' ? topScrollRef.current : bodyScrollRef.current;
-    const dst = from === 'top' ? bodyScrollRef.current : topScrollRef.current;
-    if (!src || !dst || dst.scrollLeft === src.scrollLeft) return;
-    syncing.current = true;
-    dst.scrollLeft = src.scrollLeft;
-  }
-
 
   // 칼럼 순서는 고정이다 — 운영자가 바꾸지 않는다
   const columns = COLUMNS;
@@ -402,7 +385,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         .filter((s) => {
           if (category !== 'all' && !categoriesOf(s).includes(category)) return false;
           if (status !== 'all' && lifecycleState(s) !== status) return false;
-          if (recruit !== 'all' && recruitState(s) !== recruit) return false;
+          if (recruit !== 'all' && recruitState(s, clock) !== recruit) return false;
           if (publish !== 'all' && publishState(s) !== publish) return false;
           if (form === 'has' && !applyFormUrl(s)) return false;
           if (form === 'none' && applyFormUrl(s)) return false;
@@ -420,15 +403,15 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             const c = compareBy(sort, a, b);
             if (c !== 0) return c;
           }
-          const ra = recruitState(a) === 'apply' ? 0 : 1;
-          const rb = recruitState(b) === 'apply' ? 0 : 1;
+          const ra = recruitState(a, clock) === 'apply' ? 0 : 1;
+          const rb = recruitState(b, clock) === 'apply' ? 0 : 1;
           if (ra !== rb) return ra - rb;
-          const da = toISODate(a.recruitment?.deadline) ?? '9999-99-99';
-          const db = toISODate(b.recruitment?.deadline) ?? '9999-99-99';
+          const da = recruitmentDeadlineAt(a) ?? '9999-99-99';
+          const db = recruitmentDeadlineAt(b) ?? '9999-99-99';
           return da.localeCompare(db);
         })
     );
-  }, [studies, patch, query, category, status, recruit, publish, form, sort]);
+  }, [studies, clock, patch, query, category, status, recruit, publish, form, sort]);
 
   // 필터·정렬이 바뀌어 페이지 수가 줄어도 빈 페이지가 남지 않게 현재 페이지를 눌러 준다.
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -525,15 +508,15 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
 
       <div className='card'>
         <div
-          ref={topScrollRef}
-          onScroll={() => syncScroll('top')}
+          ref={scroll.topRef}
+          onScroll={scroll.onTopScroll}
           aria-hidden='true'
           data-anno='list:7'
           className='overflow-x-auto overflow-y-hidden border-b border-border'
         >
-          <div style={{ width: scrollWidth, height: 1 }} />
+          <div style={{ width: scroll.width, height: 1 }} />
         </div>
-        <div ref={bodyScrollRef} onScroll={() => syncScroll('body')} className='overflow-x-auto'>
+        <div ref={scroll.bodyRef} onScroll={scroll.onBodyScroll} className='overflow-x-auto'>
           <table className='bo-table'>
             <thead>
               <tr>
@@ -575,16 +558,19 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                       {s.program?.id ?? <span className='text-fg-muted'>—</span>}
                     </td>
                     <td className='min-w-[24rem] max-w-[32rem]'>
-                      <Link
+                       {isReusedDraft(s) ? (
+                        <span className='font-semibold'>{tx(s.title)}</span>
+                      ) : <Link
                         href={`/proto/console/studies/${s.study_id}`}
                         className='block truncate font-semibold underline-offset-4 hover:text-brand hover:underline'
                       >
                         {tx(s.title)}
-                      </Link>
+                      </Link>}
                     </td>
                     {columns.map((c) => (
                       <td key={c.key} data-anno={c.anno} className={c.cellClass}>
                         {c.render(row, {
+                          zone,
                           requestPublish: (study, next) => setConfirm({ id: study.id, title: tx(study.title), next }),
                         })}
                       </td>
@@ -761,11 +747,31 @@ function readListUrl(search: string): ListUrlState {
   const page = Math.floor(Number(p.get('page')));
   return {
     q: p.get('q') ?? '',
-    category: pick('category', CATEGORY_OPTIONS.map((o) => o.value), 'all'),
-    status: pick<StatusFilter>('status', STATUS_OPTIONS.map((o) => o.value), 'all'),
-    recruit: pick<RecruitFilter>('recruit', RECRUIT_OPTIONS.map((o) => o.value), 'all'),
-    publish: pick<PublishFilter>('publish', PUBLISH_OPTIONS.map((o) => o.value), 'all'),
-    form: pick<FormFilter>('form', FORM_OPTIONS.map((o) => o.value), 'all'),
+    category: pick(
+      'category',
+      CATEGORY_OPTIONS.map((o) => o.value),
+      'all',
+    ),
+    status: pick<StatusFilter>(
+      'status',
+      STATUS_OPTIONS.map((o) => o.value),
+      'all',
+    ),
+    recruit: pick<RecruitFilter>(
+      'recruit',
+      RECRUIT_OPTIONS.map((o) => o.value),
+      'all',
+    ),
+    publish: pick<PublishFilter>(
+      'publish',
+      PUBLISH_OPTIONS.map((o) => o.value),
+      'all',
+    ),
+    form: pick<FormFilter>(
+      'form',
+      FORM_OPTIONS.map((o) => o.value),
+      'all',
+    ),
     sort,
     page: Number.isFinite(page) && page >= 1 ? page : 1,
   };

@@ -39,17 +39,14 @@ const data: ApiMeetingList = {
   })),
 };
 type Scope = Pick<typeof screen, 'getByRole'>;
-function timeSelects(name: string | RegExp, scope: Scope) {
-  return within(scope.getByRole('group', { name })).getAllByRole('combobox') as HTMLSelectElement[];
+function timeInput(name: string | RegExp, scope: Scope) {
+  return scope.getByRole('textbox', { name }) as HTMLInputElement;
 }
 function timeValue(name: string | RegExp, scope: Scope = screen) {
-  const [hour, minute] = timeSelects(name, scope);
-  return hour.value ? `${hour.value}:${minute.value}` : '';
+  return timeInput(name, scope).value;
 }
 function setTime(name: string | RegExp, value: string, scope: Scope = screen) {
-  const [hour, minute] = value ? value.split(':') : [''];
-  fireEvent.change(timeSelects(name, scope)[0], { target: { value: hour } });
-  if (minute) fireEvent.change(timeSelects(name, scope)[1], { target: { value: minute } });
+  fireEvent.change(timeInput(name, scope), { target: { value } });
 }
 function setup(canEdit = true, meetingData = data, inputGroup = group) {
   return render(
@@ -77,6 +74,13 @@ beforeEach(() => {
     timeZone: 'America/New_York',
   });
 });
+/** 표 위 시간대 고르기 — 열고 그 지역 줄을 누른다. */
+function pickZone(zone: string) {
+  const place: Record<string, string> = { 'Asia/Seoul': '한국 · 서울', 'America/Los_Angeles': '미국 · 로스앤젤레스' };
+  fireEvent.click(screen.getByLabelText('시간대'));
+  fireEvent.click(screen.getByRole('option', { name: new RegExp(place[zone]!) }));
+}
+
 afterEach(() => {
   cleanup();
   localStorage.clear();
@@ -87,7 +91,7 @@ describe('schedule timezone interaction', () => {
   it('starts from the profile, lets editors switch regions without saving, and preserves UTC on title-only edits', async () => {
     setup();
     expect(timeValue('1회차 시작 시각 (EST)', screen)).toBe('06:30');
-    fireEvent.change(screen.getByLabelText('시간대'), { target: { value: 'America/Los_Angeles' } });
+    pickZone('America/Los_Angeles');
     expect(timeValue('1회차 시작 시각 (PST)', screen)).toBe('03:30');
     expect(updateStudyMeeting).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('1회차 제목'), { target: { value: '새 제목' } });
@@ -103,7 +107,7 @@ describe('schedule timezone interaction', () => {
 
   it('opens additions in the profile zone independently of the table selection and sends UTC', async () => {
     setup();
-    fireEvent.change(screen.getByLabelText('시간대'), { target: { value: 'America/Los_Angeles' } });
+    pickZone('America/Los_Angeles');
     fireEvent.click(screen.getByRole('button', { name: '회차 추가' }));
     const modal = within(screen.getByRole('dialog'));
     expect(timeValue(/시작 시각/, modal)).toBe('06:30');
@@ -191,7 +195,7 @@ describe('DST review regressions', () => {
     setTime('1회차 시작 시각 (EST)', '01:30', screen);
     fireEvent.change(screen.getByLabelText('1회차 일자 (EST)'), { target: { value: '' } });
     fireEvent.change(screen.getByLabelText('1회차 일자 (EST)'), { target: { value: '2026-11-01' } });
-    fireEvent.change(screen.getByLabelText('시간대'), { target: { value: 'Asia/Seoul' } });
+    pickZone('Asia/Seoul');
     expect(timeValue('1회차 시작 시각 (KST)', screen)).toBe('15:30');
     fireEvent.click(screen.getByRole('button', { name: '저장' }));
     await waitFor(() =>
@@ -224,15 +228,15 @@ describe('DST review regressions', () => {
     setup(true, { ...data, meetings: [] });
     fireEvent.click(screen.getByRole('button', { name: '회차 추가' }));
     const modal = within(screen.getByRole('dialog'));
-    fireEvent.change(modal.getByLabelText('일자', { exact: false }), { target: { value: '2027-11-05' } });
+    fireEvent.change(modal.getByRole('textbox', { name: /일자/ }), { target: { value: '2027-11-05' } });
     setTime(/시작 시각/, '10:30', modal);
     fireEvent.click(modal.getByRole('button', { name: '매일' }));
     // 뉴욕 10:30 은 EDT 면 서울 같은 날, EST 면 서울 다음 날 — 입력 1년이 반 달력에서는 1년 하루가 된다
-    fireEvent.change(modal.getByLabelText(/종료일/), { target: { value: '2028-11-05' } });
+    fireEvent.change(modal.getByRole('textbox', { name: /종료일/ }), { target: { value: '2028-11-05' } });
     expect(modal.getByText(/서울\(KST\) 기준으로 1년 범위를 넘어요/)).toBeInTheDocument();
     expect(modal.getByRole('button', { name: '추가' })).toBeDisabled();
     expect(createStudyMeetings).not.toHaveBeenCalled();
-    fireEvent.change(modal.getByLabelText(/종료일/), { target: { value: '2028-11-04' } });
+    fireEvent.change(modal.getByRole('textbox', { name: /종료일/ }), { target: { value: '2028-11-04' } });
     // 봄 서머타임 시작 때 뉴욕 두 날이 서울 같은 날이 되어 하루를 건너뛴다 — 366일 중 365개
     expect(modal.getByRole('button', { name: '회차 365개 추가' })).toBeEnabled();
   });
@@ -241,10 +245,10 @@ describe('DST review regressions', () => {
     setup(true, { ...data, meetings: [] });
     fireEvent.click(screen.getByRole('button', { name: '회차 추가' }));
     const modal = within(screen.getByRole('dialog'));
-    fireEvent.change(modal.getByLabelText('일자', { exact: false }), { target: { value: '2026-11-01' } });
+    fireEvent.change(modal.getByRole('textbox', { name: /일자/ }), { target: { value: '2026-11-01' } });
     setTime(/시작 시각/, '01:30', modal);
     fireEvent.click(modal.getByRole('button', { name: '매일' }));
-    fireEvent.change(modal.getByLabelText(/종료일/), { target: { value: '2026-11-02' } });
+    fireEvent.change(modal.getByRole('textbox', { name: /종료일/ }), { target: { value: '2026-11-02' } });
     expect(modal.getByRole('button', { name: '추가' })).toBeDisabled();
     fireEvent.change(modal.getByLabelText('2026-11-01 시각 구분'), { target: { value: '2026-11-01T06:30:00.000Z' } });
     expect(modal.getByText(/서울\(KST\) 15:30/)).toBeInTheDocument();

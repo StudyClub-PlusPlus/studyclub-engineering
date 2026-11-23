@@ -1,5 +1,7 @@
 # 캡틴은 전체 회원 리스트를 조회할 수 있다.
 
+> 시간대 공통 규칙: [확장 PRD](../timezone-expansion/PRD.md).
+
 기준 프로토타입: 유저 (playground 운영 콘솔 · 유저)
 
 관련 결정: [180일간 명부 참여와 로그인이 모두 없는 회원만 휴면으로 표시](../../../docs/share/2026-10-31-user-dormancy-180-days.md)

@@ -37,7 +37,8 @@ export function zoneLabel(zone: string, locale: Locale): string {
 }
 
 export function zoneSearchText(zone: string): string {
-  return `${zone} ${zoneLabel(zone, 'ko')} ${zoneLabel(zone, 'en')}`.replaceAll('_', ' ').toLocaleLowerCase();
+  const aliases: Record<string, string> = { 'America/Los_Angeles': 'LA 엘에이 로스엔젤레스', 'America/Vancouver': '밴쿠버' };
+  return `${zone} ${zoneLabel(zone, 'ko')} ${zoneLabel(zone, 'en')} ${aliases[zone] ?? ''}`.replaceAll('_', ' ').toLocaleLowerCase();
 }
 
 export function availableZones(selected: string): string[] {
@@ -54,7 +55,28 @@ export function availableZones(selected: string): string[] {
       }
     });
   }
+  try { if (selected) new Intl.DateTimeFormat('en', { timeZone: selected }); } catch { selected = ''; }
   return [...new Set([...POPULAR_ZONES, ...(selected ? [selected] : []), ...supported, 'UTC'])];
+}
+
+/** 회원 설정에서는 주요 이용 국가와 도시를 먼저, 나머지는 이름순으로 표시한다. */
+export function memberTimeZones(selected: string, locale: Locale, allowedZones?: readonly string[]): string[] {
+  const countries = ['한국', '미국', '캐나다', '오스트레일리아', '영국'];
+  const preferredCities: Record<string, number> = {
+    'America/New_York': 0,
+    'America/Los_Angeles': 1,
+    'America/Toronto': 0,
+    'America/Vancouver': 1,
+  };
+  const collator = new Intl.Collator(locale === 'ko' ? 'ko-KR' : 'en-US');
+  return [...new Set(allowedZones ?? availableZones(selected))]
+    .map((zone) => {
+      const country = zoneLabel(zone, 'ko').split(' · ')[0];
+      const index = countries.indexOf(country);
+      return { zone, rank: index < 0 ? countries.length : index, cityRank: preferredCities[zone] ?? 2, label: zoneLabel(zone, locale) };
+    })
+    .sort((a, b) => a.rank - b.rank || a.cityRank - b.cityRank || collator.compare(a.label, b.label) || a.zone.localeCompare(b.zone))
+    .map(({ zone }) => zone);
 }
 
 export function zoneOffset(zone: string, now: Date): string {
