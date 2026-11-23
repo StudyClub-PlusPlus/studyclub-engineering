@@ -68,11 +68,14 @@ export function RetroBoard({
   role,
   locale,
   meetingId,
+  onMeetingChange,
 }: {
   study: Study;
   role: ScheduleRole;
   locale: string;
   meetingId?: string;
+  /** 회차를 고를 때 — 없으면 사용자 사이트 주소(…/retro?meeting=)를 바꾼다. 백오피스 회고 탭은 탭 안 상태로 바꾼다 */
+  onMeetingChange?: (meetingId: string) => void;
 }) {
   const router = useRouter();
   const zone = useDisplayTimeZone();
@@ -90,7 +93,8 @@ export function RetroBoard({
     );
   }
   const current = ended.find((s) => s.meeting.id === meetingId) ?? ended[ended.length - 1];
-  const retros = retrosOf(study, current.meeting.id);
+  // 캡틴은 미팅 참여자가 아니다 — 「나」로 표시할 답이 없다. 프로토 로그인 회원이 그 반 참여자로도 잡혀 있어 백오피스 회고 탭에서 걸러 준다
+  const retros = retrosOf(study, current.meeting.id).map((r) => (role === 'captain' && r.me ? { ...r, me: false } : r));
   const missing = missingOf(study, current.meeting.id);
   const lead = role !== 'crew';
   const canWrite = role !== 'captain' && current.open;
@@ -110,7 +114,11 @@ export function RetroBoard({
               role='radio'
               selectMode='single'
               selected={s.meeting.id === current.meeting.id}
-              onClick={() => router.replace(retroHref(locale, study.study_id, s.meeting.id))}
+              onClick={() =>
+                onMeetingChange
+                  ? onMeetingChange(s.meeting.id)
+                  : router.replace(retroHref(locale, study.study_id, s.meeting.id))
+              }
             >
               {s.label}
             </FilterChip>
