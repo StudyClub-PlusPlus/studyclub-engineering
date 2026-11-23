@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { meetingWindow } from '@core/lib/attendance';
-import { dateWithDow, type ProtoMeeting, type ScheduleRole } from '@core/lib/meetings';
+import { type ProtoMeeting, type ScheduleRole } from '@core/lib/meetings';
 import {
   RETRO_MAX,
   RETRO_SECTIONS,
@@ -16,6 +16,7 @@ import {
   retroStatuses,
   retrosOf,
   saveMyRetro,
+  retroMeetingDate,
   shortDateTime,
   toggleLike,
   validateRetro,
@@ -25,6 +26,7 @@ import {
   type RetroMeetingStatus,
   type RetroSection,
 } from '@core/lib/retros';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { Study } from '@studyclub/types';
 import { Badge, Button, ButtonLink, FilterChip, Segmented, Textarea, cx, toast } from '@studyclub/ui';
 import { ThumbsUp } from 'lucide-react';
@@ -135,6 +137,7 @@ export function RetroBoard({
   meetingId?: string;
 }) {
   const router = useRouter();
+  const zone = useDisplayTimeZone();
   const [statuses, setStatuses] = useState<RetroMeetingStatus[] | null>(null);
   const [view, setView] = useState<View>('author');
   const [rev, setRev] = useState(0);
@@ -203,12 +206,12 @@ export function RetroBoard({
       <div className='flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface-raised px-5 py-4'>
         <div data-anno='retro:2-3' className='min-w-0'>
           <p className='type-label-lg text-fg'>
-            {current.label} · {dateWithDow(current.meeting.date)}
+            {current.label} · {retroMeetingDate(study, current.meeting, zone)}
             {current.meeting.title ? ` · ${current.meeting.title}` : ''}
           </p>
           <p className='mt-0.5 type-body-sm text-fg-muted'>
             {current.open
-              ? `${shortDateTime(current.deadline.toISOString())}까지 쓰고 고칠 수 있어요`
+              ? `${shortDateTime(current.deadline.toISOString(), zone, true)}까지 쓰고 고칠 수 있어요`
               : '작성 기한이 지났어요'}
           </p>
         </div>
@@ -424,6 +427,7 @@ export function RetroWriteForm({
   meetingId?: string;
 }) {
   const router = useRouter();
+  const zone = useDisplayTimeZone();
   const [status, setStatus] = useState<RetroMeetingStatus | null | undefined>();
   const [answers, setAnswers] = useState<RetroAnswers>({ good: '', improve: '', feeling: '' });
   const [errors, setErrors] = useState<RetroErrors>({});
@@ -490,14 +494,14 @@ export function RetroWriteForm({
       >
         <div>
           <p className='type-label-lg text-fg'>
-            {status.label} · {dateWithDow(status.meeting.date)}
+            {status.label} · {retroMeetingDate(study, status.meeting, zone)}
             {status.meeting.title ? ` · ${status.meeting.title}` : ''}
           </p>
           <p className='mt-0.5 type-body-sm text-fg-muted'>
-            {shortDateTime(status.deadline.toISOString())}까지 쓰고 고칠 수 있어요
+            {shortDateTime(status.deadline.toISOString(), zone, true)}까지 쓰고 고칠 수 있어요
           </p>
         </div>
-        <Badge tone='ended'>미팅 종료 {shortDateTime(end.toISOString())}</Badge>
+        <Badge tone='ended'>미팅 종료 {shortDateTime(end.toISOString(), zone, true)}</Badge>
       </div>
 
       <form

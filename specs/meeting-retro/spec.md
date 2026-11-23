@@ -36,6 +36,7 @@
 - 쓸 수 있음 = 미팅 종료 ≤ 지금 < 기한
 - 쓸 사람 = 그 회차 시작 때 반에 있던 참여자(`STUDY_PARTICIPANT`, 그전에 참여를 중단했으면 뺀다). 캡틴은 넣지 않는다
 - 킥오프 회차에는 회고가 없다
+- 시각(회차 시작 · 종료 · 기한 · 작성일)은 모두 UTC 로 내려준다. 화면은 보는 사람의 시간대(사용자 사이트 = 프로필 시간대, 백오피스 = 표시 시간대)로 날짜 · 시각을 바꾸고 약칭을 붙인다 — 일정 표와 같은 날짜가 나와야 한다
 
 ## 데이터
 
@@ -132,7 +133,7 @@ erDiagram
 
 ## GET /api/admin/retros
 
-쿼리: `studyId` · `meetingId`(studyId 가 있을 때만) · `q`(참여자 이름 부분 일치) · `sort=PARTICIPANT|MEETING` · `likeSort=GOOD|IMPROVE|FEELING`(선택, 그 문항 👍 수로 먼저 세운다) · `likeDir=DESC|ASC`(기본 DESC) · `offset` · `limit`(기본 20)
+쿼리: `studyId` · `meetingId`(studyId 가 있을 때만) · `q`(참여자 이름 부분 일치) · `section=GOOD|IMPROVE|FEELING`(선택, 문항별 보기 — 그 문항을 쓴 회고만) · `sort=PARTICIPANT|MEETING|RECENT|LIKES` · `likeSort=GOOD|IMPROVE|FEELING`(선택, 표 보기에서 그 문항 👍 수로 먼저 세운다) · `likeDir=DESC|ASC`(기본 DESC) · `offset` · `limit`(기본 20)
 
 ```json
 {
@@ -145,6 +146,7 @@ erDiagram
       "groupName": "A반",
       "meetingId": 301,
       "meetingNo": 3,
+      "meetingStartAt": "2026-11-17T11:00:00Z",
       "participantName": "하늘",
       "closed": true,
       "retro": {
@@ -164,6 +166,8 @@ erDiagram
 - `summary` 는 좁힌 조건 전체로 센다
 - `closed` = 작성 기한이 지났다. 작성률은 `closedWritten ÷ closedRows` — 기한 전 회차는 아직 쓸 수 있어 세지 않는다 (`closedRows` 가 0 이면 작성률 없음)
 - 정렬: 스터디 이름 → (PARTICIPANT) 이름 → 회차 번호 / (MEETING) 회차 번호 → 이름
+- `section` 이 있으면(문항별 보기) 그 문항이 빈 회고는 빼고, `total` 도 그 건수다. `sort` 는 `RECENT`(writtenAt 내림차순, 기본) · `LIKES`(그 문항 👍 내림차순, 같으면 RECENT). `PARTICIPANT` · `MEETING` · `likeSort` 는 표 보기용
+- 시각은 모두 UTC(ISO 8601). 날짜 · 시각 표시는 화면이 보는 쪽 시간대로 바꾼다 — `meetingStartAt` 으로 회차 날짜를 구한다 (반 시간대 날짜를 내려주지 않는다)
 
 ## GET /api/admin/retros/export.csv
 

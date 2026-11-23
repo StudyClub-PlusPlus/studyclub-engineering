@@ -1,8 +1,9 @@
 'use client';
 
 import { meetingWindow, meetingsOf } from '@core/lib/attendance';
-import { isKickoff, meetingLabel, type ProtoMeeting } from '@core/lib/meetings';
+import { dateWithDow, isKickoff, meetingLabel, wallParts, type ProtoMeeting } from '@core/lib/meetings';
 import { ME_ID, participantsOf, type Participant } from '@core/lib/schedule-board';
+import { zoneAbbreviation } from '@core/lib/schedule-timezone';
 import type { Study } from '@studyclub/types';
 
 /**
@@ -336,10 +337,20 @@ export function retroHref(locale: string, studyId: string | number, meetingId?: 
   return meetingId ? `${base}?meeting=${encodeURIComponent(meetingId)}` : base;
 }
 
-export function shortDateTime(iso: string): string {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+/**
+ * `11.20 22:00` — 보는 사람의 시간대 벽시계로. 브라우저 시간대가 아니라 프로필(백오피스는 표시 기준) 시간대를 넘긴다.
+ * `withZone` 이면 일정표처럼 약칭을 붙인다 — `11.20 22:00 EST`.
+ */
+export function shortDateTime(iso: string, zone: string, withZone = false): string {
+  const at = new Date(iso);
+  const { date, time } = wallParts(at, zone);
+  const [, m, d] = date.split('-');
+  return `${m}.${d} ${time}${withZone ? ` ${zoneAbbreviation(zone, at)}` : ''}`;
+}
+
+/** `2026-11-20 (금)` — 회차 시작 순간을 보는 사람의 시간대로 옮긴 날짜. `meeting.date` 는 반 시간대 기준이라 그대로 쓰지 않는다. */
+export function retroMeetingDate(study: Study, meeting: ProtoMeeting, zone: string): string {
+  return dateWithDow(wallParts(meetingWindow(study, meeting).start, zone).date);
 }
 
 /* ── 백오피스 모아보기 ─────────────────────────────────────────────────── */
@@ -350,6 +361,8 @@ export type RetroRow = {
   meetingNo: number;
   meetingLabel: string;
   meetingDate: string;
+  /** 회차 시작 순간(UTC) — 날짜는 보는 쪽 시간대로 옮겨 보인다. `meetingDate` 는 반 시간대 기준. */
+  meetingStartAt: string;
   authorId: string;
   authorName: string;
   /** 작성 기한이 지났는가 — 작성률은 기한 지난 줄만 센다. 기한 전 미작성은 아직 쓸 수 있다. */
@@ -373,6 +386,7 @@ export function retroRowsOf(study: Study, now = new Date()): RetroRow[] {
         meetingNo: s.meeting.no,
         meetingLabel: s.label,
         meetingDate: s.meeting.date,
+        meetingStartAt: meetingWindow(study, s.meeting).start.toISOString(),
         authorId: p.id,
         // 표 칸이 좁아 디스코드 구분 없는 닉네임 — 줄은 회차 · 스터디와 함께 보여 동명이인을 가린다
         authorName: p.nickname ?? p.name,
