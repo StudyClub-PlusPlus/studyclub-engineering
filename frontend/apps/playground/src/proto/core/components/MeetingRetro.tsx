@@ -69,6 +69,7 @@ export function RetroBoard({
   locale,
   meetingId,
   onMeetingChange,
+  members,
 }: {
   study: Study;
   role: ScheduleRole;
@@ -76,12 +77,14 @@ export function RetroBoard({
   meetingId?: string;
   /** 회차를 고를 때 — 없으면 사용자 사이트 주소(…/retro?meeting=)를 바꾼다. 백오피스 회고 탭은 탭 안 상태로 바꾼다 */
   onMeetingChange?: (meetingId: string) => void;
+  /** 이 사람들만 쓸 사람으로 본다 — 백오피스 회고 탭에서 고른 반의 크루. 없으면 스터디 전체(사용자 사이트는 서버가 내 반만 준다) */
+  members?: readonly string[];
 }) {
   const router = useRouter();
   const zone = useDisplayTimeZone();
   const [statuses, setStatuses] = useState<RetroMeetingStatus[] | null>(null);
   const [rev, setRev] = useState(0);
-  useEffect(() => setStatuses(retroStatuses(study)), [study, rev]);
+  useEffect(() => setStatuses(retroStatuses(study, undefined, members)), [study, members, rev]);
 
   if (!statuses) return null;
   const ended = statuses.filter((s) => s.ended);
@@ -94,8 +97,10 @@ export function RetroBoard({
   }
   const current = ended.find((s) => s.meeting.id === meetingId) ?? ended[ended.length - 1];
   // 캡틴은 미팅 참여자가 아니다 — 「나」로 표시할 답이 없다. 프로토 로그인 회원이 그 반 참여자로도 잡혀 있어 백오피스 회고 탭에서 걸러 준다
-  const retros = retrosOf(study, current.meeting.id).map((r) => (role === 'captain' && r.me ? { ...r, me: false } : r));
-  const missing = missingOf(study, current.meeting.id);
+  const retros = retrosOf(study, current.meeting.id, undefined, members).map((r) =>
+    role === 'captain' && r.me ? { ...r, me: false } : r,
+  );
+  const missing = missingOf(study, current.meeting.id, undefined, members);
   const lead = role !== 'crew';
   const canWrite = role !== 'captain' && current.open;
   const deadline = shortDateTime(current.deadline.toISOString(), zone, true);

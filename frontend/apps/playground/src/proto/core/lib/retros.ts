@@ -175,17 +175,26 @@ function targetsOf(study: Study, m: ProtoMeeting, people = participantsOf(study)
   return people.filter((p) => p.role !== 'captain' && (!p.left || new Date(p.left.at).getTime() >= start));
 }
 
+/**
+ * 회고를 쓸 사람 후보 — `members` 를 주면 그 사람들(백오피스에서 고른 반의 크루)만.
+ * TODO(api): 회고는 반의 회차에 붙는다 — 서버는 groupId 로 그 반의 회차 · 참여자를 준다. 프로토는 스터디 회차를 같이 쓴다
+ */
+function peopleOf(study: Study, members?: readonly string[]): Participant[] {
+  const people = participantsOf(study);
+  return members ? people.filter((p) => members.includes(p.id)) : people;
+}
+
 /** 가정 — 다른 참여자는 끝난 회차마다 열에 여섯 꼴로 썼다. 내 회고는 가장 최근에 끝난 회차만 비워 둔다. */
 function seededWrote(meetingId: string, authorId: string): boolean {
   return seed(`${meetingId}|${authorId}`) % 10 < 6;
 }
 
-export function retroStatuses(study: Study, now = new Date()): RetroMeetingStatus[] {
+export function retroStatuses(study: Study, now = new Date(), members?: readonly string[]): RetroMeetingStatus[] {
   const list = regularOf(study);
   const store = read()[study.id] ?? {};
   const endedIds = list.filter((m) => meetingWindow(study, m).end.getTime() <= now.getTime()).map((m) => m.id);
   const latestEnded = endedIds[endedIds.length - 1];
-  const people = participantsOf(study);
+  const people = peopleOf(study, members);
   return list.map((m, i) => {
     const ended = meetingWindow(study, m).end.getTime() <= now.getTime();
     const deadline = deadlineOf(study, list, i);
@@ -206,15 +215,20 @@ export function retroStatuses(study: Study, now = new Date()): RetroMeetingStatu
   });
 }
 
-export function retroStatusOf(study: Study, meetingId: string, now = new Date()): RetroMeetingStatus | undefined {
-  return retroStatuses(study, now).find((s) => s.meeting.id === meetingId);
+export function retroStatusOf(
+  study: Study,
+  meetingId: string,
+  now = new Date(),
+  members?: readonly string[],
+): RetroMeetingStatus | undefined {
+  return retroStatuses(study, now, members).find((s) => s.meeting.id === meetingId);
 }
 
 /** 한 회차의 회고 목록 — 내 회고가 맨 앞, 나머지는 쓴 순서. */
-export function retrosOf(study: Study, meetingId: string, now = new Date()): Retro[] {
-  const status = retroStatusOf(study, meetingId, now);
+export function retrosOf(study: Study, meetingId: string, now = new Date(), members?: readonly string[]): Retro[] {
+  const status = retroStatusOf(study, meetingId, now, members);
   if (!status?.ended) return [];
-  return buildRetros(study, status, targetsOf(study, status.meeting));
+  return buildRetros(study, status, targetsOf(study, status.meeting, peopleOf(study, members)));
 }
 
 /** 회차 상태와 쓸 사람을 이미 구했으면 이걸 부른다 — 모아보기가 회차마다 다시 구하지 않게. */
@@ -275,11 +289,16 @@ function buildRetros(study: Study, status: RetroMeetingStatus, people: Participa
 }
 
 /** 아직 안 쓴 참여자 — 쓴 사람만 보이면 누가 빠졌는지 모른다. */
-export function missingOf(study: Study, meetingId: string, now = new Date()): { id: string; name: string }[] {
-  const status = retroStatusOf(study, meetingId, now);
+export function missingOf(
+  study: Study,
+  meetingId: string,
+  now = new Date(),
+  members?: readonly string[],
+): { id: string; name: string }[] {
+  const status = retroStatusOf(study, meetingId, now, members);
   if (!status?.ended) return [];
-  const wrote = new Set(retrosOf(study, meetingId, now).map((r) => r.authorId));
-  return targetsOf(study, status.meeting)
+  const wrote = new Set(retrosOf(study, meetingId, now, members).map((r) => r.authorId));
+  return targetsOf(study, status.meeting, peopleOf(study, members))
     .filter((p) => !wrote.has(p.id))
     .map((p) => ({ id: p.id, name: p.id === ME_ID ? `${p.name} (나)` : p.name }));
 }

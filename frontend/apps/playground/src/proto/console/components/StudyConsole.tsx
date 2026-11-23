@@ -273,6 +273,15 @@ export function StudyConsole({ study }: { study: Study }) {
     navigators,
     left,
   });
+  // 회고 탭 — 고른 반의 크루만 쓸 사람으로 본다. 반이 하나면 나누지 않는다(스터디 전체)
+  const classCrewKey =
+    classes.length > 1
+      ? active
+          .filter((c) => assign[c.id] === classId)
+          .map((c) => c.id)
+          .join(',')
+      : '';
+  const retroMembers = useMemo(() => (classCrewKey ? classCrewKey.split(',') : undefined), [classCrewKey]);
 
   function requestClass(id: string) {
     if (id === classId) return;
@@ -651,14 +660,20 @@ export function StudyConsole({ study }: { study: Study }) {
           ))}
         {tab === 'retro' && (
           // 사용자 사이트 회고 탭과 같은 화면 — 캡틴으로 본다(작성 버튼 없음 · 작성 현황 · 「n명 중 m명 작성」).
-          // TODO(api): 반이 여럿이면 반 칩으로 고른다 — 회고는 반의 회차에 붙는다. 프로토 회고 가정 데이터는 반을 나누지 않는다
-          <RetroBoard
-            study={study}
-            role='captain'
-            locale='ko'
-            meetingId={retroMeetingId}
-            onMeetingChange={setRetroMeetingId}
-          />
+          // TODO(api): 회고는 반의 회차에 붙는다 — 서버는 groupId 로 그 반 회차 · 참여자를 준다. 프로토는 스터디 회차에 그 반 크루만 걸러 본다
+          <div>
+            {/* 반 칩 — 일정 · 출석 탭과 같은 줄 · 같은 값. 반이 하나면 그리지 않는다 */}
+            <ClassPicker classes={classes} classId={classId} onClass={requestClass} anno='retro-lead:3' />
+            <RetroBoard
+              key={classId}
+              study={study}
+              role='captain'
+              locale='ko'
+              meetingId={retroMeetingId}
+              onMeetingChange={setRetroMeetingId}
+              members={retroMembers}
+            />
+          </div>
         )}
         {tab === 'form' && <ApplicationFormTab study={study} />}
         {tab === 'results' && <ResultsTab study={study} crew={crew} />}
