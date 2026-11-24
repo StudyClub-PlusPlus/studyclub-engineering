@@ -9,6 +9,7 @@ import com.studyclub.domain.storage.StorageObjectRepository;
 import com.studyclub.domain.storage.StorageObjectStatus;
 import com.studyclub.domain.storage.StorageProvider;
 import com.studyclub.domain.storage.StoragePurpose;
+import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -42,6 +43,7 @@ public class UploadService {
      */
     static final StorageProvider ACTIVE_PROVIDER = StorageProvider.S3;
 
+    /** {@code url} 은 공개 용도만 있고, 비공개 용도(문의 첨부 등)는 null 이다 — 권한을 확인하는 API 로만 내준다. */
     public record Uploaded(Long fileId, String url) {}
 
     private final List<ObjectStorage> storages;
@@ -110,7 +112,7 @@ public class UploadService {
             deleteFileQuietly(storage, key);
             throw e;
         }
-        return new Uploaded(saved.getId(), storage.publicUrl(key));
+        return new Uploaded(saved.getId(), purpose.isPublic() ? storage.publicUrl(key) : null);
     }
 
     /**
@@ -128,6 +130,11 @@ public class UploadService {
 
     public String publicUrl(StorageObject object) {
         return storageFor(object.getProvider()).publicUrl(object.getObjectKey());
+    }
+
+    /** 비공개 파일을 읽는다. 호출자가 권한을 확인한 뒤 부르고, 트랜잭션 밖에서 스트림을 닫는다. */
+    public InputStream open(StorageObject object) {
+        return storageFor(object.getProvider()).open(object.getObjectKey());
     }
 
     /**

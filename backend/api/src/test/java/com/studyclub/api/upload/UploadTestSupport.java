@@ -6,7 +6,10 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
 import com.studyclub.api.storage.ObjectStorage;
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.storage.StorageProvider;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -48,6 +51,16 @@ public final class UploadTestSupport {
                         })
                 .when(storage)
                 .put(anyString(), any(), anyString());
+        doAnswer(
+                        inv -> {
+                            byte[] bytes = stored.get(inv.getArgument(0, String.class));
+                            if (bytes == null) {
+                                throw new BusinessException(ErrorCode.NOT_FOUND, "파일을 찾을 수 없습니다.");
+                            }
+                            return new ByteArrayInputStream(bytes);
+                        })
+                .when(storage)
+                .open(anyString());
         doAnswer(
                         inv -> {
                             stored.remove(inv.getArgument(0, String.class));

@@ -63,7 +63,7 @@ describe('fetchMyFeedback', () => {
     const detail = {
       ...item(198, { status: 'ANSWERED' }),
       content: '<b>평문</b>\n둘째 줄',
-      images: [{ url: 'https://cdn.example/a.webp' }],
+      images: [{ id: 7, url: '/api/me/feedbacks/198/images/7' }],
       reply: { content: '답변', repliedAt: '2026-10-13T02:30:00Z' },
     };
     vi.stubGlobal('fetch', respond(200, detail));

@@ -4,6 +4,7 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.storage.StorageProvider;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -67,6 +68,19 @@ public class LocalObjectStorage implements ObjectStorage, WebMvcConfigurer {
     }
 
     @Override
+    public InputStream open(String key) {
+        try {
+            Path file = resolve(key);
+            if (!Files.isRegularFile(file)) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "파일을 찾을 수 없습니다.");
+            }
+            return Files.newInputStream(file);
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR, "파일을 읽지 못했습니다.");
+        }
+    }
+
+    @Override
     public String publicUrl(String key) {
         return baseUrl + "/" + key;
     }
@@ -82,7 +96,9 @@ public class LocalObjectStorage implements ObjectStorage, WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler(PATH + "/**").addResourceLocations(root.toUri().toString());
+        // CDN 이 gigs/ 만 공개하는 것과 같게 — 비공개 폴더는 권한을 확인하는 API 로만 나간다.
+        registry.addResourceHandler(PATH + "/gigs/**")
+                .addResourceLocations(root.resolve("gigs").toUri().toString());
     }
 
     /** 키는 서버가 만든 {@code gigs/<폴더>/<UUID>.<확장자>} 라 밖으로 나갈 일이 없지만, 그래도 루트 밖이면 거부한다. */

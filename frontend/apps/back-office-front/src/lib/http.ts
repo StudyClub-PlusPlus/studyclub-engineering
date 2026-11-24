@@ -12,6 +12,11 @@ import { z } from 'zod';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
+/** API 경로를 브라우저가 직접 열 주소로. `<img src>` 처럼 `http()` 를 거치지 않는 요청에 쓴다. */
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,

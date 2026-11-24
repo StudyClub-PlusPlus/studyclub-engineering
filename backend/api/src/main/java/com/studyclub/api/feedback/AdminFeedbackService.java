@@ -169,7 +169,10 @@ public class AdminFeedbackService {
                 doneBy(feedback, nicknames),
                 feedback.selectableStatuses(),
                 feedback.getContent(),
-                FeedbackService.images(feedbackImageRepository, feedback.getId()),
+                FeedbackService.images(
+                        feedbackImageRepository,
+                        feedback.getId(),
+                        FeedbackService.ADMIN_IMAGE_PATH),
                 feedback.getBrowser(),
                 viewport,
                 FeedbackReply.of(feedback),

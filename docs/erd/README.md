@@ -263,7 +263,6 @@ erDiagram
     bigint   ID                PK
     bigint   FEEDBACK_ID          FK
     bigint   STORAGE_OBJECT_ID    "업로드 행 (FK 없음)"
-    varchar  IMAGE_URL
     int      DISPLAY_ORDER
     datetime CREATED_AT
     datetime UPDATED_AT

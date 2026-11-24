@@ -4,6 +4,7 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.storage.StorageProvider;
 import jakarta.annotation.PreDestroy;
+import java.io.InputStream;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,8 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
@@ -28,7 +31,13 @@ public class S3ObjectStorage implements ObjectStorage {
     private static final Logger log = LoggerFactory.getLogger(S3ObjectStorage.class);
 
     /** 공개 파일은 CloudFront 가 하루 캐시한다. 지운 사진이 최대 하루 보일 수 있는 이유 — 스펙 「미확정」. */
-    private static final String CACHE_CONTROL = "public, max-age=86400";
+    private static final String PUBLIC_CACHE_CONTROL = "public, max-age=86400";
+
+    /** 비공개 폴더 파일은 CDN 으로 나가지 않지만, 혹시 어디선가 캐시해도 남지 않게 한다. */
+    private static final String PRIVATE_CACHE_CONTROL = "private, no-store";
+
+    /** CloudFront 가 공개하는 폴더. 이 밖은 CDN 으로 열리지 않는다 (docs/s3-storage.md). */
+    private static final String PUBLIC_PREFIX = "gigs/";
 
     private final StorageProperties.S3 properties;
     private volatile S3Client client;
@@ -55,7 +64,10 @@ public class S3ObjectStorage implements ObjectStorage {
                                     .bucket(properties.bucket())
                                     .key(key)
                                     .contentType(contentType)
-                                    .cacheControl(CACHE_CONTROL)
+                                    .cacheControl(
+                                            key.startsWith(PUBLIC_PREFIX)
+                                                    ? PUBLIC_CACHE_CONTROL
+                                                    : PRIVATE_CACHE_CONTROL)
                                     .build(),
                             RequestBody.fromBytes(bytes));
         } catch (SdkException e) {
@@ -75,6 +87,22 @@ public class S3ObjectStorage implements ObjectStorage {
         } catch (SdkException e) {
             log.warn("S3 지우기 실패 key={}", key, e);
             throw new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR, "파일을 지우지 못했습니다.");
+        }
+    }
+
+    @Override
+    public InputStream open(String key) {
+        try {
+            return client().getObject(
+                            GetObjectRequest.builder()
+                                    .bucket(properties.bucket())
+                                    .key(key)
+                                    .build());
+        } catch (NoSuchKeyException e) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "파일을 찾을 수 없습니다.");
+        } catch (SdkException e) {
+            log.warn("S3 읽기 실패 key={}", key, e);
+            throw new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR, "파일을 읽지 못했습니다.");
         }
     }
 
