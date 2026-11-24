@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { getUser, logout, type SessionUser } from '@console/lib/auth';
 import { IconButton } from '@studyclub/ui';
-import { LayoutDashboard, BookOpen, CalendarDays, Users, Megaphone, MessagesSquare, Mail, LogOut, NotebookPen } from 'lucide-react';
+import { LayoutDashboard, BookOpen, CalendarDays, Users, Megaphone, MessagesSquare, Mail, LogOut, NotebookPen, Repeat } from 'lucide-react';
 
 // 프로토는 playground 안에서 /proto/console 아래 매달린다. 링크는 이 접두를 붙여야 한다.
 const BASE = '/proto/console';
@@ -14,6 +14,8 @@ const BASE = '/proto/console';
 const NAV = [
   { href: '/', label: '대시보드', icon: LayoutDashboard, exact: true },
   { href: '/studies', label: '스터디', icon: BookOpen },
+  // 매달 기수가 바뀌는 클럽 — 다음 기수 · 이어서 참여 · 월간 출석부. 기수 하나의 일(신청 폼 · 정보)은 스터디 상세가 맡는다
+  { href: '/clubs', label: '클럽', icon: Repeat },
   { href: '/events', label: '행사', icon: CalendarDays },
   // 스터디원 + 운영진을 "유저" 하나로 통합. 역할·권한 부여도 이 화면에서 한다.
   { href: '/users', label: '유저', icon: Users },

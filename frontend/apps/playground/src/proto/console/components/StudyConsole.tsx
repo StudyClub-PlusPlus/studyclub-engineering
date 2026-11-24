@@ -28,7 +28,7 @@ import { dropPresenters } from '@core/lib/schedule-source';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew } from '@studyclub/mock';
 import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
-import { Badge, Button, Modal, Switch, Tabs } from '@studyclub/ui';
+import { Badge, Button, ButtonLink, Modal, Switch, Tabs } from '@studyclub/ui';
 import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState } from '@studyclub/utils';
 import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
@@ -131,7 +131,6 @@ export function StudyConsole({ study }: { study: Study }) {
   const scheduleDirty = tableDirty || rulesDirty;
   const [leave, setLeave] = useState<LeaveIntent | null>(null);
   const [reuseOpen, setReuseOpen] = useState(false);
-  const [nextOpen, setNextOpen] = useState(false);
   /** 출석 탭의 「회차 추가」로 넘어왔으면 일정 탭에서 회차 추가 창을 바로 연다. */
   const [addOnOpen, setAddOnOpen] = useState(false);
   // 저장 전 고침은 보고 있는 탭에만 있다 — 탭을 옮기거나 반을 바꾸면 사라진다.
@@ -400,10 +399,11 @@ export function StudyConsole({ study }: { study: Study }) {
                 이 내용으로 새 스터디
               </Button>
             )}
+            {/* 클럽의 다음 기수는 클럽 운영 화면이 맡는다 — 매달 초안이 자동으로 생기고 거기서 모집을 시작한다 */}
             {study.program?.kind === 'club' && (
-              <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setNextOpen(true)}>
-                다음 기수 만들기
-              </Button>
+              <ButtonLink size='sm' variant='secondary' linkAs={Link} href='/proto/console/clubs'>
+                다음 기수 · 클럽 운영
+              </ButtonLink>
             )}
             <span title={deadline}>
               <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
@@ -681,7 +681,6 @@ export function StudyConsole({ study }: { study: Study }) {
       </div>
 
       {reusable && <StudyCreateDialog open={reuseOpen} onClose={() => setReuseOpen(false)} reuseOf={study} />}
-      <StudyCreateDialog open={nextOpen} onClose={() => setNextOpen(false)} nextOf={study} />
 
       <Modal
         open={leave !== null}

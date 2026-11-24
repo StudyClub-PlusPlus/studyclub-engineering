@@ -30,6 +30,7 @@
 | 행사 신청 (사용자 사이트) | [event-registration/](./event-registration/) | 스펙작성중 | `/api/events` 목록·상세(공개) · `POST/GET/DELETE /api/events/{eventId}/registrations(/me)` 신청·내 신청서·본인 취소 · `/api/me/events` 내 행사. 신청 테이블은 PR #479 와 공동 정의. 기획: [크루 행사 신청](../01-planning/stories/crew-apply-event/PRD.md) |
 | 문의·오류 신고 | [feedback/](./feedback/) | 스펙작성중 | `POST /api/feedbacks` · `/api/me/feedbacks` — 크루 제출·내 문의, `/api/admin/feedbacks` — 운영 목록·상세·상태·회신·메모. 첫 회신 HTML 알림 포함. 기획: [크루 제출](../01-planning/stories/crew-submit-feedback/PRD.md) · [캡틴 조회](../01-planning/stories/captain-view-feedbacks/PRD.md) |
 | 미팅 회고 | [meeting-retro/](./meeting-retro/) | 스펙작성중 | `/api/studies/{studyId}/…/retros` — 회고 작성·수정·목록·문항별 👍 · 회차별 작성 현황, `/api/admin/retros` — 캡틴 모아보기·CSV. 기획: [크루 회고](../01-planning/stories/crew-write-meeting-retro/PRD.md) · [작성 현황](../01-planning/stories/navigator-view-meeting-retros/PRD.md) · [모아보기](../01-planning/stories/captain-collect-meeting-retros/PRD.md) |
+| 클럽 기수 | [club-cohort/](./club-cohort/) | 스펙작성중 | `/api/admin/clubs` — 클럽 · 다음 기수 초안 · 자동 초안 설정, `/api/admin/studies/{id}/carry-over` — 이어서 참여. 스케줄러 2종(초안 · 이어서 참여), 월간 출석부는 기존 출석 API. 기획: [다음 기수](../01-planning/stories/captain-reregister-cohort/PRD.md) · [이어서 참여](../01-planning/stories/captain-carry-over-club-members/PRD.md) · [월간 출석부](../01-planning/stories/captain-club-monthly-attendance/PRD.md) |
 
 ## 도메인 외 스펙
 
