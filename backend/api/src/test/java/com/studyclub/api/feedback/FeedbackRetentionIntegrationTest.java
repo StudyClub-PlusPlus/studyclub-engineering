@@ -362,12 +362,7 @@ class FeedbackRetentionIntegrationTest {
 
     private StorageObject image(Feedback feedback, int order) {
         StorageObject file = file(StoragePurpose.FEEDBACK);
-        images.save(
-                new FeedbackImage(
-                        feedback.getId(),
-                        file.getId(),
-                        storage.publicUrl(file.getObjectKey()),
-                        order));
+        images.save(new FeedbackImage(feedback.getId(), file.getId(), order));
         return file;
     }
 
