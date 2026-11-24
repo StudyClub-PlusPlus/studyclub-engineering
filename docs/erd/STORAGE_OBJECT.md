@@ -10,9 +10,9 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | 파일 번호. 저장 API 가 이 번호를 받아 연결한다 |
 | ACCOUNT_ID | BIGINT | N | 올린 사람. ID 참조([ACCOUNT](./ACCOUNT.md), FK 없음). 연결할 때 「올린 사람 = 요청한 사람」 확인에 쓴다 |
-| PURPOSE | VARCHAR(20) | N | `PROFILE` / `STUDY_THUMBNAIL` / `FEEDBACK`(문의 첨부, [FEEDBACK_IMAGE](./FEEDBACK_IMAGE.md)). 폴더를 정하고, 연결할 때 칸과 맞는지 본다 |
+| PURPOSE | VARCHAR(20) | N | `PROFILE` / `STUDY_THUMBNAIL` / `FEEDBACK`(문의 첨부, [FEEDBACK_IMAGE](./FEEDBACK_IMAGE.md), 비공개 폴더). 폴더를 정하고, 연결할 때 칸과 맞는지 본다 |
 | PROVIDER | VARCHAR(20) | N | 파일이 있는 저장소. `S3` / `R2`. 지금은 `S3` 만 쓴다. 지우기가 이 값으로 저장소 구현을 고른다 |
-| OBJECT_KEY | VARCHAR(512) UK | N | 저장소 안의 위치. `gigs/profiles/<UUID>.webp` 꼴. 교체·지우기가 주소에서 키를 뽑아 이 행을 찾는다 |
+| OBJECT_KEY | VARCHAR(512) UK | N | 저장소 안의 위치. `gigs/profiles/<UUID>.webp` 꼴. 공개 용도는 `gigs/`, `FEEDBACK` 은 `private/feedbacks/`(CDN 으로 열리지 않음). 교체·지우기가 주소에서 키를 뽑아 이 행을 찾는다 |
 | CONTENT_TYPE | VARCHAR(40) | N | 판정한 형식. `image/jpeg` / `image/png` / `image/webp` |
 | SIZE | BIGINT | N | 메타데이터를 지운 뒤 저장한 바이트 수 |
 | STATUS | VARCHAR(20) | N | `PENDING` / `ATTACHED` / `DELETING` |
