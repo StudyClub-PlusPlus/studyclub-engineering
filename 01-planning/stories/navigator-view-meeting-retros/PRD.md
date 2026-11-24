@@ -91,11 +91,13 @@ flowchart LR
 
 ### 개발 범위
 
-기준일 2026-11-21 · `beta`
+기준일 2026-11-24 · `beta`
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | FE | core-front 회고 탭 작성 현황 | 없음 | 화면 · API 연결 |
+| FE | back-office-front 스터디 상세 「회고」 탭 · 반 칩 | 없음 | 화면 · API 연결 |
+| BE | `retros/status` · `meetings/{meetingId}/retros` 의 `groupId` 쿼리 (캡틴이 반을 고른다) | 스펙작성중 | 스펙 확정 · 구현 |
 | BE | `GET /api/studies/{studyId}/meetings/{meetingId}/retros` 응답의 `targets` · `missing` | 스펙작성중 | 스펙 확정 · 구현 |
 | BE | `GET /api/studies/{studyId}/retros/status` | 스펙작성중 | 스펙 확정 · 구현 |
 

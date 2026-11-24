@@ -17,8 +17,8 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/studies/{studyId}/retros/status | 내 분반 회차마다 회고 상태 (끝났나 · 기한 · 쓸 수 있나 · 내가 썼나 · 쓴 사람/쓸 사람) | 필요 (반 참여자 · 네비게이터 · 담당 캡틴) | 스펙작성중 |
-| GET | /api/studies/{studyId}/meetings/{meetingId}/retros | 한 회차의 회고 목록 · 안 쓴 참여자(네비게이터 · 캡틴만) | 필요 (같음) | 스펙작성중 |
+| GET | /api/studies/{studyId}/retros/status | 내 분반(캡틴은 `groupId` 로 고른 반) 회차마다 회고 상태 (끝났나 · 기한 · 쓸 수 있나 · 내가 썼나 · 쓴 사람/쓸 사람) | 필요 (반 참여자 · 네비게이터 · 담당 캡틴) | 스펙작성중 |
+| GET | /api/studies/{studyId}/meetings/{meetingId}/retros | 한 회차의 회고 목록 · 안 쓴 참여자(네비게이터 · 캡틴만). 캡틴은 `groupId` 로 반을 고른다 | 필요 (같음) | 스펙작성중 |
 | PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/me | 내 회고 작성 · 수정 | 필요 (그 회차의 쓸 사람) | 스펙작성중 |
 | PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 누르기 | 필요 (반 참여자, 자기 회고 제외) | 스펙작성중 |
 | DELETE | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 취소 | 필요 (같음) | 스펙작성중 |
@@ -64,6 +64,10 @@ erDiagram
 
 ## GET /api/studies/{studyId}/retros/status
 
+| 쿼리 | 설명 |
+|---|---|
+| `groupId` | 선택. 볼 반. 캡틴(ADMIN)만 쓴다 — 백오피스 스터디 상세 회고 탭의 반 칩. 없으면 기본반. 크루 · 네비게이터가 보내면 무시하고 내 반을 준다 |
+
 ```json
 {
   "groupId": 12,
@@ -85,6 +89,10 @@ erDiagram
 킥오프는 목록에 없다. 끝나지 않은 회차는 `ended=false` · `written=0`.
 
 ## GET /api/studies/{studyId}/meetings/{meetingId}/retros
+
+| 쿼리 | 설명 |
+|---|---|
+| `groupId` | 선택. `retros/status` 와 같다 — 캡틴만, 그 반의 쓸 사람 · 회고 · `missing` 을 준다 |
 
 ```json
 {
