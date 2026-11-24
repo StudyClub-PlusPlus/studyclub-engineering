@@ -35,7 +35,7 @@
 
 ## 영향 — 누가 무엇을 해야 하나
 
-- **인프라 담당**: stage DB에 `V62__drop_feedback_image_url.sql`(`FEEDBACK_IMAGE.IMAGE_URL` 컬럼 삭제)을 **손으로 한 번** 적용한다. stage는 Flyway가 꺼져 있고, 컬럼이 남으면 새 문의 저장이 실패한다. prod는 Flyway가 적용한다.
+- **인프라 담당**: stage DB에 `V64__drop_feedback_image_url.sql`(`FEEDBACK_IMAGE.IMAGE_URL` 컬럼 삭제)을 **손으로 한 번** 적용한다. stage는 Flyway가 꺼져 있고, 컬럼이 남으면 새 문의 저장이 실패한다. prod는 Flyway가 적용한다.
 - **프론트 개발자**: 문의 사진 `<img>`는 `crossorigin='use-credentials'`로 연다. 응답의 `images[].url`은 공개 주소가 아니라 API 경로다.
 - **다른 기능에 개인정보 사진이 필요할 때**: [`docs/flows/image-upload.md`](../flows/image-upload.md)의 「비공개 용도」를 따른다.
 - **기획·개인정보**: 옛 `gigs/feedbacks/` 파일에 개인정보가 든 것이 확인되면 별도로 옮기고 CloudFront 캐시를 무효화한다. 해야 하는지 판단이 필요하다.

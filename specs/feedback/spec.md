@@ -730,7 +730,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 
 **알려진 잔여 위험** — 이 변경 전에 올라간 파일은 `gigs/feedbacks/` 공개 폴더에 있고 옮기지 않았다(사용자 결정). 이 파일들도 화면에는 이 API 로 보이지만, 예전에 응답으로 나간 CloudFront 주소로는 계속 열린다(최대 하루 캐시). 당시 기록은 모두 테스트 기록이고 보유 기간(1년)이 지나면 자동으로 지워진다. 개인정보가 든 파일이 있다고 확인되면 `gigs/feedbacks/` → `private/feedbacks/` 복사 후 `STORAGE_OBJECT.OBJECT_KEY` 갱신 · 원본 삭제 · CloudFront 무효화를 별도로 한다.
 
-**배포** — `V62` 가 `FEEDBACK_IMAGE.IMAGE_URL` 을 지운다. stage 는 Flyway 가 꺼져 있어 손으로 한 번 적용해야 한다(Hibernate `update` 는 컬럼을 지우지 않아 `NOT NULL` 컬럼이 남으면 새 문의 저장이 실패한다).
+**배포** — `V64` 가 `FEEDBACK_IMAGE.IMAGE_URL` 을 지운다. stage 는 Flyway 가 꺼져 있어 손으로 한 번 적용해야 한다(Hibernate `update` 는 컬럼을 지우지 않아 `NOT NULL` 컬럼이 남으면 새 문의 저장이 실패한다).
 
 ### 퍼널·계측
 

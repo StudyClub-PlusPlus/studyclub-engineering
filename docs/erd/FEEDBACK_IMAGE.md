@@ -2,7 +2,7 @@
 
 [FEEDBACK](./FEEDBACK.md) 한 건에 붙은 이미지 한 장. 파일은 공용 업로드로 먼저 올리고(`purpose=FEEDBACK`), 제출할 때 번호로 잇는다.
 
-> 스펙: [feedback](../../specs/feedback/spec.md) · 마이그레이션 `V51__feedback.sql` · `V62__drop_feedback_image_url.sql`(공개 주소 컬럼 `IMAGE_URL` 삭제)
+> 스펙: [feedback](../../specs/feedback/spec.md) · 마이그레이션 `V51__feedback.sql` · `V64__drop_feedback_image_url.sql`(공개 주소 컬럼 `IMAGE_URL` 삭제)
 
 ## 컬럼
 
