@@ -19,8 +19,11 @@ export const IMAGE_SIZE_ERROR = '5MB 이하 파일만 올릴 수 있습니다';
 /** 서버 `StoragePurpose`. 새 용도는 백엔드 enum 에 먼저 추가한다. */
 export type ImagePurpose = 'PROFILE' | 'STUDY_THUMBNAIL';
 
-/** POST /api/uploads/images 응답. `fileId` 는 기능 쪽 저장 API 에 넘기고, `url` 은 미리보기용이다. */
-export type UploadedImage = { fileId: number; url: string };
+/**
+ * POST /api/uploads/images 응답. `fileId` 는 기능 쪽 저장 API 에 넘기고, `url` 은 미리보기용이다.
+ * 비공개 용도(문의 첨부)는 공개 주소가 없어 `url` 이 null 이다 — 미리보기는 고른 파일(blob)로 한다.
+ */
+export type UploadedImage = { fileId: number; url: string | null };
 
 /** 보내기 전에 거를 사유. 없으면 null. `file.type` 은 확장자에서 온 값이라 형식의 진본은 서버다. */
 export function imageFileProblem(file: { type: string; size: number }): string | null {

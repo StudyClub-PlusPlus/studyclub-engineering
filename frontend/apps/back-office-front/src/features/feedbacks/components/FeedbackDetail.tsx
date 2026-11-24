@@ -12,6 +12,7 @@ import { COPY, EMPTY_VALUE, formatStamp, personLabel, viewportLabel } from '@/fe
 import { useChangeFeedbackStatus, useReplyFeedback, useSaveFeedbackMemo } from '@/features/feedbacks/queries';
 import { MEMO_MAX, REPLY_MAX, REPLY_MIN, type ApiAdminFeedbackDetail } from '@/features/feedbacks/types';
 import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
+import { apiUrl } from '@/lib/http';
 import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /** 목록으로 돌아가는 길 — 상세 머리 위와 「없는 건」 안내에서 같이 쓴다. */
@@ -87,14 +88,19 @@ export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
               {detail.images.map((image, i) => (
                 <button
                   // ui-native: 첨부 썸네일 — 이미지 전체가 누르는 곳
-                  key={image.url}
+                  key={image.id}
                   type='button'
                   onClick={() => setZoom(i)}
                   aria-label={`첨부 이미지 ${i + 1} 크게 보기`}
                   className='h-28 w-40 overflow-hidden rounded-control border border-border hover:border-brand'
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- 사용자가 올린 이미지 원본 */}
-                  <img src={image.url} alt={`첨부 이미지 ${i + 1}`} className='h-full w-full object-cover' />
+                  {/* eslint-disable-next-line @next/next/no-img-element -- 쿠키 인증이 필요한 API 경로라 next/image 최적화를 거치지 않는다 */}
+                  <img
+                    src={apiUrl(image.url)}
+                    crossOrigin='use-credentials'
+                    alt={`첨부 이미지 ${i + 1}`}
+                    className='h-full w-full object-cover'
+                  />
                 </button>
               ))}
             </div>
@@ -123,9 +129,10 @@ export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
         size='lg'
       >
         {zoom !== null && detail.images[zoom] && (
-          // eslint-disable-next-line @next/next/no-img-element -- 사용자가 올린 이미지 원본
+          // eslint-disable-next-line @next/next/no-img-element -- 쿠키 인증이 필요한 API 경로라 next/image 최적화를 거치지 않는다
           <img
-            src={detail.images[zoom].url}
+            src={apiUrl(detail.images[zoom].url)}
+            crossOrigin='use-credentials'
             alt={`첨부 이미지 ${zoom + 1}`}
             className='mx-auto max-h-[70vh] w-auto rounded-control'
           />

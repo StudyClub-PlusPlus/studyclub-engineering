@@ -320,7 +320,7 @@ function ThumbnailField({
   const thumb = useImageUpload({
     purpose: 'STUDY_THUMBNAIL',
     upload: uploadImage,
-    onUploaded: ({ fileId, url }) => onChange({ ...latest.current, thumbnailFileId: fileId, thumbnailUrl: url }),
+    onUploaded: ({ fileId, url }) => onChange({ ...latest.current, thumbnailFileId: fileId, thumbnailUrl: url ?? '' }),
     onError: (err) =>
       err instanceof ApiError ? err.message : '썸네일을 올리지 못했습니다. 잠시 후 다시 시도해 주세요',
   });
