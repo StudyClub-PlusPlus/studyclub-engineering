@@ -1,7 +1,6 @@
 'use client';
 
 
-
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
@@ -19,6 +18,7 @@ import { Badge, Button, Input, Modal, Pagination, Select, cx } from '@studyclub/
 import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, toISODate, todayISO } from '@studyclub/utils';
 import { Check, Minus, Search } from 'lucide-react';
 
+import { isReusedDraft } from '../lib/reused-drafts';
 import { recruitState, recruitmentDeadlineAt, recruitmentDeadlineLabel } from '@/proto/lib/recruitment-deadline';
 import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
@@ -141,6 +141,8 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (v: stri
 
 /** 목록에 필요한 만큼만 뽑는다 — 어느 스터디를 열어야 하는지 고르기 위한 숫자. */
 function summarize(study: Study) {
+  if (isReusedDraft(study))
+    return { capacity: study.recruitment?.capacity, active: 0 };
   const { crew, capacity } = getStudyCrew(study);
   return { capacity, active: crew.length };
 }
@@ -556,12 +558,14 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                       {s.program?.id ?? <span className='text-fg-muted'>—</span>}
                     </td>
                     <td className='min-w-[24rem] max-w-[32rem]'>
-                      <Link
+                       {isReusedDraft(s) ? (
+                        <span className='font-semibold'>{tx(s.title)}</span>
+                      ) : <Link
                         href={`/proto/console/studies/${s.study_id}`}
                         className='block truncate font-semibold underline-offset-4 hover:text-brand hover:underline'
                       >
                         {tx(s.title)}
-                      </Link>
+                      </Link>}
                     </td>
                     {columns.map((c) => (
                       <td key={c.key} data-anno={c.anno} className={c.cellClass}>

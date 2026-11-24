@@ -117,6 +117,19 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+
+/** 시간대 필터 — 열고 그 줄을 누른다. 'all' 은 「전체 시간대」. */
+async function pickZoneFilter(zone: string) {
+  const place: Record<string, string> = {
+    all: '전체 시간대',
+    'Asia/Seoul': '한국 · 서울',
+    'America/New_York': '미국 · 뉴욕',
+    'America/Vancouver': '캐나다 · 벤쿠버',
+    'America/Los_Angeles': '미국 · 로스앤젤레스',
+  };
+  await userEvent.click(screen.getByLabelText('시간대 필터'));
+  await userEvent.click(screen.getByRole('option', { name: new RegExp(place[zone]!) }));
+}
 describe('참여자 반 편성', () => {
   it('백그라운드 재조회 중에도 반 편집을 유지하고 다른 스터디 캐시는 무효화하지 않는다', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -185,11 +198,11 @@ describe('참여자 반 편성', () => {
   it('필터 안 전체 선택과 해제가 다른 필터의 선택을 유지한다', async () => {
     mount();
     await userEvent.click(await screen.findByRole('checkbox', { name: '북미캡틴 선택' }));
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'Asia/Seoul');
+    await pickZoneFilter('Asia/Seoul');
     expect(screen.queryByRole('button', { name: '선택 해제' })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('checkbox', { name: '보이는 크루 전체 선택' }));
     await userEvent.click(screen.getByRole('checkbox', { name: '보이는 크루 전체 선택' }));
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'all');
+    await pickZoneFilter('all');
     expect(screen.getByRole('checkbox', { name: '북미캡틴 선택' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: '한국크루 선택' })).not.toBeChecked();
   });
@@ -316,7 +329,7 @@ describe('참여자 반 편성', () => {
   it('필터에 숨은 선택 행은 일괄 변경하지 않는다', async () => {
     const fetch = mount();
     await userEvent.click(await screen.findByRole('checkbox', { name: '보이는 크루 전체 선택' }));
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'Asia/Seoul');
+    await pickZoneFilter('Asia/Seoul');
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '바꿀 반' }), '2');
     await userEvent.click(screen.getByRole('button', { name: /저장/ }));
     await waitFor(() =>
@@ -402,7 +415,7 @@ describe('참여자 반 편성', () => {
     expect(screen.queryByRole('combobox', { name: '한국크루 반' })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: '바꿀 반' })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: '반 필터' })).not.toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: '시간대 필터' })).toBeVisible();
+    expect(screen.getByLabelText('시간대 필터')).toBeVisible();
   });
 
   it('일부 선택 상태는 보이는 크루를 기준으로 표시하고 전체 선택·해제로 전환한다', async () => {
@@ -410,10 +423,10 @@ describe('참여자 반 편성', () => {
     const all = await screen.findByRole('checkbox', { name: '보이는 크루 전체 선택' });
     await userEvent.click(screen.getByRole('checkbox', { name: '한국크루 선택' }));
     expect(all).toBePartiallyChecked();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'Asia/Seoul');
+    await pickZoneFilter('Asia/Seoul');
     expect(all).toBeChecked();
     expect(all).not.toBePartiallyChecked();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'all');
+    await pickZoneFilter('all');
     expect(all).toBePartiallyChecked();
     await userEvent.click(all);
     expect(all).toBeChecked();
@@ -428,11 +441,11 @@ describe('참여자 반 편성', () => {
     mount();
     await screen.findByRole('combobox', { name: '한국크루 반' });
     expect(screen.queryByRole('combobox', { name: '북미캡틴 반' })).not.toBeInTheDocument();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'all');
+    await pickZoneFilter('all');
     expect(memoryUrl.get()).toBe('tab=crew&group=1');
     expect(screen.getByRole('combobox', { name: '북미캡틴 반' })).toBeVisible();
     act(() => memoryUrl.set('tab=crew&tz=INVALID&group=999'));
-    expect(screen.getByRole('combobox', { name: '시간대 필터' })).toHaveValue('all');
+    expect(screen.getByLabelText('시간대 필터')).toHaveTextContent('전체 시간대');
     expect(screen.getByRole('combobox', { name: '반 필터' })).toHaveValue('all');
   });
 
@@ -460,7 +473,7 @@ describe('참여자 반 편성', () => {
     expect(within(cellOf('북미캡틴')).getByText('PCT')).toBeVisible();
     expect(within(cellOf('시간대없음')).getByText('미설정')).toBeVisible();
 
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'America/Vancouver');
+    await pickZoneFilter('America/Vancouver');
     expect(memoryUrl.get()).toBe('tz=America%2FVancouver');
     expect(table.queryByText('한국크루')).not.toBeInTheDocument();
     expect(table.getByText('북미캡틴')).toBeVisible();
@@ -666,7 +679,7 @@ describe('참여 가능 시간', () => {
   it('반 · 시간대 필터를 바꾸면 고른 시각을 푼다', async () => {
     await mountOpen(withDays);
     await userEvent.click(await screen.findByRole('button', { name: '월 12시 KST · 1명' }));
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: '시간대 필터' }), 'Asia/Seoul');
+    await pickZoneFilter('Asia/Seoul');
     expect(screen.queryByText(/에 되는 크루 \d+명/)).not.toBeInTheDocument();
   });
 

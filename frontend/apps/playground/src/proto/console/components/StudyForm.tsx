@@ -8,7 +8,7 @@ import { recruitmentTimeZones } from '@core/lib/recruitment-timezones';
 import { isValidZone } from '@core/lib/schedule-timezone';
 import { latestCohort, programs } from '@studyclub/mock';
 import { type Study, type StudyKind, type RecruitmentTimeZones } from '@studyclub/types';
-import { Button, Checkbox, Input, Select, Textarea, FilterChip } from '@studyclub/ui';
+import { Button, Checkbox, Input, Select, Textarea, FilterChip, DatePicker } from '@studyclub/ui';
 import { STUDY_CATEGORIES, categoriesOf, toISODate } from '@studyclub/utils';
 
 import { RecruitmentTimeZoneField } from './RecruitmentTimeZoneField';
@@ -35,7 +35,7 @@ import { withSavedRecruitmentZones } from '@/proto/lib/recruitment-zone-store';
 
 export const KIND_LABEL: Record<StudyKind, string> = { study: '스터디', club: '클럽' };
 
-export type FormMode = 'create' | 'edit';
+export type FormMode = 'create' | 'edit' | 'reuse';
 
 /**
  * 제목 한도 = **카드에서 잘리지 않는 길이**. 글자 수가 아니라 **폭**으로 센다.
@@ -239,7 +239,9 @@ export function StudyForm({
         운영자가 아직 정하지 않은 것을 먼저 묻는 일이다.
       */}
       <div data-anno='11'>
-        <ProgramField mode={mode} value={value} errors={errors} onChange={onChange} />
+         {mode === 'reuse' ? (
+          <p className='type-body-sm text-fg-secondary'>새 프로그램 · 스터디<br />이전 게시물 내용을 불러왔어요. 이번 모집에 맞게 확인하고 수정해 주세요.</p>
+        ) : <ProgramField mode={mode} value={value} errors={errors} onChange={onChange} />}
       </div>
 
       <div data-anno='2'>
@@ -300,13 +302,11 @@ export function StudyForm({
 
       <div className='grid gap-3 sm:grid-cols-2'>
         <div data-anno='7'>
-          <Input
-            id='deadline'
-            type='date'
+          <DatePicker
             label='모집 마감일'
             required
             value={value.deadline}
-            onChange={(ev) => set('deadline', ev.target.value)}
+            onChange={(value) => set('deadline', value)}
             error={errors.deadline}
           />
         </div>
@@ -342,12 +342,10 @@ export function StudyForm({
       */}
       <div className='grid gap-3 sm:grid-cols-2'>
         <div data-anno='13'>
-          <Input
-            id='startAt'
-            type='date'
+          <DatePicker
             label='진행 시작일'
             value={value.startAt}
-            onChange={(ev) => set('startAt', ev.target.value)}
+            onChange={(value) => set('startAt', value)}
             helper='모임이 실제로 시작하는 날. 미정이면 비워 둡니다'
           />
         </div>

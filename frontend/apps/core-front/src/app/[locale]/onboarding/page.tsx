@@ -10,7 +10,7 @@ import { Button, Input } from '@studyclub/ui';
 import { AlertCircle, ArrowRight, Check } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
 
-import { TimeZonePicker } from '@/components/TimeZonePicker';
+import { TimeZoneField } from '@/components/TimeZoneField';
 import {
   getLoginMethod,
   getSuggestedNickname,
@@ -446,7 +446,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
           </p>
         </div>
 
-        <TimeZonePicker
+        <TimeZoneField
           value={draft.timeZone}
           onChange={(value) => update('timeZone', value)}
           locale={locale}

@@ -14,12 +14,30 @@ export type StudyTz =
   | 'America/Vancouver'
   | 'America/Los_Angeles';
 
+/** 시간대 고르기에 보이는 「국가 · 도시」 — 사용자 사이트 · playground 의 시간대 이름(CLDR)과 같은 글자. */
+export const ZONE_PLACE: Record<StudyTz, string> = {
+  'Asia/Seoul': '한국 · 서울',
+  'America/New_York': '미국 · 뉴욕',
+  'America/Vancouver': '캐나다 · 벤쿠버',
+  'America/Los_Angeles': '미국 · 로스앤젤레스',
+};
+
 export const STUDY_TZS: { key: StudyTz; label: string }[] = [
   { key: 'Asia/Seoul', label: '한국 · 서울' },
   { key: 'America/New_York', label: '북미 동부 · 뉴욕' },
   { key: 'America/Vancouver', label: '북미 서부 · 밴쿠버' },
   { key: 'America/Los_Angeles', label: '북미 서부 · LA' },
 ];
+
+/** 시간대 고르기 줄 아래 작은 글씨 — 그 순간의 UTC 차이(UTC+09:00). 서머타임이면 바뀐다. */
+export function utcOffset(iana: string, at = new Date()): string {
+  return (
+    new Intl.DateTimeFormat('en', { timeZone: iana, timeZoneName: 'longOffset' })
+      .formatToParts(at)
+      .find((part) => part.type === 'timeZoneName')
+      ?.value.replace('GMT', 'UTC') ?? ''
+  );
+}
 
 /** 일정 표에서 고를 수 있는 시간대. 표의 일자·시각은 고른 시간대로 보이고 그 시간대로 고친다. */
 export const DISPLAY_ZONES = [

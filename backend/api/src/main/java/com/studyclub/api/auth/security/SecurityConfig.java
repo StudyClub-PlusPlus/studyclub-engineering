@@ -100,7 +100,14 @@ public class SecurityConfig {
                                                 PathPatternRequestMatcher.withDefaults()
                                                         .matcher(HttpMethod.GET, "/api/notices"),
                                                 PathPatternRequestMatcher.withDefaults()
-                                                        .matcher(HttpMethod.GET, "/api/notices/*"))
+                                                        .matcher(HttpMethod.GET, "/api/notices/*"),
+                                                // 사이트 행사 목록 · 상세도 비로그인이 읽는다. 두 패턴만 — /api/events/**
+                                                // 를 열면
+                                                // …/registrations/me 까지 열린다
+                                                PathPatternRequestMatcher.withDefaults()
+                                                        .matcher(HttpMethod.GET, "/api/events"),
+                                                PathPatternRequestMatcher.withDefaults()
+                                                        .matcher(HttpMethod.GET, "/api/events/*"))
                                         .permitAll()
                                         .requestMatchers(
                                                 "/",

@@ -45,7 +45,11 @@ export function Tabs({ items, activeKey, defaultActiveKey, onChange, className }
 
   return (
     <div className={className}>
-      <div role='tablist' className='flex gap-1 overflow-x-auto border-b border-border'>
+      {/* 가로로만 넘친다. 바닥 선 · 밑줄 · 포커스 링을 상자 안에 그려 세로 스크롤바가 생기지 않게 한다 */}
+      <div
+        role='tablist'
+        className='flex gap-1 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_var(--color-border)]'
+      >
         {items.map((tab) => {
           const isActive = tab.key === currentKey;
 
@@ -58,7 +62,7 @@ export function Tabs({ items, activeKey, defaultActiveKey, onChange, className }
               aria-selected={isActive}
               onClick={() => handleTabClick(tab.key, tab.disabled)}
               className={cx(
-                'relative -mb-px flex items-center whitespace-nowrap px-4 py-2.5 type-label-lg transition-colors focus-visible:outline-none focus-visible:shadow-(--ring)',
+                'relative flex items-center whitespace-nowrap px-4 py-2.5 type-label-lg transition-colors focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_3px_var(--color-focus-ring)]',
                 isActive ? 'font-semibold text-primary-dark' : 'font-semibold text-fg-muted hover:text-fg',
                 tab.disabled && 'cursor-not-allowed opacity-40 hover:text-fg-muted',
               )}
@@ -78,7 +82,7 @@ export function Tabs({ items, activeKey, defaultActiveKey, onChange, className }
 
               {isActive && (
                 <span
-                  className='absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand'
+                  className='absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand'
                   aria-hidden='true'
                 />
               )}

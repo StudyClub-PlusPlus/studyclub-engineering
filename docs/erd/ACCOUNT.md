@@ -20,6 +20,8 @@
 | DISCORD_HANDLE | VARCHAR(64) | Y | 표시용 핸들 |
 | DISCORD_NICKNAME | VARCHAR(100) | Y | 스터디클럽 서버 별명 (이름/직무/지역/관심주제). 없으면 스터디 신청 시 필수 입력 |
 | ONBOARDING_COMPLETED_AT | DATETIME | Y | 온보딩 완료 시간 |
+| ACTIVATED_AT | DATETIME(6) | Y | 첫 활성화 시각 — 첫 스터디 신청 또는 첫 행사 신청이 저장된 때. 신청 트랜잭션이 계정 행 잠금 아래 NULL 일 때만 채운다 (V63, [analytics](../../specs/analytics/spec.md)) |
+| ACTIVATION_ACTION | VARCHAR(20) | Y | 첫 활성화를 만든 행동 `STUDY_APPLIED` / `EVENT_APPLIED`. `ACTIVATED_AT` 과 함께 채운다 |
 
 ## 관계
 - 1 : N [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)

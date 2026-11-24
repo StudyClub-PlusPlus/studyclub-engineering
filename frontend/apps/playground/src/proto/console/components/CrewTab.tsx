@@ -22,6 +22,7 @@ import {
   Select,
   SelectionCount,
   TableActionBar,
+  TimeZonePicker,
   cx,
   toast,
 } from '@studyclub/ui';
@@ -295,46 +296,55 @@ export function CrewTab({
         <AvailabilityBoard people={people} pick={timePick} onPick={setTimePick} rosterId='crew-roster' />
       )}
       <section id='crew-roster' data-anno='attendee:3' className='scroll-mt-20'>
-        <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
+        {/* 시간대 필터는 제목 줄 오른쪽 끝 */}
+        <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
           <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 type-title-lg'>
             참여 크루
             {/* 반 제목 옆 개수와 같은 모양 — 숫자만. 필터와 상관없이 전체 인원 */}
             <span className='tnum type-label-lg text-fg-muted'>{active.length}</span>
           </h2>
-        </div>
-        {/* 필터는 제목 아래 줄, 왼쪽부터 반 · 시간대 드롭다운 */}
-        <div data-anno='attendee:3-3' className='mt-2 flex flex-wrap items-center gap-2'>
-          {/* 반이 하나면 거를 것이 없다 */}
-          {classes.length > 1 && (
-            <FilterSelect
-              label='반'
-              value={classFilter}
-              onChange={setClassFilter}
-              options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
-            />
-          )}
-          <FilterSelect
+          <TimeZonePicker
+            data-anno='attendee:3-3'
+            className='w-64'
             label='시간대'
+            hideLabel
+            size='md'
             value={regionFilter}
-            onChange={(v) => setRegionFilter(v as typeof regionFilter)}
-            options={zoneOptions.map((zone) => ({ value: zone, label: crewZoneLabel(zone) }))}
+            onChange={setRegionFilter}
+            options={[
+              { value: 'all', label: '전체 시간대' },
+              ...zoneOptions.map((zone) => ({ value: zone, label: crewZoneLabel(zone) })),
+            ]}
           />
-          {timePick && (
-            <span
-              data-anno='class:4'
-              className='inline-flex h-9 items-center gap-1 rounded-pill border border-brand bg-brand-subtle pl-3 pr-1 type-label-lg text-fg'
-            >
-              {pickLabel(timePick)}에 되는 크루 {shown.length}명
-              <IconButton
-                size='xs'
-                variant='tertiary'
-                icon={<X />}
-                aria-label='시각 필터 풀기'
-                onClick={() => setTimePick(null)}
-              />
-            </span>
-          )}
         </div>
+        {/* 반이 하나면 반 필터는 거를 것이 없다. 칸판에서 고른 시각은 반 수와 상관없이 보인다 */}
+        {(classes.length > 1 || timePick) && (
+          <div className='mt-2 flex flex-wrap items-center gap-2'>
+            {classes.length > 1 && (
+              <FilterSelect
+                label='반'
+                value={classFilter}
+                onChange={setClassFilter}
+                options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
+              />
+            )}
+            {timePick && (
+              <span
+                data-anno='class:4'
+                className='inline-flex h-9 items-center gap-1 rounded-pill border border-brand bg-brand-subtle pl-3 pr-1 type-label-lg text-fg'
+              >
+                {pickLabel(timePick)}에 되는 크루 {shown.length}명
+                <IconButton
+                  size='xs'
+                  variant='tertiary'
+                  icon={<X />}
+                  aria-label='시각 필터 풀기'
+                  onClick={() => setTimePick(null)}
+                />
+              </span>
+            )}
+          </div>
+        )}
         <div className='mt-2'>
           <TableCard
             // 칸이 많아 좁은 화면에서 줄이지 않고 가로로 민다

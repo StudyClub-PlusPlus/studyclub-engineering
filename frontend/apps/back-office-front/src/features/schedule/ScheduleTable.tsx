@@ -8,11 +8,12 @@ import {
   cx,
   Input,
   Modal,
-  Segmented,
   Select,
   SelectionCount,
   TableActionBar,
-  TimeSelect,
+  TimePicker,
+  TimeZonePicker,
+  DatePicker,
 } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
@@ -29,7 +30,16 @@ import {
   type ScheduleGroup,
 } from '@/features/schedule/meetings';
 import type { MeetingPatch } from '@/features/schedule/store';
-import { dateWithDow, dayLabel, DISPLAY_ZONES, wallParts, zonedInstant, zoneLabel } from '@/features/schedule/time';
+import {
+  dateWithDow,
+  dayLabel,
+  DISPLAY_ZONES,
+  utcOffset,
+  wallParts,
+  zonedInstant,
+  zoneLabel,
+  ZONE_PLACE,
+} from '@/features/schedule/time';
 
 /**
  * 일정 표 — 고른 반의 회차. 사용자 사이트 스터디 일정 표와 같은 표다 (navigator-register-sessions PRD §3 ~ §10).
@@ -229,13 +239,18 @@ export function ScheduleTable({
           </span>
         </h2>
         <div className='flex items-center gap-2'>
-          <Segmented
-            aria-label='일정 표시 시간대'
-            shape='pill'
+          <TimeZonePicker
+            className='w-48'
             size='sm'
+            label='일정 표시 시간대'
+            hideLabel
             value={zone}
-            options={DISPLAY_ZONES.map((z) => ({ value: z.iana as string, label: z.label }))}
             onChange={setZone}
+            options={DISPLAY_ZONES.map((z) => ({
+              value: z.iana,
+              label: ZONE_PLACE[z.iana],
+              detail: utcOffset(z.iana),
+            }))}
           />
           <Button size='sm' variant='secondary' onClick={() => setSettingKickoff(true)}>
             {hasKickoff ? '킥오프 수정' : '킥오프 정하기'}
@@ -335,8 +350,8 @@ export function ScheduleTable({
                     />
                   </th>
                   <th className='w-24 px-4 py-3 text-center'>회차</th>
-                  <th className='w-40 px-2 py-3'>일자</th>
-                  <th className='w-44 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
+                  <th className='w-36 px-2 py-3'>일자</th>
+                  <th className='w-32 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
                   <th className='w-60 px-2 py-3'>제목</th>
                   <th className='w-32 px-2 py-3 text-center'>발표자1</th>
                   <th className='w-32 px-2 py-3 text-center'>발표자2</th>
@@ -399,7 +414,6 @@ export function ScheduleTable({
                       <td className={cx(cell, 'tnum')}>
                         {editable ? (
                           <CellInput
-                            type='date'
                             label={`${meetingLabel(m)} 일자 (${zoneLabel(zone)})`}
                             value={wall.date}
                             error={errors.date}
@@ -411,7 +425,7 @@ export function ScheduleTable({
                       </td>
                       <td className={cx(cell, 'tnum')}>
                         {editable ? (
-                          <TimeSelect
+                          <TimePicker
                             size='sm'
                             aria-label={`${meetingLabel(m)} 시작 시각 (${zoneLabel(zone)})`}
                             value={wall.time}
@@ -494,29 +508,17 @@ function sameRow(a: RowDraft, b: RowDraft): boolean {
 }
 
 function CellInput({
-  type,
   label,
   value,
   error,
   onChange,
 }: {
-  type: 'date';
   label: string;
   value: string;
   error?: string;
   onChange: (value: string) => void;
 }) {
-  return (
-    <Input
-      size='sm'
-      type={type}
-      aria-label={label}
-      value={value}
-      error={error}
-      onChange={(ev) => onChange(ev.target.value)}
-      className='px-2'
-    />
-  );
+  return <DatePicker size='sm' aria-label={label} value={value} error={error} onChange={onChange} className='pl-2' />;
 }
 
 function TitleInput({

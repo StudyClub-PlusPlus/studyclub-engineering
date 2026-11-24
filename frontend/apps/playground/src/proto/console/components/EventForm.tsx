@@ -2,7 +2,7 @@
 
 import { tx, EVENT_TYPE_LABEL } from '@console/lib/l10n';
 import type { StudyclubEvent } from '@studyclub/types';
-import { Input, Select } from '@studyclub/ui';
+import { Input, Select, DatePicker } from '@studyclub/ui';
 
 /**
  * 행사 입력 폼 — **등록 팝업과 편집 팝업이 나눠 쓴다.** 스터디 폼(`StudyForm`)과 같은 규칙이다.
@@ -81,12 +81,11 @@ export function EventForm({
             </option>
           ))}
         </Select>
-        <Input
+        <DatePicker
           label='날짜'
-          type='date'
           required
           value={value.date}
-          onChange={(ev) => set('date', ev.target.value)}
+          onChange={(value) => set('date', value)}
           error={errors.date}
         />
       </div>

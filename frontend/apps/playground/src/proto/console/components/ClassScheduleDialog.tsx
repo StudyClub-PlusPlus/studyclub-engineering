@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 
 import { classLabel, hasSchedule, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE, WEEKDAY_LABELS, otherClock, type ScheduleRule } from '@console/lib/schedule';
-import { TimeZonePicker } from '@core/components/TimeZonePicker';
+import { TimeZoneField } from '@core/components/TimeZoneField';
 import { isValidZone, scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { useDisplayTimeZone, useTimeZoneChangeLock } from '@core/lib/use-display-timezone';
-import { Button, Input, Modal, FilterChip } from '@studyclub/ui';
+import { Button, Modal, FilterChip, TimePicker } from '@studyclub/ui';
 
 /**
  * 반의 스터디 시간(요일 · 시각 · 시간대) — 일정 탭에서 연다.
@@ -97,16 +97,14 @@ export function ClassScheduleDialog({
             </label>
             <div className='flex flex-wrap items-center gap-2'>
               <div className='w-48'>
-                <Input
-                  size='sm'
-                  type='time'
+                <TimePicker
                   id='rule-time'
                   value={rule.time}
-                  onChange={(ev) => setRule({ ...rule, time: ev.target.value })}
+                  onChange={(value) => setRule({ ...rule, time: value })}
                 />
               </div>
               <div className='min-w-48 flex-1'>
-                <TimeZonePicker
+                <TimeZoneField
                   prioritizeCountries
                   locale='ko' label='기준 시간대' hideLabel compact annotation={false}
                   value={rule.tz} onChange={(tz) => setRule({ ...rule, tz })}
