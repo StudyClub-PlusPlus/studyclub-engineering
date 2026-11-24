@@ -39,7 +39,7 @@
 
 ## Phase 4: 신청 연동 (팀원 PR)
 
-- [ ] T018 신청 테이블을 읽는 `ClubEventRegistrationPort` 실제 어댑터, `EmptyClubEventRegistrationAdapter` 삭제
+- [x] T018 신청 테이블을 읽는 `ClubEventRegistrationPort` 실제 어댑터, `EmptyClubEventRegistrationAdapter` 삭제 (공통 신청 PR — `ClubEventRegistrationAdapter`, V62)
 - [ ] T019 크루 신청 제출이 `findByIdForUpdate` 를 첫 조회로 · `displayStatus` / `seatsOf` 로 판정
 - [ ] T020 `ClubEventRegistrationsConfirmedEvent` `BEFORE_COMMIT` 구독자 — 신청마다 확정 안내 `NOTIFICATION` 행 (메일 스펙)
 

@@ -101,6 +101,11 @@ public enum ErrorCode {
     CHANNEL_IN_USE(409, "신청자가 있는 참여 방식은 없앨 수 없습니다."),
     /** 새 정원이 그 방식의 확인 대기 + 참가 확정 수보다 작다. 화면은 정원 입력란에 안내한다 */
     CAPACITY_BELOW_OCCUPIED(409, "정원을 현재 신청 인원보다 작게 바꿀 수 없습니다."),
+    /**
+     * 지금 신청 상태로는 그 처리를 할 수 없다 — 다른 캡틴이 먼저 처리 · 크루가 먼저 취소 · 종료 자동 전환이 먼저 돎. 화면은 신청을 다시 읽는다
+     * (specs/event-participant · specs/event-registration)
+     */
+    EVENT_REGISTRATION_STATUS_NOT_ALLOWED(409, "현재 신청 상태에서는 처리할 수 없습니다."),
     /** stage 테스트 로그인 — 코드가 틀림. 메시지에 남은 횟수가 있다. 화면은 코드 칸에 빨간 테두리 (specs/stage-email-login) */
     EMAIL_CODE_WRONG(400, "코드가 맞지 않아요."),
     /** stage 테스트 로그인 — 코드가 만료 · 이미 씀 · 5번 틀림 · 없음. 화면은 확인 버튼을 끄고 「코드 다시 받기」 만 남긴다 */

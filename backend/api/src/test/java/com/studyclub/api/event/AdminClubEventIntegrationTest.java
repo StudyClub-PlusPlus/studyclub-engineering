@@ -59,7 +59,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /**
- * 백오피스 행사 — 목록 · 등록 · 상세 · 수정 (specs/event/spec.md). 신청 테이블은 아직 없어 {@link
+ * 백오피스 행사 — 목록 · 등록 · 상세 · 수정 (specs/event/spec.md). 신청 수는 이 테스트의 관심이 아니라 {@link
  * ClubEventRegistrationPort} 를 목으로 바꿔 끼우고 방식·상태별 수를 정해 준다. 행사는 API 로 만들고, 시작·종료·취소 같은 지난 상태는 JDBC 로
  * 시각·상태만 옮긴다.
  */
@@ -113,7 +113,8 @@ class AdminClubEventIntegrationTest {
         now = Instant.now().truncatedTo(ChronoUnit.MINUTES);
         given(registrationPort.countActiveSeats(anyLong())).willReturn(EventSeatCounts.none());
         given(registrationPort.countActiveSeatsByEventIds(any())).willReturn(Map.of());
-        given(registrationPort.confirmPendingRegistrations(anyLong())).willReturn(List.of());
+        given(registrationPort.confirmPendingRegistrations(anyLong(), anyLong()))
+                .willReturn(List.of());
     }
 
     @AfterEach
@@ -704,7 +705,7 @@ class AdminClubEventIntegrationTest {
                 .containsEntry("canEdit", true)
                 .containsEntry("canChangeConfirmation", false)
                 .containsEntry("canSetFutureStart", false);
-        verify(registrationPort, never()).confirmPendingRegistrations(anyLong());
+        verify(registrationPort, never()).confirmPendingRegistrations(anyLong(), anyLong());
     }
 
     @Test
@@ -722,7 +723,7 @@ class AdminClubEventIntegrationTest {
         InOrder order = inOrder(clubEventRepository, registrationPort);
         order.verify(clubEventRepository).findByIdForUpdate(eventId);
         order.verify(registrationPort).countActiveSeats(eventId);
-        order.verify(registrationPort).confirmPendingRegistrations(eventId);
+        order.verify(registrationPort).confirmPendingRegistrations(eventId, ADMIN_ID);
         verify(clubEventRepository, never()).findById(anyLong());
     }
 
@@ -733,7 +734,8 @@ class AdminClubEventIntegrationTest {
         Map<String, Object> created = createDetail(now.plus(Duration.ofDays(5)));
         long eventId = longOf(created, "eventId");
         String path = PATH + "/" + eventId;
-        given(registrationPort.confirmPendingRegistrations(eventId)).willReturn(List.of(11L, 12L));
+        given(registrationPort.confirmPendingRegistrations(eventId, ADMIN_ID))
+                .willReturn(List.of(11L, 12L));
 
         Map<String, Object> body = editable(created);
         body.put("confirmation", "AUTO");
@@ -741,7 +743,7 @@ class AdminClubEventIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("confirmation", "AUTO");
-        verify(registrationPort).confirmPendingRegistrations(eventId);
+        verify(registrationPort).confirmPendingRegistrations(eventId, ADMIN_ID);
         assertThat(recorder.events)
                 .singleElement()
                 .satisfies(
@@ -765,7 +767,7 @@ class AdminClubEventIntegrationTest {
         toAuto.put("confirmation", "AUTO");
         assertThat(send(HttpMethod.PUT, path, ADMIN_ID, toAuto, null).getStatusCode())
                 .isEqualTo(HttpStatus.OK);
-        verify(registrationPort).confirmPendingRegistrations(eventId);
+        verify(registrationPort).confirmPendingRegistrations(eventId, ADMIN_ID);
         assertThat(recorder.events).isEmpty();
 
         Map<String, Object> toReview =
@@ -773,7 +775,7 @@ class AdminClubEventIntegrationTest {
         toReview.put("confirmation", "REVIEW");
         assertThat(send(HttpMethod.PUT, path, ADMIN_ID, toReview, null).getStatusCode())
                 .isEqualTo(HttpStatus.OK);
-        verify(registrationPort).confirmPendingRegistrations(eventId);
+        verify(registrationPort).confirmPendingRegistrations(eventId, ADMIN_ID);
         assertThat(recorder.events).isEmpty();
     }
 
