@@ -13,6 +13,16 @@ import { MOCK_ACTOR_ID, mockAdminAccounts } from "./accounts";
 
 type Status = "ACTIVE" | "PAUSED" | "WITHDRAWN";
 
+/** 신청서의 참여 가능 요일 — 평일 저녁형 · 주말형이 섞이게 id 로 돌려 쓴다. */
+const DAY_SETS = [
+  ["tue", "thu"],
+  ["sat", "sun"],
+  ["mon", "wed", "sat"],
+  ["thu", "sat"],
+  ["tue", "thu", "sun"],
+  ["fri", "sat", "sun"],
+];
+
 const GROUPS = [
   { groupId: 1, name: "기본반", isDefault: true, canDelete: false },
   { groupId: 2, name: "목요일반", isDefault: false, canDelete: false },
@@ -28,6 +38,7 @@ const person = (
     role?: "LEADER" | "MEMBER";
     timeZone?: string | null;
     accountId?: number;
+    availableDays?: string[];
   } = {},
 ) => ({
   participantId: id,
@@ -37,6 +48,7 @@ const person = (
   email: `crew${id}@example.com`,
   regionGroup: null,
   timeZone: extra.timeZone === undefined ? "Asia/Seoul" : extra.timeZone,
+  availableDays: extra.availableDays ?? DAY_SETS[id % DAY_SETS.length]!,
   groupId: extra.groupId ?? 1,
   participantRole: extra.role ?? "MEMBER",
   status,
@@ -72,6 +84,8 @@ const CREW: Row[] = [
     timeZone: "America/Los_Angeles",
   }),
   person(7, "seoyun", "ACTIVE", { timeZone: null }),
+  // 신청서 없이 명부에 들어온 줄 — 요일이 비어 「-」
+  person(9, "siwoo", "ACTIVE", { discordNickname: "시우/FE/서울", availableDays: [] }),
   person(8, "jihoo", "WITHDRAWN", { discordNickname: "지후/FE/서울" }),
   person(11, "chaewon", "ACTIVE", {
     discordNickname: "채원/DE/서울",

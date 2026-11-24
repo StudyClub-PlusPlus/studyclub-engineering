@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -182,8 +183,13 @@ class AdminStudyParticipantListIntegrationTest {
                 deletedMeeting.getId());
 
         // 정원은 최신 모집 회차(ID 최대)의 값
-        saveRecruitment(10);
-        saveRecruitment(20);
+        StudyRecruitment first = saveRecruitment(10);
+        StudyRecruitment second = saveRecruitment(20);
+
+        // 참여 가능 요일 — 다(A)는 두 회차에 냈다. 나중 신청서를 쓰고, 모르는 키는 버리고, 월 → 일로 줄 세운다
+        saveApplication(CREW_A_ID, first, "{\"availableDays\":[\"mon\"]}");
+        saveApplication(CREW_A_ID, second, "{\"availableDays\":[\"sun\",\"zzz\",\"wed\"]}");
+        saveApplication(CREW_C_ID, second, "{\"discordNickname\":\"가\"}");
     }
 
     @AfterEach
@@ -196,6 +202,10 @@ class AdminStudyParticipantListIntegrationTest {
                 study.getId());
         jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?", study.getId());
         jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE STUDY_ID = ?", study.getId());
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_APPLICATION WHERE RECRUITMENT_ID IN"
+                        + " (SELECT ID FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?)",
+                study.getId());
         jdbcTemplate.update("DELETE FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?", study.getId());
         studyRepo.delete(study);
         studyProgramRepo.delete(program);
@@ -237,6 +247,25 @@ class AdminStudyParticipantListIntegrationTest {
         assertThat(participants.get(1)).containsEntry("participantRole", "LEADER");
         assertThat(participants.get(3)).containsEntry("status", "PAUSED");
         assertThat(participants.get(3)).containsEntry("discordNickname", null);
+    }
+
+    @Test
+    @DisplayName("성공 - availableDays 는 이 스터디의 나중 신청서 요일(월 → 일). 신청서 · 요일이 없으면 []")
+    @SuppressWarnings("unchecked")
+    void availableDays() {
+        var participants =
+                (List<Map<String, Object>>)
+                        get(ADMIN_ID, study.getId(), null).getBody().get("participants");
+        Map<Long, Object> byAccount =
+                participants.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        p -> ((Number) p.get("accountId")).longValue(),
+                                        p -> p.get("availableDays")));
+
+        assertThat(byAccount.get(CREW_A_ID)).isEqualTo(List.of("wed", "sun"));
+        assertThat(byAccount.get(CREW_B_ID)).isEqualTo(List.of());
+        assertThat(byAccount.get(CREW_C_ID)).isEqualTo(List.of());
     }
 
     @Test
@@ -385,8 +414,17 @@ class AdminStudyParticipantListIntegrationTest {
                         .build());
     }
 
-    private void saveRecruitment(int capacity) {
-        studyRecruitmentRepo.save(
+    private void saveApplication(Long accountId, StudyRecruitment recruitment, String formAnswer) {
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_APPLICATION (ACCOUNT_ID, RECRUITMENT_ID, FORM_ANSWER,"
+                        + " CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, NOW(), NOW())",
+                accountId,
+                recruitment.getId(),
+                formAnswer);
+    }
+
+    private StudyRecruitment saveRecruitment(int capacity) {
+        return studyRecruitmentRepo.save(
                 StudyRecruitment.builder()
                         .studyId(study.getId())
                         .title("모집")
