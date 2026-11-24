@@ -51,6 +51,17 @@ public interface ClubEventRegistrationRepository
             @Param("actor") Long actorAccountId,
             @Param("now") Instant now);
 
+    /** 이 행사의 내 신청 전부, 최신 먼저 — 중복 · 참가 불가 이력 판정과 「내 최신 신청」. */
+    List<ClubEventRegistration> findByAccountIdAndClubEventIdOrderByCreatedAtDescIdDesc(
+            Long accountId, Long clubEventId);
+
+    /** 사이트 목록 — 화면에 그릴 행사들의 내 신청. 행사별 최신 한 건은 호출자가 고른다. */
+    List<ClubEventRegistration> findByAccountIdAndClubEventIdIn(
+            Long accountId, Collection<Long> clubEventIds);
+
+    /** 내 행사 — 내 신청 전부, 최신 먼저. 행사별 첫 행이 그 행사의 최신 신청이다. */
+    List<ClubEventRegistration> findByAccountIdOrderByCreatedAtDescIdDesc(Long accountId);
+
     /** 같은 계정이 같은 {@code Idempotency-Key} 로 이미 만든 신청 (event-registration 「신청 제출」 1-1). */
     Optional<ClubEventRegistration> findByAccountIdAndSubmitIdempotencyKey(
             Long accountId, String submitIdempotencyKey);
