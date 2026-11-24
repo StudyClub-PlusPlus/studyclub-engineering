@@ -8,12 +8,14 @@ import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
 import { ClassPicker } from '@console/components/ClassPicker';
 import { ClassScheduleDialog } from '@console/components/ClassScheduleDialog';
+import { ClubStudyAttendance } from '@console/components/ClubBookSection';
 import { CrewTab } from '@console/components/CrewTab';
 import { ResultsTab } from '@console/components/ResultsTab';
 import { StudyCreateDialog } from '@console/components/StudyCreateDialog';
 import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import { classView, FIRST_CLASS, type ClassView } from '@console/lib/class-view';
 import { classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
+import { clubOfStudy } from '@console/lib/clubs';
 import { tx } from '@console/lib/l10n';
 import { useStudiesListHref } from '@console/lib/list-return';
 import { type ScheduleRule } from '@console/lib/schedule';
@@ -120,6 +122,10 @@ export function StudyConsole({ study }: { study: Study }) {
   const [ruleOpen, setRuleOpen] = useState(false);
 
   const [tab, setTab] = useState<TabKey>('info');
+  // 클럽 기수 — 반 · 네비게이터 · 모임 시각 · 킥오프 · 발표가 없다. 일정 탭을 숨기고 신청자는 명단만, 출석은 날짜별 출석부
+  const isClub = study.program?.kind === 'club';
+  const club = clubOfStudy(study);
+  const tabs = TABS.filter((t) => !(isClub && t.key === 'schedule'));
   // 회고 탭에서 고른 회차 — 없으면 가장 최근에 끝난 회차
   const [retroMeetingId, setRetroMeetingId] = useState<string | undefined>();
   const [crewDirty, setCrewDirty] = useState(false);
@@ -164,8 +170,8 @@ export function StudyConsole({ study }: { study: Study }) {
   // 사용자 사이트의 「백오피스 출석부」 버튼이 `?tab=attendance` 로 연다 — 들어와서 탭을 다시 찾게 하지 않는다.
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get('tab');
-    if (q && TABS.some((t) => t.key === q)) setTab(q as TabKey);
-  }, []);
+    if (q && tabs.some((t) => t.key === q)) setTab(q as TabKey);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 처음 들어올 때 한 번만
 
   const active = crew;
   // 위 카드의 출석률 — 모든 반의 분자 · 분모를 합친다(반별 평균을 다시 평균하지 않는다).
@@ -482,12 +488,16 @@ export function StudyConsole({ study }: { study: Study }) {
           value={String(active.length)}
           sub={study.recruitment?.capacity ? `정원 ${study.recruitment.capacity}명` : '정원 제한 없음'}
         />
-        <SummaryStat label='출석률' value={studyRate === undefined ? '-' : `${studyRate}%`} sub='모든 반 · 지각 포함' />
+        <SummaryStat
+          label='출석률'
+          value={studyRate === undefined ? '-' : `${studyRate}%`}
+          sub={isClub ? '이번 기수 · 지각 0.5일' : '모든 반 · 지각 포함'}
+        />
       </div>
       <div data-anno='attendee:2 crew:1 results:1' className='mt-6'>
         <Tabs
           activeKey={tab}
-          items={TABS.map((tb) => ({ key: tb.key, label: tb.label }))}
+          items={tabs.map((tb) => ({ key: tb.key, label: tb.label }))}
           onChange={(key) => requestTab(key as TabKey)}
         />
       </div>
@@ -500,6 +510,7 @@ export function StudyConsole({ study }: { study: Study }) {
             assign={assign}
             onSaveClass={saveClass}
             onDirtyChange={setCrewDirty}
+            grouping={!isClub}
             onRemoveClass={removeClass}
             onAssign={(crewId, id) => setAssign((a) => ({ ...a, [crewId]: id }))}
             navigators={navigators}
@@ -587,7 +598,14 @@ export function StudyConsole({ study }: { study: Study }) {
               </Button>
             </div>
           ))}
+        {tab === 'attendance' && club && (
+          <ClubStudyAttendance
+            club={club}
+            onDirtyChange={(d) => setDirtyBooks((m) => (m.club === d ? m : { ...m, club: d }))}
+          />
+        )}
         {tab === 'attendance' &&
+          !club &&
           (classes.length === 0 ? (
             // 반이 없으면 출석부도 없다 — 안내와 갈 곳은 출석부 컴포넌트가 그린다
             <AttendanceTab

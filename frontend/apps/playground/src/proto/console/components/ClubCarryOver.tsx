@@ -157,9 +157,9 @@ export function ClubCarryOver({
               <th data-anno='carry:2-1' className='px-2 py-2'>
                 디스코드 별명
               </th>
-              {club.extra && (
+              {club.rosterQuestion && (
                 <th data-anno='carry:2-2' className='px-2 py-2'>
-                  {club.extra.label}
+                  {club.rosterQuestion.label}
                 </th>
               )}
               <th data-anno='carry:2-3' className='px-2 py-2 text-right'>
@@ -194,7 +194,7 @@ export function ClubCarryOver({
                     )}
                   </td>
                   <td className='border-t border-border px-2 py-2 type-label-lg'>{m.name}</td>
-                  {club.extra && <td className='tnum border-t border-border px-2 py-2'>{m.extra}</td>}
+                  {club.rosterQuestion && <td className='tnum border-t border-border px-2 py-2'>{m.extra}</td>}
                   <td className='tnum border-t border-border px-2 py-2 text-right'>
                     {rate === undefined ? '-' : `${rate}%`}
                   </td>

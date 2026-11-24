@@ -2,22 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { ClubAttendanceBoard } from '@console/components/ClubAttendanceBoard';
+import { ClubBookSection, pastMonthsOf, usePastBooks } from '@console/components/ClubBookSection';
 import { ClubCarryOver } from '@console/components/ClubCarryOver';
 import { ClubCohortPanel, type AutoDraft, type NextState } from '@console/components/ClubCohortPanel';
+import { ClubPastCohorts } from '@console/components/ClubPastCohorts';
+import { DEMO_TODAY, pastCohorts, seedBook, seedMembers, type DemoDay } from '@console/lib/club-seed';
 import {
   clubOf,
+  clubStudyId,
   CLUBS,
-  cohortTitle,
   DEFAULT_DRAFT_DAY,
-  DEMO_TODAY,
   monthOf,
-  seedBook,
-  seedMembers,
   type ClubBook,
   type ClubKey,
   type ClubMember,
-  type DemoDay,
+  type Month,
 } from '@console/lib/clubs';
 import { Button, Modal, Segmented, Tabs } from '@studyclub/ui';
 
@@ -65,6 +64,8 @@ export function ClubConsole() {
   }));
   const [dirty, setDirty] = useState<Dirty>({ carry: false, book: false });
   const [leave, setLeave] = useState<(() => void) | null>(null);
+  // 출석부에서 보고 있는 기수(월). 없으면 이번 기수
+  const [bookMonth, setBookMonth] = useState<Month | undefined>();
 
   // 스토리 칩을 고르면 그 Story 의 요소가 보이는 탭으로 옮긴다
   const { spec, on } = useAnnotate();
@@ -75,11 +76,11 @@ export function ClubConsole() {
   }, [on, wanted]);
 
   const club = clubOf(clubKey);
+  const { loadPast, savePast } = usePastBooks(club);
   const cur = state[clubKey];
   const current = monthOf(today);
   // 다음 기수 — 캡틴이 바꾼 값이 먼저, 아니면 「자동 초안이 켜져 있고 그날이 지났는가」
-  const next: NextState =
-    cur.next ?? (cur.auto.on && Number(today.slice(8, 10)) >= cur.auto.day ? 'draft' : 'none');
+  const next: NextState = cur.next ?? (cur.auto.on && Number(today.slice(8, 10)) >= cur.auto.day ? 'draft' : 'none');
   const activeCount = cur.members.filter((m) => !m.leftOn).length;
   const carryCount = cur.members.filter((m) => !m.leftOn && !cur.excluded.includes(m.id)).length;
 
@@ -104,7 +105,7 @@ export function ClubConsole() {
         </div>
         {/* 프로토 검토 도구 — 「오늘」을 바꿔 초안이 만들어지기 전과 뒤를 본다. 실제 화면에는 없다 */}
         <div className='flex items-center gap-2 rounded-md border border-dashed border-border px-3 py-2'>
-          <span className='type-label-sm text-fg-muted'>프로토 · 오늘</span>
+          <span className='type-label-sm text-fg-muted'>검토용 · 오늘 날짜 바꿔 보기</span>
           <Segmented
             size='sm'
             value={demo}
@@ -130,7 +131,12 @@ export function ClubConsole() {
       <div className='mt-5'>
         <Segmented
           value={clubKey}
-          onChange={(v) => guard(() => setClubKey(v))}
+          onChange={(v) =>
+            guard(() => {
+              setClubKey(v);
+              setBookMonth(undefined);
+            })
+          }
           options={clubOptions}
         />
       </div>
@@ -162,6 +168,7 @@ export function ClubConsole() {
               onAutoChange={(auto) => patch((s) => ({ ...s, auto }))}
               onCreate={() => patch((s) => ({ ...s, next: 'draft' }))}
               onStartRecruit={() => patch((s) => ({ ...s, next: 'recruiting' }))}
+              studyId={clubStudyId(club)}
             />
             {next === 'none' ? (
               <div data-anno='carry:4' className='card mt-8 px-6 py-10 text-center'>
@@ -184,15 +191,28 @@ export function ClubConsole() {
                 }}
               />
             )}
+            <ClubPastCohorts
+              club={club}
+              cohorts={pastCohorts(club, current)}
+              onOpenBook={(m) =>
+                guard(() => {
+                  setBookMonth(m);
+                  setTab('book');
+                })
+              }
+            />
           </>
         )}
         {tab === 'book' && (
-          <ClubAttendanceBoard
+          <ClubBookSection
             club={club}
-            cohortTitle={cohortTitle(club, current)}
+            month={bookMonth}
+            onMonth={(m) => guard(() => setBookMonth(m))}
             today={today}
-            members={cur.members}
-            book={cur.book}
+            current={{ members: cur.members, book: cur.book }}
+            pastMonths={pastMonthsOf(club, today)}
+            loadPast={loadPast}
+            savePast={savePast}
             onDirtyChange={onBookDirty}
             onSave={async (book) => {
               // TODO(api): POST /api/admin/studies/{studyId}/attendances — 클럽은 날마다 회차 하나. body: { studyGroupId, updates[] }

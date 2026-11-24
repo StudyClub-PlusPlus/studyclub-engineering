@@ -1,4 +1,5 @@
-import type { AttendanceStatus } from '@studyclub/types';
+import { studies } from '@studyclub/mock';
+import type { AttendanceStatus, Study } from '@studyclub/types';
 
 /**
  * 클럽 운영 프로토의 데이터.
@@ -11,53 +12,76 @@ import type { AttendanceStatus } from '@studyclub/types';
 
 export type ClubKey = 'earlybird' | 'weeklyx' | 'leetcode';
 
-/** 클럽마다 다른 것 — 출석 값 · 날짜 기준 · 신청 때 받는 값. */
+/**
+ * 클럽마다 다른 것. **클럽 이름으로 분기하지 않는다** — 모두 프로그램 · 기수 · 신청 폼의 설정 값이다.
+ * 새 클럽이 생겨도 코드를 고치지 않고 설정으로 만든다.
+ */
 export type ClubConfig = {
+  /** 프로토 안에서 클럽을 가리키는 키 (서버는 STUDY_PROGRAM.ID) */
   key: ClubKey;
-  /** 프로그램 제목 — 기수 제목의 앞부분 */
+  /** STUDY_PROGRAM.TITLE — 기수 제목의 앞부분 */
   title: string;
-  /** 출석부에 쓰는 값. 순서가 칸을 누를 때 도는 순서다 */
-  statuses: AttendanceStatus[];
-  /** 날짜를 가르는 기준. LeetCode 는 UTC 0시에 하루가 바뀐다 */
-  dayBasis: 'member' | 'utc';
-  /** 신청 때 받아 명단 · 출석부에 함께 보여 주는 값 */
-  extra?: { label: string; key: 'wake' | 'leetcode' };
-  /** 기수 정원. 없으면 제한 없음 */
+  /** STUDY_PROGRAM.ATTENDANCE_LATE_ENABLED — 지각을 쓰는가. 출석 값은 이것으로 정해진다 */
+  allowLate: boolean;
+  /** STUDY.TIME_ZONE — 출석부의 날짜를 가르는 시간대. 기존 기수 시간대 값을 그대로 쓴다 */
+  timeZone: string;
+  /** 신청 폼에서 「명단에 보이기」를 켠 질문 — 그 답을 명단 · 출석부에 보인다 */
+  rosterQuestion?: { label: string };
+  /** STUDY_RECRUITMENT.CAPACITY — 이번 기수 정원. 다음 기수 초안이 복사한다. 없으면 제한 없음 */
   capacity?: number;
+  /** 프로토 전용 — 이번 기수에 해당하는 mock 스터디 */
+  mockStudy: string;
+  /** 출석부에 쓰는 값 — allowLate 에서 나온다. 순서가 칸을 누를 때 도는 순서다 */
+  statuses: AttendanceStatus[];
 };
 
-export const CLUBS: ClubConfig[] = [
-  {
-    key: 'earlybird',
-    title: '얼리버드',
-    statuses: ['present', 'late', 'absent', 'excused'],
-    dayBasis: 'member',
-    extra: { label: '기상 목표', key: 'wake' },
-    capacity: 30,
-  },
-  {
-    key: 'weeklyx',
-    title: 'WEEKLY X',
-    statuses: ['present', 'absent', 'excused'],
-    dayBasis: 'member',
-    capacity: 30,
-  },
-  {
-    key: 'leetcode',
-    title: 'Daily LeetCode',
-    statuses: ['present', 'absent', 'excused'],
-    dayBasis: 'utc',
-    extra: { label: 'LeetCode ID', key: 'leetcode' },
-  },
-];
+/** 출석 값은 「지각을 쓰는가」 하나로 정해진다 */
+export function statusesOf(allowLate: boolean): AttendanceStatus[] {
+  return allowLate ? ['present', 'late', 'absent', 'excused'] : ['present', 'absent', 'excused'];
+}
+
+/** 프로그램 기본 시간대 — 이것과 다른 시간대의 클럽만 화면에 날짜 기준을 알린다 */
+export const DEFAULT_TIME_ZONE = 'Asia/Seoul';
+
+/** 프로토의 세 클럽 — 2026-11 캡틴 답변 기준 설정 값 */
+export const CLUBS: ClubConfig[] = (
+  [
+    {
+      key: 'earlybird',
+      title: '얼리버드',
+      allowLate: true,
+      timeZone: DEFAULT_TIME_ZONE,
+      rosterQuestion: { label: '기상 목표' },
+      capacity: 30,
+      mockStudy: 'early-bird',
+    },
+    {
+      key: 'weeklyx',
+      title: 'WEEKLY X',
+      allowLate: false,
+      timeZone: DEFAULT_TIME_ZONE,
+      capacity: 30,
+      mockStudy: 'weeklyx',
+    },
+    {
+      key: 'leetcode',
+      title: 'Daily LeetCode',
+      allowLate: false,
+      timeZone: 'UTC',
+      rosterQuestion: { label: 'LeetCode ID' },
+      mockStudy: 'daily-leetcode',
+    },
+  ] satisfies Omit<ClubConfig, 'statuses'>[]
+).map((c) => ({ ...c, statuses: statusesOf(c.allowLate) }));
+
+/** 이번 기수의 스터디 상세 주소 값(study_id). 신청 폼 · 신청자는 그 화면이 맡는다 */
+export function clubStudyId(club: ClubConfig): number | undefined {
+  return studies.find((s) => s.id === club.mockStudy)?.study_id;
+}
 
 export function clubOf(key: ClubKey): ClubConfig {
   return CLUBS.find((c) => c.key === key) ?? CLUBS[0];
 }
-
-/** 프로토의 「오늘」 두 가지 — 다음 기수 초안이 만들어지기 전과 뒤. */
-export type DemoDay = 'before' | 'after';
-export const DEMO_TODAY: Record<DemoDay, string> = { before: '2026-12-10', after: '2026-12-16' };
 
 /** 자동 초안 만드는 날의 기본값 — 캡틴이 지금 모집을 여는 15~20일 중 첫날. */
 export const DEFAULT_DRAFT_DAY = 15;
@@ -99,7 +123,7 @@ export type ClubMember = {
   id: string;
   /** 디스코드 별명 — 시트에서 붙여넣을 때 이 이름으로 찾는다 */
   name: string;
-  /** 기상 목표 시각 또는 LeetCode 아이디 — 신청 답변 */
+  /** 「명단에 보이기」 질문의 답 */
   extra?: string;
   /** 참여 중단 날짜 (이번 기수 안). 없으면 참여 중 */
   leftOn?: string;
@@ -107,65 +131,7 @@ export type ClubMember = {
   joined: 'carried' | 'applied';
 };
 
-const NAMES = [
-  '새벽세시',
-  '모닝커피',
-  '코딩하는곰',
-  '꾸준함',
-  '하루한걸음',
-  '오늘도출근',
-  '데이터덕후',
-  '느린거북',
-  '알고리즘초보',
-  '산책러',
-  '책벌레',
-  '밤샘금지',
-];
-
-const WAKE = ['05:30', '06:00', '06:00', '05:00', '06:30', '05:45', '06:00', '07:00', '05:30', '06:15', '06:00', '05:30'];
-
-/** 이번 기수 명단. 클럽마다 사람 수와 중단한 사람이 조금씩 다르다. */
-export function seedMembers(club: ClubConfig): ClubMember[] {
-  const size = club.key === 'earlybird' ? 12 : club.key === 'weeklyx' ? 10 : 9;
-  return NAMES.slice(0, size).map((name, i) => ({
-    id: `${club.key}-${i + 1}`,
-    name,
-    extra:
-      club.extra?.key === 'wake'
-        ? WAKE[i]
-        : club.extra?.key === 'leetcode'
-          ? `lc_${['dawn', 'bear', 'step', 'turtle', 'walker', 'owl', 'data', 'book', 'cup'][i] ?? i}`
-          : undefined,
-    leftOn: i === 7 ? '2026-12-08' : undefined,
-    joined: i < size - 3 ? 'carried' : 'applied',
-  }));
-}
-
 export type ClubBook = Record<string, Record<string, AttendanceStatus>>;
-
-/**
- * 이번 달 출석 — 캡틴이 시트와 함께 쓰므로 빈 날이 섞여 있다.
- * 1일부터 「오늘 − 3일」까지만 채운다 (시트에서 옮기는 데 며칠 걸린다).
- */
-export function seedBook(club: ClubConfig, members: ClubMember[], today: string): ClubBook {
-  const m = monthOf(today);
-  const last = Number(today.slice(8, 10)) - 3;
-  const book: ClubBook = {};
-  members.forEach((mem, i) => {
-    const row: Record<string, AttendanceStatus> = {};
-    for (let d = 1; d <= last; d++) {
-      const day = isoDay(m, d);
-      if (mem.leftOn && day > mem.leftOn) break;
-      const r = (i * 7 + d * 13) % 17;
-      let s: AttendanceStatus = r < 11 ? 'present' : r < 14 ? 'absent' : 'excused';
-      if (club.statuses.includes('late') && r === 3) s = 'late';
-      if (mem.leftOn && r > 6) s = 'absent';
-      row[day] = s;
-    }
-    book[mem.id] = row;
-  });
-  return book;
-}
 
 /** 출석률(%) — 출석 1, 지각 0.5. 분모는 기록된 날에서 휴가를 뺀 것. 기록 없는 날은 넣지 않는다. */
 export function clubRate(row: Record<string, AttendanceStatus> | undefined): number | undefined {
@@ -197,15 +163,28 @@ export const STATUS_LABEL: Record<AttendanceStatus, string> = {
   excused: '휴가',
 };
 
-/** 시트에서 붙여넣은 값 하나를 출석 값으로. 모르는 값은 undefined, 빈 칸은 null(그대로 둔다). */
-export function parseSheetValue(raw: string, club: ClubConfig): AttendanceStatus | null | undefined {
-  const v = raw.trim().toUpperCase();
-  if (v === '') return null;
-  let s: AttendanceStatus | undefined;
-  if (['O', '1', '출석', 'V', '✓', '✔'].includes(v)) s = 'present';
-  else if (['△', '(O)', '지각', '0.5'].includes(v)) s = 'late';
-  else if (['X', '0', '결석', '-'].includes(v)) s = 'absent';
-  else if (['휴', '휴가', 'E'].includes(v)) s = 'excused';
-  if (s && !club.statuses.includes(s)) return undefined;
-  return s;
+/** 지난 기수 한 줄 — 끝난 달의 집계 */
+export type PastCohort = {
+  month: Month;
+  /** 기수 첫날 참여자 */
+  members: number;
+  completed: number;
+  withdrawn: number;
+  /** 다음 기수로 넘어간 사람 */
+  carried: number;
+  /** 참여자 출석률 평균 (%) */
+  rate: number;
+};
+
+export function prevMonth({ year, month }: Month): Month {
+  return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
+}
+
+/**
+ * 스터디(기수) → 클럽 설정. 같은 프로그램이면 같은 설정이다 — 제목 · 이름으로 찾지 않는다.
+ * 클럽이 아니거나 설정이 없으면 undefined.
+ */
+export function clubOfStudy(study: Pick<Study, 'program'>): ClubConfig | undefined {
+  if (study.program?.kind !== 'club') return undefined;
+  return CLUBS.find((c) => studies.find((s) => s.id === c.mockStudy)?.program?.id === study.program?.id);
 }

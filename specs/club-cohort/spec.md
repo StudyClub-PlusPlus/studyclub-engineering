@@ -19,6 +19,7 @@
 |--------|------|------|------|------|
 | GET | /api/admin/clubs | 클럽 목록 — 프로그램 · 이번 기수 · 다음 기수 요약 | O (ADMIN) | 스펙작성중 |
 | GET | /api/admin/clubs/{programId} | 클럽 한 곳 — 이번 기수 · 다음 기수 · 자동 초안 설정 | O (ADMIN) | 스펙작성중 |
+| GET | /api/admin/clubs/{programId}/cohorts | 지난 기수 — 달마다 시작 · 완주 · 참여 중단 · 이어짐 · 평균 출석률 | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/clubs/{programId} | 자동 초안 설정 | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/clubs/{programId}/next-cohort | 다음 달 기수 초안 지금 만들기 | O (ADMIN) | 스펙작성중 |
 | GET | /api/admin/studies/{nextStudyId}/carry-over | 이어서 참여 명단 | O (ADMIN) | 스펙작성중 |
@@ -36,10 +37,12 @@
 |---|---|---|
 | `STUDY_PROGRAM.AUTO_DRAFT_ENABLED` | BOOLEAN NOT NULL DEFAULT TRUE 추가 | `CLUB` 만 쓴다 |
 | `STUDY_PROGRAM.AUTO_DRAFT_DAY` | TINYINT NOT NULL DEFAULT 15 추가 | 1~28 |
+| `STUDY_PROGRAM.ATTENDANCE_LATE_ENABLED` | BOOLEAN NOT NULL DEFAULT FALSE 추가 | 지각 쓰기. 출석 값 검증의 유일한 기준 — 클럽 이름으로 분기하지 않는다 |
+| 신청 폼 질문 `SHOW_IN_ROSTER` | BOOLEAN NOT NULL DEFAULT FALSE 추가 | 켠 질문의 답을 명단 · 출석부 · 이어서 참여 응답의 `rosterAnswer` 로 준다. 초안 · 이어서 참여가 함께 복사한다 |
 | `STUDY.COHORT_MONTH` | DATE NULL 추가 · `UNIQUE(PROGRAM_ID, COHORT_MONTH)` | 클럽 기수의 달(1일). 스터디는 NULL |
 | `STUDY_PARTICIPANT.CARRIED_FROM_ID` | BIGINT NULL 추가 | 이어서 참여로 만든 행의 이전 기수 참여 ID |
 | `CLUB_CARRY_OVER_EXCLUSION` | 새 테이블 — `ID` · `NEXT_STUDY_ID` · `PARTICIPANT_ID` · `CREATED_AT` · `UNIQUE(NEXT_STUDY_ID, PARTICIPANT_ID)` | 캡틴이 뺀 사람 |
-| `STUDY_MEETING` | 클럽 기수는 날마다 1행 · `SCHEDULED_AT` = 그 날 0시 | Daily LeetCode 는 UTC |
+| `STUDY_MEETING` | 클럽 기수는 날마다 1행 · `SCHEDULED_AT` = 그 날 0시(`STUDY.TIME_ZONE`) | 기존 기수 시간대를 그대로 쓴다 — Daily LeetCode 는 `UTC` 로 둔다 |
 
 ## 스케줄러
 
@@ -135,6 +138,35 @@
 
 ---
 
+## 지난 기수
+
+- **Method**: GET · **Path**: `/api/admin/clubs/{programId}/cohorts`
+- 끝난 기수만, `COHORT_MONTH` 최신 순
+
+### Response — 200
+
+```json
+{
+  "cohorts": [
+    {
+      "studyId": 120,
+      "title": "얼리버드 2026년 11월",
+      "cohortMonth": "2026-11-01",
+      "startedCount": 14,
+      "completedCount": 12,
+      "withdrawnCount": 2,
+      "carriedCount": 11,
+      "averageAttendanceRate": 81
+    }
+  ]
+}
+```
+
+- `startedCount`: 기수 첫날 참여자 · `carriedCount`: 다음 기수에서 `CARRIED_FROM_ID` 가 이 기수 참여인 수
+- `averageAttendanceRate`: 참여자 출석률 평균. 기록이 없으면 `null`
+
+---
+
 ## 이어서 참여 명단
 
 - **Method**: GET · **Path**: `/api/admin/studies/{nextStudyId}/carry-over`
@@ -151,7 +183,7 @@
     {
       "participantId": 901,
       "discordNickname": "새벽세시",
-      "clubAnswer": "05:30",
+      "rosterAnswer": "05:30",
       "attendanceRate": 75,
       "status": "ACTIVE",
       "leftAt": null,
@@ -161,7 +193,7 @@
 }
 ```
 
-- `clubAnswer`: 얼리버드 기상 목표 시각 · Daily LeetCode 아이디. 없으면 `null`
+- `rosterAnswer`: 신청 폼에서 `SHOW_IN_ROSTER` 를 켠 질문의 답. 그런 질문이 없으면 `null`
 - `attendanceRate`: 월간 출석부와 같은 식. 기록이 없으면 `null`
 - `locked`: `carryAt` 이 지났으면 `true`
 
@@ -188,8 +220,11 @@
 ## 월간 출석부 — 기존 출석 API 의 클럽 차이
 
 - 클럽 기수의 회차는 날마다 하나라 출석부의 열이 곧 날짜다. 응답에 회차 `date` 를 함께 준다
-- 허용 값: 얼리버드 `PRESENT` · `LATE` · `ABSENT` · `EXCUSED`, WEEKLY X · Daily LeetCode `PRESENT` · `ABSENT` · `EXCUSED`. 그 밖이면 400
-- 오늘 뒤의 회차 · 참여 중단 뒤의 회차면 400
+- 허용 값: `PRESENT` · `ABSENT` · `EXCUSED`, 프로그램 `ATTENDANCE_LATE_ENABLED` 면 `LATE` 도. 그 밖이면 400
+- 오늘(기수 시간대) 뒤의 회차 · 참여 중단 뒤의 회차면 400
+- 끝난 기수도 `updates[]` 를 받는다. `withdrawals[]` 는 진행 중 기수만 — 끝난 기수면 409
+- 끝난 기수의 출석을 고쳐도 이어서 참여 결과(`CARRIED_FROM_ID`)는 바꾸지 않는다
+- 킥오프 회차가 없다 — 출석률 분모에서 빼는 회차는 휴가뿐이다
 - 클럽 회차는 회차 상태 판정(`MISSED`)과 회차 시작 전 알림에서 뺀다
 
 ---

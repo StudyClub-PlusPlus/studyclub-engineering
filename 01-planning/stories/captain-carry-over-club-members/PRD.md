@@ -64,8 +64,8 @@ flowchart LR
 
 #### 2-2 — 클럽 신청 값
 
-- **조건**: 얼리버드 · Daily LeetCode
-- **내용**: 신청 때 받은 기상 목표 시각 또는 LeetCode ID
+- **조건**: 신청 폼에 「명단에 보이기」를 켠 질문이 있을 때 (얼리버드 기상 목표 · Daily LeetCode ID)
+- **내용**: 그 질문의 답
 - **정책**: 넘어가는 사람의 신청 값은 다음 기수에 그대로 이어진다
 
 #### 2-3 — 이번 기수 출석률
@@ -165,7 +165,7 @@ erDiagram
 - 대상 아닌 참여자(참여 중단 · 다른 기수)를 보내면 400
 - 배치(다음 기수 시작일 0시, 기수 시간대)
   1. 직전 기수를 끝낸다 — `ACTIVE → COMPLETED` (기존 종료 처리)
-  2. 대상마다 다음 기수 `STUDY_PARTICIPANT` 를 `ACTIVE` 로 만든다. 기본 반 · 신청 값(기상 목표 시각 · LeetCode ID) 복사 · `CARRIED_FROM_ID`
+  2. 대상마다 다음 기수 `STUDY_PARTICIPANT` 를 `ACTIVE` 로 만든다. 기본 반 · 신청 답 복사 · `CARRIED_FROM_ID`
   3. 이미 다음 기수에 신청으로 들어온 사람은 새로 만들지 않는다
 - 넘어갈 인원은 다음 기수 정원 계산에 들어간다 ([POL-0012](../../_registry/policies/POL-0012-club-cohort.md))
 

@@ -1,35 +1,27 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { BulkSelect, SelectAll } from '@console/components/AttendanceTab';
+import { ClubPasteDialog } from '@console/components/ClubPasteDialog';
 import {
   clubDays,
   clubRate,
   daysIn,
   isoDay,
   monthOf,
-  parseSheetValue,
   shortDate,
   STATUS_LABEL,
   weekdayOf,
   type ClubBook,
   type ClubConfig,
   type ClubMember,
+  DEFAULT_TIME_ZONE,
 } from '@console/lib/clubs';
 import { type AttendanceStatus } from '@studyclub/types';
-import {
-  Badge,
-  Button,
-  Checkbox,
-  HelpPopover,
-  Modal,
-  Select,
-  SelectionCount,
-  TableActionBar,
-  Textarea,
-} from '@studyclub/ui';
+import { Badge, Button, Checkbox, HelpPopover, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
 import { ClipboardPaste } from 'lucide-react';
+
 
 /**
  * 클럽 월간 출석부 — 사람 × 그 달의 날짜.
@@ -79,6 +71,8 @@ export function ClubAttendanceBoard({
   onSave,
   onWithdraw,
   onDirtyChange,
+  ended = false,
+  monthPicker,
 }: {
   club: ClubConfig;
   cohortTitle: string;
@@ -90,6 +84,10 @@ export function ClubAttendanceBoard({
   /** 참여 중단 — 오늘 날짜로 끝난다 */
   onWithdraw: (ids: string[]) => void;
   onDirtyChange?: (dirty: boolean) => void;
+  /** 끝난 기수 — 출석은 고칠 수 있다. 참여 중단은 없다 (기수가 이미 끝났다) */
+  ended?: boolean;
+  /** 제목 옆 기수(월) 고르기 */
+  monthPicker?: ReactNode;
 }) {
   const month = monthOf(today);
   const days = useMemo(
@@ -131,7 +129,8 @@ export function ClubAttendanceBoard({
   }
 
   function applyBulk(v: string) {
-    for (const m of selected) if (editable(m, bulkDay)) setCell(m.id, bulkDay, v === 'clear' ? undefined : (v as AttendanceStatus));
+    for (const m of selected)
+      if (editable(m, bulkDay)) setCell(m.id, bulkDay, v === 'clear' ? undefined : (v as AttendanceStatus));
   }
 
   async function save() {
@@ -153,24 +152,36 @@ export function ClubAttendanceBoard({
             {cohortTitle} 출석부
           </h2>
           <span className='tnum type-label-sm text-fg-muted'>전체 {members.length}</span>
-          {club.dayBasis === 'utc' && (
+          {monthPicker}
+          {ended && (
+            <span data-anno='clubbook:1-5' className='inline-flex items-center gap-1'>
+              <Badge tone='ended'>끝난 기수</Badge>
+              <HelpPopover label='끝난 기수 출석 고치기 설명'>
+                끝난 기수도 출석을 고칠 수 있습니다. 고친 출석은 그 기수의 출석률에만 반영되고, 이미 다음 기수로 넘어간
+                명단은 바뀌지 않습니다.
+              </HelpPopover>
+            </span>
+          )}
+          {club.timeZone !== DEFAULT_TIME_ZONE && (
             <span data-anno='clubbook:1-2' className='inline-flex items-center gap-1'>
-              <Badge tone='neutral'>날짜 기준 UTC</Badge>
+              <Badge tone='neutral'>날짜 기준 {club.timeZone}</Badge>
               <HelpPopover label='날짜 기준 설명'>
-                LeetCode 는 UTC 0시(한국 시간 오전 9시)에 하루가 바뀝니다. 출석부의 날짜도 LeetCode 날짜입니다.
+                이 클럽은 {club.timeZone} 0시에 하루가 바뀝니다. 출석부의 날짜도 이 시간대의 날짜입니다.
               </HelpPopover>
             </span>
           )}
         </div>
-        <Button
-          data-anno='clubbook:1-3'
-          size='sm'
-          variant='secondary'
-          leadingIcon={<ClipboardPaste size={14} />}
-          onClick={() => setPasteOpen(true)}
-        >
-          시트에서 붙여넣기
-        </Button>
+        {
+          <Button
+            data-anno='clubbook:1-3'
+            size='sm'
+            variant='secondary'
+            leadingIcon={<ClipboardPaste size={14} />}
+            onClick={() => setPasteOpen(true)}
+          >
+            시트에서 붙여넣기
+          </Button>
+        }
       </div>
 
       <ul data-anno='clubbook:2' className='mb-3 flex flex-wrap items-center gap-3 type-label-sm text-fg-muted'>
@@ -188,82 +199,86 @@ export function ClubAttendanceBoard({
       </ul>
 
       <div className='card overflow-clip'>
-        <TableActionBar
-          position='top'
-          className='top-[var(--table-action-bar-top,4rem)] bottom-auto border-b border-border bg-surface-raised px-4'
-          data-anno='clubbook:4'
-          selection={
-            <>
-              <SelectionCount count={selected.length} total={active.length} unit='명' />
-              <Select
-                data-anno='clubbook:4-1'
-                size='sm'
-                aria-label='바꿀 날짜'
-                disabled={selected.length === 0}
-                value={bulkDay}
-                onChange={(e) => setBulkDay(e.target.value)}
-              >
-                {days
-                  .filter((d) => d <= today)
-                  .map((d) => (
-                    <option key={d} value={d}>
-                      {shortDate(d)}
-                    </option>
-                  ))}
-              </Select>
-              <span data-anno='clubbook:4-2'>
-                <BulkSelect
-                  label='바꿀 출석 상태'
-                  placeholder='출석 상태'
-                  options={bulkOptions}
-                  disabled={saving || selected.length === 0}
-                  onPick={applyBulk}
-                />
+        {
+          <TableActionBar
+            position='top'
+            className='top-[var(--table-action-bar-top,4rem)] bottom-auto border-b border-border bg-surface-raised px-4'
+            data-anno='clubbook:4'
+            selection={
+              <>
+                <SelectionCount count={selected.length} total={active.length} unit='명' />
+                <Select
+                  data-anno='clubbook:4-1'
+                  size='sm'
+                  aria-label='바꿀 날짜'
+                  disabled={selected.length === 0}
+                  value={bulkDay}
+                  onChange={(e) => setBulkDay(e.target.value)}
+                >
+                  {days
+                    .filter((d) => d <= today)
+                    .map((d) => (
+                      <option key={d} value={d}>
+                        {shortDate(d)}
+                      </option>
+                    ))}
+                </Select>
+                <span data-anno='clubbook:4-2'>
+                  <BulkSelect
+                    label='바꿀 출석 상태'
+                    placeholder='출석 상태'
+                    options={bulkOptions}
+                    disabled={saving || selected.length === 0}
+                    onPick={applyBulk}
+                  />
+                </span>
+                {!ended && (
+                  <Button
+                    data-anno='clubbook:4-3'
+                    size='sm'
+                    variant='danger'
+                    disabled={saving || selected.length === 0}
+                    onClick={() => setWithdrawOpen(true)}
+                  >
+                    참여 중단
+                  </Button>
+                )}
+                {selected.length > 0 && (
+                  <Button size='sm' variant='tertiary' onClick={() => setPicked(new Set())}>
+                    선택 해제
+                  </Button>
+                )}
+              </>
+            }
+            save={
+              <span data-anno='clubbook:4-4' className='flex items-center gap-2'>
+                {dirty && <span className='tnum type-label-sm text-fg-muted'>저장 안 한 칸 {changed}</span>}
+                {dirty && (
+                  <Button variant='tertiary' size='sm' onClick={() => setDraft(clone(book))} disabled={saving}>
+                    변경 취소
+                  </Button>
+                )}
+                <Button size='sm' onClick={save} loading={saving} disabled={!dirty}>
+                  저장
+                </Button>
               </span>
-              <Button
-                data-anno='clubbook:4-3'
-                size='sm'
-                variant='danger'
-                disabled={saving || selected.length === 0}
-                onClick={() => setWithdrawOpen(true)}
-              >
-                참여 중단
-              </Button>
-              {selected.length > 0 && (
-                <Button size='sm' variant='tertiary' onClick={() => setPicked(new Set())}>
-                  선택 해제
-                </Button>
-              )}
-            </>
-          }
-          save={
-            <span data-anno='clubbook:4-4' className='flex items-center gap-2'>
-              {dirty && (
-                <span className='tnum type-label-sm text-fg-muted'>저장 안 한 칸 {changed}</span>
-              )}
-              {dirty && (
-                <Button variant='tertiary' size='sm' onClick={() => setDraft(clone(book))} disabled={saving}>
-                  변경 취소
-                </Button>
-              )}
-              <Button size='sm' onClick={save} loading={saving} disabled={!dirty}>
-                저장
-              </Button>
-            </span>
-          }
-        />
+            }
+          />
+        }
         <div className='overflow-x-auto'>
           <table data-anno='clubbook:3' className='min-w-full border-separate border-spacing-0 type-body-sm'>
             <thead>
               <tr className='bg-surface-1'>
                 <th className='sticky left-0 z-10 w-10 bg-surface-1 px-3 py-2'>
-                  <SelectAll
-                    checked={active.length > 0 && selected.length === active.length}
-                    partial={selected.length > 0 && selected.length < active.length}
-                    onChange={() =>
-                      setPicked(selected.length === active.length ? new Set() : new Set(active.map((m) => m.id)))
-                    }
-                  />
+                  {
+                    <SelectAll
+                      checked={active.length > 0 && selected.length === active.length}
+                      partial={selected.length > 0 && selected.length < active.length}
+                      onChange={() =>
+                        setPicked(selected.length === active.length ? new Set() : new Set(active.map((m) => m.id)))
+                      }
+                    />
+                  }
                 </th>
                 <th
                   data-anno='clubbook:3-1'
@@ -271,12 +286,12 @@ export function ClubAttendanceBoard({
                 >
                   디스코드 별명
                 </th>
-                {club.extra && (
+                {club.rosterQuestion && (
                   <th
                     data-anno='clubbook:3-2'
                     className='w-24 whitespace-nowrap px-2 py-2 text-left type-label-sm text-fg-muted'
                   >
-                    {club.extra.label}
+                    {club.rosterQuestion.label}
                   </th>
                 )}
                 {days.map((d, i) => {
@@ -286,7 +301,13 @@ export function ClubAttendanceBoard({
                       key={d}
                       data-anno={i === 0 ? 'clubbook:3-3' : undefined}
                       className={`min-w-9 px-0.5 py-1 text-center type-label-sm ${
-                        d === today ? 'text-brand' : d > today ? 'text-fg-muted' : weekend ? 'text-fg-secondary' : 'text-fg'
+                        d === today
+                          ? 'text-brand'
+                          : d > today
+                            ? 'text-fg-muted'
+                            : weekend
+                              ? 'text-fg-secondary'
+                              : 'text-fg'
                       }`}
                       aria-label={`${shortDate(d)}${d === today ? ' 오늘' : ''}`}
                     >
@@ -337,8 +358,10 @@ export function ClubAttendanceBoard({
                       </span>
                       {left && <span className='block type-label-sm'>{shortDate(m.leftOn!)} 참여 중단</span>}
                     </td>
-                    {club.extra && (
-                      <td className='tnum whitespace-nowrap border-t border-border px-2 py-1 type-label-sm'>{m.extra}</td>
+                    {club.rosterQuestion && (
+                      <td className='tnum whitespace-nowrap border-t border-border px-2 py-1 type-label-sm'>
+                        {m.extra}
+                      </td>
                     )}
                     {days.map((d, di) => {
                       const s = row?.[d];
@@ -391,7 +414,7 @@ export function ClubAttendanceBoard({
         </div>
       </div>
 
-      <PasteDialog
+      <ClubPasteDialog
         open={pasteOpen}
         club={club}
         days={days.filter((d) => d <= today)}
@@ -431,108 +454,11 @@ export function ClubAttendanceBoard({
         <div data-anno='clubbook:6' className='py-4'>
           <p className='type-label-lg text-fg'>{selected.map((m) => m.name).join(', ')}</p>
           <p className='mt-1.5 type-body-sm text-fg-muted'>
-            오늘({shortDate(today)})로 참여가 끝납니다. 이 기수를 완주하지 않은 것으로 남고, 다음 기수로 이어지지 않습니다.
-            다시 참여하려면 다음 기수 모집에 신청해야 합니다.
+            오늘({shortDate(today)})로 참여가 끝납니다. 이 기수를 완주하지 않은 것으로 남고, 다음 기수로 이어지지
+            않습니다. 다시 참여하려면 다음 기수 모집에 신청해야 합니다.
           </p>
         </div>
       </Modal>
     </div>
-  );
-}
-
-type PasteCell = { id: string; day: string; status: AttendanceStatus | undefined };
-
-/**
- * 시트에서 붙여넣기 — 시트의 줄을 그대로 복사해 온다. 첫 칸은 디스코드 별명, 그 뒤는 1일부터 차례로 그 날의 값.
- * 빈 칸은 건드리지 않는다. 반영해도 저장 전이다 — 출석부에서 확인한 뒤 「저장」.
- */
-function PasteDialog({
-  open,
-  club,
-  days,
-  members,
-  onClose,
-  onApply,
-}: {
-  open: boolean;
-  club: ClubConfig;
-  days: string[];
-  members: ClubMember[];
-  onClose: () => void;
-  onApply: (cells: PasteCell[]) => void;
-}) {
-  const [text, setText] = useState('');
-  useEffect(() => {
-    if (open) setText('');
-  }, [open]);
-
-  const result = useMemo(() => {
-    const cells: PasteCell[] = [];
-    const unknownNames: string[] = [];
-    const badValues = new Set<string>();
-    let people = 0;
-    for (const line of text.split(/\r?\n/)) {
-      if (!line.trim()) continue;
-      const [name, ...vals] = line.split('\t');
-      const m = members.find((x) => x.name === name.trim());
-      if (!m) {
-        unknownNames.push(name.trim());
-        continue;
-      }
-      people += 1;
-      vals.slice(0, days.length).forEach((raw, i) => {
-        const s = parseSheetValue(raw, club);
-        if (s === null) return;
-        if (s === undefined) {
-          badValues.add(raw.trim());
-          return;
-        }
-        cells.push({ id: m.id, day: days[i], status: s });
-      });
-    }
-    return { cells, unknownNames, badValues: [...badValues], people };
-  }, [text, members, days, club]);
-
-  const valueHint = club.statuses
-    .map((s) => `${STATUS_LABEL[s]} ${s === 'present' ? 'O' : s === 'late' ? '△' : s === 'absent' ? 'X' : '휴'}`)
-    .join(' · ');
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title='시트에서 붙여넣기'
-      size='lg'
-      footer={
-        <Button data-anno='clubbook:5-3' disabled={result.cells.length === 0} onClick={() => onApply(result.cells)}>
-          {result.cells.length}칸 반영
-        </Button>
-      }
-    >
-      <div className='flex flex-col gap-4 py-2'>
-        <Textarea
-          data-anno='clubbook:5-1'
-          label='시트에서 복사한 줄'
-          helper={`첫 칸은 디스코드 별명, 그 뒤는 1일부터 차례로. 값: ${valueHint}. 빈 칸은 그대로 둡니다.`}
-          rows={8}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={'새벽세시\tO\tO\tX\t휴\n모닝커피\tO\t\tO\tO'}
-        />
-        {text.trim() && (
-          <div data-anno='clubbook:5-2' className='rounded-md bg-surface-1 px-4 py-3 type-body-sm'>
-            <p className='text-fg'>
-              {result.people}명 · {result.cells.length}칸을 반영합니다.
-            </p>
-            {result.unknownNames.length > 0 && (
-              <p className='mt-1 text-error-700'>명단에 없는 이름: {result.unknownNames.join(', ')}</p>
-            )}
-            {result.badValues.length > 0 && (
-              <p className='mt-1 text-error-700'>읽을 수 없는 값: {result.badValues.join(', ')}</p>
-            )}
-          </div>
-        )}
-      </div>
-    </Modal>
   );
 }

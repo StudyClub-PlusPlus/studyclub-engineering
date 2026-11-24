@@ -1,17 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 
-import {
-  cohortTitle,
-  daysIn,
-  isoDay,
-  nextMonth,
-  shortDate,
-  type ClubConfig,
-  type Month,
-} from '@console/lib/clubs';
-import { Badge, Button, Modal, Select, Switch } from '@studyclub/ui';
+import { cohortTitle, daysIn, isoDay, nextMonth, shortDate, type ClubConfig, type Month } from '@console/lib/clubs';
+import { Badge, Button, ButtonLink, Modal, Select, Switch } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
 /**
@@ -38,6 +31,7 @@ export function ClubCohortPanel({
   onAutoChange,
   onCreate,
   onStartRecruit,
+  studyId,
 }: {
   club: ClubConfig;
   /** 이번 기수의 달 */
@@ -54,6 +48,8 @@ export function ClubCohortPanel({
   onAutoChange: (next: AutoDraft) => void;
   onCreate: () => void;
   onStartRecruit: () => void;
+  /** 이번 기수의 스터디 상세 — 신청 폼 · 신청자는 그 화면이 맡는다 */
+  studyId?: number;
 }) {
   const [confirm, setConfirm] = useState(false);
   const nm = nextMonth(current);
@@ -87,6 +83,18 @@ export function ClubCohortPanel({
             {memberCount}명
           </dd>
         </dl>
+        {studyId !== undefined && (
+          <ButtonLink
+            data-anno='cohort:1-4'
+            className='mt-4'
+            size='sm'
+            variant='secondary'
+            linkAs={Link}
+            href={`/proto/console/studies/${studyId}?tab=crew`}
+          >
+            신청자 · 명단
+          </ButtonLink>
+        )}
       </section>
 
       {/* 다음 기수 */}
@@ -132,7 +140,9 @@ export function ClubCohortPanel({
               </dd>
               <dt className='text-fg-muted'>모집</dt>
               <dd className='tnum text-fg'>
-                {next === 'recruiting' ? `${shortDate(today)} ~ ${shortDate(curEnd)}` : `모집 시작한 날 ~ ${shortDate(curEnd)}`}
+                {next === 'recruiting'
+                  ? `${shortDate(today)} ~ ${shortDate(curEnd)}`
+                  : `모집 시작한 날 ~ ${shortDate(curEnd)}`}
               </dd>
               <dt className='text-fg-muted'>정원</dt>
               <dd className='tnum text-fg'>
@@ -140,7 +150,7 @@ export function ClubCohortPanel({
               </dd>
               <dt className='text-fg-muted'>신청 폼</dt>
               <dd className='text-fg'>
-                이번 기수 폼 그대로{club.extra ? ` · 「${club.extra.label}」 필수` : ''}
+                이번 기수 폼 그대로{club.rosterQuestion ? ` · 「${club.rosterQuestion.label}」 명단에 보이기` : ''}
               </dd>
               {next === 'recruiting' && (
                 <>
@@ -151,17 +161,34 @@ export function ClubCohortPanel({
               <dt className='text-fg-muted'>이어서 참여</dt>
               <dd className='tnum text-fg'>{carryCount}명 예정</dd>
             </dl>
-            {next === 'draft' && (
-              <Button data-anno='cohort:2-3' className='mt-4' size='sm' onClick={() => setConfirm(true)}>
-                모집 시작
-              </Button>
-            )}
+            <div className='mt-4 flex flex-wrap gap-2'>
+              {next === 'draft' && (
+                <Button data-anno='cohort:2-3' size='sm' onClick={() => setConfirm(true)}>
+                  모집 시작
+                </Button>
+              )}
+              {/* TODO(api): 다음 기수의 study_id — 프로토는 이번 기수 화면의 신청 폼 탭을 연다 */}
+              {studyId !== undefined && (
+                <ButtonLink
+                  data-anno='cohort:2-7'
+                  size='sm'
+                  variant='secondary'
+                  linkAs={Link}
+                  href={`/proto/console/studies/${studyId}?tab=form`}
+                >
+                  신청 폼
+                </ButtonLink>
+              )}
+            </div>
           </>
         )}
       </section>
 
       {/* 자동 초안 설정 */}
-      <section data-anno='cohort:3' className='card flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 lg:col-span-2'>
+      <section
+        data-anno='cohort:3'
+        className='card flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 lg:col-span-2'
+      >
         <span data-anno='cohort:3-1'>
           <Switch
             label='다음 기수 초안 자동 만들기'

@@ -35,6 +35,12 @@ const COHORT: ScreenSpec = {
       data: ['`STUDY_PARTICIPANT.STATUS = ACTIVE` 수'],
     },
     {
+      n: '1-4',
+      title: '신청자 · 명단',
+      behavior: ['누르면 이번 기수의 스터디 상세 › 신청자 탭으로 간다'],
+      policy: ['클럽 기수의 신청자 탭은 명단만 보인다 — 반 · 네비게이터 · 참여 가능 시간이 없다'],
+    },
+    {
       n: '2',
       title: '다음 기수',
       display: ['다음 달 기수의 제목 — 「{클럽} {YYYY}년 {M}월」'],
@@ -52,7 +58,7 @@ const COHORT: ScreenSpec = {
         '진행: 다음 달 1일 ~ 말일',
         '모집: 모집 시작한 날 ~ 이번 달 말일. 모집 중이면 실제 시작일',
         '정원: 이번 기수 값과 남은 자리 (정원 − 이어서 참여 − 신청). 정원이 없으면 「제한 없음」',
-        '신청 폼: 이번 기수 폼을 그대로 쓴다. 클럽이 받는 값(기상 목표 · LeetCode ID)은 필수',
+        '신청 폼: 이번 기수 폼을 그대로 쓴다. 「명단에 보이기」를 켠 질문이 있으면 그 이름',
         '이어서 참여: 다음 기수로 넘어갈 예정 인원',
         '신청: 모집 중일 때 들어온 신청 수',
       ],
@@ -60,6 +66,7 @@ const COHORT: ScreenSpec = {
         '소개 · 상세 설명 · 카테고리 · 디스코드 채널 · 드라이브 · 정원 · 신청 폼은 이번 기수 값을 복사한다',
         '복사한 값을 고쳐도 이번 기수는 그대로다',
         '모집 마감은 이번 달 말일 23:59 (캡틴 시간대)',
+        '킥오프가 없다 — 1일부터 출석으로 센다',
       ],
       data: ['새 `STUDY`(`STATUS = DRAFT`) · `STUDY_RECRUITMENT` 1행 · 기본 반 1개'],
     },
@@ -98,6 +105,11 @@ const COHORT: ScreenSpec = {
       data: ['`POST /api/admin/clubs/{programId}/next-cohort`'],
     },
     {
+      n: '2-7',
+      title: '신청 폼',
+      behavior: ['누르면 다음 기수의 스터디 상세 › 신청 폼 탭으로 간다 — 질문을 고칠 수 있다'],
+    },
+    {
       n: '3',
       title: '자동 초안 설정',
       display: ['클럽마다 따로 정한다'],
@@ -114,6 +126,46 @@ const COHORT: ScreenSpec = {
       title: '초안 만드는 날',
       display: ['매월 1~28일 중 하루. 기본 15일'],
       policy: ['꺼져 있으면 고를 수 없다', '정한 날이 이미 지났으면 다음 달부터 적용된다'],
+    },
+    {
+      n: '4',
+      title: '지난 기수',
+      display: ['끝난 기수를 최신 순으로'],
+      data: ['`GET /api/admin/clubs/{programId}/cohorts`'],
+    },
+    {
+      n: '4-1',
+      title: '시작',
+      display: ['기수 첫날 참여자 수'],
+    },
+    {
+      n: '4-2',
+      title: '완주',
+      display: ['말일까지 참여한 사람 수'],
+      data: ['`STUDY_PARTICIPANT.STATUS = COMPLETED` 수'],
+    },
+    {
+      n: '4-3',
+      title: '참여 중단',
+      display: ['기수 중에 참여 중단한 사람 수'],
+      data: ['`STUDY_PARTICIPANT.STATUS = WITHDRAWN` 수'],
+    },
+    {
+      n: '4-4',
+      title: '다음 달로 이어짐',
+      display: ['다음 기수로 넘어간 사람 수와 완주 대비 비율'],
+      data: ['다음 기수에서 `CARRIED_FROM_ID` 가 이 기수 참여인 수'],
+    },
+    {
+      n: '4-5',
+      title: '평균 출석률',
+      display: ['참여자 출석률의 평균'],
+      policy: ['출석률 계산은 월간 출석부와 같다 (ST-043)'],
+    },
+    {
+      n: '4-6',
+      title: '출석부',
+      behavior: ['누르면 출석부 탭에서 그 기수의 출석부가 열린다'],
     },
   ],
 };
@@ -151,8 +203,8 @@ const CARRY: ScreenSpec = {
     {
       n: '2-2',
       title: '클럽 신청 값',
-      when: '얼리버드 · Daily LeetCode',
-      display: ['신청 때 받은 기상 목표 시각 또는 LeetCode ID'],
+      when: '신청 폼에 「명단에 보이기」를 켠 질문이 있을 때 (얼리버드 기상 목표 · Daily LeetCode ID)',
+      display: ['그 질문의 답'],
       policy: ['넘어가는 사람의 신청 값은 다음 기수에 그대로 이어진다'],
     },
     {
@@ -214,7 +266,7 @@ const BOOK: ScreenSpec = {
     {
       n: '1',
       title: '출석부 머리',
-      display: ['「{이번 기수 제목} 출석부」 · 전체 인원'],
+      display: ['「{기수 제목} 출석부」 · 전체 인원'],
     },
     {
       n: '1-1',
@@ -224,9 +276,9 @@ const BOOK: ScreenSpec = {
     {
       n: '1-2',
       title: '날짜 기준',
-      when: 'Daily LeetCode',
-      display: ['날짜가 UTC 기준임을 알리고, 「?」에서 한국 시간 오전 9시에 하루가 바뀐다고 설명한다'],
-      policy: ['Daily LeetCode 의 날짜는 UTC 날짜다. 나머지 클럽은 참여자의 날짜다'],
+      when: '기수 시간대가 기본(Asia/Seoul)과 다를 때 — Daily LeetCode(UTC)',
+      display: ['출석부 날짜의 시간대를 알리고, 「?」에서 그 시간대 0시에 하루가 바뀐다고 설명한다'],
+      policy: ['출석부의 날짜는 기수 시간대(`STUDY.TIME_ZONE`)의 날짜다'],
     },
     {
       n: '1-3',
@@ -234,13 +286,32 @@ const BOOK: ScreenSpec = {
       behavior: ['누르면 붙여넣기 창(5)이 열린다'],
     },
     {
+      n: '1-4',
+      title: '기수 고르기',
+      display: ['이번 기수와 끝난 기수의 달. 이번 기수가 기본'],
+      behavior: ['고르면 그 기수의 출석부를 연다'],
+      data: ['그 기수의 `GET /api/admin/studies/{studyId}/attendances`'],
+    },
+    {
+      n: '1-5',
+      title: '끝난 기수',
+      when: '끝난 기수를 골랐을 때',
+      display: ['끝난 기수임을 알리고, 「?」에서 고친 출석은 그 기수 출석률에만 반영된다고 설명한다'],
+      policy: [
+        '끝난 기수도 출석을 고칠 수 있다 — 시트에서 늦게 옮기는 경우가 있다',
+        '이미 다음 기수로 넘어간 명단은 바뀌지 않는다',
+        '참여 중단은 이번 기수에서만 한다',
+      ],
+    },
+    {
       n: '2',
       title: '출석 값 안내',
       display: ['이 클럽에서 쓰는 출석 값과 「기록 없음」'],
       policy: [
-        '얼리버드: 출석 · 지각 · 결석 · 휴가',
-        'WEEKLY X · Daily LeetCode: 출석 · 결석 · 휴가',
+        '출석 값은 프로그램의 「지각 쓰기」 설정으로 정해진다 — 켜면 출석 · 지각 · 결석 · 휴가, 끄면 출석 · 결석 · 휴가',
+        '지금 설정: 얼리버드 켬, WEEKLY X · Daily LeetCode 끔',
         '지각은 0.5일로 센다',
+        '킥오프 · 발표가 없다 — 1일부터 모든 날을 출석으로 센다',
       ],
     },
     {
@@ -258,8 +329,8 @@ const BOOK: ScreenSpec = {
     {
       n: '3-2',
       title: '클럽 신청 값',
-      when: '얼리버드 · Daily LeetCode',
-      display: ['기상 목표 시각 또는 LeetCode ID — 출석을 확인할 때 대조하는 값'],
+      when: '신청 폼에 「명단에 보이기」를 켠 질문이 있을 때',
+      display: ['그 질문의 답(기상 목표 시각 · LeetCode ID) — 출석을 확인할 때 대조하는 값'],
     },
     {
       n: '3-3',
@@ -312,6 +383,7 @@ const BOOK: ScreenSpec = {
     {
       n: '4-3',
       title: '참여 중단',
+      when: '이번 기수일 때',
       behavior: ['누르면 확인 창(6)이 열린다'],
     },
     {
