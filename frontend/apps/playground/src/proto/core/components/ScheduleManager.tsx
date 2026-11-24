@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { TimeZonePicker } from '@core/components/TimeZonePicker';
+import { TimeZoneField } from '@core/components/TimeZoneField';
 import {
   addDaysYmd,
   DOW_LABEL,
@@ -39,7 +39,19 @@ import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { localDateTime, relativeTimeChanges } from '@core/lib/time-zone-preview';
 import { useDisplayTimeZone, useIsConsoleTimeZone, useTimeZoneChangeLock } from '@core/lib/use-display-timezone';
 import type { Study } from '@studyclub/types';
-import { Button, Checkbox, Input, Modal, Select, SelectionCount, TableActionBar, cx, FilterChip } from '@studyclub/ui';
+import {
+  Button,
+  Checkbox,
+  Input,
+  Modal,
+  Select,
+  SelectionCount,
+  TableActionBar,
+  cx,
+  FilterChip,
+  TimePicker,
+  DatePicker,
+} from '@studyclub/ui';
 import { Plus, X } from 'lucide-react';
 
 /**
@@ -286,15 +298,14 @@ export function ScheduleManager({
         </h2>
         <div className='flex max-w-full flex-wrap items-center gap-2'>
           {canEdit && !consoleTimeZone ? (
-            <div data-anno='schedule:8' className='flex items-center gap-2 type-label-sm text-fg-secondary'>
-              시간대
-              <div className='w-60 max-w-full'>
-                <TimeZonePicker
+            <div data-anno='schedule:8' className='flex items-center'>
+              <div className='w-48 max-w-full'>
+                <TimeZoneField
                   prioritizeCountries
                   locale='ko'
                   label='시간대'
                   hideLabel
-                  compact
+                  size='sm'
                   annotation={false}
                   value={zone}
                   disabled={Object.keys(incompleteWalls).length > 0}
@@ -438,8 +449,8 @@ export function ScheduleManager({
                     </th>
                   )}
                   <th className='w-24 px-4 py-3 text-center'>회차</th>
-                  <th className='w-40 px-2 py-3'>일자</th>
-                  <th className={cx('px-2 py-3', canEdit ? 'w-44' : 'w-28')}>시각 ({zoneLabel(zone)})</th>
+                  <th className='w-36 px-2 py-3'>일자</th>
+                  <th className={cx('px-2 py-3', canEdit ? 'w-32' : 'w-28')}>시각 ({zoneLabel(zone)})</th>
                   <th className={cx('px-2 py-3', compact ? 'w-60' : 'min-w-[16rem]')}>제목</th>
                   <th data-anno='schedule:9' className={cx('px-2 py-3 text-center', compact ? 'w-32' : 'w-36')}>
                     발표자1
@@ -715,14 +726,19 @@ function CellInput({
   error?: string;
   onChange: (value: string) => void;
 }) {
+  if (type === 'date') {
+    return <DatePicker size='sm' aria-label={label} value={value} error={error} onChange={onChange} className='pl-2' />;
+  }
+  if (type === 'time') {
+    return <TimePicker size='sm' aria-label={label} value={value} error={error} onChange={onChange} className='pl-2' />;
+  }
   return (
     <Input
       size='sm'
-      type={type}
       aria-label={label}
       value={value}
       placeholder={placeholder}
-      maxLength={type === 'text' ? TITLE_MAX + 10 : undefined}
+      maxLength={TITLE_MAX + 10}
       error={error}
       onChange={(ev) => onChange(ev.target.value)}
       className='px-2'
@@ -853,21 +869,13 @@ function KickoffForm({
           규칙·일정·발표자를 정하는 첫 모임입니다. 네비게이터는 이 날을 고칠 수 없습니다.
         </p>
         <div className='grid gap-3 sm:grid-cols-2'>
-          <Input
-            type='date'
-            label='일자'
-            required
-            value={date}
-            error={shown.date}
-            onChange={(ev) => setDate(ev.target.value)}
-          />
-          <Input
-            type='time'
+          <DatePicker label='일자' required value={date} error={shown.date} onChange={(value) => setDate(value)} />
+          <TimePicker
             label={`시작 시각 (${zoneLabel(group.timeZone)})`}
             required
             value={time}
             error={shown.time}
-            onChange={(ev) => setTime(ev.target.value)}
+            onChange={(value) => setTime(value)}
           />
         </div>
       </div>
@@ -982,23 +990,21 @@ function AddForm({
       <div data-anno='schedule:7' className='flex flex-col gap-4 py-2'>
         <div className='grid gap-3 sm:grid-cols-2'>
           <div data-anno='schedule:7-1'>
-            <Input
-              type='date'
+            <DatePicker
               label={draft.repeat === 'none' ? '일자' : '시작 일자'}
               required
               value={draft.date}
               error={errors.date}
-              onChange={(ev) => change({ date: ev.target.value })}
+              onChange={(value) => change({ date: value })}
             />
           </div>
           <div data-anno='schedule:7-2'>
-            <Input
-              type='time'
+            <TimePicker
               label={`시작 시각 (${zoneLabel(inputZone, firstInstant)})`}
               required
               value={draft.time}
               error={errors.time}
-              onChange={(ev) => change({ time: ev.target.value })}
+              onChange={(value) => change({ time: value })}
             />
           </div>
         </div>
@@ -1066,8 +1072,7 @@ function AddForm({
 
         {draft.repeat !== 'none' && (
           <div data-anno='schedule:7-4' className='sm:max-w-[18rem]'>
-            <Input
-              type='date'
+            <DatePicker
               label='종료일'
               labelHint={`이 날까지 · 시작부터 최대 ${REPEAT_SPAN_LABEL}`}
               required
@@ -1075,7 +1080,7 @@ function AddForm({
               max={maxUntil(draft.date)}
               value={draft.until}
               error={live.until ?? errors.until}
-              onChange={(ev) => change({ until: ev.target.value })}
+              onChange={(value) => change({ until: value })}
             />
           </div>
         )}

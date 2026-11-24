@@ -57,7 +57,7 @@ export function RecruitmentTimeZoneField({ value, onChange, error }: {
           // ui-native: 선택값을 표시하고 체크박스 검색 패널을 여는 시간대 전용 선택기
           ref={trigger} type='button' aria-label='모집 시간대 선택' aria-expanded={open} aria-haspopup='dialog'
           onClick={() => { if (!open) setWorldwide(false); setOpen(!open); setQuery(''); }}
-          className='flex min-h-12 w-full items-center justify-between gap-3 rounded-control border border-border-strong bg-bg px-3.5 py-2.5 text-left type-label-lg'>
+          className='flex min-h-10 w-full items-center justify-between gap-3 rounded-control border border-border-strong bg-bg px-3.5 py-2 text-left type-label-lg'>
           <span>{value.zones.length ? memberTimeZones('', 'ko', value.zones).map((zone) => zoneLabel(zone, 'ko')).join(' / ') : '시간대를 선택해 주세요'}</span>
           <ChevronDown size={16} className='shrink-0 text-fg-muted' />
         </button>

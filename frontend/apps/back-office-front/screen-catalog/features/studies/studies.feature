@@ -51,3 +51,10 @@ Feature: 스터디 관리
     And /studies/1?tab=schedule 에 접속한다
     Then 정보 카드와 일정 표가 보인다
     And 킥오프가 0회차로 맨 위에 있고 제목 줄 버튼은 「킥오프 수정」이다
+
+  # 실행 상태: study-detail--group-time-edit; 아래 PRD 시나리오의 일부 화면만 검증한다.
+  @catalog-partial @relates-BO-ST-025-S01
+  Scenario: 스터디 상세 — 일정 탭, 스터디 시간 수정 창
+    Given 기본반에 스터디 시간(수 20:00)이 저장돼 있다 (localStorage bo_schedule_time:1)
+    And /studies/1?tab=schedule 에서 「스터디 시간 수정」을 누른다
+    Then 요일 칩과, 시각 · 시간대 칸이 한 줄에 반씩 같은 높이로 보인다

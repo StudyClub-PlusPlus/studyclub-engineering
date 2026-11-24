@@ -82,6 +82,14 @@ public class Account extends BaseEntity {
     @Column(name = "ONBOARDING_COMPLETED_AT")
     private Instant onboardingCompletedAt;
 
+    /** 첫 활성화 시각. NULL 이면 아직 스터디 · 행사 신청을 한 번도 성공하지 않았다. */
+    @Column(name = "ACTIVATED_AT")
+    private Instant activatedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ACTIVATION_ACTION", length = 20)
+    private ActivationAction activationAction;
+
     protected Account() {}
 
     public Account(String email, String nickname, String profileImgUrl, SystemRole systemRole) {
@@ -174,6 +182,28 @@ public class Account extends BaseEntity {
 
     public Instant getOnboardingCompletedAt() {
         return onboardingCompletedAt;
+    }
+
+    public Instant getActivatedAt() {
+        return activatedAt;
+    }
+
+    public ActivationAction getActivationAction() {
+        return activationAction;
+    }
+
+    /**
+     * 첫 활성화 기록 — 이미 활성화된 계정이면 아무것도 바꾸지 않고 {@code false}. 호출자는 이 계정 행을 쓰기 잠금으로 읽은 트랜잭션 안에서 부르고,
+     * 반환값으로 {@link AccountActivatedEvent} 를 낼지 정한다. 스터디 신청과 행사 신청이 동시에 와도 계정 잠금으로 한 줄로 서서 한쪽만 true
+     * 를 받는다. 취소 · 재신청은 되돌리거나 다시 만들지 않는다 (R4).
+     */
+    public boolean activate(ActivationAction action, Instant now) {
+        if (activatedAt != null) {
+            return false;
+        }
+        this.activatedAt = now.truncatedTo(ChronoUnit.MICROS);
+        this.activationAction = action;
+        return true;
     }
 
     /** 최근 180일간 명부 참여와 로그인이 모두 없는 회원. 캡틴도 같고, 기록 미확인은 제외한다. */

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { Badge, Button, Checkbox, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { Badge, Button, Checkbox, Select, SelectionCount, TableActionBar, TimeZonePicker, cx } from '@studyclub/ui';
 import { useIsMutating } from '@tanstack/react-query';
 
 import { TableCard } from '@/components/ui';
@@ -12,7 +12,7 @@ import { OwnerCaptainSection } from '@/features/participants/OwnerCaptainSection
 import { participantKeys, useParticipants } from '@/features/participants/queries';
 import type { Participant, ParticipantsResponse } from '@/features/participants/types';
 import { useGroupAssignment } from '@/features/participants/use-group-assignment';
-import { DISPLAY_ZONES, zoneLabel, zoneTitle } from '@/features/schedule/time';
+import { DISPLAY_ZONES, utcOffset, ZONE_PLACE, zoneLabel } from '@/features/schedule/time';
 import { ApiError } from '@/lib/http';
 import { useUrlState } from '@/lib/use-url-state';
 
@@ -102,11 +102,17 @@ function ParticipantAssignment({
       <OwnerCaptainSection studyId={studyId} owner={data.ownerCaptain} />
       <GroupsSection studyId={studyId} data={data} disabled={busy || dirty} />
       <section aria-label='참여 크루' className='space-y-3'>
-        <div className='space-y-2'>
+        {/* 반 · 시간대 필터는 제목 줄 오른쪽 끝 (playground 신청자 탭과 같은 자리). 두 칸 모두 sm(32px) 로 높이를 맞춘다 */}
+        <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
           <h2 className='font-semibold'>참여 크루 {data.participantCount}명</h2>
-          <div className='flex flex-wrap gap-2'>
+          <div className='flex flex-wrap items-center gap-2'>
             {data.groups.length > 1 && (
-              <Select aria-label='반 필터' value={group} onChange={(e) => setFilters({ group: e.target.value })}>
+              <Select
+                size='sm'
+                aria-label='반 필터'
+                value={group}
+                onChange={(e) => setFilters({ group: e.target.value })}
+              >
                 <option value='all'>전체 반</option>
                 {data.groups.map((g) => (
                   <option key={g.groupId} value={g.groupId}>
@@ -115,14 +121,18 @@ function ParticipantAssignment({
                 ))}
               </Select>
             )}
-            <Select aria-label='시간대 필터' value={tz} onChange={(e) => setFilters({ tz: e.target.value })}>
-              <option value='all'>전체 시간대</option>
-              {DISPLAY_ZONES.map((z) => (
-                <option key={z.iana} value={z.iana}>
-                  {zoneTitle(z.iana)}
-                </option>
-              ))}
-            </Select>
+            <TimeZonePicker
+              className='w-48'
+              size='sm'
+              label='시간대 필터'
+              hideLabel
+              value={tz}
+              onChange={(next) => setFilters({ tz: next })}
+              options={[
+                { value: 'all', label: '전체 시간대' },
+                ...DISPLAY_ZONES.map((z) => ({ value: z.iana, label: ZONE_PLACE[z.iana], detail: utcOffset(z.iana) })),
+              ]}
+            />
           </div>
         </div>
         {mutation.error && (

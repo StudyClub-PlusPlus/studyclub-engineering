@@ -60,6 +60,7 @@ function seedMeetings() {
 function mount() {
   const onDirtyChange = vi.fn();
   const onAddMeeting = vi.fn();
+  const onZone = vi.fn();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
@@ -70,13 +71,13 @@ function mount() {
         onDirtyChange={onDirtyChange}
         guard={(go) => go()}
         zone='Asia/Seoul'
-        onZone={vi.fn()}
+        onZone={onZone}
         onGoCrew={vi.fn()}
         onAddMeeting={onAddMeeting}
       />
     </QueryClientProvider>,
   );
-  return { onDirtyChange, onAddMeeting };
+  return { onDirtyChange, onAddMeeting, onZone };
 }
 
 /** 노드 내장 localStorage 가 jsdom 것을 가린다 — 테스트마다 빈 메모리 저장소를 둔다. */
@@ -139,6 +140,19 @@ describe('출석 탭', () => {
     // 2회차 발표자 — 발표 횟수 1, 칸에 발표 표시
     expect(within(kim).getByText('1')).toBeVisible();
     expect(cellsOf(kim)[2]).toHaveAccessibleName('미체크 · 발표');
+  });
+
+  it('회차 표시 시간대는 「국가 · 도시」 목록에서 고른다', async () => {
+    seedMeetings();
+    const { onZone } = mount();
+    await rowOf('김크루');
+
+    const picker = screen.getByRole('button', { name: /회차 표시 시간대/ });
+    expect(picker).toHaveTextContent('한국 · 서울');
+    await userEvent.click(picker);
+    await userEvent.click(screen.getByRole('option', { name: /미국 · 뉴욕/ }));
+
+    expect(onZone).toHaveBeenCalledWith('America/New_York');
   });
 
   it('칸을 누르면 상태가 돌고, 출석률은 정규 회차만 센다 — 저장하면 남는다', async () => {

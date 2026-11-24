@@ -57,6 +57,8 @@ erDiagram
   ACCOUNT |o..o{ CLUB_EVENT : "등록한 캡틴 (FK 없음)"
   CLUB_EVENT ||--|{ CLUB_EVENT_CHANNEL : "참여 방식"
   CLUB_EVENT ||--o{ CLUB_EVENT_QUESTION : "신청 질문"
+  CLUB_EVENT |o..o{ CLUB_EVENT_REGISTRATION : "신청 (FK 없음)"
+  ACCOUNT |o..o{ CLUB_EVENT_REGISTRATION : "신청한 크루 (FK 없음)"
   STUDY_PROGRAM ||--o{ STUDY : "기수"
   STUDY ||--o{ STUDY_GROUP : "분반"
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
@@ -97,6 +99,8 @@ erDiagram
   ACCOUNT |o..o{ CLUB_EVENT : "등록한 캡틴 (FK 없음)"
   CLUB_EVENT ||--|{ CLUB_EVENT_CHANNEL : "참여 방식"
   CLUB_EVENT ||--o{ CLUB_EVENT_QUESTION : "신청 질문"
+  CLUB_EVENT |o..o{ CLUB_EVENT_REGISTRATION : "신청 (FK 없음)"
+  ACCOUNT |o..o{ CLUB_EVENT_REGISTRATION : "신청한 크루 (FK 없음)"
   NOTIFICATION {
     bigint ID PK
     varchar EVENT_TYPE
@@ -166,6 +170,8 @@ erDiagram
     varchar  DISCORD_HANDLE
     varchar  DISCORD_NICKNAME     "스터디클럽 서버 별명. 없으면 신청 시 필수 입력"
     datetime ONBOARDING_COMPLETED_AT    "온보딩 완료 시각"
+    datetime ACTIVATED_AT               "첫 스터디 · 행사 신청 시각"
+    varchar  ACTIVATION_ACTION          "STUDY_APPLIED / EVENT_APPLIED"
   }
 
   ACCOUNT_IDENTITY {
@@ -304,6 +310,23 @@ erDiagram
     boolean  REQUIRED
     json     OPTIONS
     int      SORT_ORDER
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  CLUB_EVENT_REGISTRATION {
+    bigint   ID                     PK
+    bigint   CLUB_EVENT_ID            "행사 (FK 없음)"
+    bigint   ACCOUNT_ID               "신청한 크루 (FK 없음)"
+    varchar  CHANNEL                  "ONLINE / OFFLINE"
+    varchar  STATUS                   "PENDING / CONFIRMED / DECLINED / CANCELLED"
+    varchar  CANCEL_REASON            "CANCELLED 일 때만"
+    datetime STATUS_CHANGED_AT
+    bigint   STATUS_CHANGED_BY        "캡틴 · 본인, 시스템이면 NULL"
+    varchar  APPLICANT_TIME_ZONE      "신청 당시 프로필 시간대"
+    json     QUESTIONS_SNAPSHOT       "신청 당시 질문 사본"
+    json     ANSWERS_SNAPSHOT
+    varchar  SUBMIT_IDEMPOTENCY_KEY   "UK (ACCOUNT_ID, KEY)"
     datetime CREATED_AT
     datetime UPDATED_AT
   }
@@ -510,6 +533,7 @@ erDiagram
 | 행사 | [CLUB_EVENT](./CLUB_EVENT.md) | 캡틴이 등록하는 크루 행사 — 등록 즉시 공개 | `STATUS` (표시 상태는 계산) |
 | 행사 | [CLUB_EVENT_CHANNEL](./CLUB_EVENT_CHANNEL.md) | 행사 참여 방식(온라인·오프라인)별 정원·장소·링크 | — |
 | 행사 | [CLUB_EVENT_QUESTION](./CLUB_EVENT_QUESTION.md) | 행사 신청 질문 (현재 질문, 신청은 사본을 따로 둔다) | — |
+| 행사 | [CLUB_EVENT_REGISTRATION](./CLUB_EVENT_REGISTRATION.md) | 행사 신청 — 크루 신청 · 본인 취소 · 운영진 처리가 함께 쓴다 (재신청은 새 행) | `STATUS`, `CANCEL_REASON` |
 
 
 ## ERD 추가·변경 절차
