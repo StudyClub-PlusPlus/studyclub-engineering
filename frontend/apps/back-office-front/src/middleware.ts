@@ -4,7 +4,7 @@ import { legacyRedirectUrl } from '@studyclub/utils';
 
 import { ACCESS_COOKIE } from '@/lib/cookie-names';
 
-// BO 전 페이지 로그인 게이트 — access 쿠키(bo_access_token) 없으면 /login 으로.
+// BO 전 페이지 로그인 게이트 — access 쿠키(bo_access_token) 없으면 갱신을 거쳐 화면 또는 /login 으로.
 
 /**
  * 로컬 UI 작업용 게이트 우회.
@@ -56,9 +56,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // 액세스 쿠키는 토큰과 같이 15분이면 사라진다. refresh 쿠키는 path 가 /api/auth 라 여기서 안 보이므로
+  // 갱신 라우트가 refresh 쿠키로 판단해 보던 화면이나 로그인으로 보낸다.
   const url = req.nextUrl.clone();
-  url.pathname = '/login';
-  url.search = `?next=${encodeURIComponent(req.nextUrl.pathname)}`;
+  url.pathname = '/api/auth/refresh';
+  url.search = `?next=${encodeURIComponent(pathname + req.nextUrl.search)}`;
   return NextResponse.redirect(url);
 }
 

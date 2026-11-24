@@ -36,13 +36,24 @@ import {
   toast,
   ButtonLink,
   HelpPopover,
-  TimeSelect,
+  DatePicker,
+  TimePicker,
+  TimeZonePicker,
 } from '@studyclub/ui';
 import type { BadgeTone, ButtonSize, ButtonVariant } from '@studyclub/ui';
 import { BookOpen, CalendarClock, CalendarDays, Globe, LayoutDashboard, Rocket, Search, Users } from 'lucide-react';
 
 const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'tertiary', 'danger', 'destructive'];
 const SIZES: ButtonSize[] = ['sm', 'md', 'lg'];
+const ZONE_OPTIONS = [
+  { value: 'Asia/Seoul', label: '서울', group: '한국', detail: 'UTC+09:00' },
+  { value: 'America/New_York', label: '뉴욕', group: '미국', detail: 'UTC-05:00' },
+  { value: 'America/Los_Angeles', label: '로스앤젤레스', group: '미국', detail: 'UTC-08:00', keywords: 'LA 엘에이' },
+  { value: 'America/Toronto', label: '토론토', group: '캐나다', detail: 'UTC-05:00' },
+  { value: 'America/Vancouver', label: '밴쿠버', group: '캐나다', detail: 'UTC-08:00' },
+  { value: 'Australia/Sydney', label: '시드니', group: '오스트레일리아', detail: 'UTC+11:00' },
+  { value: 'Europe/London', label: '런던', group: '영국', detail: 'UTC+00:00' },
+];
 const STATUS_TONES: BadgeTone[] = ['recruiting', 'closingsoon', 'inprogress', 'closed', 'ended'];
 const ROLE_TONES: BadgeTone[] = ['captain', 'navigator', 'member'];
 
@@ -195,7 +206,9 @@ function CatalogNav() {
 
 export default function ComponentsCatalog() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [time, setTime] = useState('20:30');
+  const [date, setDate] = useState('2026-11-23');
+  const [pickedTime, setPickedTime] = useState('20:30');
+  const [zone, setZone] = useState('Asia/Seoul');
   const [chip, setChip] = useState('all');
   const [checked, setChecked] = useState(true);
   const [countedText, setCountedText] = useState('');
@@ -762,13 +775,37 @@ export default function ComponentsCatalog() {
         </Case>
 
         <Case
-          title='TimeSelect'
-          note='시각 입력. 브라우저 기본 time 칸 대신 시(00~23) · 분(5분 간격) 두 칸으로 고른다. 값은 HH:mm.'
+          title='DatePicker'
+          note='날짜 입력. 칸에 YYYY-MM-DD(또는 20261123)를 치거나 달력 단추로 고른다. 방향키 · PageUp/Down 으로 옮기고 min · max 밖의 날은 막힌다.'
         >
-          <div className='grid max-w-2xl gap-4 sm:grid-cols-3'>
-            <TimeSelect label='기본' required value={time} onChange={setTime} />
-            <TimeSelect label='오류' value='' error='시작 시각을 입력해 주세요.' onChange={() => {}} />
-            <TimeSelect label='비활성' value='09:00' disabled onChange={() => {}} />
+          <div className='grid max-w-3xl gap-4 sm:grid-cols-4'>
+            <DatePicker label='기본' required value={date} onChange={setDate} />
+            <DatePicker label='범위' value={date} min='2026-11-10' max='2026-12-10' onChange={setDate} />
+            <DatePicker label='오류' value='' error='시작 일자를 입력해 주세요.' onChange={() => {}} />
+            <DatePicker label='비활성' value='2026-11-23' disabled onChange={() => {}} />
+          </div>
+        </Case>
+
+        <Case
+          title='TimePicker'
+          note='시각 입력. 칸에 HH:mm(또는 2030)을 치거나 시계 단추로 시 · 분 목록에서 고른다. 시를 고르면 분으로 넘어간다. 값은 HH:mm.'
+        >
+          <div className='grid max-w-3xl gap-4 sm:grid-cols-4'>
+            <TimePicker label='기본' required value={pickedTime} onChange={setPickedTime} />
+            <TimePicker label='15분 간격' minuteStep={15} value={pickedTime} onChange={setPickedTime} />
+            <TimePicker label='오류' value='' error='시작 시각을 입력해 주세요.' onChange={() => {}} />
+            <TimePicker label='비활성' value='09:00' disabled onChange={() => {}} />
+          </div>
+        </Case>
+
+        <Case
+          title='TimeZonePicker'
+          note='시간대 고르기. 목록이 7개 이상이면 검색 칸이 붙고, 같은 국가는 머리글 아래 묶는다. 지역 이름 · UTC 차이는 앱이 options 로 넘긴다.'
+        >
+          <div className='grid max-w-3xl gap-4 sm:grid-cols-3'>
+            <TimeZonePicker label='짧은 목록' required value={zone} onChange={setZone} options={ZONE_OPTIONS.slice(0, 4)} />
+            <TimeZonePicker label='검색 · 묶음' size='md' value={zone} onChange={setZone} options={ZONE_OPTIONS} />
+            <TimeZonePicker label='오류' value='' error='시간대를 선택해 주세요.' onChange={() => {}} options={ZONE_OPTIONS} />
           </div>
         </Case>
 

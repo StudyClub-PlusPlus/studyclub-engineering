@@ -15,6 +15,7 @@ export const APPLY_SPEC: ScreenSpec = {
   chip: '스터디 신청하기',
   scope: 'apply',
   notes: [
+    '신청서 상단 모집 시간대는 스터디 목록·상세와 같다. 회원의 시간대로 신청을 제한하거나 반 기준 시간대를 변경하지 않는다',
     '신청 결과는 화면 상태(localStorage)로만 남는다 — POST /api/studies/{id}/applications 가 아직 없다',
     '제출하면 곧 참여다 — 승인 대기가 없다 (POL-0004). 내 스터디룸에 바로 나온다',
     '이미 제출한 신청서는 수정할 수 없다. 같은 스터디의 신청하기는 「신청 완료」로 바뀌고 폼이 다시 열리지 않는다',

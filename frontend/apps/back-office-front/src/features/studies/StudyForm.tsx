@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Checkbox, Input, Select, Textarea, useImageUpload, Button, FilterChip } from '@studyclub/ui';
+import { Checkbox, Input, Select, Textarea, useImageUpload, Button, FilterChip, DatePicker } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 
 import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
@@ -497,13 +497,12 @@ export function StudyForm({
 
       <TimezoneNote subject='모집 마감일과 진행 시작일은' />
       <div className='grid gap-3 sm:grid-cols-2'>
-        <Input
+        <DatePicker
           id='deadline'
-          type='date'
           label='모집 마감일'
           required
           value={value.deadline}
-          onChange={(ev) => set('deadline', ev.target.value)}
+          onChange={(value) => set('deadline', value)}
           error={errors.deadline}
         />
 
@@ -530,13 +529,12 @@ export function StudyForm({
 
       {/* 모집 마감일과 같은 두 칸 그리드 — 왼쪽 칸에 서서 마감일과 너비가 같다 */}
       <div className='grid gap-3 sm:grid-cols-2'>
-        <Input
+        <DatePicker
           id='startAt'
-          type='date'
           label='진행 시작일'
           min={value.deadline || undefined}
           value={value.startAt}
-          onChange={(ev) => set('startAt', ev.target.value)}
+          onChange={(value) => set('startAt', value)}
           error={errors.startAt}
           helper='모임이 실제로 시작하는 날. 미정이면 비워 둡니다'
         />

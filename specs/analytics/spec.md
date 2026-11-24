@@ -74,6 +74,7 @@
 | `My Profile Updated` | 마이페이지 |
 | `Study Presenter Registered` · `Study Presenter Unregistered` (`study_id`, `meeting_id`, `slot`) | 스터디룸 일정 탭 — 발표자 신청·취소 API 가 성공했을 때 |
 | `Study Discord Opened` (`study_id`) | 스터디룸 정보 카드의 「디스코드」 버튼 (스터디 채널로 이동) |
+| `Meeting Retro Submitted` (`study_id`, `meeting_id`, `is_edit`, `has_feeling`) · `Meeting Retro Liked` (`study_id`, `meeting_id`, `section`=`good`·`improve`·`feeling`) | 스터디 일정 회고 — 회고 저장 API 가 성공했을 때 · 👍 누르기 API 가 성공했을 때(취소는 보내지 않는다) |
 
 정의만 있고 보내지 않는 것: `Study Apply Motivation Entered` — 신청 폼에 지원 동기 입력란이 아직 없다.
 

@@ -7,7 +7,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountIdentity;
+import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.Issuer;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.event.ClubEventRegistrationPort;
 import com.studyclub.domain.event.ClubEventRepository;
@@ -40,6 +43,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /**
@@ -63,6 +67,10 @@ class AccountDeletionEventRegistrationIntegrationTest {
     @Autowired ClubEventRegistrationRepository registrationRepository;
     @Autowired ClubEventRegistrationPort registrationPort;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired AccountIdentityRepository accountIdentityRepository;
+
+    /** 애플 연결 해제는 외부 호출이라 목으로 — 순서만 본다. */
+    @MockitoBean AppleOAuthClient appleOAuthClient;
 
     @MockitoSpyBean AccountRepository accountRepository;
     @MockitoSpyBean ClubEventRepository clubEventRepository;
@@ -144,9 +152,18 @@ class AccountDeletionEventRegistrationIntegrationTest {
     }
 
     @Test
-    @DisplayName("잠금 순서 — 계정을 먼저 잠그고, 그 계정 신청이 걸린 행사는 취소 · 종료된 것까지 ID 오름차순으로 잠근다")
+    @DisplayName(
+            "잠금 순서 — 계정을 먼저 잠그고, 애플 연결 해제(외부 호출)가 끝난 뒤 그 계정 신청이 걸린 행사를 취소 · 종료된 것까지 ID 오름차순으로 잠근다")
     void locksAccountThenEventsInIdOrder() {
         Account leaver = seedAccount();
+        accountIdentityRepository.save(
+                new AccountIdentity(
+                        leaver.getId(),
+                        Issuer.APPLE,
+                        "apple-" + UUID.randomUUID(),
+                        leaver.getEmail(),
+                        Instant.now(),
+                        "apple-refresh-token"));
         // 일부러 ID 역순으로 신청을 만든다
         register(DECLINED_EVENT, leaver, ClubEventRegistrationStatus.DECLINED, null);
         register(CANCELLED_EVENT, leaver, ClubEventRegistrationStatus.PENDING, null);
@@ -160,8 +177,10 @@ class AccountDeletionEventRegistrationIntegrationTest {
 
         assertThat(delete(leaver).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-        InOrder order = inOrder(accountRepository, clubEventRepository);
+        InOrder order = inOrder(accountRepository, appleOAuthClient, clubEventRepository);
         order.verify(accountRepository).findByIdForUpdate(leaver.getId());
+        // 외부 호출 동안 행사 행 잠금을 잡지 않는다 (PR #516 리뷰)
+        order.verify(appleOAuthClient).revoke("apple-refresh-token");
         order.verify(clubEventRepository).findByIdForUpdate(OPEN_EVENT);
         order.verify(clubEventRepository).findByIdForUpdate(ENDED_EVENT);
         order.verify(clubEventRepository).findByIdForUpdate(CANCELLED_EVENT);

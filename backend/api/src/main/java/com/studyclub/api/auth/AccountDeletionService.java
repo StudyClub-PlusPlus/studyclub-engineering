@@ -117,10 +117,6 @@ public class AccountDeletionService {
                         .findByIdForUpdate(accountId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
-        // 행사 신청 — 계정 잠금 바로 뒤, 알림 비식별(redactNotifications)보다 먼저 행사 행을 잠그고 종료 전 행사의 유효 신청을 취소한다
-        // (specs/event-registration/spec.md 「탈퇴할 때」, P3).
-        cancelEventRegistrations(accountId);
-
         // 사유는 계정과 잇지 않고 값만 쌓는다 — 집계용이라 개인과 이어질 필요가 없다.
         accountLeaveReasonRepository.save(new AccountLeaveReason(reason));
 
@@ -131,6 +127,11 @@ public class AccountDeletionService {
                 appleOAuthClient.revoke(identity.getProviderRefreshToken());
             }
         }
+
+        // 행사 신청 — 애플 연결 해제(외부 호출) 뒤, 알림 비식별(redactNotifications)보다 먼저 행사 행을 잠그고 종료 전 행사의 유효 신청을
+        // 취소한다. 외부 호출 동안 CLUB_EVENT 행 잠금을 잡고 있으면 같은 행사의 다른 회원 신청이 기다린다. 계정 잠금이 이미 앞에 있어
+        // 잠금 순서(계정 → 행사)는 그대로다 (specs/event-registration/spec.md 「탈퇴할 때」, P3, PR #516 리뷰).
+        cancelEventRegistrations(accountId);
 
         // 로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID) 에 걸린다.
         accountIdentityRepository.deleteByAccountId(accountId);

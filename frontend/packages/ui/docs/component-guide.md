@@ -346,6 +346,17 @@ ButtonLink: Button 과 같은 모양의 링크. 앱 안 이동 linkAs={Link}, �
 HelpPopover: 「?」(IconButton xs)를 누르면 아래에 짧은 설명. 바깥 클릭 · 포커스 이동 · Esc 로 닫힌다. span 으로만 짜서 글줄 안에도 놓인다
 ```
 
+### 7-16. DatePicker · TimePicker · TimeZonePicker (§9-2)
+
+```
+DatePicker: Input + trailing 달력 IconButton. 값 YYYY-MM-DD | ''. 칸에 직접 쳐도 되고, 다 친 값만 onChange 로 올린다
+            min · max 밖은 달력에서 막힘. today prop 으로 「오늘」 기준(프로필 시간대)을 넘긴다
+TimePicker: Input + trailing 시계 IconButton. 값 HH:mm | ''. 시 고르면 분으로, 분 고르면 닫힘. minuteStep 기본 5
+TimeZonePicker: options({value,label,detail?,group?,keywords?}) 를 앱이 만든다. 7개 이상이면 검색 칸, group 은 머리글로 묶음
+창 공통: popover.ts 의 useAnchoredPopover — fixed 로 놓아 표 · 모달에 잘리지 않고, 바깥 클릭 · 포커스 이동 · Esc 로 닫힌다
+         Esc 는 stopPropagation — 모달 안에서 창만 닫힌다
+```
+
 ---
 
 ## 8. index.ts 등록

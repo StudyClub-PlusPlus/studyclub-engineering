@@ -11,6 +11,42 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   closed: 'closed',
 };
 
+export type SortDir = 'asc' | 'desc';
+
+/**
+ * 정렬하는 컬럼 머리 — **이름을 누른다.** 처음 누르면 `first`(기본 오름차순), 다시 누르면 반대로.
+ * 화살표를 그리지 않는다 — 열마다 작은 화살표 두 개가 서면 머리 줄이 어수선하다.
+ * 지금 정렬 중인 열은 이름이 강조색이다.
+ */
+export function SortLabel({
+  label,
+  active,
+  onChange,
+  anno,
+  first = 'asc',
+}: {
+  label: string;
+  active: SortDir | null;
+  onChange: (dir: SortDir) => void;
+  anno?: string;
+  /** 처음 누를 때 방향 — 수(👍 등)는 큰 것부터 보는 게 보통이라 'desc' 를 준다. */
+  first?: SortDir;
+}) {
+  const next: SortDir = active ? (active === 'asc' ? 'desc' : 'asc') : first;
+  return (
+    <button
+      // ui-native: 표 머리 정렬 — 머리 글자 자체가 정렬 단추
+      type='button'
+      data-anno={anno}
+      onClick={() => onChange(next)}
+      aria-label={`${label} ${next === 'desc' ? '내림차순으로' : '오름차순으로'} 정렬`}
+      className={`whitespace-nowrap rounded-sm text-left underline-offset-4 hover:underline ${active ? 'text-brand' : ''}`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function StatusBadge({ status }: { status: string }) {
   return (
     <Badge tone={STATUS_TONE[status] ?? 'closed'} dot className='px-2.5 py-1 font-semibold'>

@@ -53,6 +53,19 @@ export function scheduleZoneTitle(zone: string, locale: Locale = 'ko', at?: Date
   return `${city}(${at ? zoneAbbreviation(zone, at) : zoneSymbol(zone)})`;
 }
 
+/** 시간대 고르기에 보이는 「국가 · 도시」 — playground · 백오피스의 시간대 이름(CLDR)과 같은 글자. */
+const PLACE: Record<string, { ko: string; en: string }> = {
+  'Asia/Seoul': { ko: '한국 · 서울', en: 'South Korea · Seoul' },
+  'America/New_York': { ko: '미국 · 뉴욕', en: 'United States · New York' },
+  'America/Toronto': { ko: '캐나다 · 토론토', en: 'Canada · Toronto' },
+  'America/Vancouver': { ko: '캐나다 · 벤쿠버', en: 'Canada · Vancouver' },
+  'America/Los_Angeles': { ko: '미국 · 로스앤젤레스', en: 'United States · Los Angeles' },
+};
+
+export function zonePlace(zone: string, locale: Locale = 'ko'): string {
+  return PLACE[zone]?.[locale] ?? scheduleZoneTitle(zone, locale);
+}
+
 export const SCHEDULE_ZONES = ONBOARDING_ZONES.map((zone) => ({
   iana: zone,
   label: scheduleZoneTitle(zone),

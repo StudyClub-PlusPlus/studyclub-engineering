@@ -1,10 +1,13 @@
 'use client';
 
+
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
-import { STATUS_CLASS, StatusBadge, TYPE_TONE, stamp } from '@console/components/FeedbacksTable';
+import { STATUS_CLASS, StatusBadge, TYPE_TONE } from '@console/components/FeedbacksTable';
 import { getUser } from '@console/lib/auth';
+import { formatConsoleTimestamp } from '@console/lib/display-timezone';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { Badge, Button, Modal, Textarea, toast } from '@studyclub/ui';
 import { Check, ChevronDown, ChevronLeft } from 'lucide-react';
 
@@ -36,6 +39,7 @@ function me(): string {
 }
 
 export function FeedbackDetail({ id }: { id: string }) {
+  const zone = useDisplayTimeZone();
   const [f, setF] = useState<Feedback | null | undefined>(undefined);
   const [memo, setMemo] = useState('');
   const [reply, setReply] = useState('');
@@ -118,7 +122,7 @@ export function FeedbackDetail({ id }: { id: string }) {
               <h1 className='min-w-0 break-words type-headline-md'>{f.title}</h1>
             </div>
             <p className='tnum mt-1.5 type-body-sm text-fg-muted'>
-              {submitterLabel(f)} · {stamp(f.createdAt)}
+              {submitterLabel(f)} · {formatConsoleTimestamp(f.createdAt, zone)}
             </p>
           </div>
           <div data-anno='feedback-admin:3' className='flex shrink-0 items-center gap-2 type-body-sm text-fg-secondary'>
@@ -167,7 +171,7 @@ export function FeedbackDetail({ id }: { id: string }) {
             <>
               <div className='flex items-baseline justify-between gap-3'>
                 <span className='type-label-lg text-neutral-800'>회신</span>
-                <span className='tnum type-label-sm text-fg-muted'>{stamp(f.reply.at)} 보냄</span>
+                <span className='tnum type-label-sm text-fg-muted'>{formatConsoleTimestamp(f.reply.at, zone)} 보냄</span>
               </div>
               <p className='mt-2 whitespace-pre-wrap break-words rounded-control bg-surface-2 px-4 py-3 type-body-sm text-fg [overflow-wrap:anywhere]'>
                 {f.reply.body}
