@@ -1,4 +1,5 @@
 import type { ScreenSpec } from '@/proto/annotate';
+import { REUSE_SPEC } from '@/proto/specs/study-reuse';
 
 /**
  * 스터디 목록 — Story 별 명세.
@@ -251,4 +252,4 @@ export const PROGRAM_SPEC: ScreenSpec = {
   ],
 };
 
-export const SPECS = [PUBLISH_SPEC, LIST_SPEC, STATUS_SPEC, PROGRAM_SPEC];
+export const SPECS = [REUSE_SPEC, PUBLISH_SPEC, LIST_SPEC, STATUS_SPEC, PROGRAM_SPEC];

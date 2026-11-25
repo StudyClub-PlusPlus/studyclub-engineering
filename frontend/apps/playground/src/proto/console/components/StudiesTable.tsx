@@ -18,7 +18,7 @@ import { Badge, Button, Input, Modal, Pagination, Select, cx } from '@studyclub/
 import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, toISODate, todayISO } from '@studyclub/utils';
 import { Check, Minus, Search } from 'lucide-react';
 
-import { isReusedDraft } from '../lib/reused-drafts';
+import { isReusedDraft, updateReusedDraft } from '../lib/reused-drafts';
 import { recruitState, recruitmentDeadlineAt, recruitmentDeadlineLabel } from '@/proto/lib/recruitment-deadline';
 import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
@@ -427,6 +427,10 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
     if (!confirm) return;
     // 공개를 켜는 날이 모집 시작 일자다. 내리면 시작 일자가 사라진다(= 미공개).
     // TODO(api): 공개 전환 API — 공개 = 모집 시작 (STATUS DRAFT → OPEN, STUDY_RECRUITMENT.START_AT 채움)
+    const target = studies.find((candidate) => candidate.id === confirm.id);
+    if (target && isReusedDraft(target)) {
+      updateReusedDraft({ ...target, published: confirm.next, publish_at: confirm.next ? todayISO() : undefined });
+    }
     setPatch((m) => ({
       ...m,
       [confirm.id]: { published: confirm.next, publish_at: confirm.next ? todayISO() : undefined },
@@ -558,14 +562,12 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                       {s.program?.id ?? <span className='text-fg-muted'>—</span>}
                     </td>
                     <td className='min-w-[24rem] max-w-[32rem]'>
-                       {isReusedDraft(s) ? (
-                        <span className='font-semibold'>{tx(s.title)}</span>
-                      ) : <Link
+                      <Link
                         href={`/proto/console/studies/${s.study_id}`}
                         className='block truncate font-semibold underline-offset-4 hover:text-brand hover:underline'
                       >
                         {tx(s.title)}
-                      </Link>}
+                      </Link>
                     </td>
                     {columns.map((c) => (
                       <td key={c.key} data-anno={c.anno} className={c.cellClass}>

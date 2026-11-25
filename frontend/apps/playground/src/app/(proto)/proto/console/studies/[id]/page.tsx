@@ -1,5 +1,4 @@
-import { notFound } from 'next/navigation';
-
+import { DraftDetail } from '@console/components/DraftDetail';
 import { StudyConsole } from '@console/components/StudyConsole';
 import { studies } from '@studyclub/mock';
 
@@ -15,7 +14,7 @@ export function generateStaticParams() {
 export default async function StudyAdminDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const study = studies.find((s) => String(s.study_id) === id);
-  if (!study) notFound();
+  if (!study) return <DraftDetail id={id} />;
 
   return (
     <>
