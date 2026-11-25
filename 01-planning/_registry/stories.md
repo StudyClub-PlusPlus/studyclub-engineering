@@ -73,3 +73,4 @@
 | ST-039 | 크루는 미팅이 끝나면 회고를 남기고 같은 반 회고에 공감할 수 있다. | 크루 | [PRD](../stories/crew-write-meeting-retro/PRD.md) | 스터디 일정 › 회고 시안 | [meeting-retro](../../specs/meeting-retro/spec.md) | | ZAPP 기획 「스터디 미팅 회고」. 소감 · 👍 · 보기 전환은 기획 항목에 추가 필요 |
 | ST-040 | 네비게이터는 반의 회차별 회고 작성 현황을 볼 수 있다. | 네비게이터 | [PRD](../stories/navigator-view-meeting-retros/PRD.md) | 스터디 일정 › 회고 시안 | [meeting-retro](../../specs/meeting-retro/spec.md) | | 담당 캡틴도 같은 화면 (회고는 쓰지 않음) |
 | ST-041 | 캡틴은 백오피스에서 스터디 미팅 회고를 모아 볼 수 있다. | 캡틴 | [PRD](../stories/captain-collect-meeting-retros/PRD.md) | 콘솔 › 회고 시안 | [meeting-retro](../../specs/meeting-retro/spec.md) | | 열람 전용 |
+| ST-042 | 캡틴은 종료된 스터디를 복제해 새 스터디를 등록할 수 있다. | 캡틴 | [PRD](../stories/captain-reuse-ended-study/PRD.md) | 콘솔 › 스터디 등록·상세 | [study](../../specs/study/spec.md) | | ENDED · CLOSED |

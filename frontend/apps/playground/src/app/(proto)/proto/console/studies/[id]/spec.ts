@@ -1,4 +1,5 @@
 import type { ScreenSpec } from '@/proto/annotate';
+import { REUSE_SPEC } from '@/proto/specs/study-reuse';
 
 /**
  * 스터디 운영 화면 — Story 별 번호 명세.
@@ -49,7 +50,7 @@ export const ATTENDEE_SPEC: ScreenSpec = {
       title: '사이트 공개 스위치',
       display: [
         '「모집중」 배지 아래 「사이트 공개」 스위치 — 켜짐(초록) 공개 · 꺼짐(회색) 미공개',
-        '바꿀 수 없으면 스위치 아래에 이유를 글로 보인다 — 「신청 폼을 먼저 연결하세요.」 · 「진행 중이거나 종료된 스터디는 비공개로 돌릴 수 없습니다.」',
+        '바꿀 수 없으면 스위치 아래에 이유를 글로 표시하고 aria-describedby로 연결한다 — 「신청 폼을 먼저 연결하세요.」 · 「진행 중이거나 종료된 스터디는 비공개로 돌릴 수 없습니다.」',
       ],
       behavior: ['누르면 목록과 같은 공개 · 비공개 확인 팝업이 뜬다. 「공개」 / 「비공개로 전환」을 눌러야 바뀐다'],
       policy: [
@@ -1227,4 +1228,4 @@ export const RESULTS_SPEC: ScreenSpec = {
   ],
 };
 
-export const SPECS = [ATTENDEE_SPEC, FORM_SPEC, RESULTS_SPEC, CLASS_SPEC, SCHEDULE_SPEC, ATTENDANCE_SPEC, EDIT_SPEC];
+export const SPECS = [REUSE_SPEC, ATTENDEE_SPEC, FORM_SPEC, RESULTS_SPEC, CLASS_SPEC, SCHEDULE_SPEC, ATTENDANCE_SPEC, EDIT_SPEC];
