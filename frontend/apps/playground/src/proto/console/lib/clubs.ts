@@ -137,6 +137,24 @@ export function clubRate(row: Record<string, AttendanceStatus> | undefined): num
   return total === 0 ? undefined : Math.round((score / total) * 100);
 }
 
+/**
+ * 기수 출석률(%) — 스터디 평균과 같은 가중평균. 사람마다 분자 · 분모를 모두 더해 나눈다(사람별 출석률을 다시 평균하지 않는다).
+ * 기록이 하나도 없으면 undefined.
+ */
+export function clubAverageRate(book: ClubBook): number | undefined {
+  let score = 0;
+  let total = 0;
+  for (const row of Object.values(book)) {
+    for (const s of Object.values(row)) {
+      if (s === 'excused') continue;
+      total += 1;
+      if (s === 'present') score += 1;
+      if (s === 'late') score += 0.5;
+    }
+  }
+  return total === 0 ? undefined : Math.round((score / total) * 100);
+}
+
 /** 출석 일수 — 지각은 0.5일 */
 export function clubDays(row: Record<string, AttendanceStatus> | undefined): number {
   let n = 0;

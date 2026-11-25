@@ -8,14 +8,14 @@ import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
 import { ClassPicker } from '@console/components/ClassPicker';
 import { ClassScheduleDialog } from '@console/components/ClassScheduleDialog';
-import { ClubStudyAttendance } from '@console/components/ClubBookSection';
+import { ClubStudyAttendance, useClubCohort } from '@console/components/ClubBookSection';
 import { CrewTab } from '@console/components/CrewTab';
 import { ResultsTab } from '@console/components/ResultsTab';
 import { StudyCreateDialog } from '@console/components/StudyCreateDialog';
 import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import { classView, FIRST_CLASS, type ClassView } from '@console/lib/class-view';
 import { classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
-import { clubOfStudy } from '@console/lib/clubs';
+import { clubAverageRate, clubOfStudy } from '@console/lib/clubs';
 import { tx } from '@console/lib/l10n';
 import { useStudiesListHref } from '@console/lib/list-return';
 import { type ScheduleRule } from '@console/lib/schedule';
@@ -126,6 +126,8 @@ export function StudyConsole({ study }: { study: Study }) {
   const isClub = study.program?.kind === 'club';
   const club = clubOfStudy(study);
   const tabs = TABS.filter((t) => !(isClub && t.key === 'schedule'));
+  // 클럽 기수의 이번 기수 출석 — 위 출석률 칸과 출석 탭이 함께 본다
+  const clubCohort = useClubCohort(club);
   // 회고 탭에서 고른 회차 — 없으면 가장 최근에 끝난 회차
   const [retroMeetingId, setRetroMeetingId] = useState<string | undefined>();
   const [crewDirty, setCrewDirty] = useState(false);
@@ -177,6 +179,8 @@ export function StudyConsole({ study }: { study: Study }) {
   // 위 카드의 출석률 — 모든 반의 분자 · 분모를 합친다(반별 평균을 다시 평균하지 않는다).
   // 출석 탭과 같은 규칙: 휴가 · 킥오프 · 중단 뒤 회차는 뺀다. 프로토는 목 데이터로 셈하고, 실제는 서버 값을 그린다.
   const studyRate = useMemo(() => {
+    // 클럽 기수는 날짜별 출석부 하나 — 같은 산식(가중평균)으로 이번 기수를 센다
+    if (club) return clubAverageRate(clubCohort.book);
     let score = 0;
     let total = 0;
     for (const cls of classes) {
@@ -201,7 +205,7 @@ export function StudyConsole({ study }: { study: Study }) {
       }
     }
     return total === 0 ? undefined : Math.round((score / total) * 100);
-  }, [classes, study, meetings, active, assign, navigators, left, books]);
+  }, [club, clubCohort.book, classes, study, meetings, active, assign, navigators, left, books]);
   useRecruitmentClock([study]);
   const lifecycle = lifecycleState(study);
   const reusable = (study.program?.kind ?? study.kind) === 'study' && (lifecycle === 'ENDED' || lifecycle === 'CLOSED');
@@ -601,6 +605,7 @@ export function StudyConsole({ study }: { study: Study }) {
         {tab === 'attendance' && club && (
           <ClubStudyAttendance
             club={club}
+            cohort={clubCohort}
             onDirtyChange={(d) => setDirtyBooks((m) => (m.club === d ? m : { ...m, club: d }))}
           />
         )}

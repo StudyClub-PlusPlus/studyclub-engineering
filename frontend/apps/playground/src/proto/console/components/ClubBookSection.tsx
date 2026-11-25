@@ -142,20 +142,40 @@ export function pastMonthsOf(club: ClubConfig, today: string): Month[] {
   return pastCohorts(club, monthOf(today)).map((c) => c.month);
 }
 
+/** 스터디 상세(클럽 기수)의 이번 기수 명단 · 출석 — 위 요약 칸(출석률)과 출석 탭이 같은 값을 본다 */
+export type ClubCohortState = {
+  today: string;
+  members: ClubMember[];
+  book: ClubBook;
+  setMembers: (fn: (ms: ClubMember[]) => ClubMember[]) => void;
+  setBook: (book: ClubBook) => void;
+};
+
 /**
- * 스터디 상세(클럽 기수) › 출석 — 클럽 운영 › 출석부와 같은 출석부를 혼자 들고 그린다.
+ * 이번 기수 명단 · 출석을 들고 있는다. 클럽이 아니면 빈 값.
+ * TODO(api): GET /api/admin/studies/{studyId}/attendances — 요약은 GET …/attendances/summary
+ */
+export function useClubCohort(club: ClubConfig | undefined): ClubCohortState {
+  const today = DEMO_TODAY.after;
+  const [members, setMembers] = useState<ClubMember[]>(() => (club ? seedMembers(club) : []));
+  const [book, setBook] = useState<ClubBook>(() => (club ? seedBook(club, members, today) : {}));
+  return { today, members, book, setMembers, setBook };
+}
+
+/**
+ * 스터디 상세(클럽 기수) › 출석 — 클럽 운영 › 출석부와 같은 출석부.
  * TODO(api): GET · POST /api/admin/studies/{studyId}/attendances
  */
 export function ClubStudyAttendance({
   club,
+  cohort,
   onDirtyChange,
 }: {
   club: ClubConfig;
+  cohort: ClubCohortState;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
-  const today = DEMO_TODAY.after;
-  const [members, setMembers] = useState(() => seedMembers(club));
-  const [book, setBook] = useState(() => seedBook(club, members, today));
+  const { today, members, book, setMembers, setBook } = cohort;
   const [month, setMonth] = useState<Month | undefined>();
   const { loadPast, savePast } = usePastBooks(club);
   return (
