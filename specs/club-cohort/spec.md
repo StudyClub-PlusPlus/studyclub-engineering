@@ -27,6 +27,7 @@
 | PUT | /api/admin/studies/{nextStudyId}/carry-over | 다음 기수에서 뺄 사람 저장 | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/studies/{studyId}/publish | 모집 시작 — 기존 공개 | O (ADMIN) | 구현완료 |
 | GET · POST | /api/admin/studies/{studyId}/attendances | 월간 출석부 — 기존 출석 (클럽 차이는 아래) | O (ADMIN) | 구현완료 · `reinstatements[]` 추가 |
+| GET · POST | /api/studies/{studyId}/applications/me · /applications | 크루 신청 — 넘어갈 사람은 `carriedOver` · `409` (아래 「크루 신청」) | O (로그인) | 구현완료 · `carriedOver` 추가 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -52,7 +53,7 @@
 
 - 대상: `STUDY_KIND = CLUB` · `AUTO_DRAFT_ENABLED` · 오늘 일자 = `AUTO_DRAFT_DAY`
 - 다음 달 `COHORT_MONTH` 기수가 이미 있으면 건너뛴다
-- 만드는 것: `STUDY`(`STATUS = DRAFT`, 제목 「{프로그램 제목} {YYYY}년 {M}월」, `START_AT` 다음 달 1일, `END_AT` 말일) · `STUDY_RECRUITMENT`(`RECRUIT_DEADLINE_AT` 이번 달 말일 23:59, `START_AT` NULL) · 기본 반 · 날마다 회차
+- 만드는 것: `STUDY`(`STATUS = DRAFT`, 제목은 프로그램 제목 그대로 — 운영 화면이 `COHORT_MONTH` 로 달을 붙인다, `START_AT` 다음 달 1일, `END_AT` 말일) · `STUDY_RECRUITMENT`(`RECRUIT_DEADLINE_AT` 이번 달 말일 23:59, `START_AT` NULL) · 기본 반 · 날마다 회차
 - 이번 기수(같은 프로그램에서 `COHORT_MONTH` 가 가장 늦은 기수)의 소개 · 상세 설명 · 카테고리 · 시간대 · 디스코드 채널 · 드라이브 · 정원 · 신청 폼을 복사한다
 
 ### 다음 기수 자동 공개 (매일 0시)
@@ -76,7 +77,7 @@
 
 1. 다음 달 기수가 없으면 하지 않는다. `DRAFT` 여도 한다
 2. 직전 기수 `COMPLETED` 참여자 중 `CLUB_CARRY_OVER_EXCLUSION` 에 없는 사람마다 다음 기수 `STUDY_PARTICIPANT`(`ACTIVE`, 기본 반, `CARRIED_FROM_ID`) — 신청 답 스냅샷 복사
-3. 다음 기수에 이미 참여 행이 있으면(신청) 만들지 않는다
+3. 다음 기수에 이미 참여 행이 있으면 만들지 않는다 — 넘어갈 사람의 신청은 아래 「크루 신청」이 막지만, 막기 전에 들어온 신청이나 뺐다가 다시 넣은 경우를 위해 남긴다
 4. 한 클럽씩 한 트랜잭션. 실패는 운영 알림으로 남기고 다음 클럽을 처리한다 — 기수 종료는 되돌리지 않는다
 
 ---
@@ -248,6 +249,17 @@
 - 끝난 기수의 출석을 고쳐도 이어서 참여 결과(`CARRIED_FROM_ID`)는 바꾸지 않는다
 - 킥오프 회차가 없다 — 출석률 분모에서 빼는 회차는 휴가뿐이다
 - 클럽 회차는 회차 상태 판정(`MISSED`)과 회차 시작 전 알림에서 뺀다
+
+---
+
+## 크루 신청 — 넘어갈 사람은 막는다
+
+기존 [study-application](../study-application/spec.md) 신청 API 의 클럽 차이. 같은 사람이 이어서 참여와 신청으로 두 번 들어가지 않게 한다.
+
+- 「넘어갈 사람」: 신청하려는 기수가 클럽 기수이고, 그 직전 달 기수에서 내 `STUDY_PARTICIPANT.STATUS = ACTIVE` 이고, `CLUB_CARRY_OVER_EXCLUSION` 에 없다
+- `GET /api/studies/{studyId}/applications/me` — `carriedOver: Boolean` 을 더한다. 참이면 화면은 버튼을 `신청 완료`(비활성)로 보이고 폼을 열지 않는다
+- `POST /api/studies/{studyId}/applications` — 넘어갈 사람이면 `409 CONFLICT`, `errorMessage` 「다음 기수로 이어서 참여합니다. 따로 신청하지 않아도 돼요.」 — 이미 신청 검사 다음, 모집 기간 검사 전에 본다
+- 직전 기수에서 참여 중단했거나 캡틴이 뺐으면 `carriedOver=false` — 바로 신청할 수 있다
 
 ---
 

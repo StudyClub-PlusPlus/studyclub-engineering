@@ -104,7 +104,7 @@ export const STUDIES_RECRUITING: StudyDraft[] = [
   {
     id: 'early-bird',
     kind: 'club',
-    title: { ko: '얼리버드 4기 (10월)', en: 'Early Bird 4 (Oct)' },
+    title: { ko: '얼리버드', en: 'Early Bird' },
     host: {
       name: { ko: 'M. 박', en: 'M. Park' },
       credential: {
@@ -142,7 +142,7 @@ export const STUDIES_RECRUITING: StudyDraft[] = [
   {
     id: 'weeklyx',
     kind: 'club',
-    title: { ko: 'WeeklyX 4기 (10월)', en: 'WeeklyX 4 (Oct)' },
+    title: { ko: 'WeeklyX', en: 'WeeklyX' },
     host: {
       name: { ko: 'Y. 정', en: 'Y. Jung' },
       credential: { ko: 'WeeklyX 클럽장', en: 'WeeklyX host' },
@@ -246,7 +246,7 @@ export const STUDIES_RECRUITING: StudyDraft[] = [
   {
     id: 'daily-leetcode',
     kind: 'club',
-    title: { ko: 'Daily LeetCode 4기 (10월)', en: 'Daily LeetCode 4 (Oct)' },
+    title: { ko: 'Daily LeetCode', en: 'Daily LeetCode' },
     host: {
       name: { ko: 'R. 오', en: 'R. Oh' },
       credential: {

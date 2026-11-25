@@ -19,7 +19,7 @@ export type ClubKey = 'earlybird' | 'weeklyx' | 'leetcode';
 export type ClubConfig = {
   /** 프로토 안에서 클럽을 가리키는 키 (서버는 STUDY_PROGRAM.ID) */
   key: ClubKey;
-  /** STUDY_PROGRAM.TITLE — 기수 제목의 앞부분 */
+  /** STUDY_PROGRAM.TITLE — 기수 제목(STUDY.TITLE)도 이 이름 그대로다 */
   title: string;
   /** STUDY.TIME_ZONE — 출석부의 날짜를 가르는 시간대. 기존 기수 시간대 값을 그대로 쓴다 */
   timeZone: string;
@@ -95,9 +95,12 @@ export function isoDay({ year, month }: Month, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-/** 기수 제목 — 「얼리버드 2027년 1월」. 같은 클럽에서 달이 겹치지 않으니 제목도 겹치지 않는다. */
+/**
+ * 운영 화면의 기수 이름 — 「얼리버드 · 2027년 1월」.
+ * 기수 제목(STUDY.TITLE)은 클럽 이름 그대로라 크루에게는 「얼리버드」로만 보인다. 운영 화면만 COHORT_MONTH 를 붙여 구별한다.
+ */
 export function cohortTitle(club: ClubConfig, m: Month): string {
-  return `${club.title} ${m.year}년 ${m.month}월`;
+  return `${club.title} · ${m.year}년 ${m.month}월`;
 }
 
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];

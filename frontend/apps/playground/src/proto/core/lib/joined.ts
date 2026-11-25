@@ -3,7 +3,7 @@ import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { isKickoff, meetingLabel, wallParts, type ProtoMeeting } from '@core/lib/meetings';
 import { zoneAbbreviation } from '@core/lib/schedule-timezone';
-import { site } from '@studyclub/mock';
+import { site, studies } from '@studyclub/mock';
 import { type Study, type StudyMeeting } from '@studyclub/types';
 
 /** IANA 시간대. */
@@ -54,6 +54,24 @@ export function lifeStatus(study: Study): LifeStatus {
 
 /** 참여 중단 배지. 완주는 이 배지를 쓰지 않는다. */
 export const LEFT_BADGE = { label: '종료', tone: 'ended' as const };
+
+/**
+ * 클럽 이어서 참여 — 같은 클럽의 진행 중인 기수에 참여 중(참여 중단 아님)이면 다음 기수로 넘어간다 (POL-0012).
+ * 그러면 다음 기수에 따로 신청하지 않는다 — 신청 버튼은 「신청 완료」로 막는다. 넘어가는 기수를 돌려준다.
+ * 캡틴이 이어서 참여에서 뺀 사람은 신청할 수 있다 — 프로토는 뺀 명단이 없어 다루지 않는다.
+ * TODO(api): GET /api/studies/{studyId}/applications/me 의 carriedOver 로 바꾼다
+ */
+export function carriedFrom(study: Study, appliedIds: string[]): Study | undefined {
+  if (study.program?.kind !== 'club' || study.status !== 'recruiting') return undefined;
+  return studies.find(
+    (s) =>
+      s.id !== study.id &&
+      s.program?.id === study.program?.id &&
+      s.status === 'ongoing' &&
+      appliedIds.includes(s.id) &&
+      endKindOf(s) !== 'withdrawn',
+  );
+}
 
 export function isCompleted(study: Study): boolean {
   return endKindOf(study) === 'completed';

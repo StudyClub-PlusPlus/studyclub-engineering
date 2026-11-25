@@ -368,6 +368,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 | 참여 중단 (`STUDY_WITHDRAWN`) | `참여 중단된 스터디는 다시 신청할 수 없어요.` |
 | 이미 신청 | `이미 신청한 스터디입니다.` |
 | 이미 참여 중 | `이미 참여 중인 스터디입니다.` |
+| 클럽 이어서 참여 예정 | `다음 기수로 이어서 참여합니다. 따로 신청하지 않아도 돼요.` |
 | 모집 마감 | `모집이 마감되었습니다.` |
 | 정원 초과 | `정원이 가득 찼습니다.` |
 
@@ -417,6 +418,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 | applicationId | Long | Y | `applied=false` 이면 null | STUDY_APPLICATION.ID |
 | submittedAt | String | Y | 행 생성 시각. `applied=false` 이면 null | STUDY_APPLICATION.CREATED_AT (`BaseEntity`) |
 | withdrawn | Boolean | N | 참이면 다시 신청할 수 없다 (신청 제출 `409 STUDY_WITHDRAWN`) | 계산: 이 기수 내 `STUDY_PARTICIPANT.STATUS = WITHDRAWN` |
+| carriedOver | Boolean | N | 클럽 기수만. 참이면 직전 기수에서 이어서 참여하므로 신청하지 않는다 — 화면은 `신청 완료`(비활성) | 계산: [club-cohort 「크루 신청」](../club-cohort/spec.md#크루-신청--넘어갈-사람은-막는다) |
 
 ### Error Responses
 
