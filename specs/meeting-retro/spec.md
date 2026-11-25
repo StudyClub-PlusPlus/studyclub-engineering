@@ -3,7 +3,7 @@
 > ERD: 새 테이블 `STUDY_MEETING_RETRO` · `STUDY_MEETING_RETRO_LIKE` (아래 「데이터」) · 참조 [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md)
 > 정책: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
 > 생성일: 2026-11-21
-> 상태: 스펙작성중
+> 상태: 스펙확정
 >
 > Story PRD:
 > - [크루는 미팅이 끝나면 회고를 남기고 같은 반 회고에 공감할 수 있다. (ST-039)](../../01-planning/stories/crew-write-meeting-retro/PRD.md)
@@ -17,15 +17,15 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/studies/{studyId}/retros/status | 내 분반 회차마다 회고 상태 (끝났나 · 기한 · 쓸 수 있나 · 내가 썼나 · 쓴 사람/쓸 사람) | 필요 (반 참여자 · 네비게이터 · 담당 캡틴) | 스펙작성중 |
-| GET | /api/studies/{studyId}/meetings/{meetingId}/retros | 한 회차의 회고 목록 · 안 쓴 참여자(네비게이터 · 캡틴만) | 필요 (같음) | 스펙작성중 |
-| PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/me | 내 회고 작성 · 수정 | 필요 (그 회차의 쓸 사람) | 스펙작성중 |
-| PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 누르기 | 필요 (반 참여자, 자기 회고 제외) | 스펙작성중 |
-| DELETE | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 취소 | 필요 (같음) | 스펙작성중 |
+| GET | /api/me/studies/{studyId}/meetings/{meetingId}/retros | 내 뷰어 컨텍스트 (내 회고 ID · 내가 누른 👍) | 필요 (반 참여자) | 스펙확정 |
+| GET | /api/studies/{studyId}/meetings/{meetingId}/retros | 한 회차의 회고 목록 · 안 쓴 참여자(네비게이터 · 캡틴만) | 필요 (같음) | 스펙확정 |
+| PUT | /api/me/studies/{studyId}/meetings/{meetingId}/retro | 내 회고 작성 · 수정 | 필요 (그 회차의 쓸 사람) | 스펙확정 |
+| PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 누르기 | 필요 (반 참여자, 자기 회고 제외) | 스펙확정 |
+| DELETE | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 취소 | 필요 (같음) | 스펙확정 |
 | GET | /api/admin/retros | 회고 모아보기 (쓴 회고만) | 필요 (ADMIN) | 스펙작성중 |
 | GET | /api/admin/retros/export.csv | 같은 조건 CSV | 필요 (ADMIN) | 스펙작성중 |
 
-상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
+상태: `스펙확정` → `스펙확정` → `구현중` → `구현완료`
 
 `section` = `GOOD` · `IMPROVE` · `FEELING`
 
@@ -35,7 +35,8 @@
 - 기한 = 다음 정규 회차 시작. 마지막 회차는 미팅 종료 + 7일
 - 쓸 수 있음 = 미팅 종료 ≤ 지금 < 기한
 - 쓸 사람 = 그 회차 시작 때 반에 있던 참여자(`STUDY_PARTICIPANT`, 그전에 참여를 중단했으면 뺀다). 캡틴은 넣지 않는다
-- 킥오프 회차에는 회고가 없다
+- 킥오프 회차에는 회고가 없다. 킥오프 회차의 `retroDeadline` · `retroOpen` · `retroMine` 은 `null`
+- 회차별 회고 상태(`retroDeadline` · `retroOpen` · `retroMine`)는 `GET /api/me/studies` 응답의 `meetings[]` 각 항목에 포함한다 — 별도 status 엔드포인트 없음
 - 시각(회차 시작 · 종료 · 기한 · 작성일)은 모두 UTC 로 내려준다. 화면은 보는 사람의 시간대(사용자 사이트 = 프로필 시간대, 백오피스 = 표시 시간대)로 날짜 · 시각을 바꾸고 약칭을 붙인다 — 일정 표와 같은 날짜가 나와야 한다
 
 ## 데이터
@@ -62,27 +63,23 @@ erDiagram
   }
 ```
 
-## GET /api/studies/{studyId}/retros/status
+## GET /api/me/studies/{studyId}/meetings/{meetingId}/retros
 
 ```json
 {
-  "groupId": 12,
-  "meetings": [
-    {
-      "meetingId": 301,
-      "no": 3,
-      "ended": true,
-      "deadline": "2026-11-24T11:30:00Z",
-      "open": true,
-      "mine": false,
-      "written": 5,
-      "targets": 8
-    }
-  ]
+  "participantId": 77,
+  "retroId": 9001,
+  "liked": {
+    "9001": { "GOOD": true, "IMPROVE": false, "FEELING": false }
+  }
 }
 ```
 
-킥오프는 목록에 없다. 끝나지 않은 회차는 `ended=false` · `written=0`.
+- 인증 필요 (반 참여자)
+- `retroId`: 내가 작성한 회고 ID. 미작성이면 `null`
+- `liked`: 내가 👍 누른 항목. `retroId → { section: boolean }` 맵. 아무것도 안 눌렀으면 `{}`
+- FE는 `GET .../retros` 와 병렬로 요청하고 `retroId` 로 조합해 내 회고 위치와 누른 항목을 표시한다
+- 끝나지 않은 회차는 `409 RETRO_NOT_OPEN`
 
 ## GET /api/studies/{studyId}/meetings/{meetingId}/retros
 
@@ -95,25 +92,24 @@ erDiagram
   "retros": [
     {
       "retroId": 9001,
-      "author": { "participantId": 77, "displayName": "하늘", "role": "MEMBER", "me": true },
+      "author": { "participantId": 55, "displayName": "민호", "role": "MEMBER" },
       "good": "…",
       "improve": "…",
       "feeling": "",
       "writtenAt": "2026-11-17T12:42:00Z",
-      "likes": { "GOOD": 3, "IMPROVE": 2, "FEELING": 0 },
-      "liked": { "GOOD": false, "IMPROVE": false, "FEELING": false }
+      "likes": { "GOOD": 3, "IMPROVE": 2, "FEELING": 0 }
     }
   ],
-  "missing": [{ "participantId": 80, "displayName": "민호", "me": false }]
+  "missing": [{ "participantId": 80, "displayName": "하늘" }]
 }
 ```
 
-- 순서: 내 회고가 맨 앞, 나머지는 `writtenAt` 오름차순
+- 순서: `writtenAt` 오름차순
 - 👍 를 누른 사람은 내려주지 않는다 — 수만
-- `missing` 은 그 반의 LEADER · CO_LEADER 와 ADMIN 에게만 채운다. 크루에게는 늘 `[]` — 안 쓴 사람 이름을 크루에게 보이지 않는다. 내가 안 썼는지는 `items` 에 `me: true` 가 있는지로 안다
+- `missing` 은 그 반의 LEADER · CO_LEADER 와 ADMIN 에게만 채운다. 크루에게는 늘 `[]` — 안 쓴 사람 이름을 크루에게 보이지 않는다. 내가 썼는지 · 내가 누른 👍 는 `GET .../retros/me` 로 확인한다
 - 끝나지 않은 회차는 `409 RETRO_NOT_OPEN`
 
-## PUT /api/studies/{studyId}/meetings/{meetingId}/retros/me
+## PUT /api/me/studies/{studyId}/meetings/{meetingId}/retro
 
 ```json
 { "good": "…", "improve": "…", "feeling": "" }
