@@ -13,6 +13,7 @@ import { type Study } from '@studyclub/types';
 import { Button, Modal, cx } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
 
+import { kindRules } from '@/proto/lib/study-kind';
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /**
@@ -118,7 +119,8 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const { role, group, canEdit } = access;
   const captain = role === 'captain';
   const tabs = [
-    { href: base, label: '일정' },
+    // 클럽은 일정 탭이 없다 — 모임 시각 · 회차가 없다 (POL-0012). 규칙 카드는 탭 위라 그대로 보인다
+    ...(kindRules(study).hiddenTabs.includes('schedule') ? [] : [{ href: base, label: '일정' }]),
     { href: `${base}/attendance`, label: '출석' },
     { href: `${base}/retro`, label: '회고', match: `${base}/retro` },
     // 공지는 보내는 사람(캡틴·네비게이터)만 쓴다. 반 멤버가 읽는 공지 목록은 없다 (POL-0010)

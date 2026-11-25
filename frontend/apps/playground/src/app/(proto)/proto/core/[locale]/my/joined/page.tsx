@@ -38,6 +38,7 @@ import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { MEETING_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { kindRules } from '@/proto/lib/study-kind';
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 type Filter = 'all' | LifeStatus;
@@ -136,7 +137,9 @@ function weekRangeLabel(days: WeekDay[]): string {
 
 /** 내 스터디룸에서 들어가는 스터디 일정. 주소 값은 study_id(STUDY.ID). */
 function schedulePath(locale: Locale, study: Study): string {
-  return `/proto/core/${locale}/my/joined/${study.study_id}/schedule`;
+  // 클럽은 일정 탭이 없어 출석 탭으로 바로 연다 (POL-0012)
+  const tab = kindRules(study).hiddenTabs.includes('schedule') ? '/attendance' : '';
+  return `/proto/core/${locale}/my/joined/${study.study_id}/schedule${tab}`;
 }
 
 function weekChip(category: string | undefined): { accent: string; tint: number } {

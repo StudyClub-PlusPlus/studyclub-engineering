@@ -7,7 +7,7 @@ import type { Study, StudyKind } from '@studyclub/types';
  * 클럽마다 다른 것(명단에 보이는 질문 · 정원)은 여기가 아니라 클럽 설정(`ClubConfig`)이다.
  */
 export type KindRules = {
-  /** 숨기는 탭 — 클럽은 모임 시각 · 킥오프가 없어 일정 탭이 없다 */
+  /** 숨기는 탭 — 클럽은 모임 시각 · 킥오프가 없어 일정 탭이 없다 (운영 콘솔 스터디 상세 · 사용자 사이트 스터디 일정 둘 다) */
   hiddenTabs: readonly string[];
   /** 신청자 탭에서 반을 나누는가 — 클럽은 기본 반 하나라 반을 드러내지 않는다 */
   grouping: boolean;
