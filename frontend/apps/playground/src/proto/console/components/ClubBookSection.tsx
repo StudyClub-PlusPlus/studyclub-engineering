@@ -37,6 +37,7 @@ export function ClubBookSection({
   onMonth,
   onSave,
   onWithdraw,
+  onReinstate,
   onDirtyChange,
 }: {
   club: ClubConfig;
@@ -52,6 +53,8 @@ export function ClubBookSection({
   onMonth: (m: Month | undefined) => void;
   onSave: (next: ClubBook) => Promise<void>;
   onWithdraw: (ids: string[]) => void;
+  /** 참여 중단 취소 — 이번 기수에서만 */
+  onReinstate: (id: string) => void;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const now = monthOf(today);
@@ -108,6 +111,7 @@ export function ClubBookSection({
       onDirtyChange={onDirtyChange}
       onSave={onSave}
       onWithdraw={onWithdraw}
+      onReinstate={onReinstate}
     />
   );
 }
@@ -170,6 +174,7 @@ export function ClubStudyAttendance({
         setBook(next);
       }}
       onWithdraw={(ids) => setMembers((ms) => ms.map((m) => (ids.includes(m.id) ? { ...m, leftOn: today } : m)))}
+      onReinstate={(id) => setMembers((ms) => ms.map((m) => (m.id === id ? { ...m, leftOn: undefined } : m)))}
     />
   );
 }

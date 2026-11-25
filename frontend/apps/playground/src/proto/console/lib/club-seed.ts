@@ -18,8 +18,13 @@ import type { AttendanceStatus } from '@studyclub/types';
  */
 
 /** 프로토의 「오늘」 두 가지 — 다음 기수 초안이 만들어지기 전과 뒤. */
-export type DemoDay = 'before' | 'after';
-export const DEMO_TODAY: Record<DemoDay, string> = { before: '2026-12-10', after: '2026-12-16' };
+export type DemoDay = 'before' | 'after' | 'published';
+/** 검토용 「오늘」 — 초안 전(10일) · 초안 뒤 공개 전(16일) · 자동 공개 뒤(21일) */
+export const DEMO_TODAY: Record<DemoDay, string> = {
+  before: '2026-12-10',
+  after: '2026-12-16',
+  published: '2026-12-21',
+};
 
 const NAMES = [
   '새벽세시',
@@ -83,7 +88,7 @@ export function seedBook(club: ClubConfig, members: ClubMember[], today: string,
       if (mem.leftOn && day > mem.leftOn) break;
       const r = (i * 7 + d * 13) % 17;
       let s: AttendanceStatus = r < 11 ? 'present' : r < 14 ? 'absent' : 'excused';
-      if (club.statuses.includes('late') && r === 3) s = 'late';
+      if (r === 3) s = 'late';
       if (mem.leftOn && r > 6) s = 'absent';
       row[day] = s;
     }

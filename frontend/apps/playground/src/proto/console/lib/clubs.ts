@@ -21,8 +21,6 @@ export type ClubConfig = {
   key: ClubKey;
   /** STUDY_PROGRAM.TITLE — 기수 제목의 앞부분 */
   title: string;
-  /** STUDY_PROGRAM.ATTENDANCE_LATE_ENABLED — 지각을 쓰는가. 출석 값은 이것으로 정해진다 */
-  allowLate: boolean;
   /** STUDY.TIME_ZONE — 출석부의 날짜를 가르는 시간대. 기존 기수 시간대 값을 그대로 쓴다 */
   timeZone: string;
   /** 신청 폼에서 「명단에 보이기」를 켠 질문 — 그 답을 명단 · 출석부에 보인다 */
@@ -31,48 +29,39 @@ export type ClubConfig = {
   capacity?: number;
   /** 프로토 전용 — 이번 기수에 해당하는 mock 스터디 */
   mockStudy: string;
-  /** 출석부에 쓰는 값 — allowLate 에서 나온다. 순서가 칸을 누를 때 도는 순서다 */
-  statuses: AttendanceStatus[];
 };
 
-/** 출석 값은 「지각을 쓰는가」 하나로 정해진다 */
-export function statusesOf(allowLate: boolean): AttendanceStatus[] {
-  return allowLate ? ['present', 'late', 'absent', 'excused'] : ['present', 'absent', 'excused'];
-}
+/** 출석 값 — 스터디와 같다. 순서가 칸을 누를 때 도는 순서다 */
+export const ATTENDANCE_STATUSES: AttendanceStatus[] = ['present', 'late', 'absent', 'excused'];
 
 /** 프로그램 기본 시간대 — 이것과 다른 시간대의 클럽만 화면에 날짜 기준을 알린다 */
 export const DEFAULT_TIME_ZONE = 'Asia/Seoul';
 
 /** 프로토의 세 클럽 — 2026-11 캡틴 답변 기준 설정 값 */
-export const CLUBS: ClubConfig[] = (
-  [
-    {
-      key: 'earlybird',
-      title: '얼리버드',
-      allowLate: true,
-      timeZone: DEFAULT_TIME_ZONE,
-      rosterQuestion: { label: '기상 목표' },
-      capacity: 30,
-      mockStudy: 'early-bird',
-    },
-    {
-      key: 'weeklyx',
-      title: 'WEEKLY X',
-      allowLate: false,
-      timeZone: DEFAULT_TIME_ZONE,
-      capacity: 30,
-      mockStudy: 'weeklyx',
-    },
-    {
-      key: 'leetcode',
-      title: 'Daily LeetCode',
-      allowLate: false,
-      timeZone: 'UTC',
-      rosterQuestion: { label: 'LeetCode ID' },
-      mockStudy: 'daily-leetcode',
-    },
-  ] satisfies Omit<ClubConfig, 'statuses'>[]
-).map((c) => ({ ...c, statuses: statusesOf(c.allowLate) }));
+export const CLUBS: ClubConfig[] = [
+  {
+    key: 'earlybird',
+    title: '얼리버드',
+    timeZone: DEFAULT_TIME_ZONE,
+    rosterQuestion: { label: '기상 목표' },
+    capacity: 30,
+    mockStudy: 'early-bird',
+  },
+  {
+    key: 'weeklyx',
+    title: 'WEEKLY X',
+    timeZone: DEFAULT_TIME_ZONE,
+    capacity: 30,
+    mockStudy: 'weeklyx',
+  },
+  {
+    key: 'leetcode',
+    title: 'Daily LeetCode',
+    timeZone: 'UTC',
+    rosterQuestion: { label: 'LeetCode ID' },
+    mockStudy: 'daily-leetcode',
+  },
+];
 
 /** 이번 기수의 스터디 상세 주소 값(study_id). 신청 폼 · 신청자는 그 화면이 맡는다 */
 export function clubStudyId(club: ClubConfig): number | undefined {
@@ -83,8 +72,10 @@ export function clubOf(key: ClubKey): ClubConfig {
   return CLUBS.find((c) => c.key === key) ?? CLUBS[0];
 }
 
-/** 자동 초안 만드는 날의 기본값 — 캡틴이 지금 모집을 여는 15~20일 중 첫날. */
+/** 자동 초안 만드는 날의 기본값 — 15일에 미공개로 만들고 */
 export const DEFAULT_DRAFT_DAY = 15;
+/** 자동 공개하는 날의 기본값 — 20일에 공개해 모집을 연다. 캡틴은 그 전에 먼저 열 수 있다 */
+export const DEFAULT_PUBLISH_DAY = 20;
 
 export type Month = { year: number; month: number };
 
@@ -133,7 +124,7 @@ export type ClubMember = {
 
 export type ClubBook = Record<string, Record<string, AttendanceStatus>>;
 
-/** 출석률(%) — 출석 1, 지각 0.5. 분모는 기록된 날에서 휴가를 뺀 것. 기록 없는 날은 넣지 않는다. */
+/** 출석률(%) — 스터디 출석률 산식 그대로 (specs/attendance). 출석 1 · 지각 0.5, 분모는 기록된 날에서 휴가를 뺀 것. 기록 없는 날은 넣지 않는다. */
 export function clubRate(row: Record<string, AttendanceStatus> | undefined): number | undefined {
   let score = 0;
   let total = 0;

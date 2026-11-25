@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { parseSheetRows, sheetValueHint, type PasteCell } from '@console/lib/club-sheet';
-import { type ClubConfig, type ClubMember } from '@console/lib/clubs';
+import { type ClubMember } from '@console/lib/clubs';
 import { Button, Modal, Textarea } from '@studyclub/ui';
 
 /**
@@ -12,14 +12,12 @@ import { Button, Modal, Textarea } from '@studyclub/ui';
  */
 export function ClubPasteDialog({
   open,
-  club,
   days,
   members,
   onClose,
   onApply,
 }: {
   open: boolean;
-  club: ClubConfig;
   days: string[];
   members: ClubMember[];
   onClose: () => void;
@@ -30,8 +28,8 @@ export function ClubPasteDialog({
     if (open) setText('');
   }, [open]);
 
-  const result = useMemo(() => parseSheetRows(text, club, members, days), [text, club, members, days]);
-  const valueHint = sheetValueHint(club);
+  const result = useMemo(() => parseSheetRows(text, members, days), [text, members, days]);
+  const valueHint = sheetValueHint();
 
   return (
     <Modal

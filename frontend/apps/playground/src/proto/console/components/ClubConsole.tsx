@@ -12,6 +12,8 @@ import {
   clubStudyId,
   CLUBS,
   DEFAULT_DRAFT_DAY,
+  DEFAULT_PUBLISH_DAY,
+  isoDay,
   monthOf,
   type ClubBook,
   type ClubKey,
@@ -36,8 +38,10 @@ type ClubState = {
   members: ClubMember[];
   book: ClubBook;
   excluded: string[];
-  /** 캡틴이 직접 바꾼 다음 기수 상태. 없으면 자동 초안 규칙으로 정한다 */
+  /** 캡틴이 직접 바꾼 다음 기수 상태. 없으면 자동 초안 · 자동 공개 규칙으로 정한다 */
   next?: NextState;
+  /** 캡틴이 「모집 시작」을 먼저 누른 날 */
+  recruitFrom?: string;
   auto: AutoDraft;
 };
 
@@ -48,7 +52,7 @@ function seed(key: ClubKey, today: string): ClubState {
     members,
     book: seedBook(club, members, today),
     excluded: key === 'earlybird' ? [`${key}-5`] : [],
-    auto: { on: true, day: DEFAULT_DRAFT_DAY },
+    auto: { on: true, day: DEFAULT_DRAFT_DAY, publishDay: DEFAULT_PUBLISH_DAY },
   };
 }
 
@@ -79,8 +83,17 @@ export function ClubConsole() {
   const { loadPast, savePast } = usePastBooks(club);
   const cur = state[clubKey];
   const current = monthOf(today);
-  // 다음 기수 — 캡틴이 바꾼 값이 먼저, 아니면 「자동 초안이 켜져 있고 그날이 지났는가」
-  const next: NextState = cur.next ?? (cur.auto.on && Number(today.slice(8, 10)) >= cur.auto.day ? 'draft' : 'none');
+  // 다음 기수 — 자동이 켜져 있으면 초안 날에 초안, 공개 날에 모집중. 캡틴이 먼저 만들거나 먼저 열 수 있다
+  const dayNow = Number(today.slice(8, 10));
+  const auto: NextState = !cur.auto.on
+    ? 'none'
+    : dayNow >= cur.auto.publishDay
+      ? 'recruiting'
+      : dayNow >= cur.auto.day
+        ? 'draft'
+        : 'none';
+  const next: NextState = cur.next === 'recruiting' || auto === 'recruiting' ? 'recruiting' : (cur.next ?? auto);
+  const recruitFrom = cur.recruitFrom ?? isoDay(current, cur.auto.publishDay);
   const activeCount = cur.members.filter((m) => !m.leftOn).length;
   const carryCount = cur.members.filter((m) => !m.leftOn && !cur.excluded.includes(m.id)).length;
 
@@ -123,6 +136,7 @@ export function ClubConsole() {
             options={[
               { value: 'before', label: '12/10' },
               { value: 'after', label: '12/16' },
+              { value: 'published', label: '12/21' },
             ]}
           />
         </div>
@@ -161,13 +175,14 @@ export function ClubConsole() {
               today={today}
               memberCount={activeCount}
               next={next}
+              recruitFrom={recruitFrom}
               carryCount={carryCount}
               // 모집을 막 시작한 기수 — 프로토는 신청 3명이 들어온 것으로 본다
               applicants={next === 'recruiting' ? 3 : 0}
               auto={cur.auto}
               onAutoChange={(auto) => patch((s) => ({ ...s, auto }))}
               onCreate={() => patch((s) => ({ ...s, next: 'draft' }))}
-              onStartRecruit={() => patch((s) => ({ ...s, next: 'recruiting' }))}
+              onStartRecruit={() => patch((s) => ({ ...s, next: 'recruiting', recruitFrom: today }))}
               studyId={clubStudyId(club)}
             />
             {next === 'none' ? (
@@ -226,6 +241,10 @@ export function ClubConsole() {
                 members: s.members.map((m) => (ids.includes(m.id) ? { ...m, leftOn: today } : m)),
                 excluded: s.excluded.filter((id) => !ids.includes(id)),
               }))
+            }
+            onReinstate={(id) =>
+              // TODO(api): POST /api/admin/studies/{studyId}/attendances 의 reinstatements[] — WITHDRAWN → ACTIVE · LEFT_AT 비움
+              patch((s) => ({ ...s, members: s.members.map((m) => (m.id === id ? { ...m, leftOn: undefined } : m)) }))
             }
           />
         )}

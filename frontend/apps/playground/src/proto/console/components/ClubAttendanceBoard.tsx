@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BulkSelect, SelectAll } from '@console/components/AttendanceTab';
 import { ClubPasteDialog } from '@console/components/ClubPasteDialog';
 import {
+  ATTENDANCE_STATUSES,
   clubDays,
   clubRate,
   daysIn,
@@ -21,7 +22,6 @@ import {
 import { type AttendanceStatus } from '@studyclub/types';
 import { Badge, Button, Checkbox, HelpPopover, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
 import { ClipboardPaste } from 'lucide-react';
-
 
 /**
  * 클럽 월간 출석부 — 사람 × 그 달의 날짜.
@@ -70,6 +70,7 @@ export function ClubAttendanceBoard({
   book,
   onSave,
   onWithdraw,
+  onReinstate,
   onDirtyChange,
   ended = false,
   monthPicker,
@@ -83,6 +84,8 @@ export function ClubAttendanceBoard({
   onSave: (next: ClubBook) => Promise<void>;
   /** 참여 중단 — 오늘 날짜로 끝난다 */
   onWithdraw: (ids: string[]) => void;
+  /** 참여 중단 취소 — 다시 참여 중으로. 이번 기수에서만 */
+  onReinstate?: (id: string) => void;
   onDirtyChange?: (dirty: boolean) => void;
   /** 끝난 기수 — 출석은 고칠 수 있다. 참여 중단은 없다 (기수가 이미 끝났다) */
   ended?: boolean;
@@ -100,6 +103,7 @@ export function ClubAttendanceBoard({
   const [bulkDay, setBulkDay] = useState(today);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [reinstate, setReinstate] = useState<ClubMember | null>(null);
 
   const changed = changedCount(book, draft);
   const dirty = changed > 0;
@@ -114,9 +118,9 @@ export function ClubAttendanceBoard({
   const editable = (m: ClubMember, day: string) => day <= today && !(m.leftOn && day > m.leftOn);
 
   function cycle(cur: AttendanceStatus | undefined): AttendanceStatus | undefined {
-    if (cur === undefined) return club.statuses[0];
-    const i = club.statuses.indexOf(cur);
-    return i === club.statuses.length - 1 ? undefined : club.statuses[i + 1];
+    if (cur === undefined) return ATTENDANCE_STATUSES[0];
+    const i = ATTENDANCE_STATUSES.indexOf(cur);
+    return i === ATTENDANCE_STATUSES.length - 1 ? undefined : ATTENDANCE_STATUSES[i + 1];
   }
 
   function setCell(id: string, day: string, s: AttendanceStatus | undefined) {
@@ -140,7 +144,7 @@ export function ClubAttendanceBoard({
   }
 
   const bulkOptions = [
-    ...club.statuses.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
+    ...ATTENDANCE_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
     { value: 'clear', label: '기록 지우기' },
   ];
 
@@ -185,7 +189,7 @@ export function ClubAttendanceBoard({
       </div>
 
       <ul data-anno='clubbook:2' className='mb-3 flex flex-wrap items-center gap-3 type-label-sm text-fg-muted'>
-        {club.statuses.map((s) => (
+        {ATTENDANCE_STATUSES.map((s) => (
           <li key={s} className='flex items-center gap-1.5'>
             <span className={`grid h-5 w-5 place-items-center rounded-sm ${CELL_STYLE[s]}`}>{SHORT[s]}</span>
             {STATUS_LABEL[s]}
@@ -357,6 +361,17 @@ export function ClubAttendanceBoard({
                         {m.name}
                       </span>
                       {left && <span className='block type-label-sm'>{shortDate(m.leftOn!)} 참여 중단</span>}
+                      {left && !ended && onReinstate && (
+                        <Button
+                          data-anno={ri === rows.findIndex((x) => x.leftOn) ? 'clubbook:3-7' : undefined}
+                          size='sm'
+                          variant='tertiary'
+                          disabled={saving}
+                          onClick={() => setReinstate(m)}
+                        >
+                          참여 중단 취소
+                        </Button>
+                      )}
                     </td>
                     {club.rosterQuestion && (
                       <td className='tnum whitespace-nowrap border-t border-border px-2 py-1 type-label-sm'>
@@ -392,7 +407,7 @@ export function ClubAttendanceBoard({
                             data-anno={ri === 0 && di === 0 ? 'clubbook:3-4' : undefined}
                             onClick={() => setCell(m.id, d, cycle(s))}
                             aria-label={isChanged ? `${label} · 저장되지 않음` : label}
-                            title={`눌러서 ${club.statuses.map((x) => STATUS_LABEL[x]).join(' → ')} → 기록 없음`}
+                            title={`눌러서 ${ATTENDANCE_STATUSES.map((x) => STATUS_LABEL[x]).join(' → ')} → 기록 없음`}
                             className={`h-8 w-full rounded-sm type-label-sm transition-colors ${
                               s ? CELL_STYLE[s] : 'bg-surface-1 hover:bg-surface-2'
                             } ${isChanged ? `ring-2 ${s ? CHANGED_RING[s] : 'ring-border-strong'}` : ''}`}
@@ -416,7 +431,6 @@ export function ClubAttendanceBoard({
 
       <ClubPasteDialog
         open={pasteOpen}
-        club={club}
         days={days.filter((d) => d <= today)}
         members={members}
         onClose={() => setPasteOpen(false)}
@@ -456,6 +470,35 @@ export function ClubAttendanceBoard({
           <p className='mt-1.5 type-body-sm text-fg-muted'>
             오늘({shortDate(today)})로 참여가 끝납니다. 이 기수를 완주하지 않은 것으로 남고, 다음 기수로 이어지지
             않습니다. 다시 참여하려면 다음 기수 모집에 신청해야 합니다.
+          </p>
+        </div>
+      </Modal>
+
+      <Modal
+        open={reinstate !== null}
+        onClose={() => setReinstate(null)}
+        title='참여 중단 취소'
+        footer={
+          <>
+            <Button variant='secondary' data-autofocus onClick={() => setReinstate(null)}>
+              닫기
+            </Button>
+            <Button
+              onClick={() => {
+                if (reinstate) onReinstate?.(reinstate.id);
+                setReinstate(null);
+              }}
+            >
+              참여 중단 취소
+            </Button>
+          </>
+        }
+      >
+        <div data-anno='clubbook:6-1' className='py-4'>
+          <p className='type-label-lg text-fg'>{reinstate?.name}</p>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>
+            다시 참여 중으로 돌아갑니다. {reinstate?.leftOn ? shortDate(reinstate.leftOn) : ''} 뒤의 날짜도 입력할 수
+            있고, 이번 기수를 끝까지 마치면 다음 기수로 이어집니다.
           </p>
         </div>
       </Modal>

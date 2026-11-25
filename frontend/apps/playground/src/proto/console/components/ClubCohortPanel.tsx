@@ -10,14 +10,16 @@ import { Plus } from 'lucide-react';
 /**
  * 클럽 기수 — 이번 기수와 다음 기수.
  *
- * 다음 기수는 **반자동**이다. 정한 날(기본 15일)에 다음 달 기수 초안이 미공개로 만들어지고,
- * 캡틴이 내용을 확인한 뒤 「모집 시작」을 누르면 사이트에 공개되며 모집이 열린다.
- * TODO(api): 초안은 서버 스케줄러가 만든다 — POST 없이 GET /api/admin/clubs/{programId} 가 다음 기수를 함께 준다
+ * 다음 기수는 **자동**이다. 정한 날(기본 15일)에 다음 달 기수가 미공개 초안으로 만들어지고,
+ * 공개하는 날(기본 20일)에 사이트에 공개되며 모집이 열린다. 그 사이에 캡틴이 내용을 확인하고 고친다.
+ * 캡틴은 「모집 시작」으로 먼저 열 수 있다.
+ * TODO(api): 초안 · 공개는 서버 스케줄러가 한다 — GET /api/admin/clubs/{programId} 가 다음 기수를 함께 준다
  */
 
 export type NextState = 'none' | 'draft' | 'recruiting';
 
-export type AutoDraft = { on: boolean; day: number };
+/** 자동 초안 · 자동 공개 — day 에 초안, publishDay 에 공개 */
+export type AutoDraft = { on: boolean; day: number; publishDay: number };
 
 export function ClubCohortPanel({
   club,
@@ -25,6 +27,7 @@ export function ClubCohortPanel({
   today,
   memberCount,
   next,
+  recruitFrom,
   carryCount,
   applicants,
   auto,
@@ -40,6 +43,8 @@ export function ClubCohortPanel({
   /** 이번 기수 참여 중 인원 */
   memberCount: number;
   next: NextState;
+  /** 모집 시작일 — 캡틴이 먼저 열었으면 그날, 아니면 자동 공개 날 */
+  recruitFrom: string;
   /** 다음 기수로 넘어갈 예정 인원 */
   carryCount: number;
   /** 다음 기수 신청 인원 (모집 시작 뒤) */
@@ -57,6 +62,7 @@ export function ClubCohortPanel({
   const nextStart = isoDay(nm, 1);
   const nextEnd = isoDay(nm, daysIn(nm));
   const draftOn = isoDay(current, auto.day);
+  const publishOn = isoDay(current, auto.publishDay);
   const dday = Math.round((Date.parse(curEnd) - Date.parse(today)) / 86_400_000);
   const seats = club.capacity === undefined ? undefined : Math.max(club.capacity - carryCount - applicants, 0);
 
@@ -117,7 +123,7 @@ export function ClubCohortPanel({
           <div className='mt-3'>
             <p data-anno='cohort:2-5' className='type-body-sm text-fg-secondary'>
               {auto.on
-                ? `${shortDate(draftOn)}에 초안이 자동으로 만들어집니다.`
+                ? `${shortDate(draftOn)}에 초안이 만들어지고 ${shortDate(publishOn)}에 자동으로 공개됩니다.`
                 : '자동 초안이 꺼져 있습니다. 직접 만들어 주세요.'}
             </p>
             <Button
@@ -140,8 +146,8 @@ export function ClubCohortPanel({
               </dd>
               <dt className='text-fg-muted'>모집</dt>
               <dd className='tnum text-fg'>
-                {next === 'recruiting'
-                  ? `${shortDate(today)} ~ ${shortDate(curEnd)}`
+                {next === 'recruiting' || auto.on
+                  ? `${shortDate(recruitFrom)} ~ ${shortDate(curEnd)}`
                   : `모집 시작한 날 ~ ${shortDate(curEnd)}`}
               </dd>
               <dt className='text-fg-muted'>정원</dt>
@@ -161,6 +167,13 @@ export function ClubCohortPanel({
               <dt className='text-fg-muted'>이어서 참여</dt>
               <dd className='tnum text-fg'>{carryCount}명 예정</dd>
             </dl>
+            {next === 'draft' && (
+              <p data-anno='cohort:2-8' className='mt-3 type-body-sm text-fg-secondary'>
+                {auto.on
+                  ? `${shortDate(publishOn)}에 자동으로 공개되고 모집이 열립니다. 먼저 열려면 「모집 시작」을 누르세요.`
+                  : '자동 공개가 꺼져 있습니다. 내용을 확인하고 「모집 시작」을 누르세요.'}
+              </p>
+            )}
             <div className='mt-4 flex flex-wrap gap-2'>
               {next === 'draft' && (
                 <Button data-anno='cohort:2-3' size='sm' onClick={() => setConfirm(true)}>
@@ -191,7 +204,7 @@ export function ClubCohortPanel({
       >
         <span data-anno='cohort:3-1'>
           <Switch
-            label='다음 기수 초안 자동 만들기'
+            label='다음 기수 자동 만들기 · 공개'
             checked={auto.on}
             onCheckedChange={(on) => onAutoChange({ ...auto, on })}
           />
@@ -203,15 +216,34 @@ export function ClubCohortPanel({
             aria-label='초안 만드는 날'
             disabled={!auto.on}
             value={String(auto.day)}
-            onChange={(e) => onAutoChange({ ...auto, day: Number(e.target.value) })}
+            onChange={(e) => {
+              const day = Number(e.target.value);
+              onAutoChange({ ...auto, day, publishDay: Math.max(auto.publishDay, day + 1) });
+            }}
           >
-            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+            {Array.from({ length: 27 }, (_, i) => i + 1).map((d) => (
               <option key={d} value={d}>
                 {d}일
               </option>
             ))}
           </Select>
-          에 다음 달 기수 초안을 만듭니다
+          에 초안을 만들고
+        </span>
+        <span data-anno='cohort:3-3' className='flex items-center gap-2 type-body-sm text-fg-secondary'>
+          <Select
+            size='sm'
+            aria-label='자동 공개하는 날'
+            disabled={!auto.on}
+            value={String(auto.publishDay)}
+            onChange={(e) => onAutoChange({ ...auto, publishDay: Number(e.target.value) })}
+          >
+            {Array.from({ length: 28 - auto.day }, (_, i) => auto.day + 1 + i).map((d) => (
+              <option key={d} value={d}>
+                {d}일
+              </option>
+            ))}
+          </Select>
+          에 공개해 모집을 엽니다
         </span>
       </section>
 

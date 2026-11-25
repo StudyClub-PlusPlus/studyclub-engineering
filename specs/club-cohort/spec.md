@@ -10,8 +10,9 @@
 > - [캡틴은 지난 기수를 끝까지 마친 참여자를 다음 기수로 이어 받을 수 있다. (ST-042)](../../01-planning/stories/captain-carry-over-club-members/PRD.md)
 > - [캡틴은 클럽 기수의 월간 출석부를 입력할 수 있다. (ST-043)](../../01-planning/stories/captain-club-monthly-attendance/PRD.md)
 
-클럽(`STUDY_PROGRAM.STUDY_KIND = CLUB`)의 기수는 **달 하나**다. 다음 달 기수 초안은 스케줄러가 만들고, 캡틴이 기존 공개 API 로 모집을 연다.
-이번 기수를 끝까지 마친 참여자는 다음 기수 시작일 0시에 다음 기수로 넘어간다. 출석은 기존 출석 API 를 쓰되 클럽 기수는 날마다 회차 하나다.
+클럽(`STUDY_PROGRAM.STUDY_KIND = CLUB`)의 기수는 **달 하나**다. 다음 달 기수는 스케줄러가 초안 날(기본 15일)에 만들고 공개 날(기본 20일)에 공개한다. 캡틴은 기존 공개 API 로 먼저 열 수 있다.
+기수 상태는 날짜로 바뀐다. 기수 종료와 이어서 참여는 서로 다른 처리다. 출석은 기존 출석 API · 출석률 산식을 그대로 쓰되 클럽 기수는 날마다 회차 하나다.
+시각은 따로 적지 않으면 한국 시간(KST)이다. 신청에 승인 단계는 없다 — 신청하면 참여자다.
 
 ## 엔드포인트 목록
 
@@ -25,7 +26,7 @@
 | GET | /api/admin/studies/{nextStudyId}/carry-over | 이어서 참여 명단 | O (ADMIN) | 스펙작성중 |
 | PUT | /api/admin/studies/{nextStudyId}/carry-over | 다음 기수에서 뺄 사람 저장 | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/studies/{studyId}/publish | 모집 시작 — 기존 공개 | O (ADMIN) | 구현완료 |
-| GET · POST | /api/admin/studies/{studyId}/attendances | 월간 출석부 — 기존 출석 (클럽 차이는 아래) | O (ADMIN) | 구현완료 · 클럽 검증 추가 |
+| GET · POST | /api/admin/studies/{studyId}/attendances | 월간 출석부 — 기존 출석 (클럽 차이는 아래) | O (ADMIN) | 구현완료 · `reinstatements[]` 추가 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -37,8 +38,9 @@
 |---|---|---|
 | `STUDY_PROGRAM.AUTO_DRAFT_ENABLED` | BOOLEAN NOT NULL DEFAULT TRUE 추가 | `CLUB` 만 쓴다 |
 | `STUDY_PROGRAM.AUTO_DRAFT_DAY` | TINYINT NOT NULL DEFAULT 15 추가 | 1~28 |
-| `STUDY_PROGRAM.ATTENDANCE_LATE_ENABLED` | BOOLEAN NOT NULL DEFAULT FALSE 추가 | 지각 쓰기. 출석 값 검증의 유일한 기준 — 클럽 이름으로 분기하지 않는다 |
-| 신청 폼 질문 `SHOW_IN_ROSTER` | BOOLEAN NOT NULL DEFAULT FALSE 추가 | 켠 질문의 답을 명단 · 출석부 · 이어서 참여 응답의 `rosterAnswer` 로 준다. 초안 · 이어서 참여가 함께 복사한다 |
+| `STUDY_PROGRAM.AUTO_PUBLISH_DAY` | TINYINT NOT NULL DEFAULT 20 추가 | `AUTO_DRAFT_DAY` 보다 크고 28 이하 |
+| 신청 폼 질문 `SHOW_IN_ROSTER` | BOOLEAN NOT NULL DEFAULT FALSE 추가 | 켠 질문의 답을 명단 · 출석부 · 이어서 참여 응답의 `rosterAnswer` 로 준다. 초안이 폼과 함께 복사한다 |
+| 이어서 참여의 신청 답 | 직전 기수 신청 답을 **스냅샷(질문 문구 · 답 · `SHOW_IN_ROSTER`)** 으로 다음 기수 참여에 복사 | 질문 ID 로 짝짓지 않는다 — 다음 기수 폼이 바뀌어도 답이 남는다 |
 | `STUDY.COHORT_MONTH` | DATE NULL 추가 · `UNIQUE(PROGRAM_ID, COHORT_MONTH)` | 클럽 기수의 달(1일). 스터디는 NULL |
 | `STUDY_PARTICIPANT.CARRIED_FROM_ID` | BIGINT NULL 추가 | 이어서 참여로 만든 행의 이전 기수 참여 ID |
 | `CLUB_CARRY_OVER_EXCLUSION` | 새 테이블 — `ID` · `NEXT_STUDY_ID` · `PARTICIPANT_ID` · `CREATED_AT` · `UNIQUE(NEXT_STUDY_ID, PARTICIPANT_ID)` | 캡틴이 뺀 사람 |
@@ -48,17 +50,34 @@
 
 ### 다음 기수 초안 (매일 0시)
 
-- 대상: `STUDY_KIND = CLUB` · `AUTO_DRAFT_ENABLED` · 오늘(캡틴 시간대) 일자 = `AUTO_DRAFT_DAY`
+- 대상: `STUDY_KIND = CLUB` · `AUTO_DRAFT_ENABLED` · 오늘 일자 = `AUTO_DRAFT_DAY`
 - 다음 달 `COHORT_MONTH` 기수가 이미 있으면 건너뛴다
 - 만드는 것: `STUDY`(`STATUS = DRAFT`, 제목 「{프로그램 제목} {YYYY}년 {M}월」, `START_AT` 다음 달 1일, `END_AT` 말일) · `STUDY_RECRUITMENT`(`RECRUIT_DEADLINE_AT` 이번 달 말일 23:59, `START_AT` NULL) · 기본 반 · 날마다 회차
 - 이번 기수(같은 프로그램에서 `COHORT_MONTH` 가 가장 늦은 기수)의 소개 · 상세 설명 · 카테고리 · 시간대 · 디스코드 채널 · 드라이브 · 정원 · 신청 폼을 복사한다
 
-### 이어서 참여 (다음 기수 시작일 0시)
+### 다음 기수 자동 공개 (매일 0시)
 
-1. 직전 기수 종료 — `ACTIVE → COMPLETED`
-2. 직전 기수 `COMPLETED` 로 바뀐 참여자 중 `CLUB_CARRY_OVER_EXCLUSION` 에 없는 사람마다 다음 기수 `STUDY_PARTICIPANT`(`ACTIVE`, 기본 반, `CARRIED_FROM_ID`) — 신청 값 복사
+- 대상: `AUTO_DRAFT_ENABLED` · 오늘 일자 ≥ `AUTO_PUBLISH_DAY` · 다음 달 기수가 `DRAFT`
+- 기존 공개 처리와 같다 — `DRAFT → OPEN`, 오늘이 `STUDY_RECRUITMENT.START_AT`
+- 공개 조건(POL-0003)을 못 맞추면 그대로 두고 운영 알림. 다음 날 다시 대상이 된다
+
+### 기수 상태 (매일 0시)
+
+- 클럽 기수는 날짜로 바뀐다 — 네비게이터 첫 미팅 등록 · 종료 처리를 기다리지 않는다
+- `COHORT_MONTH` 1일 0시: `OPEN → ONGOING`
+- 클럽 기수에는 `CLOSED` 전이가 없다
+
+### 기수 종료 (말일이 끝날 때 — 다음 달 1일 0시)
+
+- 다음 기수가 있든 없든 한다
+- `ACTIVE → COMPLETED` · 기수 `ENDED`
+
+### 이어서 참여 (다음 기수 시작일 0시 — 기수 종료 뒤)
+
+1. 다음 달 기수가 없으면 하지 않는다. `DRAFT` 여도 한다
+2. 직전 기수 `COMPLETED` 참여자 중 `CLUB_CARRY_OVER_EXCLUSION` 에 없는 사람마다 다음 기수 `STUDY_PARTICIPANT`(`ACTIVE`, 기본 반, `CARRIED_FROM_ID`) — 신청 답 스냅샷 복사
 3. 다음 기수에 이미 참여 행이 있으면(신청) 만들지 않는다
-4. 한 클럽씩 한 트랜잭션. 실패는 운영 알림으로 남기고 다음 클럽을 처리한다
+4. 한 클럽씩 한 트랜잭션. 실패는 운영 알림으로 남기고 다음 클럽을 처리한다 — 기수 종료는 되돌리지 않는다
 
 ---
 
@@ -76,7 +95,7 @@
 {
   "programId": 3,
   "title": "얼리버드",
-  "autoDraft": { "enabled": true, "day": 15 },
+  "autoDraft": { "enabled": true, "day": 15, "publishDay": 20 },
   "currentCohort": {
     "studyId": 120,
     "title": "얼리버드 2026년 12월",
@@ -98,6 +117,7 @@
 ```
 
 - `nextCohort` 가 없으면 `null`. 그때 화면은 `autoDraft` 로 예정일을 안내한다
+- 초안이면 화면은 `autoDraft.publishDay` 로 자동 공개 날을 안내한다
 - `status`: `DRAFT`(초안) · `OPEN`(모집중)
 
 ### Response — 4xx
@@ -117,12 +137,13 @@
 | 필드 | 타입 | 필수 | 검증 | 매핑 |
 |---|---|---|---|---|
 | autoDraftEnabled | Boolean | N | | STUDY_PROGRAM.AUTO_DRAFT_ENABLED |
-| autoDraftDay | Integer | N | 1~28 | STUDY_PROGRAM.AUTO_DRAFT_DAY |
+| autoDraftDay | Integer | N | 1~27 | STUDY_PROGRAM.AUTO_DRAFT_DAY |
+| autoPublishDay | Integer | N | autoDraftDay 초과 · 28 이하 | STUDY_PROGRAM.AUTO_PUBLISH_DAY |
 
 ### Response
 
 - 200 — 「클럽 한 곳」과 같은 본문
-- 400 INVALID_INPUT — `autoDraftDay` 범위 밖
+- 400 INVALID_INPUT — `autoDraftDay` · `autoPublishDay` 범위 밖, 또는 `autoPublishDay ≤ autoDraftDay`
 
 ---
 
@@ -220,9 +241,10 @@
 ## 월간 출석부 — 기존 출석 API 의 클럽 차이
 
 - 클럽 기수의 회차는 날마다 하나라 출석부의 열이 곧 날짜다. 응답에 회차 `date` 를 함께 준다
-- 허용 값: `PRESENT` · `ABSENT` · `EXCUSED`, 프로그램 `ATTENDANCE_LATE_ENABLED` 면 `LATE` 도. 그 밖이면 400
+- 허용 값 · 출석률은 스터디와 같다 — `PRESENT` · `LATE` · `ABSENT` · `EXCUSED`, [출석률 산식](../attendance/spec.md) 그대로
 - 오늘(기수 시간대) 뒤의 회차 · 참여 중단 뒤의 회차면 400
 - 끝난 기수도 `updates[]` 를 받는다. `withdrawals[]` 는 진행 중 기수만 — 끝난 기수면 409
+- **`reinstatements[]` (새로)** — 참여 중단 취소할 명부 행 ID. `WITHDRAWN → ACTIVE` · `LEFT_AT` 비움. 진행 중 기수만(끝난 기수면 409) · 대상이 `WITHDRAWN` 이 아니면 400 · 권한은 `withdrawals[]` 와 같다(담당 캡틴). 클럽 기수 전용으로 시작한다
 - 끝난 기수의 출석을 고쳐도 이어서 참여 결과(`CARRIED_FROM_ID`)는 바꾸지 않는다
 - 킥오프 회차가 없다 — 출석률 분모에서 빼는 회차는 휴가뿐이다
 - 클럽 회차는 회차 상태 판정(`MISSED`)과 회차 시작 전 알림에서 뺀다
