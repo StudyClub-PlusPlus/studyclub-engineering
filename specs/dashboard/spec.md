@@ -713,7 +713,13 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 
 화면 4의 인원·비율을 반환한다. Query는 없다. 조회자의 시간대는 분류에 영향을 주지 않는다.
 
-> **beta (아래 JSON)** — 구현완료. **확장 개정안:** [timezone/spec.md](../timezone/spec.md) · PRD §7 — 활성 크루를 `ACCOUNT.TIME_ZONE` IANA 별로 집계. 5종 이하면 모두, 초과면 상위 4 IANA + `other` + 실제 누락만 `unset`. `code` 는 IANA 문자열 또는 `other` · `unset`.
+> **beta (아래 JSON)** — 구현완료.
+>
+> **확장 개정안** ([timezone/spec.md](../timezone/spec.md) · PRD §7):
+> - 대상: 기존과 같이 **활성 크루**, `ACCOUNT.TIME_ZONE` IANA 별 1인 1표.
+> - 차트는 **미설정을 포함해 최대 5칸**. IANA 그룹이 5개 이하면 모두 표시(+ `unset` 있으면 한 칸).
+> - IANA **6개 초과**이고 `unset` 이 있으면 → **상위 3 IANA + `other` + `unset`** (5칸). `unset` 없으면 **상위 4 + `other`**.
+> - `other` 를 펼치면 지역별 **인원·비율**(분모 = 전체 활성 크루)을 내려준다 — `timeZoneGroups[].breakdown[]` (`code`, `count`, `percentage`).
 
 **200 응답 (beta)**
 
@@ -734,12 +740,37 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 |---|---|---|---|
 | asOf | Datetime | N | 공통 규칙 |
 | totalCrew | Long | N | 이 API 기준 시점의 2-1 활성 크루 수 |
-| timeZoneGroups | Array | N | beta: `KST / ET / PT / UNKNOWN` 네 항목. 확장 후 §7 규칙 |
-| timeZoneGroups[].code | Enum / String | N | beta: 4분류 enum. 확장: IANA 또는 `other` · `unset` |
+| timeZoneGroups | Array | N | beta: `KST / ET / PT / UNKNOWN` 네 항목. 확장: 위 5칸 규칙 |
+| timeZoneGroups[].code | Enum / String | N | beta: 4분류 enum. 확장: IANA · `other` · `unset` |
 | timeZoneGroups[].count | Long | N | 해당 그룹의 고유 활성 회원 수. 합계 = totalCrew |
 | timeZoneGroups[].percentage | Double | Y | count / totalCrew × 100. 미분류도 분모에 포함. totalCrew 0이면 null |
+| timeZoneGroups[].breakdown | Array | Y | 확장: `code=other` 일 때만. 하위 IANA 별 `count` · `percentage` (전체 활성 크루 기준) |
 
 대상이 없어도 네 그룹을 반환한다. 각 `count`는 0, `percentage`는 `null`이다. 그룹별 부분 성공은 제공하지 않는다.
+
+**200 응답 (확장 예시)**
+
+```json
+{
+  "asOf": "2026-11-25T03:00:00Z",
+  "totalCrew": 25,
+  "timeZoneGroups": [
+    { "code": "Asia/Seoul", "count": 10, "percentage": 40.0 },
+    { "code": "America/Los_Angeles", "count": 7, "percentage": 28.0 },
+    { "code": "America/Toronto", "count": 5, "percentage": 20.0 },
+    {
+      "code": "other",
+      "count": 2,
+      "percentage": 8.0,
+      "breakdown": [
+        { "code": "Europe/London", "count": 1, "percentage": 4.0 },
+        { "code": "Australia/Sydney", "count": 1, "percentage": 4.0 }
+      ]
+    },
+    { "code": "unset", "count": 1, "percentage": 4.0 }
+  ]
+}
+```
 
 ### 4.6. GET /api/admin/stats/attendance-trend
 
