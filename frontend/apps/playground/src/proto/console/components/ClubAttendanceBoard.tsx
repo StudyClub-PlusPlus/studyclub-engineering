@@ -17,7 +17,6 @@ import {
   type ClubBook,
   type ClubConfig,
   type ClubMember,
-  DEFAULT_TIME_ZONE,
 } from '@console/lib/clubs';
 import { type AttendanceStatus } from '@studyclub/types';
 import { Badge, Button, Checkbox, HelpPopover, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
@@ -163,14 +162,6 @@ export function ClubAttendanceBoard({
               <HelpPopover label='끝난 기수 출석 고치기 설명'>
                 끝난 기수도 출석을 고칠 수 있습니다. 고친 출석은 그 기수의 출석률에만 반영되고, 이미 다음 기수로 넘어간
                 명단은 바뀌지 않습니다.
-              </HelpPopover>
-            </span>
-          )}
-          {club.timeZone !== DEFAULT_TIME_ZONE && (
-            <span data-anno='clubbook:1-2' className='inline-flex items-center gap-1'>
-              <Badge tone='neutral'>날짜 기준 {club.timeZone}</Badge>
-              <HelpPopover label='날짜 기준 설명'>
-                이 클럽은 {club.timeZone} 0시에 하루가 바뀝니다. 출석부의 날짜도 이 시간대의 날짜입니다.
               </HelpPopover>
             </span>
           )}

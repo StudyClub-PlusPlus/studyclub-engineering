@@ -4,6 +4,9 @@ import type { AttendanceStatus, Study } from '@studyclub/types';
 /**
  * 클럽 운영 프로토의 데이터.
  *
+ * 날짜는 시간대 없이 그 달의 몇째 날이다 — 시스템은 시간대를 따로 두지 않는다. 「하루를 언제부터 세나」(예: Daily LeetCode 는 UTC)는
+ * 스터디 규칙 글에 적고 캡틴이 그 규칙으로 출석을 매긴다. 기수 시작 · 끝 같은 배치 시각만 한국 시간(KST)이다.
+ *
  * 클럽 기수는 **달 하나**다 — 1일에 시작해 말일에 끝난다. 모집은 그 전달에 열려 말일에 닫힌다.
  * 회차(모임)가 없으므로 출석부의 열은 그 달의 날짜다.
  *
@@ -21,8 +24,6 @@ export type ClubConfig = {
   key: ClubKey;
   /** STUDY_PROGRAM.TITLE — 기수 제목(STUDY.TITLE)도 이 이름 그대로다 */
   title: string;
-  /** STUDY.TIME_ZONE — 출석부의 날짜를 가르는 시간대. 기존 기수 시간대 값을 그대로 쓴다 */
-  timeZone: string;
   /** 신청 폼에서 「명단에 보이기」를 켠 질문 — 그 답을 명단 · 출석부에 보인다 */
   rosterQuestion?: { label: string };
   /** STUDY_RECRUITMENT.CAPACITY — 이번 기수 정원. 다음 기수 초안이 복사한다. 없으면 제한 없음 */
@@ -34,15 +35,11 @@ export type ClubConfig = {
 /** 출석 값 — 스터디와 같다. 순서가 칸을 누를 때 도는 순서다 */
 export const ATTENDANCE_STATUSES: AttendanceStatus[] = ['present', 'late', 'absent', 'excused'];
 
-/** 프로그램 기본 시간대 — 이것과 다른 시간대의 클럽만 화면에 날짜 기준을 알린다 */
-export const DEFAULT_TIME_ZONE = 'Asia/Seoul';
-
 /** 프로토의 세 클럽 — 2026-11 캡틴 답변 기준 설정 값 */
 export const CLUBS: ClubConfig[] = [
   {
     key: 'earlybird',
     title: '얼리버드',
-    timeZone: DEFAULT_TIME_ZONE,
     rosterQuestion: { label: '기상 목표' },
     capacity: 30,
     mockStudy: 'early-bird',
@@ -50,14 +47,12 @@ export const CLUBS: ClubConfig[] = [
   {
     key: 'weeklyx',
     title: 'WEEKLY X',
-    timeZone: DEFAULT_TIME_ZONE,
     capacity: 30,
     mockStudy: 'weeklyx',
   },
   {
     key: 'leetcode',
     title: 'Daily LeetCode',
-    timeZone: 'UTC',
     rosterQuestion: { label: 'LeetCode ID' },
     mockStudy: 'daily-leetcode',
   },

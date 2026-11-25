@@ -46,7 +46,7 @@
 | `STUDY.COHORT_MONTH` | DATE NULL 추가 · `UNIQUE(PROGRAM_ID, COHORT_MONTH)` | 클럽 기수의 달(1일). 스터디는 NULL |
 | `STUDY_PARTICIPANT.CARRIED_FROM_ID` | BIGINT NULL 추가 | 이어서 참여로 만든 행의 이전 기수 참여 ID |
 | `CLUB_CARRY_OVER_EXCLUSION` | 새 테이블 — `ID` · `NEXT_STUDY_ID` · `PARTICIPANT_ID` · `CREATED_AT` · `UNIQUE(NEXT_STUDY_ID, PARTICIPANT_ID)` | 캡틴이 뺀 사람 |
-| `STUDY_MEETING` | 클럽 기수는 날마다 1행 · `SCHEDULED_AT` = 그 날 0시(`STUDY.TIME_ZONE`) | 기존 기수 시간대를 그대로 쓴다 — Daily LeetCode 는 `UTC` 로 둔다 |
+| `STUDY_MEETING` | 클럽 기수는 날마다 1행 · `SCHEDULED_AT` = 그 날 0시(KST) | 회차는 「그 달의 몇째 날」을 가리키는 칸이다. 클럽 시간대는 두지 않는다 — 하루를 세는 기준(예: LeetCode UTC)은 스터디 규칙 글에 적는다 |
 
 ## 스케줄러
 
@@ -255,7 +255,7 @@
 
 - 클럽 기수의 회차는 날마다 하나라 출석부의 열이 곧 날짜다. 응답에 회차 `date` 를 함께 준다
 - 허용 값 · 출석률은 스터디와 같다 — `PRESENT` · `LATE` · `ABSENT` · `EXCUSED`, [출석률 산식](../attendance/spec.md) 그대로
-- 오늘(기수 시간대) 뒤의 회차 · 참여 중단 뒤의 회차면 400
+- 오늘(KST) 뒤의 회차 · 참여 중단 뒤의 회차면 400
 - 끝난 기수도 `updates[]` 를 받는다. `withdrawals[]` 는 진행 중 기수만 — 끝난 기수면 409
 - **`reinstatements[]` (새로)** — 참여 중단 취소할 명부 행 ID. `WITHDRAWN → ACTIVE` · `LEFT_AT` 비움. 진행 중 기수만(끝난 기수면 409) · 대상이 `WITHDRAWN` 이 아니면 400 · 권한은 `withdrawals[]` 와 같다(담당 캡틴). 클럽 기수 전용으로 시작한다
 - 끝난 기수의 출석을 고쳐도 이어서 참여 결과(`CARRIED_FROM_ID`)는 바꾸지 않는다

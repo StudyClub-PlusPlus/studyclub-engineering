@@ -279,7 +279,7 @@ erDiagram
 - 자동 초안: 매일 0시에 `AUTO_DRAFT_ENABLED` 이고 오늘이 `AUTO_DRAFT_DAY` 인 클럽마다 다음 달 기수를 만든다. 이미 있으면 건너뛴다
 - 초안 내용
   - `TITLE` = 프로그램 제목 그대로 (달은 `COHORT_MONTH`)
-  - `START_AT` = 다음 달 1일 0시 · `END_AT` = 다음 달 말일 24시 (기수 시간대)
+  - `START_AT` = 다음 달 1일 0시 · `END_AT` = 다음 달 말일 24시 (KST)
   - `RECRUIT_DEADLINE_AT` = 이번 달 말일 23:59
   - 소개 · 상세 설명 · 카테고리 · 시간대 · 디스코드 채널 · 드라이브 · 정원 · 신청 폼은 이번 기수(같은 프로그램에서 `COHORT_MONTH` 가 가장 늦은 기수)에서 복사
   - `STATUS = DRAFT` · 기본 반 1개 · `STUDY_RECRUITMENT` 1행

@@ -307,13 +307,6 @@ const BOOK: ScreenSpec = {
       display: ['어느 기수의 출석부인지 알린다'],
     },
     {
-      n: '1-2',
-      title: '날짜 기준',
-      when: '기수 시간대가 기본(Asia/Seoul)과 다를 때 — Daily LeetCode(UTC)',
-      display: ['출석부 날짜의 시간대를 알리고, 「?」에서 그 시간대 0시에 하루가 바뀐다고 설명한다'],
-      policy: ['출석부의 날짜는 기수 시간대(`STUDY.TIME_ZONE`)의 날짜다'],
-    },
-    {
       n: '1-3',
       title: '시트에서 붙여넣기',
       behavior: ['누르면 붙여넣기 창(5)이 열린다'],
