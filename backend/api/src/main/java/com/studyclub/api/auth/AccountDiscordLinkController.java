@@ -32,14 +32,19 @@ public class AccountDiscordLinkController {
 
     @Operation(summary = "디스코드 계정 연동 — 길드 멤버만, 같은 계정·같은 ID 재연동은 성공")
     @PostMapping("/link")
-    public ResponseEntity<Void> link(
+    public ResponseEntity<DiscordLinkResponse> link(
             Authentication authentication, @Valid @RequestBody DiscordLinkRequest request) {
         if (authentication == null || !(authentication.getPrincipal() instanceof Long accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        accountDiscordLinkService.link(accountId, request.code());
-        return ResponseEntity.noContent().build();
+        boolean joinedGuild = accountDiscordLinkService.link(accountId, request.code());
+        return ResponseEntity.ok(new DiscordLinkResponse(joinedGuild));
     }
+
+    /**
+     * @param joinedGuild 이번 연동에서 스터디클럽 서버에 새로 들어갔는가 — 신청 창이 「서버에 들어왔다 · 규칙 동의가 남았다」 를 띄운다
+     */
+    public record DiscordLinkResponse(boolean joinedGuild) {}
 
     @Operation(summary = "디스코드 계정 연결 해제 — 참여 중인 스터디가 있으면 409, 연동 안 된 계정도 204")
     @DeleteMapping("/link")

@@ -112,10 +112,18 @@ export const discordLinkHandlers = mockClient.createHandlerGroup('/api/me/discor
     presets: [
       {
         label: '연동 성공',
-        status: 204,
+        status: 200,
         response: () => {
           writeLinked(true);
-          return new HttpResponse(null, { status: 204 });
+          return HttpResponse.json({ joinedGuild: false });
+        },
+      },
+      {
+        label: '연동하면서 서버에 새로 들어감',
+        status: 200,
+        response: () => {
+          writeLinked(true);
+          return HttpResponse.json({ joinedGuild: true });
         },
       },
       {
