@@ -10,6 +10,8 @@ import com.studyclub.domain.audit.AdminAuditLog;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
+import com.studyclub.domain.participant.StudyParticipantGroupMove;
+import com.studyclub.domain.participant.StudyParticipantGroupMoveRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.participant.StudyParticipantRoleChanged;
 import com.studyclub.domain.study.StudyGroup;
@@ -41,6 +43,7 @@ public class AdminStudyParticipantService {
     private final StudyGroupRepository studyGroupRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
+    private final StudyParticipantGroupMoveRepository studyParticipantGroupMoveRepository;
     private final AdminAuditRecorder auditRecorder;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -50,6 +53,7 @@ public class AdminStudyParticipantService {
             StudyGroupRepository studyGroupRepository,
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository,
+            StudyParticipantGroupMoveRepository studyParticipantGroupMoveRepository,
             AdminAuditRecorder auditRecorder,
             ApplicationEventPublisher eventPublisher) {
         this.studyRepository = studyRepository;
@@ -57,6 +61,7 @@ public class AdminStudyParticipantService {
         this.studyGroupRepository = studyGroupRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
+        this.studyParticipantGroupMoveRepository = studyParticipantGroupMoveRepository;
         this.auditRecorder = auditRecorder;
         this.eventPublisher = eventPublisher;
     }
@@ -94,6 +99,7 @@ public class AdminStudyParticipantService {
 
         // 한 줄 안에서는 반을 먼저 바꾸고 역할을 본다 (스펙 서버 동작 3)
         applyGroupMoves(moves, meetingsByGroup, now);
+        recordGroupMoves(moves, lockedGroups, actorAccountId, now);
         List<StudyParticipantRoleChanged> events = applyRoleChanges(changes, byId, actorAccountId);
         events.forEach(eventPublisher::publishEvent);
 
@@ -294,6 +300,28 @@ public class AdminStudyParticipantService {
             }
         }
         studyAttendanceRepository.saveAll(rows);
+    }
+
+    /** 반이 실제로 바뀐 행마다 이동 기록 한 줄 (스펙 서버 동작 5-5). 반 이름은 트랜잭션 첫머리에 잠근 반 행에서 읽는다. */
+    private void recordGroupMoves(
+            List<GroupMove> moves,
+            Map<Long, StudyGroup> lockedGroups,
+            Long actorAccountId,
+            Instant now) {
+        if (moves.isEmpty()) {
+            return;
+        }
+        studyParticipantGroupMoveRepository.saveAll(
+                moves.stream()
+                        .map(
+                                move ->
+                                        StudyParticipantGroupMove.of(
+                                                move.participant(),
+                                                lockedGroups.get(move.fromGroupId()),
+                                                lockedGroups.get(move.toGroupId()),
+                                                actorAccountId,
+                                                now))
+                        .toList());
     }
 
     /** 역할이 실제로 달라진 행만 바꾸고 감사 로그를 남긴다. 발행할 이벤트를 돌려준다. */
