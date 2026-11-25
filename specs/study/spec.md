@@ -1,5 +1,7 @@
 # 스터디 API Spec
 
+> **시간대 확장 (2026-11-24):** 모집 시간대·목록 필터·시각 표시는 [timezone/spec.md](../timezone/spec.md) 가 정본이다. `STUDY.TIMEZONE` enum(`KST`/`PST`/`BOTH`)과 목록 Query `timezone` enum 은 **폐기 예정** — `recruitmentTimeZones` · Query `recruitmentZone`(단일 IANA) · `FormattedInstant` 로 대체한다. 데이터는 `STUDY_RECRUITMENT` + `STUDY_RECRUITMENT_ZONE` 에 저장(§4). 본문의 `timezone` 필드·표는 이관 완료 전까지 beta 계약으로 읽는다.
+>
 > ERD: [STUDY](../../docs/erd/STUDY.md) · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md)
 > Story PRD: [등록](../../01-planning/stories/study-create/PRD.md) · [수정·삭제](../../01-planning/stories/study-edit/PRD.md) · [공개](../../01-planning/stories/captain-publish-study/PRD.md) · [다음 기수](../../01-planning/stories/captain-reregister-cohort/PRD.md) · [운영 콘솔 목록](../../01-planning/stories/captain-list-all-studies/PRD.md) · [사용자 상세](../../01-planning/stories/crew-view-study-detail/PRD.md) · [운영 현황](../../01-planning/stories/study-detail/PRD.md) · [목록](../../01-planning/stories/crew-browse-studies/PRD.md)
 > 갱신: 2026-11-16 — 등록 시 `STUDY.OWNER_CAPTAIN_ID`(담당 캡틴)도 채운다. `CREATED_BY` 는 등록자 기록만 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
