@@ -7,6 +7,7 @@ import { Button, Modal, Textarea } from '@studyclub/ui';
 import { ChevronLeft } from 'lucide-react';
 
 import { FeedbackTypeBadge } from '@/features/feedbacks/components/FeedbackBadges';
+import { RetryableImage } from '@/features/feedbacks/components/RetryableImage';
 import { StatusPicker } from '@/features/feedbacks/components/StatusPicker';
 import { COPY, EMPTY_VALUE, formatStamp, personLabel, viewportLabel } from '@/features/feedbacks/labels';
 import { useChangeFeedbackStatus, useReplyFeedback, useSaveFeedbackMemo } from '@/features/feedbacks/queries';
@@ -94,13 +95,7 @@ export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
                   aria-label={`첨부 이미지 ${i + 1} 크게 보기`}
                   className='h-28 w-40 overflow-hidden rounded-control border border-border hover:border-brand'
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- 쿠키 인증이 필요한 API 경로라 next/image 최적화를 거치지 않는다 */}
-                  <img
-                    src={apiUrl(image.url)}
-                    crossOrigin='use-credentials'
-                    alt={`첨부 이미지 ${i + 1}`}
-                    className='h-full w-full object-cover'
-                  />
+                  <RetryableImage src={apiUrl(image.url)} alt={`첨부 이미지 ${i + 1}`} className='h-full w-full object-cover' />
                 </button>
               ))}
             </div>
@@ -129,13 +124,7 @@ export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
         size='lg'
       >
         {zoom !== null && detail.images[zoom] && (
-          // eslint-disable-next-line @next/next/no-img-element -- 쿠키 인증이 필요한 API 경로라 next/image 최적화를 거치지 않는다
-          <img
-            src={apiUrl(detail.images[zoom].url)}
-            crossOrigin='use-credentials'
-            alt={`첨부 이미지 ${zoom + 1}`}
-            className='mx-auto max-h-[70vh] w-auto rounded-control'
-          />
+          <RetryableImage key={detail.images[zoom].id} src={apiUrl(detail.images[zoom].url)} alt={`첨부 이미지 ${zoom + 1}`} className='mx-auto max-h-[70vh] w-auto rounded-control' />
         )}
       </Modal>
     </div>
