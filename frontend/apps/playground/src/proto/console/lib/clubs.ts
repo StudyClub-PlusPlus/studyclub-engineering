@@ -35,25 +35,26 @@ export type ClubConfig = {
 /** 출석 값 — 스터디와 같다. 순서가 칸을 누를 때 도는 순서다 */
 export const ATTENDANCE_STATUSES: AttendanceStatus[] = ['present', 'late', 'absent', 'excused'];
 
-/** 프로토의 세 클럽 — 2026-11 캡틴 답변 기준 설정 값 */
+/** 프로토의 세 클럽 — 2026-12 기수 모집글 · 구글 폼 기준 설정 값 (명단에 보이는 질문 = 폼의 핵심 질문) */
 export const CLUBS: ClubConfig[] = [
   {
     key: 'earlybird',
     title: '얼리버드',
-    rosterQuestion: { label: '기상 목표' },
-    capacity: 30,
+    rosterQuestion: { label: '목표 시간' },
+    capacity: 20,
     mockStudy: 'early-bird',
   },
   {
     key: 'weeklyx',
     title: 'WEEKLY X',
-    capacity: 30,
+    rosterQuestion: { label: '목표하는 나의 X 시간' },
+    capacity: 20,
     mockStudy: 'weeklyx',
   },
   {
     key: 'leetcode',
     title: 'Daily LeetCode',
-    rosterQuestion: { label: 'LeetCode ID' },
+    rosterQuestion: { label: '리트코드 닉네임' },
     mockStudy: 'daily-leetcode',
   },
 ];

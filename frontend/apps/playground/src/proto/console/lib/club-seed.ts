@@ -42,19 +42,21 @@ const NAMES = [
 ];
 
 const WAKE = [
-  '05:30',
-  '06:00',
-  '06:00',
-  '05:00',
-  '06:30',
-  '05:45',
-  '06:00',
-  '07:00',
-  '05:30',
-  '06:15',
-  '06:00',
-  '05:30',
+  '오전 5시',
+  '오전 6시',
+  '오전 6시',
+  '오전 5시',
+  '오전 7시',
+  '오전 6시',
+  '오전 6시',
+  '오전 7시',
+  '오전 5시',
+  '오전 8시',
+  '오전 6시',
+  '오전 5시',
 ];
+
+const X_HOURS = ['10시간', '7시간', '15시간', '20시간', '10시간', '12시간', '7시간', '15시간', '10시간', '8시간'];
 
 /** 이번 기수 명단. 클럽마다 사람 수와 중단한 사람이 조금씩 다르다. */
 export function seedMembers(club: ClubConfig): ClubMember[] {
@@ -67,7 +69,9 @@ export function seedMembers(club: ClubConfig): ClubMember[] {
       ? undefined
       : club.key === 'earlybird'
         ? WAKE[i]
-        : `lc_${['dawn', 'bear', 'step', 'turtle', 'walker', 'owl', 'data', 'book', 'cup'][i] ?? i}`,
+        : club.key === 'weeklyx'
+          ? X_HOURS[i]
+          : `lc_${['dawn', 'bear', 'step', 'turtle', 'walker', 'owl', 'data', 'book', 'cup'][i] ?? i}`,
     leftOn: i === 7 ? '2026-12-08' : undefined,
     joined: i < size - 3 ? 'carried' : 'applied',
   }));

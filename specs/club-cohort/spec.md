@@ -217,7 +217,7 @@
     {
       "participantId": 901,
       "discordNickname": "새벽세시",
-      "rosterAnswer": "05:30",
+      "rosterAnswer": "오전 5시",
       "attendanceRate": 75,
       "status": "ACTIVE",
       "leftAt": null,
