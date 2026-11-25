@@ -47,7 +47,7 @@ export function updateReusedDraft(study: Study) {
   sessionStorage.setItem(key, JSON.stringify(drafts));
 }
 
-export async function saveReusedDraft(form: StudyFormValues, source: Study, zone: string) {
+export async function saveReusedDraft(form: StudyFormValues, source: Study | undefined, zone: string) {
   const image = await persistThumbnail(form.thumbnail);
   const deadline = form.deadline ? zonedInstant(form.deadline, '23:59', zone) : undefined;
   deadline?.setUTCSeconds(59);
@@ -59,9 +59,9 @@ export async function saveReusedDraft(form: StudyFormValues, source: Study, zone
   const draft: Study = {
     id: `reused-draft-${number}`,
     study_id: number,
-    kind: 'study',
+    kind: form.kind,
     format: 'online',
-    program: { id: String(number), title, kind: 'study' },
+    program: { id: form.programId || String(number), title, kind: form.kind },
     title,
     summary: localized(form.summary),
     description: localized(form.description),
@@ -79,7 +79,7 @@ export async function saveReusedDraft(form: StudyFormValues, source: Study, zone
     image,
     discord_url: form.discordUrl,
     driveUrl: form.driveUrl,
-    applicationForm: structuredClone(source.applicationForm ?? []),
+    applicationForm: structuredClone(source?.applicationForm ?? []),
     applicantCount: 0,
     stats: { participants: 0 },
   };

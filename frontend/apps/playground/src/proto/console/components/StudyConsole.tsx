@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 
 import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
@@ -28,8 +28,7 @@ import { dropPresenters } from '@core/lib/schedule-source';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew } from '@studyclub/mock';
 import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
-import { toast } from '@studyclub/ui';
-import { Badge, Button, Modal, Switch, Tabs } from '@studyclub/ui';
+import { Badge, Button, Modal, Switch, Tabs, toast } from '@studyclub/ui';
 import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState } from '@studyclub/utils';
 import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
@@ -211,6 +210,7 @@ export function StudyConsole({ study }: { study: Study }) {
   const [publishConfirm, setPublishConfirm] = useState<boolean | null>(null);
   // 아직 켜지 않은 스터디는 사이트에 없다 — 헤더에서 그 사실을 알린다.
   const draft = !published;
+  const reasonId = useId();
   const publishBlocked = published
     ? lifecycleState(study) !== 'OPEN' && lifecycleState(study) !== 'DRAFT'
       ? '진행 중이거나 종료된 스터디는 비공개로 돌릴 수 없습니다.'
@@ -425,9 +425,11 @@ export function StudyConsole({ study }: { study: Study }) {
               tone='success'
               checked={published}
               aria-disabled={publishBlocked ? true : undefined}
+              aria-describedby={publishBlocked ? reasonId : undefined}
               onClick={() => { if (publishBlocked) toast(publishBlocked); }}
               onCheckedChange={setPublishConfirm}
             />
+            {publishBlocked && <span id={reasonId} className='sr-only'>{publishBlocked}</span>}
           </div>
         </div>
       </header>

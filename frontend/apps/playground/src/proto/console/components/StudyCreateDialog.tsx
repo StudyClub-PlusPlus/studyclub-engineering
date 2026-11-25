@@ -104,11 +104,12 @@ export function StudyCreateDialog({
     setSaving(true);
     setSaveError('');
     try {
+      // TODO(api): POST /api/admin/studies → Location의 새 ID로 이동한다.
       const source = studies.find((candidate) => candidate.id === form.sourceId);
-      const draft = source ? await saveReusedDraft(form, source, zone) : undefined;
+      const draft = !editing ? await saveReusedDraft(form, source, zone) : undefined;
       if (study) saveRecruitmentZones(study.id, form.recruitmentTimeZones);
       close();
-      toast.success(editing ? '저장되었습니다' : '등록되었습니다');
+      toast.success(editing ? '저장되었습니다' : '미공개로 등록되었습니다');
       if (draft) router.push(`/proto/console/studies/${draft.study_id}`);
     } catch (error) {
       if (error instanceof RangeError) {
@@ -131,13 +132,8 @@ export function StudyCreateDialog({
         size='lg'
         footer={
           <>
-            {form.sourceId && (
-              <Button variant='secondary' onClick={close}>
-                취소
-              </Button>
-            )}
             <Button data-anno='9 reuse:3' onClick={handleSubmit} loading={saving}>
-              {form.sourceId ? '미공개로 등록' : editing ? '저장' : '등록'}
+              {editing ? '저장' : '미공개로 등록'}
             </Button>
           </>
         }

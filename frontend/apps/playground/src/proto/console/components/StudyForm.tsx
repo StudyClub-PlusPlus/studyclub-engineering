@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, type ChangeEvent } from 'react';
+import { useState, useRef, type ChangeEvent } from 'react';
 
 import { tx } from '@console/lib/l10n';
 import { MARKDOWN_HINT } from '@core/components/ApplicationFormUi';
@@ -8,7 +8,7 @@ import { recruitmentTimeZones } from '@core/lib/recruitment-timezones';
 import { isValidZone } from '@core/lib/schedule-timezone';
 import { latestCohort, programs, studies } from '@studyclub/mock';
 import { type Study, type StudyKind, type RecruitmentTimeZones } from '@studyclub/types';
-import { Button, Checkbox, Input, Select, Textarea, FilterChip, DatePicker } from '@studyclub/ui';
+import { Button, Checkbox, Input, Select, Textarea, FilterChip, DatePicker, Modal } from '@studyclub/ui';
 import { STUDY_CATEGORIES, categoriesOf, toISODate } from '@studyclub/utils';
 
 import { RecruitmentTimeZoneField } from './RecruitmentTimeZoneField';
@@ -237,24 +237,37 @@ export function StudyForm({
   onChange: (next: StudyFormValues) => void;
   mode?: FormMode;
 }) {
+  const [pending, setPending] = useState<StudyFormValues | null>(null);
+  function replace(next: StudyFormValues) {
+    const hasInput = value.sourceId || value.title || value.summary || value.description !== EMPTY_FORM.description || value.thumbnail || value.deadline || value.schedule;
+    if (hasInput) setPending(next);
+    else onChange(next);
+  }
   const set = <K extends keyof StudyFormValues>(key: K, v: StudyFormValues[K]) => onChange({ ...value, [key]: v });
 
   return (
     <div className='flex flex-col gap-3'>
+      <Modal open={pending !== null} onClose={() => setPending(null)} title='입력한 내용을 바꿀까요?'
+        footer={<>
+          <Button variant='secondary' data-autofocus onClick={() => setPending(null)}>취소</Button>
+          <Button onClick={() => { if (pending) onChange(pending); setPending(null); }}>바꾸기</Button>
+        </>}>
+        작성한 내용이 선택한 스터디의 내용으로 바뀝니다.
+      </Modal>
       {/*
         **무엇을 만드는지부터 적고 날짜는 마지막에 받는다.** 제목·소개를 쓰기 전에 마감일을 묻는 것은
         운영자가 아직 정하지 않은 것을 먼저 묻는 일이다.
       */}
       <div data-anno='11'>
-        <ProgramField mode={mode} value={value} errors={errors} onChange={onChange} />
+        <ProgramField mode={mode} value={value} errors={errors} onChange={replace} />
         {mode === 'create' && value.programMode === 'new' && value.kind === 'study' && (
           <Select data-anno='reuse:2' aria-label='지난 스터디 불러오기' value={value.sourceId ?? ''}
             onChange={(event) => {
               const source = studies.find((study) => study.id === event.target.value);
-              onChange(source ? copyStudyForm(source) : EMPTY_FORM);
+              replace(source ? copyStudyForm(source) : EMPTY_FORM);
             }}>
             <option value=''>지난 스터디 불러오기 (선택)</option>
-            {studies.filter(canCopyStudy).map((study) => (
+            {studies.filter(canCopyStudy).sort((a, b) => b.study_id - a.study_id).map((study) => (
               <option key={study.id} value={study.id}>{tx(study.title)} · #{study.study_id}</option>
             ))}
           </Select>
