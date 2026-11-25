@@ -6,7 +6,7 @@ story_id: ST-043 · IA: IA-043
 
 ## 1. 기본설명
 
-· **배경** — 클럽에는 모임 시각이 없다. 출석은 참여자가 디스코드 · 시트 · LeetCode 에 남긴 기록을 캡틴이 보고 판정한다. 그래서 출석부의 열은 회차가 아니라 기수 기간의 날짜이고, 캡틴은 시트에서 옮겨 적는다. 규칙은 [POL-0012](../../_registry/policies/POL-0012-club-cohort.md).
+· **배경** — 클럽에는 모임 시각이 없다. 출석은 참여자가 디스코드 · 시트 · LeetCode 에 남긴 기록을 캡틴이 보고 판정한다. 그래서 출석부는 회차가 아니라 **멤버 × 그 달의 날짜**이고, 캡틴은 시트에서 옮겨 적는다. 한 칸이 인증 한 건(`CLUB_CHECKIN`)이다 — [클럽 모델 결정 (2026-11-25)](../../../docs/share/2026-11-25-club-own-model.md). 규칙은 [POL-0012](../../_registry/policies/POL-0012-club-cohort.md).
 
 ### 진입·사용 흐름
 
@@ -79,7 +79,7 @@ flowchart LR
 
 - **내용**: 이번 기수와 끝난 기수의 달. 이번 기수가 기본
 - **동작**: 고르면 그 기수의 출석부를 연다
-- **데이터**: 그 기수의 `GET /api/admin/studies/{studyId}/attendances`
+- **데이터**: `GET /api/admin/clubs/{programId}/checkins?month={그 달}`
 
 #### 1-5 — 끝난 기수
 
@@ -87,7 +87,7 @@ flowchart LR
 - **내용**: 끝난 기수임을 알리고, 「?」에서 고친 출석은 그 기수 출석률에만 반영된다고 설명한다
 - **정책**
   - 끝난 기수도 출석을 고칠 수 있다 — 시트에서 늦게 옮기는 경우가 있다
-  - 이미 다음 기수로 넘어간 명단은 바뀌지 않는다
+  - 고쳐도 그 달의 완주 여부와 다음 달 멤버 여부는 바뀌지 않는다
   - 참여 중단은 이번 기수에서만 한다
 
 ### 2 — 출석 값 안내
@@ -102,7 +102,7 @@ flowchart LR
 
 - **내용**: 줄은 참여자, 열은 기수 기간의 날짜(1일~말일)
 - **정책**: 참여 중단한 사람은 맨 아래
-- **데이터**: `GET /api/admin/studies/{studyId}/attendances` — 클럽은 날마다 회차 하나라 열이 곧 날짜
+- **데이터**: `GET /api/admin/clubs/{programId}/checkins?month={그 달}` — 열은 그 달의 날짜. 회차를 만들지 않는다
 
 #### 3-1 — 디스코드 별명
 
@@ -169,7 +169,7 @@ flowchart LR
 - **동작**
   - 저장하면 고친 칸을 한 번에 반영한다
   - 변경 취소는 마지막 저장 상태로 되돌린다
-- **데이터**: `POST /api/admin/studies/{studyId}/attendances` — `updates[]` (그 날의 회차 · 상태)
+- **데이터**: `PUT /api/admin/clubs/{programId}/checkins` — `updates[]` (멤버 · 날짜 · 상태) → `CLUB_CHECKIN`
 
 ### 5 — 붙여넣기 창
 
@@ -208,8 +208,8 @@ flowchart LR
   - 「취소」(기본 포커스)
 - **정책**
   - 이번 기수 안에서는 「참여 중단 취소」(3-7)로 되돌릴 수 있다
-  - 다음 기수의 「이어서 참여」에서 빠진다 (ST-042)
-- **데이터**: `POST /api/admin/studies/{studyId}/attendances` 의 `withdrawals[]` — `STUDY_PARTICIPANT.STATUS = WITHDRAWN` · `LEFT_AT`
+  - 그날 클럽에서 나간다 — 다음 달로 이어지지 않는다 (ST-042)
+- **데이터**: `PUT /api/admin/clubs/{programId}/checkins` 의 `withdrawals[]` — `CLUB_MEMBER.STATUS = LEFT` · `LEFT_AT` · `LEFT_REASON = CAPTAIN`
 
 #### 6-1 — 참여 중단 취소 확인
 
@@ -220,8 +220,8 @@ flowchart LR
   - 「닫기」(기본 포커스)
 - **정책**
   - 참여 중(`ACTIVE`)으로 돌아가고 중단 날짜를 지운다
-  - 다음 기수 「이어서 참여」에 다시 넘어갈 사람으로 들어간다
-- **데이터**: `POST /api/admin/studies/{studyId}/attendances` 의 `reinstatements[]` — `WITHDRAWN → ACTIVE` · `LEFT_AT` 비움
+  - 이번 달을 끝까지 마치면 다음 달에도 계속한다
+- **데이터**: `PUT /api/admin/clubs/{programId}/checkins` 의 `reinstatements[]` — `CLUB_MEMBER` `LEFT → ACTIVE` · `LEFT_AT` 비움
 
 ### 7 — 나가기 확인
 
@@ -245,50 +245,53 @@ flowchart LR
 
 ```mermaid
 erDiagram
-  STUDY ||--|| STUDY_GROUP : "기본 반"
-  STUDY_GROUP ||--o{ STUDY_MEETING : "날마다 1개"
-  STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "출석"
-  STUDY_PARTICIPANT ||--o{ STUDY_ATTENDANCE : "출석"
-  STUDY_MEETING {
-    date MEETING_DATE "그 날"
-    datetime SCHEDULED_AT "그 날 0시 — 화면에 시각을 보이지 않는다"
+  STUDY_PROGRAM ||--o{ CLUB_MEMBER : "멤버"
+  CLUB_MEMBER ||--o{ CLUB_CHECKIN : "날마다 한 칸"
+  CLUB_MEMBER ||--o{ CLUB_MONTH_RESULT : "달마다 결과"
+  CLUB_MEMBER {
+    varchar STATUS "ACTIVE LEFT"
+    datetime LEFT_AT "참여 중단 날"
   }
-  STUDY_ATTENDANCE {
-    varchar STATUS "PRESENT LATE ABSENT EXCUSED"
+  CLUB_CHECKIN {
+    date DATE "시간대 없는 그 날"
+    varchar RESULT "PRESENT LATE ABSENT EXCUSED"
+    varchar SOURCE "R1 은 CAPTAIN 만"
   }
 ```
 
 ### 비고
 
 - 범위 밖: 출석 증빙(인증 사진 · 공부 시간 · 스트릭) · WEEKLY X 목표 시간 · 공부 시간 · 회고 · Daily LeetCode 자동 출석 · 크루가 보는 클럽 출석
-- 구현 지시: 클럽 회차에는 회차 상태 판정(`MISSED`)과 회차 시작 전 알림을 적용하지 않는다
+- 구현 지시: 클럽 기수에는 회차를 만들지 않는다 — 회차 상태 판정 · 회차 알림 예외가 필요 없다
 
 ## 3. 시스템 요건
 
 ### 개발 범위
 
-> 2026-11-24 `beta` 기준.
+> 2026-11-26 `beta` 기준. 클럽 참여 이후 모델은 [클럽 모델 결정 (2026-11-25)](../../../docs/share/2026-11-25-club-own-model.md) — 백엔드 검토 전.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | FE | back-office-front 클럽 운영 › 출석부 | 없음 | 프로토대로 만든다 |
-| BE | `GET` · `POST /api/admin/studies/{studyId}/attendances` (`withdrawals[]` 포함) | 구현완료 | 클럽 기수는 날짜를 회차 대신 열로 준다 · 끝난 기수 `withdrawals[]` 409 · `reinstatements[]`(참여 중단 취소) 추가 |
+| BE | `GET` · `PUT /api/admin/clubs/{programId}/checkins` (`updates[]` · `withdrawals[]` · `reinstatements[]`) | 스펙 없음 | 스펙 (club-cohort) → 구현 |
+| BE | `CLUB_MEMBER` · `CLUB_CHECKIN` 테이블 | 없음 | 마이그레이션 |
+| BE | 기존 출석 API(`/api/admin/studies/{studyId}/attendances`) | 구현완료 | 클럽에 쓰지 않는다 — 고칠 것 없음 |
 | FE | back-office-front 스터디 상세(클럽 기수) — 일정 탭 숨김 · 신청자는 명단만 · 출석은 월간 출석부 | 스터디와 같은 탭 | 클럽 기수일 때 바꾼다 (회고 탭은 그대로) |
-| BE | 클럽 기수 생성 시 날마다 회차 생성 | 없음 | 구현 (ST-021 초안 생성과 함께) |
-| BE | 회차 `MISSED` 판정 · 회차 알림에서 클럽 제외 | 없음 | 구현 |
 
 ### 데이터
 
-- 클럽 기수는 기본 반 하나에 **날마다 회차 하나**(`STUDY_MEETING`)를 둔다. `SCHEDULED_AT` = 그 날 0시(KST). 클럽 시간대는 두지 않는다
-- 출석은 `STUDY_ATTENDANCE` 를 그대로 쓴다 — 기록 없음은 행 없음
+- `CLUB_CHECKIN` — `MEMBER_ID` · `DATE` · `RESULT`(`PRESENT` / `LATE` / `ABSENT` / `EXCUSED`) · `SOURCE`(R1 은 `CAPTAIN`) · `UPDATED_BY` · `UPDATED_AT`. `UNIQUE(MEMBER_ID, DATE)`. 기록 없음은 행 없음
+- 날짜에는 시간대가 없다 — 클럽 시간대는 두지 않는다
+- 회차(`STUDY_MEETING`) · 반 · `STUDY_ATTENDANCE` 를 쓰지 않는다
 
 ### 처리
 
 - 저장: 바뀐 칸만 받는다. 상태 NULL 은 행 삭제(기록 없음)
 - 출석 값은 스터디와 같다 — `PRESENT` · `LATE` · `ABSENT` · `EXCUSED`
-- 오늘(KST) 뒤의 회차 · 참여 중단 뒤의 회차면 400
-- 참여 중단은 기존 `withdrawals[]` 처리와 같다 — 담당 캡틴만
-- 참여 중단 취소는 `reinstatements[]` — `WITHDRAWN → ACTIVE` · `LEFT_AT` 비움. 진행 중 기수만, 담당 캡틴만
+- 오늘(KST) 뒤의 날짜 · 그 멤버의 참여 중단 날 뒤의 날짜 · 그 달에 멤버가 아니었던 날짜면 400
+- 참여 중단 `withdrawals[]` — `CLUB_MEMBER` `ACTIVE → LEFT` · `LEFT_AT` · `LEFT_REASON = CAPTAIN`. 진행 중인 달만, 담당 캡틴만
+- 참여 중단 취소 `reinstatements[]` — `LEFT → ACTIVE` · `LEFT_AT` 비움. 진행 중인 달에 중단한 멤버만, 담당 캡틴만
+- 끝난 달의 출석을 고치면 그 달 `CLUB_MONTH_RESULT.RATE` 만 다시 계산한다 — 완주 여부 · 멤버 여부는 바꾸지 않는다
 
 ### 계산 규칙
 
@@ -299,10 +302,10 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/admin/studies/{studyId}/attendances` | 캡틴 |
-| POST | `/api/admin/studies/{studyId}/attendances` — `updates[]` · `withdrawals[]` · `reinstatements[]` | 캡틴 (참여 중단 · 취소는 담당 캡틴) |
+| GET | `/api/admin/clubs/{programId}/checkins?month=` | 캡틴 |
+| PUT | `/api/admin/clubs/{programId}/checkins` — `updates[]` · `withdrawals[]` · `reinstatements[]` | 캡틴 (참여 중단 · 취소는 담당 캡틴) |
 
-계약은 [attendance/spec.md](../../../specs/attendance/spec.md) · 클럽 차이는 [club-cohort/spec.md](../../../specs/club-cohort/spec.md).
+계약은 [club-cohort/spec.md](../../../specs/club-cohort/spec.md). 출석률 산식만 [attendance/spec.md](../../../specs/attendance/spec.md) 를 따른다.
 
 ### 권한
 

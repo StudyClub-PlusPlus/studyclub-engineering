@@ -5,10 +5,8 @@ import { useEffect, useState } from 'react';
 import { SelectAll } from '@console/components/AttendanceTab';
 import {
   clubRate,
-  cohortTitle,
   daysIn,
   isoDay,
-  nextMonth,
   shortDate,
   type ClubBook,
   type ClubConfig,
@@ -18,11 +16,11 @@ import {
 import { Badge, Button, Checkbox, SelectionCount, TableActionBar } from '@studyclub/ui';
 
 /**
- * 이어서 참여 — 이번 기수를 끝까지 마친 사람은 다음 기수 참여자로 넘어간다 (클럽 운영 규칙 「자동 연장」).
+ * 이어서 참여 — 이번 달을 끝까지 마친 멤버는 다음 달에도 멤버로 남는다 (POL-0012). 다음 기수로 옮겨 적지 않는다.
  *
- * 넘어가는 시점은 다음 기수 시작일 0시다. 그 전에 참여 중단된 사람은 저절로 빠진다.
+ * 달이 끝나는 시점(다음 달 1일 0시)에 그 달 결과를 확정한다. 그 전에 참여 중단된 사람은 이미 나갔다.
  * 캡틴은 「이번 달까지만 하겠다」고 알린 사람처럼 넘기지 않을 사람을 기수 시작 전까지 뺄 수 있다.
- * 뺀 사람은 다음 기수 모집에 직접 신청하면 다시 들어온다.
+ * 뺀 사람은 이번 달이 끝나면 나간다. 다음 기수 모집에 신청하면 「계속」으로 돌아간다.
  * TODO(api): PUT /api/admin/studies/{nextStudyId}/carry-over — body: { excludedParticipantIds[] }
  */
 export function ClubCarryOver({
@@ -43,7 +41,6 @@ export function ClubCarryOver({
   onSave: (excluded: string[]) => Promise<void>;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
-  const nm = nextMonth(current);
   const curEnd = isoDay(current, daysIn(current));
   const [draft, setDraft] = useState<Set<string>>(() => new Set(excluded));
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -70,7 +67,7 @@ export function ClubCarryOver({
     setPicked(new Set());
   }
 
-  // 넘어갈 사람이 위, 뺀 사람, 중단한 사람 순
+  // 계속할 사람이 위, 뺀 사람, 중단한 사람 순
   const order = (m: ClubMember) => (m.leftOn ? 2 : draft.has(m.id) ? 1 : 0);
   const rows = [...members].sort((a, b) => order(a) - order(b));
 
@@ -80,11 +77,11 @@ export function ClubCarryOver({
         <div>
           <h2 className='type-title-md text-fg'>이어서 참여</h2>
           <p className='mt-0.5 type-body-sm text-fg-muted'>
-            {shortDate(curEnd)}까지 참여한 사람은 {cohortTitle(club, nm)} 참여자로 넘어갑니다.
+            {shortDate(curEnd)}까지 참여한 사람은 다음 달에도 계속합니다.
           </p>
         </div>
         <p data-anno='carry:1-1' className='tnum type-label-lg text-fg'>
-          넘어갈 사람 {carry.length}명
+          계속할 사람 {carry.length}명
           <span className='text-fg-muted'>
             {' '}
             · 뺀 사람 {out.length}명 · 참여 중단 {left.length}명
@@ -107,7 +104,7 @@ export function ClubCarryOver({
                 disabled={selected.length === 0}
                 onClick={() => mark(true)}
               >
-                다음 기수에서 빼기
+                다음 달에서 빼기
               </Button>
               <Button
                 data-anno='carry:3-2'
@@ -166,7 +163,7 @@ export function ClubCarryOver({
                 이번 기수 출석률
               </th>
               <th data-anno='carry:2-4' className='px-2 py-2'>
-                다음 기수
+                다음 달
               </th>
             </tr>
           </thead>
@@ -200,11 +197,11 @@ export function ClubCarryOver({
                   </td>
                   <td className='border-t border-border px-2 py-2'>
                     {m.leftOn ? (
-                      <span className='type-label-sm'>넘어가지 않음 · {shortDate(m.leftOn)} 참여 중단</span>
+                      <span className='type-label-sm'>{shortDate(m.leftOn)} 참여 중단</span>
                     ) : isOut ? (
                       <Badge tone='closed'>뺌</Badge>
                     ) : (
-                      <Badge tone='present'>넘어감</Badge>
+                      <Badge tone='present'>계속</Badge>
                     )}
                   </td>
                 </tr>

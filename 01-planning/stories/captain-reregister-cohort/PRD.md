@@ -77,7 +77,7 @@ flowchart LR
 #### 1-3 — 참여 중
 
 - **내용**: 참여 중단하지 않은 참여자 수
-- **데이터**: `STUDY_PARTICIPANT.STATUS = ACTIVE` 수
+- **데이터**: `CLUB_MEMBER.STATUS = ACTIVE` 수 — 이번 달 멤버
 
 #### 1-4 — 신청자 · 명단
 
@@ -98,17 +98,17 @@ flowchart LR
 - **내용**
   - 진행: 다음 달 1일 ~ 말일
   - 모집: 자동 공개 날(기본 20일) ~ 이번 달 말일. 캡틴이 먼저 열었으면 그날부터
-  - 정원: 이번 기수 값과 남은 자리 (정원 − 이어서 참여 − 신청). 정원이 없으면 「제한 없음」
+  - 정원: 이번 기수 값과 남은 자리 (정원 − 다음 달에도 계속할 멤버 − 신청). 정원이 없으면 「제한 없음」
   - 신청 폼: 이번 기수 폼을 그대로 쓴다. 「명단에 보이기」를 켠 질문이 있으면 그 이름
-  - 이어서 참여: 다음 기수로 넘어갈 예정 인원
+  - 이어서 참여: 이번 달을 마치고 다음 달에도 계속할 예정인 멤버 수
   - 신청: 모집 중일 때 들어온 신청 수
 - **정책**
   - 소개 · 상세 설명 · 카테고리 · 디스코드 채널 · 드라이브 · 정원 · 신청 폼은 이번 기수 값을 복사한다
   - 복사한 값을 고쳐도 이번 기수는 그대로다
   - 모집 마감은 이번 달 말일 23:59 (한국 시간)
-  - 신청에 승인 단계가 없다 — 신청하면 참여자다. 남은 자리가 0이면 신청을 받지 않는다
+  - 신청에 승인 단계가 없다 — 신청하면 그 달부터 클럽 멤버다. 남은 자리가 0이면 신청을 받지 않는다
   - 킥오프가 없다 — 1일부터 출석으로 센다
-- **데이터**: 새 `STUDY`(`STATUS = DRAFT`) · `STUDY_RECRUITMENT` 1행 · 기본 반 1개
+- **데이터**: 새 `STUDY`(`STATUS = DRAFT`) · `STUDY_RECRUITMENT` 1행 — 클럽 기수는 모집 공고라 반 · 회차를 만들지 않는다
 
 #### 2-3 — 모집 시작
 
@@ -188,17 +188,17 @@ flowchart LR
 #### 4-2 — 완주
 
 - **내용**: 말일까지 참여한 사람 수
-- **데이터**: `STUDY_PARTICIPANT.STATUS = COMPLETED` 수
+- **데이터**: 그 달 `CLUB_MONTH_RESULT.RESULT = COMPLETED` 수
 
 #### 4-3 — 참여 중단
 
 - **내용**: 기수 중에 참여 중단한 사람 수
-- **데이터**: `STUDY_PARTICIPANT.STATUS = WITHDRAWN` 수
+- **데이터**: 그 달 `CLUB_MONTH_RESULT.RESULT = WITHDRAWN` 수
 
 #### 4-4 — 다음 달로 이어짐
 
-- **내용**: 다음 기수로 넘어간 사람 수와 완주 대비 비율
-- **데이터**: 다음 기수에서 `CARRIED_FROM_ID` 가 이 기수 참여인 수
+- **내용**: 다음 달에도 계속한 사람 수와 완주 대비 비율
+- **데이터**: 그 달 완주한 멤버 중 다음 달 1일에도 `CLUB_MEMBER.STATUS = ACTIVE` 인 수
 
 #### 4-5 — 평균 출석률
 
@@ -227,6 +227,7 @@ flowchart LR
 erDiagram
   STUDY_PROGRAM ||--o{ STUDY : "기수 (달마다 하나)"
   STUDY ||--|| STUDY_RECRUITMENT : "모집"
+  STUDY_PROGRAM ||--o{ CLUB_MEMBER : "멤버 — 기수와 따로 계속된다"
   STUDY_PROGRAM {
     varchar STUDY_KIND "CLUB"
     boolean AUTO_DRAFT_ENABLED "기본 true"
@@ -249,7 +250,7 @@ erDiagram
 
 ### 개발 범위
 
-> 2026-11-24 `beta` 기준.
+> 2026-11-26 `beta` 기준. 클럽 참여 이후 모델은 [클럽 모델 결정 (2026-11-25)](../../../docs/share/2026-11-25-club-own-model.md) — 백엔드 검토 전.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
@@ -264,6 +265,7 @@ erDiagram
 | BE | `POST /api/admin/studies/{studyId}/publish` | 구현완료 | 없음 |
 | BE · 봇 | 자동 공개 실패 알림 — 담당 캡틴 · 스터디클럽 DEV 서버 | 없음 — 봇은 운영 서버 alert 채널에만, 멘션 알림 없이 보낸다 | 봇 담당과 방법 정하기 → 구현 |
 | BE | `STUDY_PROGRAM.AUTO_DRAFT_*` · `AUTO_PUBLISH_DAY` · `STUDY.COHORT_MONTH` · 신청 폼 질문 `SHOW_IN_ROSTER` 컬럼 | 없음 | 마이그레이션 |
+| BE | 지난 기수 숫자(시작 · 완주 · 중단 · 이어짐)를 `CLUB_MONTH_RESULT` 에서 | 없음 | 구현 (ST-042 와 함께) |
 | FE | 신청 폼 편집 — 질문별 「명단에 보이기」 | 없음 | 추가 (클럽 기수) |
 
 ### 데이터
@@ -282,12 +284,12 @@ erDiagram
   - `START_AT` = 다음 달 1일 0시 · `END_AT` = 다음 달 말일 24시 (KST)
   - `RECRUIT_DEADLINE_AT` = 이번 달 말일 23:59
   - 소개 · 상세 설명 · 카테고리 · 시간대 · 디스코드 채널 · 드라이브 · 정원 · 신청 폼은 이번 기수(같은 프로그램에서 `COHORT_MONTH` 가 가장 늦은 기수)에서 복사
-  - `STATUS = DRAFT` · 기본 반 1개 · `STUDY_RECRUITMENT` 1행
+  - `STATUS = DRAFT` · `STUDY_RECRUITMENT` 1행. 클럽 기수는 모집 공고라 반 · 회차 · 참여자 행을 만들지 않는다 — 멤버는 `CLUB_MEMBER` ([클럽 모델 결정 (2026-11-25)](../../../docs/share/2026-11-25-club-own-model.md))
 - 「지금 초안 만들기」는 같은 처리를 즉시 한다. 이미 있으면 409
 - 자동 공개: 매일 0시에 오늘 일자 ≥ `AUTO_PUBLISH_DAY` 인 클럽의 다음 달 `DRAFT` 기수를 공개한다. 공개 조건을 못 맞추면 그대로 두고 디스코드 알림(담당 캡틴 · DEV 서버 — [club-cohort 「자동 공개 실패 알림」](../../../specs/club-cohort/spec.md#자동-공개-실패-알림)), 다음 날 다시
 - 「모집 시작」은 기존 공개 처리와 같다 — 공개한 날이 `STUDY_RECRUITMENT.START_AT`
-- 신청에 승인 단계가 없다 — 신청하면 참여자. 남은 자리가 0이면 신청을 받지 않는다
-- 기수 상태: `COHORT_MONTH` 1일 0시 `OPEN → ONGOING`, 말일이 끝나면 `ENDED` (기수 종료 — ST-042). 클럽 기수에는 `CLOSED` 가 없다
+- 신청에 승인 단계가 없다 — 신청하면 그 기수의 달부터 클럽 멤버(`CLUB_MEMBER`). 남은 자리가 0이면 신청을 받지 않는다
+- 기수 상태: `COHORT_MONTH` 1일 0시 `OPEN → ONGOING`, 말일이 끝나면 `ENDED`. 같은 때 멤버의 그 달 결과를 확정한다 (ST-042). 클럽 기수에는 `CLOSED` 가 없다
 
 ### API
 

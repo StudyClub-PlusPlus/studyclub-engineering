@@ -185,27 +185,18 @@ export function ClubConsole() {
               onStartRecruit={() => patch((s) => ({ ...s, next: 'recruiting', recruitFrom: today }))}
               studyId={clubStudyId(club)}
             />
-            {next === 'none' ? (
-              <div data-anno='carry:4' className='card mt-8 px-6 py-10 text-center'>
-                <p className='type-label-lg text-fg'>아직 다음 기수가 없습니다.</p>
-                <p className='mt-1.5 type-body-sm text-fg-muted'>
-                  다음 기수 초안이 만들어지면 이어서 참여할 사람을 확인할 수 있습니다.
-                </p>
-              </div>
-            ) : (
-              <ClubCarryOver
-                club={club}
-                current={current}
-                members={cur.members}
-                book={cur.book}
-                excluded={cur.excluded}
-                onDirtyChange={onCarryDirty}
-                onSave={async (excluded) => {
-                  await new Promise((r) => setTimeout(r, 300));
-                  patch((s) => ({ ...s, excluded }));
-                }}
-              />
-            )}
+            <ClubCarryOver
+              club={club}
+              current={current}
+              members={cur.members}
+              book={cur.book}
+              excluded={cur.excluded}
+              onDirtyChange={onCarryDirty}
+              onSave={async (excluded) => {
+                await new Promise((r) => setTimeout(r, 300));
+                patch((s) => ({ ...s, excluded }));
+              }}
+            />
             <ClubPastCohorts
               club={club}
               cohorts={pastCohorts(club, current)}

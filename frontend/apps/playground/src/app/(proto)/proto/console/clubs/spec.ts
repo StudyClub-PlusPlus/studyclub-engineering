@@ -36,7 +36,7 @@ const COHORT: ScreenSpec = {
       n: '1-3',
       title: '참여 중',
       display: ['참여 중단하지 않은 참여자 수'],
-      data: ['`STUDY_PARTICIPANT.STATUS = ACTIVE` 수'],
+      data: ['`CLUB_MEMBER.STATUS = ACTIVE` 수 — 이번 달 멤버'],
     },
     {
       n: '1-4',
@@ -61,19 +61,19 @@ const COHORT: ScreenSpec = {
       display: [
         '진행: 다음 달 1일 ~ 말일',
         '모집: 자동 공개 날(기본 20일) ~ 이번 달 말일. 캡틴이 먼저 열었으면 그날부터',
-        '정원: 이번 기수 값과 남은 자리 (정원 − 이어서 참여 − 신청). 정원이 없으면 「제한 없음」',
+        '정원: 이번 기수 값과 남은 자리 (정원 − 다음 달에도 계속할 멤버 − 신청). 정원이 없으면 「제한 없음」',
         '신청 폼: 이번 기수 폼을 그대로 쓴다. 「명단에 보이기」를 켠 질문이 있으면 그 이름',
-        '이어서 참여: 다음 기수로 넘어갈 예정 인원',
+        '이어서 참여: 이번 달을 마치고 다음 달에도 계속할 예정인 멤버 수',
         '신청: 모집 중일 때 들어온 신청 수',
       ],
       policy: [
         '소개 · 상세 설명 · 카테고리 · 디스코드 채널 · 드라이브 · 정원 · 신청 폼은 이번 기수 값을 복사한다',
         '복사한 값을 고쳐도 이번 기수는 그대로다',
         '모집 마감은 이번 달 말일 23:59 (한국 시간)',
-        '신청에 승인 단계가 없다 — 신청하면 참여자다. 남은 자리가 0이면 신청을 받지 않는다',
+        '신청에 승인 단계가 없다 — 신청하면 그 달부터 클럽 멤버다. 남은 자리가 0이면 신청을 받지 않는다',
         '킥오프가 없다 — 1일부터 출석으로 센다',
       ],
-      data: ['새 `STUDY`(`STATUS = DRAFT`) · `STUDY_RECRUITMENT` 1행 · 기본 반 1개'],
+      data: ['새 `STUDY`(`STATUS = DRAFT`) · `STUDY_RECRUITMENT` 1행 — 클럽 기수는 모집 공고라 반 · 회차를 만들지 않는다'],
     },
     {
       n: '2-3',
@@ -168,19 +168,19 @@ const COHORT: ScreenSpec = {
       n: '4-2',
       title: '완주',
       display: ['말일까지 참여한 사람 수'],
-      data: ['`STUDY_PARTICIPANT.STATUS = COMPLETED` 수'],
+      data: ['그 달 `CLUB_MONTH_RESULT.RESULT = COMPLETED` 수'],
     },
     {
       n: '4-3',
       title: '참여 중단',
       display: ['기수 중에 참여 중단한 사람 수'],
-      data: ['`STUDY_PARTICIPANT.STATUS = WITHDRAWN` 수'],
+      data: ['그 달 `CLUB_MONTH_RESULT.RESULT = WITHDRAWN` 수'],
     },
     {
       n: '4-4',
       title: '다음 달로 이어짐',
-      display: ['다음 기수로 넘어간 사람 수와 완주 대비 비율'],
-      data: ['다음 기수에서 `CARRIED_FROM_ID` 가 이 기수 참여인 수'],
+      display: ['다음 달에도 계속한 사람 수와 완주 대비 비율'],
+      data: ['그 달 완주한 멤버 중 다음 달 1일에도 `CLUB_MEMBER.STATUS = ACTIVE` 인 수'],
     },
     {
       n: '4-5',
@@ -196,7 +196,7 @@ const COHORT: ScreenSpec = {
   ],
 };
 
-/** 이어서 참여 — 이번 기수를 끝까지 마친 사람이 다음 기수로 넘어간다 (ST-042). */
+/** 이어서 참여 — 이번 달을 끝까지 마친 멤버는 다음 달에도 멤버로 남는다 (ST-042). 옮겨 적지 않는다. */
 const CARRY: ScreenSpec = {
   screen: '클럽 운영 › 기수 (운영 콘솔)',
   story: 'ST-042',
@@ -207,19 +207,19 @@ const CARRY: ScreenSpec = {
     {
       n: '1',
       title: '이어서 참여 머리',
-      display: ['「{이번 기수 말일}까지 참여한 사람은 {다음 기수 제목} 참여자로 넘어갑니다.」'],
+      display: ['「{이번 달 말일}까지 참여한 사람은 다음 달에도 계속합니다.」'],
     },
     {
       n: '1-1',
       title: '인원 요약',
-      display: ['넘어갈 사람 · 뺀 사람 · 참여 중단 인원'],
+      display: ['계속할 사람 · 뺀 사람 · 참여 중단 인원'],
       policy: ['저장 전 고친 값으로 센다'],
     },
     {
       n: '2',
       title: '이번 기수 명단',
-      display: ['넘어갈 사람 → 뺀 사람 → 참여 중단한 사람 순'],
-      data: ['`GET /api/admin/studies/{nextStudyId}/carry-over`'],
+      display: ['계속할 사람 → 뺀 사람 → 참여 중단한 사람 순'],
+      data: ['`GET /api/admin/clubs/{programId}/members?month={이번 달}`'],
     },
     {
       n: '2-1',
@@ -232,7 +232,7 @@ const CARRY: ScreenSpec = {
       when: '신청 폼에 「명단에 보이기」를 켠 질문이 있을 때',
       display: ['그 질문의 답'],
       policy: [
-        '넘어가는 사람의 신청 답은 스냅샷(질문 문구 · 답)으로 다음 기수에 복사한다 — 다음 기수 폼이 바뀌어도 그대로 남는다',
+        '멤버가 클럽에 들어올 때 낸 신청서의 답이다 — 달이 바뀌어도, 다음 기수 폼이 바뀌어도 그대로 보인다. 복사하지 않는다',
       ],
     },
     {
@@ -245,13 +245,13 @@ const CARRY: ScreenSpec = {
       n: '2-4',
       title: '다음 기수',
       display: [
-        '넘어감 — 다음 기수 시작일에 참여자로 넘어간다',
+        '계속 — 다음 달에도 멤버로 남는다',
         '뺌 — 캡틴이 뺐다',
-        '넘어가지 않음 · {날짜} 참여 중단 — 이번 기수에서 참여 중단했다',
+        '{날짜} 참여 중단 — 이번 달에 참여 중단해 클럽에서 나갔다',
       ],
       policy: [
         '참여 중단한 사람은 고를 수 없다 — 다시 하려면 다음 기수 모집에 신청한다',
-        '넘어감인 사람은 다음 기수에 신청하지 않는다 — 사이트의 신청 버튼이 「신청 완료」로 보이고 신청을 받지 않는다. 뺌이 되면 신청할 수 있다',
+        '계속인 사람은 다음 기수에 신청하지 않는다 — 사이트의 신청 버튼이 「신청 완료」로 보이고 신청을 받지 않는다. 뺌이 되면 신청할 수 있고, 신청하면 「계속」으로 돌아간다',
       ],
     },
     {
@@ -261,29 +261,21 @@ const CARRY: ScreenSpec = {
     },
     {
       n: '3-1',
-      title: '다음 기수에서 빼기',
+      title: '다음 달에서 빼기',
       behavior: ['고른 사람을 「뺌」으로 바꾼다. 저장 전이다'],
     },
     {
       n: '3-2',
       title: '다시 넣기',
-      behavior: ['고른 사람 중 뺀 사람을 「넘어감」으로 되돌린다. 저장 전이다'],
+      behavior: ['고른 사람 중 뺀 사람을 「계속」으로 되돌린다. 저장 전이다'],
       policy: ['고른 사람 중 뺀 사람이 없으면 누를 수 없다'],
     },
     {
       n: '3-3',
       title: '변경 취소 · 저장',
       behavior: ['저장하면 뺀 사람 목록을 한 번에 반영한다', '변경 취소는 마지막 저장 상태로 되돌린다'],
-      policy: ['다음 기수 시작일 0시 전까지 고칠 수 있다'],
-      data: ['`PUT /api/admin/studies/{nextStudyId}/carry-over` — `excludedParticipantIds[]`'],
-    },
-    {
-      n: '4',
-      title: '다음 기수가 없을 때',
-      when: '다음 기수가 아직 없을 때',
-      display: [
-        '「아직 다음 기수가 없습니다.」 · 「다음 기수 초안이 만들어지면 이어서 참여할 사람을 확인할 수 있습니다.」',
-      ],
+      policy: ['다음 달 1일 0시 전까지 고칠 수 있다'],
+      data: ['`PUT /api/admin/clubs/{programId}/leaving` — `month` · `memberIds[]` (이번 달이 끝나면 나갈 멤버 전체)'],
     },
   ],
 };
@@ -316,7 +308,7 @@ const BOOK: ScreenSpec = {
       title: '기수 고르기',
       display: ['이번 기수와 끝난 기수의 달. 이번 기수가 기본'],
       behavior: ['고르면 그 기수의 출석부를 연다'],
-      data: ['그 기수의 `GET /api/admin/studies/{studyId}/attendances`'],
+      data: ['`GET /api/admin/clubs/{programId}/checkins?month={그 달}`'],
     },
     {
       n: '1-5',
@@ -325,7 +317,7 @@ const BOOK: ScreenSpec = {
       display: ['끝난 기수임을 알리고, 「?」에서 고친 출석은 그 기수 출석률에만 반영된다고 설명한다'],
       policy: [
         '끝난 기수도 출석을 고칠 수 있다 — 시트에서 늦게 옮기는 경우가 있다',
-        '이미 다음 기수로 넘어간 명단은 바뀌지 않는다',
+        '고쳐도 그 달의 완주 여부와 다음 달 멤버 여부는 바뀌지 않는다',
         '참여 중단은 이번 기수에서만 한다',
       ],
     },
@@ -344,7 +336,7 @@ const BOOK: ScreenSpec = {
       title: '출석부 표',
       display: ['줄은 참여자, 열은 기수 기간의 날짜(1일~말일)'],
       policy: ['참여 중단한 사람은 맨 아래'],
-      data: ['`GET /api/admin/studies/{studyId}/attendances` — 클럽은 날마다 회차 하나라 열이 곧 날짜'],
+      data: ['`GET /api/admin/clubs/{programId}/checkins?month={그 달}` — 열은 그 달의 날짜. 회차를 만들지 않는다'],
     },
     {
       n: '3-1',
@@ -423,7 +415,7 @@ const BOOK: ScreenSpec = {
       title: '저장',
       display: ['저장 안 한 칸 수'],
       behavior: ['저장하면 고친 칸을 한 번에 반영한다', '변경 취소는 마지막 저장 상태로 되돌린다'],
-      data: ['`POST /api/admin/studies/{studyId}/attendances` — `updates[]` (그 날의 회차 · 상태)'],
+      data: ['`PUT /api/admin/clubs/{programId}/checkins` — `updates[]` (멤버 · 날짜 · 상태) → `CLUB_CHECKIN`'],
     },
     {
       n: '5',
@@ -469,10 +461,10 @@ const BOOK: ScreenSpec = {
       behavior: ['「{n}명 참여 중단」 — 바로 반영된다', '「취소」(기본 포커스)'],
       policy: [
         '이번 기수 안에서는 「참여 중단 취소」(3-7)로 되돌릴 수 있다',
-        '다음 기수의 「이어서 참여」에서 빠진다 (ST-042)',
+        '그날 클럽에서 나간다 — 다음 달로 이어지지 않는다 (ST-042)',
       ],
       data: [
-        '`POST /api/admin/studies/{studyId}/attendances` 의 `withdrawals[]` — `STUDY_PARTICIPANT.STATUS = WITHDRAWN` · `LEFT_AT`',
+        '`PUT /api/admin/clubs/{programId}/checkins` 의 `withdrawals[]` — `CLUB_MEMBER.STATUS = LEFT` · `LEFT_AT` · `LEFT_REASON = CAPTAIN`',
       ],
     },
     {
@@ -485,10 +477,10 @@ const BOOK: ScreenSpec = {
       behavior: ['「참여 중단 취소」 — 바로 반영된다', '「닫기」(기본 포커스)'],
       policy: [
         '참여 중(`ACTIVE`)으로 돌아가고 중단 날짜를 지운다',
-        '다음 기수 「이어서 참여」에 다시 넘어갈 사람으로 들어간다',
+        '이번 달을 끝까지 마치면 다음 달에도 계속한다',
       ],
       data: [
-        '`POST /api/admin/studies/{studyId}/attendances` 의 `reinstatements[]` — `WITHDRAWN → ACTIVE` · `LEFT_AT` 비움',
+        '`PUT /api/admin/clubs/{programId}/checkins` 의 `reinstatements[]` — `CLUB_MEMBER` `LEFT → ACTIVE` · `LEFT_AT` 비움',
       ],
     },
     {
