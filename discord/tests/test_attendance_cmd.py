@@ -8,6 +8,7 @@ from app.backend_client import (
     BackendError,
     BackendUnreachable,
     MarkedGroup,
+    NoMeetingGroup,
 )
 from app.bot.commands import attendance_cmd
 from app.bot.commands.attendance_cmd import (
@@ -301,6 +302,38 @@ async def test_command_when_the_group_is_not_meeting_now(monkeypatch):
 
     assert _sent(ctx).startswith("출석을 찍은 사람이 없습니다.")
     assert "지금 모이는 중이 아닌 반 1명 — 반장" in _sent(ctx)
+
+
+@pytest.mark.asyncio
+async def test_command_shows_the_nearest_meeting_of_a_group_not_meeting_now(monkeypatch):
+    """The kickoff was saved for 17:00 but the room met at 11:40 -- show the time so it is obvious."""
+    backend = AsyncMock(
+        return_value=AttendanceResult(
+            no_meeting=["1"],
+            no_meeting_groups=[
+                NoMeetingGroup(
+                    75, "A", "Asia/Seoul", 0, "KICKOFF", "킥오프", "2026-11-21T08:00:00Z"
+                ),
+                NoMeetingGroup(76, "B", None),
+            ],
+        )
+    )
+
+    ctx = await _run(monkeypatch, backend)
+
+    assert "A: 가장 가까운 회차 킥오프 11/21(토) 17:00 KST" in _sent(ctx)
+    assert "B: 남은 회차가 없습니다" in _sent(ctx)
+
+
+@pytest.mark.asyncio
+async def test_command_answers_an_unexpected_error_instead_of_staying_silent(monkeypatch):
+    """A crash used to end the command with no reply, which looked like a dead bot."""
+    backend = AsyncMock(side_effect=KeyError("studyGroupId"))
+
+    ctx = await _run(monkeypatch, backend)
+
+    assert _sent(ctx) == attendance_cmd.UNEXPECTED_ERROR
+    assert _mentions_suppressed(ctx)
 
 
 @pytest.mark.asyncio

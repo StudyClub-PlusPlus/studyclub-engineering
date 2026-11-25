@@ -12,6 +12,7 @@ import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.MeetingSchedule;
+import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import java.time.Duration;
@@ -60,13 +61,16 @@ public class DiscordAttendanceService {
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
     private final AccountRepository accountRepository;
+    private final StudyGroupRepository studyGroupRepository;
 
     public DiscordAttendanceService(
             StudyDiscordLinkRepository studyDiscordLinkRepository,
             StudyMeetingRepository studyMeetingRepository,
             StudyParticipantRepository studyParticipantRepository,
             StudyAttendanceRepository studyAttendanceRepository,
-            AccountRepository accountRepository) {
+            AccountRepository accountRepository,
+            StudyGroupRepository studyGroupRepository) {
+        this.studyGroupRepository = studyGroupRepository;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyParticipantRepository = studyParticipantRepository;
@@ -162,6 +166,7 @@ public class DiscordAttendanceService {
     private DiscordAttendanceResponse markByGroup(Classified classified, StudyDiscordLink link) {
         List<DiscordAttendanceResponse.MarkedGroup> groups = new ArrayList<>();
         List<String> noMeeting = new ArrayList<>();
+        List<DiscordAttendanceResponse.NoMeetingGroup> noMeetingGroups = new ArrayList<>();
 
         // 반 id 오름차순으로 잠근다. 요청의 discordUserIds 순서를 그대로 따라가면 같은 사람들을
         // 순서만 바꿔 보낸 두 요청이 서로의 회차 잠금을 기다려 교착한다.
@@ -175,6 +180,7 @@ public class DiscordAttendanceService {
             if (picked.isEmpty()) {
                 // 옆 반 사람이 공부방에 앉아 있을 뿐인 흔한 경우다. 전체를 실패시키지 않는다.
                 noMeeting.addAll(discordUserIds);
+                noMeetingGroups.add(noMeetingGroup(groupId));
                 continue;
             }
             Long meetingId = picked.get().meeting().getId();
@@ -200,7 +206,39 @@ public class DiscordAttendanceService {
         }
 
         return new DiscordAttendanceResponse(
-                groups, classified.unmatched(), classified.notParticipant(), noMeeting);
+                groups,
+                classified.unmatched(),
+                classified.notParticipant(),
+                noMeeting,
+                noMeetingGroups);
+    }
+
+    /** 찍을 회차가 없는 반 — 끝나지 않은 회차 중 예정 시각이 지금에 가장 가까운 것을 같이 돌려준다. 회차 잠금은 pickMeeting 이 이미 잡았다. */
+    private DiscordAttendanceResponse.NoMeetingGroup noMeetingGroup(Long groupId) {
+        List<StudyMeeting> meetings = studyMeetingRepository.findByStudyGroupIdForUpdate(groupId);
+        Map<Long, Integer> numbers = MeetingSchedule.numbersOf(meetings);
+        Instant now = Instant.now();
+        DiscordAttendanceResponse.NearestMeeting nearest =
+                meetings.stream()
+                        .filter(m -> m.getEndAt() == null && m.getScheduledAt() != null)
+                        .min(
+                                Comparator.comparing(
+                                        m -> Duration.between(m.getScheduledAt(), now).abs()))
+                        .map(
+                                m ->
+                                        new DiscordAttendanceResponse.NearestMeeting(
+                                                numbers.get(m.getId()),
+                                                m.getMeetingType().name(),
+                                                m.getTitle(),
+                                                m.getScheduledAt()))
+                        .orElse(null);
+        return studyGroupRepository
+                .findById(groupId)
+                .map(
+                        g ->
+                                new DiscordAttendanceResponse.NoMeetingGroup(
+                                        groupId, g.getName(), g.getTimezone(), nearest))
+                .orElse(new DiscordAttendanceResponse.NoMeetingGroup(groupId, null, null, nearest));
     }
 
     /**
