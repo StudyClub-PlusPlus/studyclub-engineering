@@ -166,7 +166,7 @@
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | FE | back-office-front 정보 탭 (`StudyInfoTab`) | 있음 — 수정 · 삭제 API 연결. 낡은 `TODO(api)` 는 지웠다 | 없음 |
-| FE | back-office-front 클럽 「다음 기수 만들기」 (1-2) | 있음 — 클럽 운영 화면 머리 버튼(`NextCohortButton`). 이 클럽 · 최신 기수 값으로 채운 등록 팝업, 프로그램은 고를 수 없다 | 없음 |
+| FE | back-office-front 클럽 「다음 기수 만들기」 (1-2) | 있음 — 클럽 운영 화면 머리 버튼(`NextCohortButton`). 이 클럽 · 최신 기수 값으로 채운 등록 팝업, 프로그램은 고를 수 없다 | 클럽 운영 › 기수로 가는 링크로 바꾼다 ([ST-021](../captain-reregister-cohort/PRD.md)) |
 | BE | `PATCH` · `DELETE /api/admin/studies/{studyId}` | 구현완료 | 없음 |
 
 ### 데이터

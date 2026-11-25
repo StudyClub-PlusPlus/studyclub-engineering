@@ -22,7 +22,8 @@
 | GET | /api/admin/clubs/{programId} | 클럽 한 곳 — 이번 기수 · 다음 기수 · 자동 초안 설정 | O (ADMIN) | 스펙작성중 |
 | GET | /api/admin/clubs/{programId}/cohorts | 지난 기수 — 달마다 시작 · 완주 · 참여 중단 · 이어짐 · 평균 출석률 | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/clubs/{programId} | 자동 초안 설정 | O (ADMIN) | 스펙작성중 |
-| POST | /api/admin/clubs/{programId}/next-cohort | 다음 달 기수 초안 지금 만들기 | O (ADMIN) | 스펙작성중 |
+| POST | /api/admin/clubs/{programId}/next-cohort | 다음 달 기수 초안 지금 만들기 — **클럽 기수를 만드는 유일한 API** | O (ADMIN) | 스펙작성중 |
+| POST | /api/admin/studies | 스터디 등록 — `studyProgramId`(기존 클럽의 새 기수)를 받지 않는다. 새 클럽의 첫 기수만 만든다 | O (ADMIN) | 구현완료 · 변경 예정 ([study](../study/spec.md) AC-7) |
 | GET | /api/admin/studies/{nextStudyId}/carry-over | 이어서 참여 명단 | O (ADMIN) | 스펙작성중 |
 | PUT | /api/admin/studies/{nextStudyId}/carry-over | 다음 기수에서 뺄 사람 저장 | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/studies/{studyId}/publish | 모집 시작 — 기존 공개 | O (ADMIN) | 구현완료 |

@@ -254,7 +254,9 @@ erDiagram
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | FE | back-office-front 클럽 운영 화면 (`/clubs`) — 기수 탭 | 없음 | 프로토대로 만든다 |
-| FE | 스터디 상세(클럽) 머리 「다음 기수 · 클럽 운영」 | 「다음 기수 만들기」 창 | 클럽 운영으로 가는 링크로 바꾼다 |
+| FE | 스터디 상세(클럽) 머리 「다음 기수 · 클럽 운영」 | 「다음 기수 만들기」 창 (`NextCohortButton`) | 클럽 운영으로 가는 링크로 바꾼다 · 화면 카탈로그 `BO-ST-021-S01` 도 바꾼다 |
+| FE | back-office-front 스터디 등록 팝업 — 「기존 클럽의 새 기수」 | 있음 (`StudyForm` · `mode='next'`) | 없앤다 — 등록은 새 프로그램만 (종류만 고른다) |
+| BE | `POST /api/admin/studies` 의 `studyProgramId` | 구현완료 | 없앤다 — 보내면 400. 클럽 기수는 `next-cohort` 로만 |
 | BE | `GET /api/admin/clubs` · `GET /api/admin/clubs/{programId}` · `GET /api/admin/clubs/{programId}/cohorts` | 스펙작성중 | 구현 |
 | BE | `PATCH /api/admin/clubs/{programId}` (자동 초안 설정) | 스펙작성중 | 구현 |
 | BE | `POST /api/admin/clubs/{programId}/next-cohort` · 자동 초안 · 자동 공개 스케줄러 | 스펙작성중 | 구현 |
