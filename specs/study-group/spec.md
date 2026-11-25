@@ -406,6 +406,7 @@
 - ✅ `ErrorCode` 에 `PARTICIPANT_NOT_ACTIVE(409)` · `GROUP_NOT_EMPTY(409)` 추가
 - ✅ `STUDY` 에 `OWNER_CAPTAIN_ID BIGINT NULL` · 인덱스 `idx_study_owner_captain` 추가, 기존 행은 `CREATED_BY` 값으로 채움 — V58 마이그레이션 (2026-11-16)
 - ✅ `ErrorCode` 에 `OWNER_CAPTAIN_NOT_ADMIN(409)` 추가 · 감사 액션 `OWNER_CAPTAIN` 추가
+- ✅ `STUDY_PARTICIPANT_GROUP_MOVE` 표와 인덱스 3개 추가 — V65 마이그레이션 (2026-11-25, → [share 11-19](../../docs/share/2026-11-19-group-move-log.md))
 
 ## 프론트엔드 사용처
 
