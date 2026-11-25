@@ -206,7 +206,7 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   else if (titleWidth(f.title.trim()) > TITLE_MAX_WIDTH) e.title = '한글 20자(영문 40자) 이내로 입력하세요.';
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
   if (!f.category) e.category = '카테고리를 선택하세요.';
-  if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
+  if (!f.sourceId && !f.deadline) e.deadline = '모집 마감일을 입력하세요.';
   if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim()))
     e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
   if (f.recruitmentTimeZones.mode === 'selected' && (!f.recruitmentTimeZones.zones.length || !f.recruitmentTimeZones.zones.every(isValidZone)))
@@ -321,7 +321,8 @@ export function StudyForm({
         <div data-anno='7'>
           <DatePicker
             label='모집 마감일'
-            required
+            helper={value.sourceId ? '비우면 공개 후 상시 모집합니다.' : undefined}
+            required={!value.sourceId}
             value={value.deadline}
             onChange={(value) => set('deadline', value)}
             error={errors.deadline}
@@ -400,7 +401,7 @@ export function StudyForm({
  * 남고, 새로고침하면 사라진다. 실제 연동 시엔 여기서 파일을 스토리지에 먼저 올리고, 돌아온 짧은
  * 호스팅 URL을 `STUDY.THUMBNAIL_URL`(VARCHAR(2048))에 넣어야 한다 — data URL은 못 들어간다.
  */
-function ThumbnailField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+export function ThumbnailField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function pick(ev: ChangeEvent<HTMLInputElement>) {

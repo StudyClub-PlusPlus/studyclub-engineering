@@ -6,11 +6,10 @@ import { useEffect, useState } from 'react';
 
 import type { Study } from '@studyclub/types';
 import { Button, Input, Switch, toast } from '@studyclub/ui';
-import { todayISO } from '@studyclub/utils';
 
 import { ApplicationFormTab } from './ApplicationFormTab';
-import { studyToForm, validateStudyForm } from './StudyForm';
-import { readReusedDrafts, updateReusedDraft } from '../lib/reused-drafts';
+import { ThumbnailField, studyToForm, validateStudyForm } from './StudyForm';
+import { persistThumbnail, readReusedDrafts, reusedDraftVisibility, updateReusedDraft } from '../lib/reused-drafts';
 
 export function DraftDetail({ id }: { id: string }) {
   const [study, setStudy] = useState<Study | null>();
@@ -74,6 +73,24 @@ export function DraftDetail({ id }: { id: string }) {
         </form>
       )}
       <p>{study.summary.ko}</p>
+      <ThumbnailField
+        value={study.image ?? ''}
+        onChange={async (preview) => {
+          try {
+            const image = await persistThumbnail(preview);
+            const latest = readReusedDrafts().find((draft) => draft.id === current.id);
+            if (latest) {
+              const updated = { ...latest, image };
+              updateReusedDraft(updated);
+              setStudy(updated);
+            }
+          } catch {
+            toast.error('이미지를 저장하지 못했어요.');
+          } finally {
+            if (preview.startsWith('blob:')) URL.revokeObjectURL(preview);
+          }
+        }}
+      />
       <Switch
         label='사이트 공개'
         checked={Boolean(study.published)}
@@ -81,7 +98,7 @@ export function DraftDetail({ id }: { id: string }) {
         onClick={() => {
           if (blocked) toast('신청 폼을 먼저 연결하세요.');
         }}
-        onCheckedChange={(published) => save({ published, publish_at: published ? todayISO() : undefined })}
+        onCheckedChange={(published) => save(reusedDraftVisibility(current, published))}
       />
       <h2 className='type-title-md'>신청 폼</h2>
       <ApplicationFormTab study={study} onSave={save} />

@@ -18,7 +18,7 @@ import { Badge, Button, Input, Modal, Pagination, Select, cx } from '@studyclub/
 import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, toISODate, todayISO } from '@studyclub/utils';
 import { Check, Minus, Search } from 'lucide-react';
 
-import { isReusedDraft, updateReusedDraft } from '../lib/reused-drafts';
+import { isReusedDraft, reusedDraftVisibility, updateReusedDraft } from '../lib/reused-drafts';
 import { recruitState, recruitmentDeadlineAt, recruitmentDeadlineLabel } from '@/proto/lib/recruitment-deadline';
 import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
@@ -148,7 +148,7 @@ function summarize(study: Study) {
 }
 
 /** 화면에서 바꾼 공개 상태. TODO(api): 저장 API 를 붙이면 서버 값으로 대체한다. */
-type PublishPatch = { published?: boolean; publish_at?: string };
+type PublishPatch = Pick<Study, 'published' | 'publish_at' | 'recruitment'>;
 
 /** 모집 시작일 = 공개한 날. 공개 중이 아니면 없다(별도 「공개 시작일」은 두지 않는다). */
 function startedOn(s: Study): string | undefined {
@@ -428,13 +428,11 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
     // 공개를 켜는 날이 모집 시작 일자다. 내리면 시작 일자가 사라진다(= 미공개).
     // TODO(api): 공개 전환 API — 공개 = 모집 시작 (STATUS DRAFT → OPEN, STUDY_RECRUITMENT.START_AT 채움)
     const target = studies.find((candidate) => candidate.id === confirm.id);
-    if (target && isReusedDraft(target)) {
-      updateReusedDraft({ ...target, published: confirm.next, publish_at: confirm.next ? todayISO() : undefined });
-    }
-    setPatch((m) => ({
-      ...m,
-      [confirm.id]: { published: confirm.next, publish_at: confirm.next ? todayISO() : undefined },
-    }));
+    const patch = target && isReusedDraft(target)
+      ? reusedDraftVisibility(target, confirm.next)
+      : { published: confirm.next, publish_at: confirm.next ? todayISO() : undefined };
+    if (target && isReusedDraft(target)) updateReusedDraft({ ...target, ...patch });
+    setPatch((m) => ({ ...m, [confirm.id]: patch }));
     setConfirm(null);
   }
 

@@ -13,6 +13,7 @@ import {
   type StudyFormErrors,
   type StudyFormValues,
 } from '@console/components/StudyForm';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { studies } from '@studyclub/mock';
 import type { Study } from '@studyclub/types';
 import { Button, Modal, toast } from '@studyclub/ui';
@@ -74,6 +75,7 @@ export function StudyCreateDialog({
   const [errors, setErrors] = useState<StudyFormErrors>({});
   const [saving, setSaving] = useState(false);
   const router = useRouter();
+  const zone = useDisplayTimeZone();
 
   const [saveError, setSaveError] = useState('');
 
@@ -103,12 +105,16 @@ export function StudyCreateDialog({
     setSaveError('');
     try {
       const source = studies.find((candidate) => candidate.id === form.sourceId);
-      const draft = source ? saveReusedDraft(form, source) : undefined;
+      const draft = source ? await saveReusedDraft(form, source, zone) : undefined;
       if (study) saveRecruitmentZones(study.id, form.recruitmentTimeZones);
       close();
       toast.success(editing ? '저장되었습니다' : '등록되었습니다');
       if (draft) router.push(`/proto/console/studies/${draft.study_id}`);
-    } catch {
+    } catch (error) {
+      if (error instanceof RangeError) {
+        setErrors({ deadline: error.message });
+        return;
+      }
       setSaveError('저장하지 못했어요. 다시 시도해 주세요.');
     } finally {
       setSaving(false);
