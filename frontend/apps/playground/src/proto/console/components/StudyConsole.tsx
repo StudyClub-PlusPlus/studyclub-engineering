@@ -20,6 +20,7 @@ import { tx } from '@console/lib/l10n';
 import { useStudiesListHref } from '@console/lib/list-return';
 import { type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
+import { kindRules } from '@console/lib/study-kind';
 import { studyAuthor } from '@console/lib/users';
 import { RetroBoard } from '@core/components/MeetingRetro';
 import { ScheduleManager } from '@core/components/ScheduleManager';
@@ -122,12 +123,20 @@ export function StudyConsole({ study }: { study: Study }) {
   const [ruleOpen, setRuleOpen] = useState(false);
 
   const [tab, setTab] = useState<TabKey>('info');
-  // 클럽 기수 — 반 · 네비게이터 · 모임 시각 · 킥오프 · 발표가 없다. 일정 탭을 숨기고 신청자는 명단만, 출석은 날짜별 출석부
-  const isClub = study.program?.kind === 'club';
+  // 종류마다 다른 것(탭 · 반 · 출석률 설명 · 다음 기수)은 한 표에서 읽는다 — 화면에서 종류를 직접 가르지 않는다
+  const rules = kindRules(study);
+  const tabs = TABS.filter((t) => !rules.hiddenTabs.includes(t.key));
+  // 클럽 설정이 있으면 출석은 날짜별 출석부다 — 위 숫자 칸과 출석 탭이 같은 출석부를 본다
   const club = clubOfStudy(study);
-  const tabs = TABS.filter((t) => !(isClub && t.key === 'schedule'));
-  // 클럽 기수의 이번 기수 출석 — 위 출석률 칸과 출석 탭이 함께 본다
   const clubCohort = useClubCohort(club);
+  const clubStats = useMemo(
+    () =>
+      club && {
+        rate: clubAverageRate(clubCohort.book),
+        attendees: clubCohort.members.filter((m) => !m.leftOn).length,
+      },
+    [club, clubCohort.book, clubCohort.members],
+  );
   // 회고 탭에서 고른 회차 — 없으면 가장 최근에 끝난 회차
   const [retroMeetingId, setRetroMeetingId] = useState<string | undefined>();
   const [crewDirty, setCrewDirty] = useState(false);
@@ -180,7 +189,7 @@ export function StudyConsole({ study }: { study: Study }) {
   // 출석 탭과 같은 규칙: 휴가 · 킥오프 · 중단 뒤 회차는 뺀다. 프로토는 목 데이터로 셈하고, 실제는 서버 값을 그린다.
   const studyRate = useMemo(() => {
     // 클럽 기수는 날짜별 출석부 하나 — 같은 산식(가중평균)으로 이번 기수를 센다
-    if (club) return clubAverageRate(clubCohort.book);
+    if (clubStats) return clubStats.rate;
     let score = 0;
     let total = 0;
     for (const cls of classes) {
@@ -205,10 +214,10 @@ export function StudyConsole({ study }: { study: Study }) {
       }
     }
     return total === 0 ? undefined : Math.round((score / total) * 100);
-  }, [club, clubCohort.book, classes, study, meetings, active, assign, navigators, left, books]);
+  }, [clubStats, classes, study, meetings, active, assign, navigators, left, books]);
   useRecruitmentClock([study]);
   const lifecycle = lifecycleState(study);
-  const reusable = (study.program?.kind ?? study.kind) === 'study' && (lifecycle === 'ENDED' || lifecycle === 'CLOSED');
+  const reusable = rules.reusable && (lifecycle === 'ENDED' || lifecycle === 'CLOSED');
   const open = recruitState(study) === 'apply';
   const deadline = recruitmentDeadlineLabel(study, zone);
   const dday = recruitmentDaysLeft(study, zone);
@@ -410,9 +419,9 @@ export function StudyConsole({ study }: { study: Study }) {
               </Button>
             )}
             {/* 클럽의 다음 기수는 클럽 운영 화면이 맡는다 — 매달 초안이 자동으로 생기고 거기서 모집을 시작한다 */}
-            {study.program?.kind === 'club' && (
-              <ButtonLink size='sm' variant='secondary' linkAs={Link} href='/proto/console/clubs'>
-                다음 기수 · 클럽 운영
+            {rules.nextCohort && (
+              <ButtonLink size='sm' variant='secondary' linkAs={Link} href={rules.nextCohort.href}>
+                {rules.nextCohort.label}
               </ButtonLink>
             )}
             <span title={deadline}>
@@ -489,13 +498,13 @@ export function StudyConsole({ study }: { study: Study }) {
         <SummaryStat label='진행 일정' value={study.schedule ? tx(study.schedule) : '미정 · 신청자 조율'} small />
         <SummaryStat
           label='참석자'
-          value={String(active.length)}
+          value={String(clubStats?.attendees ?? active.length)}
           sub={study.recruitment?.capacity ? `정원 ${study.recruitment.capacity}명` : '정원 제한 없음'}
         />
         <SummaryStat
           label='출석률'
           value={studyRate === undefined ? '-' : `${studyRate}%`}
-          sub={isClub ? '이번 기수 · 지각 0.5일' : '모든 반 · 지각 포함'}
+          sub={rules.rateScope}
         />
       </div>
       <div data-anno='attendee:2 crew:1 results:1' className='mt-6'>
@@ -514,7 +523,7 @@ export function StudyConsole({ study }: { study: Study }) {
             assign={assign}
             onSaveClass={saveClass}
             onDirtyChange={setCrewDirty}
-            grouping={!isClub}
+            grouping={rules.grouping}
             onRemoveClass={removeClass}
             onAssign={(crewId, id) => setAssign((a) => ({ ...a, [crewId]: id }))}
             navigators={navigators}

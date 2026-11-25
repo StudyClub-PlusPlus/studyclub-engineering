@@ -61,7 +61,18 @@
 
 - 대상: `AUTO_DRAFT_ENABLED` · 오늘 일자 ≥ `AUTO_PUBLISH_DAY` · 다음 달 기수가 `DRAFT`
 - 기존 공개 처리와 같다 — `DRAFT → OPEN`, 오늘이 `STUDY_RECRUITMENT.START_AT`
-- 공개 조건(POL-0003)을 못 맞추면 그대로 두고 운영 알림. 다음 날 다시 대상이 된다
+- 공개 조건(POL-0003)을 못 맞추면 그대로 두고 아래 「자동 공개 실패 알림」. 다음 날 다시 대상이 된다
+
+#### 자동 공개 실패 알림
+
+- 받는 곳: **담당 캡틴**(`STUDY.OWNER_CAPTAIN_ID` 의 디스코드 계정 — 알림이 울려야 한다) · **스터디클럽 DEV 서버**의 알림 채널
+- 내용: 클럽 이름 · 기수 달 · 못 맞춘 공개 조건 · 클럽 운영 화면 주소. 이름 · 메일은 넣지 않는다 (디스코드 ID 멘션만)
+- 실패한 날마다 한 번. 같은 날 같은 기수는 한 번만 보낸다 — `Idempotency-Key` = `club-publish-fail:{studyId}:{날짜}`
+- 알림이 실패해도 스케줄러는 멈추지 않는다 — 로그를 남기고 다음 클럽을 처리한다
+- [NEEDS CLARIFICATION] 봇 쪽 방법 (봇 담당에게 요청)
+  - 지금 [`send-alert-message`](../../docs/discord-development-guide/api/send-alert-message.md) 는 **운영 길드 하나**의 alert 채널에만 보내고, 멘션 알림을 모두 끈다(`AllowedMentions.none()`)
+  - DEV 서버는 다른 길드다 — 봇이 DEV 서버 채널에도 보낼 수 있게 할지, 웹후크로 보낼지
+  - 담당 캡틴에게 알림이 울리게 하려면 — 그 유저 멘션만 허용하는 옵션을 더할지, DM 을 보낼지
 
 ### 기수 상태 (매일 0시)
 
