@@ -130,8 +130,8 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
 | discordNickname | String | Y | 제출 시점 서버 별명. 계정 `DISCORD_NICKNAME` 에도 같은 값으로 갱신 |
-| availableDays | String[] | Y | `mon` `tue` `wed` `thu` `fri` `sat` `sun`. 화면 라벨이 아니라 이 키 |
-| scheduleAgreed | Boolean | 기수 `STUDY.SCHEDULE` 이 있을 때만 Y | 일정이 있으면 `true`만 허용. 일정이 없으면 생략·null·false는 무시하고 저장하지 않으며 true는 거절 |
+| availableDays | String[] | 스터디 Y · 클럽 N | `mon` `tue` `wed` `thu` `fri` `sat` `sun`. 화면 라벨이 아니라 이 키. **클럽 기수(`STUDY_KIND = CLUB`)는 받지 않는다** — 보내도 무시하고 저장하지 않는다 |
+| scheduleAgreed | Boolean | 스터디 기수에 `STUDY.SCHEDULE` 이 있을 때만 Y (클럽 기수는 받지 않는다) | 일정이 있으면 `true`만 허용. 일정이 없으면 생략·null·false는 무시하고 저장하지 않으며 true는 거절 |
 | answers | Object | Y | `questions[].id` → 문자열 또는 문자열 배열. 추가 질문이 없으면 `{}` |
 
 행이 있으면 제출 완료다. 대기·취소·검토 상태값을 두지 않는다. 이미 낸 신청은 덮어쓰지 않는다.
@@ -163,8 +163,8 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 | 문항 | 저장 위치 | 화면 |
 |------|-----------|------|
 | 디스코드 서버 별명 | `FORM_ANSWER.discordNickname` + `ACCOUNT.DISCORD_NICKNAME` | 모든 신청 폼. 계정 값으로 채우고 지원자가 고칠 수 있다 |
-| 참여 가능한 요일 | `FORM_ANSWER.availableDays` | 모든 신청 폼. 진행 일정 유무와 무관. 단, 클럽형(`StudyKind.CLUB`)은 받지 않을 예정 — MVP 이후 클럽 신청 설계 때 확정 |
-| 일정 참여 확인 | `FORM_ANSWER.scheduleAgreed` | `STUDY.SCHEDULE` 이 있을 때만. 없으면 화면에 `일정 미정`이고 이 문항은 없음 |
+| 참여 가능한 요일 | `FORM_ANSWER.availableDays` | 스터디 신청 폼. 진행 일정 유무와 무관. **클럽(`StudyKind.CLUB`)은 받지 않는다** — 모임 시각이 없다 ([POL-0012](../../01-planning/_registry/policies/POL-0012-club-cohort.md), 2026-11-25 확정) |
+| 일정 참여 확인 | `FORM_ANSWER.scheduleAgreed` | 스터디에 `STUDY.SCHEDULE` 이 있을 때만. 없으면 화면에 `일정 미정`이고 이 문항은 없음. 클럽은 진행 방식 글이 있어도 묻지 않는다 |
 
 이름·이메일은 신청 폼에 두지 않는다. 계정에서 읽기만 한다.
 

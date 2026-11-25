@@ -20,7 +20,6 @@ import { tx } from '@console/lib/l10n';
 import { useStudiesListHref } from '@console/lib/list-return';
 import { type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
-import { kindRules } from '@console/lib/study-kind';
 import { studyAuthor } from '@console/lib/users';
 import { RetroBoard } from '@core/components/MeetingRetro';
 import { ScheduleManager } from '@core/components/ScheduleManager';
@@ -37,6 +36,7 @@ import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
 import { useAnnotate } from '@/proto/annotate';
 import { recruitState, recruitmentDeadlineLabel, recruitmentDaysLeft } from '@/proto/lib/recruitment-deadline';
+import { kindRules } from '@/proto/lib/study-kind';
 import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 /**
