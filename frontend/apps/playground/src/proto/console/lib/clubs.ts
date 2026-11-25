@@ -30,6 +30,31 @@ export type ClubConfig = {
   capacity?: number;
   /** 프로토 전용 — 이번 기수에 해당하는 mock 스터디 */
   mockStudy: string;
+  /** 진행 방식 — 크루의 「내 클럽」이 이 값으로 그려진다 (R2 · STUDY_PROGRAM 설정 칸 초안) */
+  rules: ClubRules;
+};
+
+/**
+ * 클럽 진행 방식. 날 단위(얼리버드 · Daily LeetCode)와 주 단위(WEEKLY X)가 같은 화면 틀을 쓰고 이 값만 다르다.
+ * TODO(api): STUDY_PROGRAM 의 클럽 설정 칸 — docs/share/2026-11-25-club-own-model.md · 캡틴 확인 전
+ */
+export type ClubRules = {
+  /** 판정 단위 — 날: 그날 했나 · 주: 주 합계가 목표 이상인가 */
+  judge: 'day' | 'week';
+  /** 매일 남기는 것 — 했다 / 공부 시간(분) */
+  record: 'check' | 'minutes';
+  /** 날 단위에서 「늦게 했어요」(지각, 0.5일)를 받는가 */
+  allowsLate: boolean;
+  /** 주마다 목표를 새로 쓰는가 */
+  weeklyGoal: boolean;
+  /** 회고 — 없음 / 주간 */
+  retro: 'none' | 'weekly';
+  /** 한 달에 쓸 수 있는 휴가 — 날 단위면 날 수, 주 단위면 주 수. 없으면 제한 없음 (지금 세 클럽 운영 그대로) */
+  vacationLimit?: number;
+  /** 인증하는 사람 — 크루 직접 / 외부 기록 자동(R3, 그 전까지는 크루 직접) */
+  source: 'crew' | 'auto';
+  /** 자동일 때 기록을 받아 오는 곳의 이름 (화면 안내) */
+  autoSourceName?: string;
 };
 
 /** 출석 값 — 스터디와 같다. 순서가 칸을 누를 때 도는 순서다 */
@@ -43,6 +68,7 @@ export const CLUBS: ClubConfig[] = [
     rosterQuestion: { label: '목표 시간' },
     capacity: 20,
     mockStudy: 'early-bird',
+    rules: { judge: 'day', record: 'check', allowsLate: true, weeklyGoal: false, retro: 'none', source: 'crew' },
   },
   {
     key: 'weeklyx',
@@ -50,12 +76,14 @@ export const CLUBS: ClubConfig[] = [
     rosterQuestion: { label: '목표하는 나의 X 시간' },
     capacity: 20,
     mockStudy: 'weeklyx',
+    rules: { judge: 'week', record: 'minutes', allowsLate: false, weeklyGoal: true, retro: 'weekly', source: 'crew' },
   },
   {
     key: 'leetcode',
     title: 'Daily LeetCode',
     rosterQuestion: { label: '리트코드 닉네임' },
     mockStudy: 'daily-leetcode',
+    rules: { judge: 'day', record: 'check', allowsLate: false, weeklyGoal: false, retro: 'none', source: 'auto', autoSourceName: 'LeetCode' },
   },
 ];
 

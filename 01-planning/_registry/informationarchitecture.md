@@ -26,6 +26,7 @@
 | IA-009 | 내 스터디 | `/my/joined` | IA-007 | ST-009 | 주간 일정 · 정렬 · 역할 필터 |
 | IA-010 | 스터디 일정 — 일정 탭 | `/my/joined/{id}/schedule` | IA-009 | ST-015 · ST-011 | 정보 카드 · 규칙 · 회차 표(선택 · 일괄 삭제) · 발표 신청 |
 | IA-011 | 스터디 일정 — 출석 탭 | `/my/joined/{id}/schedule/attendance` | IA-010 | ST-017 · ST-010 · ST-018 | 고치기 · 참여 중단(캡틴·네비게이터) · 보기(크루). 옛 `/my/joined/{id}/attendance` 는 여기로 보낸다 |
+| IA-044 | 내 클럽 | `/my/clubs/{programId}` | IA-009 | ST-044 | 클럽 멤버의 화면 — 오늘 인증 · 달력(날 단위) / 주간 목표 · 공부 시간 · 회고(주 단위). 클럽에는 스터디 일정이 없어 `/my/joined/{id}/schedule` 로 와도 여기로 보낸다 |
 | IA-038 | 스터디 일정 — 공지 탭 | `/my/joined/{id}/schedule/notice` | IA-010 | ST-016 | 받는 사람 고르기 · 메일·디스코드 보내기 · 보낸 공지 기록(캡틴·네비게이터만 보인다) |
 | IA-012 | 찜한 스터디 | `/my/saved` | IA-007 | — | **고아** — 찜 Story 가 없다 (스펙: `specs/study-bookmark`). 내 스터디에서 버튼은 뺐다 |
 | IA-036 | 내 문의 | `/my/feedbacks` · `/my/feedbacks/{id}` | IA-007 | ST-035 | 목록 · 문의하기 팝업 · 상세(답변). 프로필 드롭다운에서 들어온다 |
@@ -84,6 +85,7 @@
 | IA-036 | 내 문의 | ST-035 크루는 캡틴에게 문의/오류신고를 제출할 수 있다. | [crew-submit-feedback](../stories/crew-submit-feedback/PRD.md) |
 | IA-008 | 회원 탈퇴 | ST-013 크루는 회원에서 탈퇴할 수 있다. | [crew-leave](../stories/crew-leave/PRD.md) |
 | IA-009 | 내 스터디 | ST-009 크루는 참여 중인 스터디를 모아 볼 수 있다. | [crew-joined-studies](../stories/crew-joined-studies/PRD.md) |
+| IA-044 | 내 클럽 | ST-044 크루는 「내 클럽」에서 매일 인증하고 이번 달 기록을 볼 수 있다. | [crew-my-club](../stories/crew-my-club/PRD.md) |
 | IA-010 | 스터디 일정 — 일정 탭 | ST-015 네비게이터는 스터디 회차를 등록할 수 있다. | [navigator-register-sessions](../stories/navigator-register-sessions/PRD.md) |
 | | | ST-011 크루는 발표자를 신청할 수 있다. | [crew-apply-presenter](../stories/crew-apply-presenter/PRD.md) |
 | IA-011 | 스터디 일정 — 출석 탭 | ST-017 네비게이터는 스터디별 출석 상태를 수정할 수 있다. | [navigator-edit-attendance](../stories/navigator-edit-attendance/PRD.md) |
@@ -141,6 +143,7 @@ IA-001 홈 /
 ├─ IA-007 마이페이지 /my
 │  ├─ IA-008 회원 탈퇴 /my/leave
 │  ├─ IA-009 내 스터디 /my/joined
+│  │  ├─ IA-044 내 클럽 /my/clubs/{programId}     (ST-044)
 │  │  └─ IA-010 스터디 일정 — 일정 /my/joined/{id}/schedule
 │  │     └─ IA-011 스터디 일정 — 출석 …/schedule/attendance
 │  │     └─ IA-038 스터디 일정 — 공지 …/schedule/notice

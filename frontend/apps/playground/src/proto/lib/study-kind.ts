@@ -17,6 +17,10 @@ export type KindRules = {
   reusable: boolean;
   /** 신청 때 참여 가능한 요일 · 일정 참여 확인을 묻는가 — 클럽은 모임 시각이 없어 묻지 않는다 */
   asksDays: boolean;
+  /** 회차(모임)가 있는가 — 클럽은 없다. 주간 일정 · 다음 회차에 넣지 않는다 */
+  meetings: boolean;
+  /** 참여한 크루가 들어가는 곳 — 스터디는 스터디 일정, 클럽은 「내 클럽」(클럽 하나에 주소 하나) */
+  crewRoom: (study: Pick<Study, 'study_id' | 'program'>, locale: string) => string;
   /** 머리의 다음 기수 링크 — 클럽의 다음 기수는 클럽 운영이 만든다 (POL-0012) */
   nextCohort?: { label: string; href: string };
 };
@@ -28,6 +32,8 @@ export const KIND_RULES: Record<StudyKind, KindRules> = {
     rateScope: '모든 반 · 지각 포함',
     reusable: true,
     asksDays: true,
+    meetings: true,
+    crewRoom: (s, locale) => `/proto/core/${locale}/my/joined/${s.study_id}/schedule`,
   },
   club: {
     hiddenTabs: ['schedule'],
@@ -35,6 +41,8 @@ export const KIND_RULES: Record<StudyKind, KindRules> = {
     rateScope: '이번 기수 · 지각 0.5일',
     reusable: false,
     asksDays: false,
+    meetings: false,
+    crewRoom: (s, locale) => `/proto/core/${locale}/my/clubs/${s.program?.id}`,
     nextCohort: { label: '다음 기수 · 클럽 운영', href: '/proto/console/clubs' },
   },
 };

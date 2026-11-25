@@ -91,6 +91,11 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const study = studies.find((s) => String(s.study_id) === id);
   // TODO(api): 참가자가 아닌 사람은 서버가 403 을 준다. 프로토는 찾은 스터디면 크루로 들인다.
   const access = study ? scheduleAccessOf(study) : undefined;
+  // 클럽은 스터디 일정(일정 · 회차 · 미팅)이 없다 — 「내 클럽」으로 보낸다. 어디로 갈지는 종류 규칙 표가 정한다
+  const room = study ? kindRules(study).crewRoom(study, locale) : undefined;
+  useEffect(() => {
+    if (room && !room.startsWith(base)) router.replace(room);
+  }, [room, base, router]);
   // 내가 지금 쓸 수 있는데 안 쓴 회고 수 — 회고 탭 옆 점. 캡틴은 쓰지 않는다. 화면을 옮길 때마다 다시 센다(쓰고 돌아오면 사라진다)
   const [pendingRetros, setPendingRetros] = useState(0);
   const myRole = access?.role;
@@ -119,8 +124,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const { role, group, canEdit } = access;
   const captain = role === 'captain';
   const tabs = [
-    // 클럽은 일정 탭이 없다 — 모임 시각 · 회차가 없다 (POL-0012). 규칙 카드는 탭 위라 그대로 보인다
-    ...(kindRules(study).hiddenTabs.includes('schedule') ? [] : [{ href: base, label: '일정' }]),
+    { href: base, label: '일정' },
     { href: `${base}/attendance`, label: '출석' },
     { href: `${base}/retro`, label: '회고', match: `${base}/retro` },
     // 공지는 보내는 사람(캡틴·네비게이터)만 쓴다. 반 멤버가 읽는 공지 목록은 없다 (POL-0010)
