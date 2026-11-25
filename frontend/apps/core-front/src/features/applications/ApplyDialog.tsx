@@ -20,7 +20,8 @@ import { useStudyApplicationForm, useSubmitApplication } from '@/features/applic
 import { AVAILABLE_DAYS, makeApplySchema, normalizeSingleLine } from '@/features/applications/schema';
 import { addApplication, getApplication } from '@/features/applications/storage';
 import { getUser, setUser } from '@/features/auth/auth';
-import { getDiscordNickname, getRegion, setDiscordNickname } from '@/features/profile/local-state';
+import { DiscordPopupError, linkDiscord, requestDiscordCode, syncDiscordNickname } from '@/features/profile/discord';
+import { getDiscordNickname, getRegion } from '@/features/profile/local-state';
 import { track } from '@/lib/analytics';
 import { ApiError } from '@/lib/http';
 import { m, t } from '@/lib/i18n';
@@ -152,6 +153,8 @@ export function ApplyDialog({
   const [done, setDone] = useState(false);
   const [invalidKey, setInvalidKey] = useState<string | null>(null);
   const [attention, setAttention] = useState(0);
+  const [refreshingNick, setRefreshingNick] = useState(false);
+  const [nickError, setNickError] = useState<string | null>(null);
 
   const dialogOpenTracked = useRef(false);
 
@@ -248,12 +251,20 @@ export function ApplyDialog({
       otherSelected: {},
       otherTexts: {},
     });
+    setNickError(null);
+    // 세션의 별명은 로그인 때 값이다 — 서버에 저장된 최신 별명으로 바꿔 둔다
+    const user = getUser();
+    if (user) {
+      void syncDiscordNickname(user.id).then((nick) => {
+        if (nick) setValue('discordNickname', nick);
+      });
+    }
     setError(null);
     setInvalidKey(null);
     setAttention(0);
     setSubmitError(null);
     setDone(false);
-  }, [open, reset]);
+  }, [open, reset, setValue]);
 
   function close(silent = false) {
     if (!done && !silent) {
@@ -273,6 +284,41 @@ export function ApplyDialog({
     if (done) onSubmitted();
     setDone(false);
     onClose();
+  }
+
+  /** 새로고침 — 디스코드 연동을 한 번 더 해서 서버가 별명을 다시 받게 한다. 팝업은 클릭과 같은 틱에 연다 */
+  async function refreshNickname() {
+    const user = getUser();
+    if (!user || refreshingNick) return;
+    const code = requestDiscordCode();
+    setRefreshingNick(true);
+    setNickError(null);
+    try {
+      await linkDiscord(user.id, code, 'apply_nickname_refresh');
+      const nick = await syncDiscordNickname(user.id);
+      if (nick) {
+        clearInvalid('discord');
+        setValue('discordNickname', nick, { shouldDirty: true });
+      }
+    } catch (e) {
+      if (e instanceof DiscordPopupError && e.reason === 'cancelled') return;
+      setNickError(
+        t(
+          e instanceof DiscordPopupError
+            ? {
+                ko: '디스코드 창이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해 주세요.',
+                en: 'The Discord window was blocked. Allow pop-ups in your browser and try again.',
+              }
+            : {
+                ko: '별명을 불러오지 못했습니다. 다시 시도해 주세요. 지금 값으로도 신청할 수 있습니다.',
+                en: 'Could not load your nickname. Please try again. You can still apply with the current value.',
+              },
+          locale,
+        ),
+      );
+    } finally {
+      setRefreshingNick(false);
+    }
   }
 
   function toggleDay(key: string) {
@@ -346,7 +392,6 @@ export function ApplyDialog({
 
       await submitMutation.mutateAsync(reqBody);
 
-      setDiscordNickname(normalizedNick);
       const user = getUser();
       if (user) setUser({ ...user, discordNickname: normalizedNick });
 
@@ -515,12 +560,12 @@ export function ApplyDialog({
 
                 <section ref={discordRef} tabIndex={-1} className={`${cardClass('discord')} outline-none`}>
                   <DiscordNicknameField
+                    locale={locale}
                     value={draftNick}
                     invalid={invalidKey === 'discord'}
-                    onChange={(v) => {
-                      clearInvalid('discord');
-                      setValue('discordNickname', v, { shouldDirty: true });
-                    }}
+                    refreshing={refreshingNick}
+                    error={nickError}
+                    onRefresh={() => void refreshNickname()}
                   />
                   <FieldHint field='discord' />
                 </section>

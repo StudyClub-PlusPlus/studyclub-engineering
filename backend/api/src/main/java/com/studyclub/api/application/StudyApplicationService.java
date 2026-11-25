@@ -104,7 +104,8 @@ public class StudyApplicationService {
         }
         StudyRecruitment recruitment = openRecruitment(studyId);
         checkCapacity(recruitment, studyId);
-        StudyApplicationAnswer answer = normalizeAnswer(study, request);
+        StudyApplicationAnswer answer =
+                normalizeAnswer(study, request, account.getDiscordNickname());
         StudyApplication application =
                 StudyApplication.builder()
                         .accountId(accountId)
@@ -224,11 +225,19 @@ public class StudyApplicationService {
                 .getId();
     }
 
+    /**
+     * @param accountNickname 연동할 때 디스코드에서 받아 둔 서버 별명. 있으면 요청 값 대신 이것을 쓴다 — 신청 폼 별명 칸은 읽기 전용이라 요청 값이
+     *     다르면 화면을 거치지 않은 값이다. 그 전에 연동해 아직 없는 계정만 요청 값을 받는다
+     */
     private StudyApplicationAnswer normalizeAnswer(
-            Study study, SubmitStudyApplicationRequest request) {
+            Study study, SubmitStudyApplicationRequest request, String accountNickname) {
         boolean hasSchedule = study.getSchedule() != null && !study.getSchedule().isBlank();
+        String nickname =
+                accountNickname != null && !accountNickname.isBlank()
+                        ? accountNickname
+                        : request.discordNickname();
         return StudyApplicationAnswer.create(
-                request.discordNickname(),
+                nickname,
                 request.availableDays(),
                 request.scheduleAgreed(),
                 request.answers(),
