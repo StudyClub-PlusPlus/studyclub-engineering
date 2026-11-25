@@ -129,7 +129,10 @@ erDiagram
 
 - 디스코드 연결은 신규 등록과 같다 — [discord-study-link/spec.md](../../../specs/discord-study-link/spec.md)
 
+### 제목 중복
+
+동일 제목을 허용하고 스터디 ID로 구분한다 (ST-042 리뷰 결정).
+
 ## 4. 미확정
 
-- 동일 제목 허용 — 스터디 ID로 구분한다 (ST-042 리뷰 결정)
 - 지난 기수 참여자를 새 기수로 이어 받는 방법

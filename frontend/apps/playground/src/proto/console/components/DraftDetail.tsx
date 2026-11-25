@@ -5,14 +5,17 @@ import { notFound } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import type { Study } from '@studyclub/types';
-import { Switch, toast } from '@studyclub/ui';
+import { Button, Input, Switch, toast } from '@studyclub/ui';
 import { todayISO } from '@studyclub/utils';
 
 import { ApplicationFormTab } from './ApplicationFormTab';
+import { studyToForm, validateStudyForm } from './StudyForm';
 import { readReusedDrafts, updateReusedDraft } from '../lib/reused-drafts';
 
 export function DraftDetail({ id }: { id: string }) {
   const [study, setStudy] = useState<Study | null>();
+  const [titleInput, setTitleInput] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState('');
   useEffect(() => {
     setStudy(readReusedDrafts().find((candidate) => String(candidate.study_id) === id) ?? null);
   }, [id]);
@@ -29,6 +32,47 @@ export function DraftDetail({ id }: { id: string }) {
     <div className='flex flex-col gap-4'>
       <Link href='/proto/console/studies'>← 스터디 관리</Link>
       <h1 className='type-headline-md'>{study.title.ko}</h1>
+      {titleInput === null ? (
+        <Button
+          variant='secondary'
+          onClick={() => {
+            setTitleInput(study.title.ko);
+            setTitleError('');
+          }}
+        >
+          제목 수정
+        </Button>
+      ) : (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            const title = titleInput.trim();
+            const error = validateStudyForm({ ...studyToForm(current), title }).title;
+            if (error) {
+              setTitleError(error);
+              return;
+            }
+            try {
+              save({ title: { ...current.title, ko: title } });
+              setTitleInput(null);
+              toast.success('저장되었습니다');
+            } catch {
+              setTitleError('저장하지 못했어요. 다시 시도해 주세요.');
+            }
+          }}
+        >
+          <Input
+            label='스터디 제목'
+            value={titleInput}
+            error={titleError}
+            onChange={(e) => setTitleInput(e.target.value)}
+          />
+          <Button type='button' variant='secondary' onClick={() => setTitleInput(null)}>
+            취소
+          </Button>
+          <Button type='submit'>제목 저장</Button>
+        </form>
+      )}
       <p>{study.summary.ko}</p>
       <Switch
         label='사이트 공개'
