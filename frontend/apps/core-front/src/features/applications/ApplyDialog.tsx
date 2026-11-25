@@ -1,13 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ApiStudyApplicationForm } from '@studyclub/mock/msw';
 import { type ApplicationQuestionType, type MemberRegion } from '@studyclub/types';
 import type { Locale, Study } from '@studyclub/types';
-import { Button, Checkbox, Modal } from '@studyclub/ui';
+import { Button, ButtonLink, Checkbox, Modal } from '@studyclub/ui';
 import { categoriesOf } from '@studyclub/utils';
 import { seoulDate } from '@studyclub/utils';
 import { CalendarClock } from 'lucide-react';
@@ -93,7 +92,6 @@ export function ApplyDialog({
   onRequireDiscord?: () => void;
   onWithdrawn?: () => void;
 }) {
-  const router = useRouter();
 
   const {
     data: formData,
@@ -499,15 +497,10 @@ export function ApplyDialog({
             <Button variant='secondary' onClick={() => close()}>
               {t({ ko: '닫기', en: 'Close' }, locale)}
             </Button>
-            <Button
-              onClick={() => {
-                close();
-                // 내 스터디룸 — 기본 탭(참여중)에는 아직 시작 전인 새 스터디가 없어 「전체」로 연다
-                router.push(`/${locale}/my/joined?status=all`);
-              }}
-            >
+            {/* 새 창으로 연다 — 보던 스터디 상세를 잃지 않게. 기본 탭(참여중)에는 시작 전 새 스터디가 없어 「전체」로 */}
+            <ButtonLink href={`/${locale}/my/joined?status=all`} external onClick={() => close()}>
               {t({ ko: '내 스터디룸 보러 가기', en: 'Go to My study room' }, locale)}
-            </Button>
+            </ButtonLink>
           </>
         ) : (
           <>
