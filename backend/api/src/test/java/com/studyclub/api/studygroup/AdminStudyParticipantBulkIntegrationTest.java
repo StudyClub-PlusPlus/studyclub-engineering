@@ -916,7 +916,7 @@ class AdminStudyParticipantBulkIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 반 이동 기록을 쓰지 못하면 반 이동 · 출석 행 · 역할 변경도 모두 되돌린다")
+    @DisplayName("실패 - 반 이동 기록을 쓰지 못하면 반 이동과 새 반 출석 행을 되돌리고, 같은 줄의 역할도 바꾸지 않는다")
     void groupMoveRollsBackWhenLogFails() {
         StudyMeeting upcomingMeeting =
                 studyMeetingRepo.save(

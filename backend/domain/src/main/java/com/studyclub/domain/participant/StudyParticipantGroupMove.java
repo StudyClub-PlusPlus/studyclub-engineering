@@ -15,7 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 명부 행의 반이 바뀐 일 한 줄 (docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md). 고치거나 지우는 길은 없다.
+ * 명부 행의 반이 바뀐 일 한 줄 (docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md). 고치거나 지우는 API 는 없고, 스터디 삭제만 함께 지운다.
  *
  * <p>반 이름은 옮긴 그때 값을 복사한다 — 반을 지워도 「A반에서 이동」을 보여 줘야 해서 반에 FK 를 걸지 않는다.
  */
