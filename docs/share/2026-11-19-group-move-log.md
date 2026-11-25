@@ -8,7 +8,7 @@
   - specs/attendance/spec.md — 됨
   - 01-planning/stories/navigator-edit-attendance/PRD.md · captain-view-attendance-roster/PRD.md — 안 됨
   - playground 출석부 프로토 (core · console) — 안 됨
-  - 백엔드 테이블 · 반 이동 기록 — 됨 (#PR)
+  - 백엔드 테이블 · 반 이동 기록 — 됨 (#545)
   - 백엔드 출석률 구간 · 출석부 응답 — 안 됨
   - core-front · back-office-front 출석부 표시 — 안 됨
 ---
