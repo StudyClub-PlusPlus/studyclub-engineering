@@ -150,13 +150,15 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
     memoryUrl.set('status=OPEN&sort=recruitment&page=2');
     render(<StudiesTable list={page(STUDIES)} />);
     fireEvent.change(screen.getByDisplayValue('개설'), { target: { value: 'all' } });
-    expect(urlParams()).toEqual({ sort: 'id' });
+    // 최근 등록순이 기본이라 주소에 싣지 않는다
+    expect(urlParams()).toEqual({});
   });
 
   it('열 머리 정렬은 주소를 바꾸며 기존 응답을 로컬에서 재정렬하지 않는다', () => {
     render(<StudiesTable list={page(STUDIES)} />);
     const before = titles();
-    expect(screen.getByRole('columnheader', { name: /모집 상태/ })).toHaveAttribute('aria-sort', 'ascending');
+    // 기본은 최근 등록순 — 그 열이 없어 어느 머리도 강조하지 않는다
+    expect(screen.getByRole('columnheader', { name: /모집 상태/ })).not.toHaveAttribute('aria-sort', 'ascending');
     fireEvent.click(screen.getByRole('button', { name: '스터디 오름차순으로 정렬' }));
     expect(urlParams()).toEqual({ sort: 'title' });
     fireEvent.click(screen.getByRole('button', { name: '스터디 내림차순으로 정렬' }));

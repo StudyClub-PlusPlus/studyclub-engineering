@@ -111,7 +111,8 @@ export const URL_DEFAULTS = {
   recruit: 'all',
   publish: 'all',
   form: 'all',
-  sort: 'all',
+  // 기본은 최근 등록순 — 막 만든 스터디를 바로 찾는다. 「모집 중 먼저」 는 모집 상태 열 머리로 고른다 (2026-11-25)
+  sort: 'id',
   view: '',
   page: '1',
 };

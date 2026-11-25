@@ -32,8 +32,8 @@ describe('serverListQuery — 목록 필터를 GET /api/admin/studies Query 로 
     expect(query({ status: 'ONGOING', sort: 'recruitment' })).toBe('status=ONGOING&sort=ID_DESC&offset=0&limit=20');
   });
 
-  it('일반 목록의 기본 순서도 서버에 요청한다', () => {
-    expect(query({})).toBe('sort=RECRUITMENT_FIRST&offset=0&limit=20');
+  it('일반 목록의 기본 순서는 최근 등록순이다', () => {
+    expect(query({})).toBe('sort=ID_DESC&offset=0&limit=20');
   });
 
   it('검색·신청 폼·넓은 마감 조건을 함께 서버에 전달한다', () => {
@@ -45,7 +45,7 @@ describe('serverListQuery — 목록 필터를 GET /api/admin/studies Query 로 
       recruitFilter: 'NOT_RECRUITING',
       keyword: 'AI _%',
       hasApplicationForm: 'false',
-      sort: 'RECRUITMENT_FIRST',
+      sort: 'ID_DESC',
       offset: '20',
       limit: '20',
     });
@@ -106,6 +106,6 @@ describe('열 머리 정렬 (captain-list-all-studies 9)', () => {
 
   it('주소의 열 정렬 값은 허용 목록으로 읽는다', () => {
     expect(resolveListFilters({ sort: 'author:desc' }).sort).toBe('author:desc');
-    expect(resolveListFilters({ sort: 'nope:asc' }).sort).toBe('all');
+    expect(resolveListFilters({ sort: 'nope:asc' }).sort).toBe('id');
   });
 });
