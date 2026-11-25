@@ -239,7 +239,7 @@ export function StudyForm({
 }) {
   const [pending, setPending] = useState<StudyFormValues | null>(null);
   function replace(next: StudyFormValues) {
-    const hasInput = value.sourceId || value.title || value.summary || value.description !== EMPTY_FORM.description || value.thumbnail || value.deadline || value.schedule;
+    const hasInput = value.sourceId || value.title || value.summary || value.description !== EMPTY_FORM.description || value.thumbnail || value.deadline || value.schedule || value.capacity || !value.unlimited || value.startAt || value.discordUrl || value.driveUrl || value.recruitmentTimeZones.mode !== EMPTY_FORM.recruitmentTimeZones.mode;
     if (hasInput) setPending(next);
     else onChange(next);
   }
