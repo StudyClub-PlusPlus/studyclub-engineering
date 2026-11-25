@@ -111,6 +111,31 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 신청 폼을 저장한 적 없는 스터디는 추가 질문 없이 신청을 받는다 (ZAPP #113)")
+    void acceptsApplicationWhenFormWasNeverSaved() {
+        jdbcTemplate.update("UPDATE STUDY SET APPLICATION_FORM = NULL WHERE ID = ?", STUDY_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(
+                                LINKED_ACCOUNT_ID,
+                                Map.of(
+                                        "discordNickname",
+                                        "새 별명",
+                                        "availableDays",
+                                        List.of("mon"),
+                                        "scheduleAgreed",
+                                        true,
+                                        "answers",
+                                        Map.of())),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(applicationCount()).isEqualTo(1L);
+    }
+
+    @Test
     @DisplayName("성공 - 명부에 들어온 행마다 study_participant.joined 를 커밋 뒤 한 번 낸다")
     void publishesJoinedForNewRosterRow() {
         var response =

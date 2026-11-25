@@ -244,8 +244,10 @@ public class StudyApplicationService {
 
     private List<ApplicationFormQuestion> questionsOf(Study study) {
         String raw = study.getApplicationForm();
+        // 폼을 저장한 적 없는 스터디(옛 데이터 · 상시 모집 클럽)는 추가 질문이 없는 것이다 — 신청 폼 조회도 빈 질문으로 보여 준다 (ZAPP 스터디클럽
+        // #113)
         if (raw == null || raw.isBlank()) {
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+            return List.of();
         }
         try {
             JsonNode form = objectMapper.readTree(raw);
