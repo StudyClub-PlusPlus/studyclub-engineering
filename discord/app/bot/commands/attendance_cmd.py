@@ -12,7 +12,10 @@ tested without a Discord connection; ``register`` only wires them together.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import discord
 from discord.ext import commands
@@ -22,8 +25,11 @@ from app.backend_client import (
     BackendError,
     BackendUnreachable,
     MarkedGroup,
+    NoMeetingGroup,
     mark_attendances,
 )
+
+logger = logging.getLogger(__name__)
 
 COMMAND_NAME = "출석체크"
 # Long member lists would push the message past Discord's 2000-character cap,
@@ -36,6 +42,9 @@ MAX_GROUPS_SHOWN = 10
 # attendance was already written, so the message is clipped rather than sent raw.
 DISCORD_MESSAGE_LIMIT = 2000
 KICKOFF = "KICKOFF"
+# A group with no timezone set is shown in the site's default zone.
+DEFAULT_TIMEZONE = "Asia/Seoul"
+UNEXPECTED_ERROR = "⚠️ 출석을 찍지 못했습니다. 운영자에게 알려주세요."
 # Mirrors the backend's pick rule (specs/discord-attendance/spec.md § 회차 판정 규칙).
 NO_MEETING_HINT = (
     "   진행 중인 회차도, 예정 시각 2시간 안의 회차도 없는 반입니다. "
@@ -121,8 +130,30 @@ def format_result(result: AttendanceResult, names_by_id: dict[str, str]) -> str:
             lines.append(f"⚠️ {label} {len(ids)}명 — {_names(ids, names_by_id)}")
     if result.no_meeting:
         lines.append(NO_MEETING_HINT)
+        for group in result.no_meeting_groups[:MAX_GROUPS_SHOWN]:
+            lines.append(_nearest_line(group))
 
     return _clip("\n".join(lines))
+
+
+def _nearest_line(group: NoMeetingGroup) -> str:
+    """``   · A반: 가장 가까운 회차 킥오프 11/21(토) 17:00 KST`` -- in the group's own zone."""
+    name = group.group_name or "반"
+    if not group.nearest_scheduled_at:
+        return f"   · {name}: 남은 회차가 없습니다"
+    zone_name = group.timezone or DEFAULT_TIMEZONE
+    try:
+        zone = ZoneInfo(zone_name)
+    except (ZoneInfoNotFoundError, ValueError):
+        zone_name, zone = DEFAULT_TIMEZONE, ZoneInfo(DEFAULT_TIMEZONE)
+    at = datetime.fromisoformat(group.nearest_scheduled_at.replace("Z", "+00:00")).astimezone(zone)
+    weekday = "월화수목금토일"[at.weekday()]
+    if group.nearest_type == KICKOFF:
+        label = "킥오프"
+    else:
+        number = "" if group.nearest_number is None else f"{group.nearest_number}번 "
+        label = f"{number}회차"
+    return f"   · {name}: 가장 가까운 회차 {label} {at:%m/%d}({weekday}) {at:%H:%M} {at.tzname()}"
 
 
 def _meeting_label(group: MarkedGroup) -> str:
@@ -210,5 +241,16 @@ def register(bot: commands.Bot, settings) -> None:
                 allowed_mentions=silent,
             )
             return
+        except Exception:
+            # Anything else used to end the command in silence, which reads as a
+            # bot that is down. Say so in the room and keep the trace in the log.
+            logger.exception("%s: unexpected error", COMMAND_NAME)
+            await ctx.send(UNEXPECTED_ERROR, allowed_mentions=silent)
+            return
 
-        await ctx.send(format_result(result, snapshot.names_by_id), allowed_mentions=silent)
+        try:
+            message = format_result(result, snapshot.names_by_id)
+        except Exception:
+            logger.exception("%s: could not format the result", COMMAND_NAME)
+            message = UNEXPECTED_ERROR
+        await ctx.send(message, allowed_mentions=silent)

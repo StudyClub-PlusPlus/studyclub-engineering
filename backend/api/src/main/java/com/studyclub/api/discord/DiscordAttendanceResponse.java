@@ -11,12 +11,30 @@ import java.util.List;
  * @param unmatched 계정 연동이 안 된 디스코드 유저 (Notion 44)
  * @param notParticipant 연동은 됐지만 이 스터디 명부에 없는 디스코드 유저
  * @param noMeeting 명부에는 있지만 그 반에 지금 찍을 회차가 없는 디스코드 유저
+ * @param noMeetingGroups {@code noMeeting} 사람들의 반과 그 반의 가장 가까운 회차 — 반장이 시각이 어긋난 걸 바로 알게
  */
 public record DiscordAttendanceResponse(
         List<MarkedGroup> groups,
         List<String> unmatched,
         List<String> notParticipant,
-        List<String> noMeeting) {
+        List<String> noMeeting,
+        List<NoMeetingGroup> noMeetingGroups) {
+
+    /**
+     * @param groupName 반 이름
+     * @param timezone 반 시간대(IANA). 없으면 null — 봇은 Asia/Seoul 로 보인다
+     * @param nearestMeeting 끝나지 않은 회차 중 예정 시각이 지금에 가장 가까운 것. 없으면 null
+     */
+    public record NoMeetingGroup(
+            Long studyGroupId, String groupName, String timezone, NearestMeeting nearestMeeting) {}
+
+    /**
+     * @param number 킥오프 0, 정규 회차 1부터
+     * @param meetingType {@code KICKOFF} · {@code REGULAR}
+     * @param scheduledAt 예정 시각 (UTC ISO 8601)
+     */
+    public record NearestMeeting(
+            int number, String meetingType, String title, java.time.Instant scheduledAt) {}
 
     /**
      * @param studyMeetingNumber 찍힌 회차의 번호 — 킥오프 0, 정규 회차는 예정 시각 순서로 1부터. 행 ID({@code

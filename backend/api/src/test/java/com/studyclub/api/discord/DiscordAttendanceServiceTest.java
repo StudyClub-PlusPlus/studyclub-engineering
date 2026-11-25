@@ -57,6 +57,7 @@ class DiscordAttendanceServiceTest {
     @Mock StudyParticipantRepository studyParticipantRepository;
     @Mock StudyAttendanceRepository studyAttendanceRepository;
     @Mock AccountRepository accountRepository;
+    @Mock com.studyclub.domain.study.StudyGroupRepository studyGroupRepository;
 
     @InjectMocks DiscordAttendanceService service;
 
@@ -119,6 +120,15 @@ class DiscordAttendanceServiceTest {
         assertThat(response.groups()).isEmpty();
         assertThat(response.noMeeting())
                 .containsExactlyInAnyOrder(LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
+        // 반장이 시각이 어긋난 걸 알도록 그 반의 가장 가까운 회차를 같이 준다
+        assertThat(response.noMeetingGroups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyGroupId()).isEqualTo(GROUP_A);
+                            assertThat(g.nearestMeeting().scheduledAt())
+                                    .isEqualTo(far.getScheduledAt());
+                        });
         assertThat(far.getStartAt()).isNull();
         verify(studyAttendanceRepository, never()).markPresent(any(), any(), any(), any(), any());
     }
