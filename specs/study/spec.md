@@ -724,6 +724,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 | STUDY_APPLICATION | RECRUITMENT_ID in 위 회차         | 신청 기록                      |
 | STUDY_GROUP       | STUDY_ID = studyId                | 반                             |
 | STUDY_PARTICIPANT | STUDY_ID = studyId                | 크루 명단                      |
+| STUDY_PARTICIPANT_GROUP_MOVE | STUDY_ID = studyId     | 반 이동 기록 ([ERD](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md)) |
 | ATTENDANCE        | STUDY_ID = studyId (또는 연관 FK) | 출석 기록                      |
 
 > 위 테이블 목록은 현재 ERD 기준이며, 관련 테이블이 추가되면 함께 갱신한다.
