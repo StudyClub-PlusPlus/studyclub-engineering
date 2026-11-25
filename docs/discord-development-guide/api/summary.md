@@ -3,7 +3,7 @@
 Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 보기**. 자세한 계약은 각 문서가 원본이고,
 이 문서는 무엇이 있는지와 공통 규칙만 모은다.
 
-> ✅ **아래 아홉 개 모두 구현됐다** — `discord/app/api/routes/`.
+> ✅ **아래 열 개 모두 구현됐다** — `discord/app/api/routes/`.
 > **대상 길드는 하나로 고정**이라 어떤 요청에도 길드를 넘기지 않는다.
 
 ## Table of Contents
@@ -26,6 +26,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 | `DELETE` | `/api/v1/roles/{discordRoleId}/users` | [remove-role](remove-role.md) | 200 + `{succeededCount, failed}` |
 | `POST` | `/api/v1/roles/navigator/users` | [assign-navigator-role](assign-navigator-role.md) | 200 + `{succeededCount, failed}` |
 | `DELETE` | `/api/v1/roles/navigator/users` | [remove-navigator-role](remove-navigator-role.md) | 200 + `{succeededCount, failed}` |
+| `PUT` | `/api/v1/members/{discordUserId}` | [add-guild-member](add-guild-member.md) | 200 + `{joined}` |
 | `POST` | `/api/v1/channels/{discordChannelId}/msg` | [send-message](send-message.md) | 204 |
 | `POST` | `/api/v1/channels/alert/msg` | [send-alert-message](send-alert-message.md) | 204 |
 | `POST` | `/api/v1/channels/announcement/msg` | [send-announcement-message](send-announcement-message.md) | 204 |

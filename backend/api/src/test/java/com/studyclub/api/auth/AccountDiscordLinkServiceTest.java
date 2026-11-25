@@ -31,7 +31,7 @@ class AccountDiscordLinkServiceTest {
 
     private static final Long ACCOUNT_ID = 1L;
     private static final DiscordUser USER =
-            new DiscordUser("1327394882193880001", "jiwon_dev", "지원/SWE/서울");
+            new DiscordUser("1327394882193880001", "jiwon_dev", "지원/SWE/서울", false);
 
     @Mock DiscordOAuthClient discordOAuthClient;
     @Mock AccountRepository accountRepository;

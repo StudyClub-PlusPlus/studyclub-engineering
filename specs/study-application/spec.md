@@ -551,7 +551,15 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 `discordId` / `handle` 을 바디에 넣으면 무시하거나 `400`.
 
-### Response — 204 No Content
+### Response — 200 OK (2026-11-25, 전에는 204)
+
+```json
+{ "joinedGuild": true }
+```
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| joinedGuild | Boolean | 이번 연동에서 서버가 스터디클럽 디스코드 서버에 새로 넣었는가. 신청 직전 연동 창이 「서버에 들어왔다 · 디스코드에서 규칙 동의를 마쳐 달라」 를 한 번 보인다 |
 
 연결 여부는 이후 `GET /api/me`의 `discordLinked`로, 연결된 계정 이름은 `discordHandle`로 확인한다.
 
@@ -561,12 +569,13 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 |------|-----------|------|
 | 400 | INVALID_INPUT | `code` 없음 |
 | 401 | UNAUTHORIZED | 미로그인 |
-| 403 | DISCORD_NOT_IN_GUILD | 스터디클럽 디스코드 서버(길드) 멤버가 아님. 저장하지 않는다. 화면이 갈린다: 온보딩 권유 화면은 「나중에 연동하기」로 넘어가고, 신청 직전 연동 창은 서버 가입 안내(초대 링크는 프론트 상수 `site.discord_invite`)를 띄운다 |
+| 403 | DISCORD_NOT_IN_GUILD | 스터디클럽 디스코드 서버(길드) 멤버가 아니고 **봇이 넣지도 못함**(차단된 계정 · 디스코드 서버 수 한도 · 봇 권한 · 봇 없음, 사유는 봇 호출 로그 `op=add-guild-member`). 저장하지 않는다. 화면이 갈린다: 온보딩 권유 화면은 「나중에 연동하기」로 넘어가고, 신청 직전 연동 창은 서버 가입 안내(초대 링크는 프론트 상수 `site.discord_invite`)를 띄운다 |
 | 409 | CONFLICT | 그 `DISCORD_ID` 가 다른 계정에 이미 있음 (`UNIQUE(DISCORD_ID)`) |
 | 409 | DISCORD_UNLINK_BLOCKED | 이미 다른 디스코드 계정이 연동돼 있고 참여 중인 스터디가 있다 — 갈아타기 거절 (POL-0007). 연동은 그대로 둔다 |
 | 503 | EXTERNAL_SERVICE_ERROR | 디스코드 토큰 교환 실패·타임아웃, 서버에 OAuth 설정 없음. 폼을 열지 않는다. 연동 팝업에 잔류 |
 
-- 같은 계정이 같은 `DISCORD_ID` 로 다시 연동하면 204 (멱등). 핸들은 새 값으로 바뀐다.
+- 서버 밖이면 봇 [add-guild-member](../../docs/discord-development-guide/api/add-guild-member.md) 로 그 자리에서 넣는다 (ZAPP 스터디클럽 #112). 서버에 규칙 확인 · 온보딩 질문이 켜져 있어 들어온 사람은 디스코드에서 그 단계를 마쳐야 채팅할 수 있다
+- 같은 계정이 같은 `DISCORD_ID` 로 다시 연동하면 200 (멱등). 핸들은 새 값으로 바뀐다.
 - 외부 실패는 다른 연동(구글·봇)과 같은 503 이다 (처음 적었던 502 에서 바꿈, #298).
 
 Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이션한다. 실패 시 미연결 유지, 오류 안내와 재시도 제공.
@@ -574,7 +583,7 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 ### 화면 흐름 (DSC-04, 2026-10-27)
 
 ```
-「디스코드 연동하기」 ─ window.open ─▶ discord.com/oauth2/authorize (scope identify guilds.members.read, state)
+「디스코드 연동하기」 ─ window.open ─▶ discord.com/oauth2/authorize (scope identify guilds.members.read guilds.join, state)
                                               │ 승인
                                               ▼
                 <사이트>/api/auth/discord/callback ─ postMessage({code, state}) ─▶ 연동 창 ─▶ POST /api/me/discord/link
@@ -602,7 +611,8 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 - 공급자: Discord OAuth
 - 서버가 인가 코드 → 액세스 토큰 → 사용자 식별. 화면에 `DISCORD_ID` 를 돌려주지 않는다
 - 실패·타임아웃 시 계정 컬럼을 부분 저장하지 않는다
-- OAuth scope: `identify` `guilds.members.read`. 길드 멤버 확인은 사용자 토큰으로 `GET /users/@me/guilds/{DISCORD_CONFIG_GUILD_ID}/member` (404 면 멤버 아님)
+- OAuth scope: `identify` `guilds.members.read` `guilds.join`. 길드 멤버 확인은 사용자 토큰으로 `GET /users/@me/guilds/{DISCORD_CONFIG_GUILD_ID}/member` (404 면 멤버 아님 → 봇이 그 토큰으로 서버에 넣는다)
+- `guilds.join` 은 로그인용 OAuth 앱과 서버의 봇이 **같은 디스코드 앱**이어야 하고, 봇에 초대 만들기 권한이 있어야 한다. 액세스 토큰은 봇에 한 번 넘기고 저장 · 로그하지 않는다
 - `redirect_uri` 는 서버 설정(`DISCORD_OAUTH_REDIRECT_URI`) 고정. 요청에서 받지 않는다
 - `DISCORD_HANDLE` 은 디스코드 `username` (표시 이름 아님)
 - 디스코드 호출이 다 끝난 뒤 저장만 짧은 트랜잭션으로 감싼다 — 호출 중 DB 커넥션을 잡지 않는다
