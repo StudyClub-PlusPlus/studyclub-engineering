@@ -28,7 +28,7 @@ import { dropPresenters } from '@core/lib/schedule-source';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew } from '@studyclub/mock';
 import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
-import { Badge, Button, Modal, Switch, Tabs, toast } from '@studyclub/ui';
+import { Badge, Button, Modal, Switch, Tabs } from '@studyclub/ui';
 import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState } from '@studyclub/utils';
 import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
@@ -426,10 +426,9 @@ export function StudyConsole({ study }: { study: Study }) {
               checked={published}
               aria-disabled={publishBlocked ? true : undefined}
               aria-describedby={publishBlocked ? reasonId : undefined}
-              onClick={() => { if (publishBlocked) toast(publishBlocked); }}
               onCheckedChange={setPublishConfirm}
             />
-            {publishBlocked && <span id={reasonId} className='sr-only'>{publishBlocked}</span>}
+            {publishBlocked && <p id={reasonId} className='type-label-sm text-fg-muted'>{publishBlocked}</p>}
           </div>
         </div>
       </header>

@@ -95,11 +95,10 @@ export function DraftDetail({ id }: { id: string }) {
         label='사이트 공개'
         checked={Boolean(study.published)}
         aria-disabled={blocked}
-        onClick={() => {
-          if (blocked) toast('신청 폼을 먼저 연결하세요.');
-        }}
+        aria-describedby={blocked ? 'draft-publish-reason' : undefined}
         onCheckedChange={(published) => save(reusedDraftVisibility(current, published))}
       />
+      {blocked && <p id='draft-publish-reason' className='type-label-sm text-fg-muted'>신청 폼을 먼저 연결하세요.</p>}
       <h2 className='type-title-md'>신청 폼</h2>
       <ApplicationFormTab study={study} onSave={save} />
     </div>
