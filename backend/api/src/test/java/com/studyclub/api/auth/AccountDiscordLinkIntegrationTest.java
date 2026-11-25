@@ -90,7 +90,8 @@ class AccountDiscordLinkIntegrationTest {
         Account account = seedAccount();
         String discordId = randomSnowflake();
         when(discordOAuthClient.exchange("good-code"))
-                .thenReturn(new DiscordOAuthClient.DiscordUser(discordId, "jiwon_dev"));
+                .thenReturn(
+                        new DiscordOAuthClient.DiscordUser(discordId, "jiwon_dev", "지원/SWE/서울"));
 
         ResponseEntity<Map> res =
                 post(account, Map.of("code", "good-code", "discordId", "1", "handle", "fake"));
@@ -99,6 +100,7 @@ class AccountDiscordLinkIntegrationTest {
         Account saved = accountRepository.findById(account.getId()).orElseThrow();
         assertThat(saved.getDiscordId()).isEqualTo(discordId);
         assertThat(saved.getDiscordHandle()).isEqualTo("jiwon_dev");
+        assertThat(saved.getDiscordNickname()).isEqualTo("지원/SWE/서울");
     }
 
     @Test
@@ -110,7 +112,7 @@ class AccountDiscordLinkIntegrationTest {
         accountRepository.save(owner);
         Account account = seedAccount();
         when(discordOAuthClient.exchange(anyString()))
-                .thenReturn(new DiscordOAuthClient.DiscordUser(discordId, "someone"));
+                .thenReturn(new DiscordOAuthClient.DiscordUser(discordId, "someone", "someone"));
 
         ResponseEntity<Map> res = post(account, Map.of("code", "good-code"));
 
@@ -223,7 +225,9 @@ class AccountDiscordLinkIntegrationTest {
         Account account = seedLinkedAccount();
         seedParticipant(account, ParticipantStatus.ACTIVE);
         when(discordOAuthClient.exchange(anyString()))
-                .thenReturn(new DiscordOAuthClient.DiscordUser(randomSnowflake(), "new_handle"));
+                .thenReturn(
+                        new DiscordOAuthClient.DiscordUser(
+                                randomSnowflake(), "new_handle", "new_handle"));
 
         ResponseEntity<Map> res = post(account, Map.of("code", "good-code"));
 
@@ -240,7 +244,9 @@ class AccountDiscordLinkIntegrationTest {
         Account account = seedLinkedAccount();
         seedParticipant(account, ParticipantStatus.ACTIVE);
         when(discordOAuthClient.exchange(anyString()))
-                .thenReturn(new DiscordOAuthClient.DiscordUser(account.getDiscordId(), "renamed"));
+                .thenReturn(
+                        new DiscordOAuthClient.DiscordUser(
+                                account.getDiscordId(), "renamed", "renamed"));
 
         ResponseEntity<Map> res = post(account, Map.of("code", "good-code"));
 
@@ -256,7 +262,7 @@ class AccountDiscordLinkIntegrationTest {
         seedParticipant(account, ParticipantStatus.WITHDRAWN);
         String newId = randomSnowflake();
         when(discordOAuthClient.exchange(anyString()))
-                .thenReturn(new DiscordOAuthClient.DiscordUser(newId, "new_handle"));
+                .thenReturn(new DiscordOAuthClient.DiscordUser(newId, "new_handle", "new_handle"));
 
         ResponseEntity<Map> res = post(account, Map.of("code", "good-code"));
 

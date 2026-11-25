@@ -95,6 +95,8 @@ public class AccountDiscordLinkService {
                             throw new BusinessException(ErrorCode.CONFLICT, CONFLICT_MESSAGE);
                         });
         account.linkDiscord(user.id(), user.handle());
+        // 신청 폼 별명 칸은 이 값을 읽기만 한다 — 연동(새로고침 포함)할 때마다 서버에서 보이는 이름으로 덮어쓴다
+        account.changeDiscordNickname(user.nickname());
         accountRepository.saveAndFlush(account);
     }
 }

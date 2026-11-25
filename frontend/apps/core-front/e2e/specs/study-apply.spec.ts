@@ -241,9 +241,8 @@ test.describe('크루 스터디 신청 E2E 플로우 (PRD: crew-submit-applicati
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
-    // 1. 디스코드 별명 입력
-    const nickInput = dialog.getByLabel(/디스코드 서버 별명/i);
-    await nickInput.fill('테스트크루');
+    // 1. 디스코드 별명 — 직접 입력하지 않는다. 연동할 때 서버가 받아 둔 값이 채워져 있다
+    await expect(dialog.getByLabel(/디스코드 서버 별명/i)).toHaveValue('테스트크루');
 
     // 2. 참여 가능한 요일 체크
     await dialog.getByRole('checkbox', { name: /월요일/i }).check();
