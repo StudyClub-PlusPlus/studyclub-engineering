@@ -1,7 +1,7 @@
 # club-cohort API Spec
 
 > ERD: [STUDY_PROGRAM](../../docs/erd/STUDY_PROGRAM.md) · [STUDY](../../docs/erd/STUDY.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) — 바뀌는 컬럼 · 새 테이블은 아래 「데이터」
-> 정책: [POL-0012 클럽 기수](../../01-planning/_registry/policies/POL-0012-club-cohort.md) · [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
+> 정책: [POL-0012 클럽](../../01-planning/_registry/policies/POL-0012-club-cohort.md) · [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
 > 생성일: 2026-11-24
 > 상태: 스펙작성중
 >

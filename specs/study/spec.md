@@ -37,7 +37,7 @@
 | GET | /api/admin/studies | 스터디 목록 (DRAFT 포함, `category`·`studyKind`·`status`·`studyId`·`offset`·`limit`) | O (ADMIN) | 구현완료 — 콘솔 목록은 아직 `/api/studies` 를 부른다 (교체 여부 팀 확인 중) |
 | GET | /api/admin/studies/{studyId} | 스터디 상세 (DRAFT 포함) | O (ADMIN) | 구현완료 — 콘솔 상세가 부른다 |
 | POST | /api/admin/studies | 스터디 등록 (새 프로그램) | O (ADMIN) | 구현완료 — 옛 `POST /api/studies` 는 없앴다 · **변경 예정: `studyProgramId`(클럽의 새 기수) 없앰** |
-| GET | /api/admin/study-programs | 프로그램 목록 (`studyKind` 필수). 등록 모달의 「기존 클럽의 새 기수」 드롭다운이 `CLUB` 으로 부른다 — `programId`·`title`·`latestStudyId` 만 준다 | O (ADMIN) | 구현완료 |
+| GET | /api/admin/study-programs | 프로그램 목록 (`studyKind` 필수). 등록 모달의 「기존 클럽의 새 기수」 드롭다운이 `CLUB` 으로 부른다 — `programId`·`title`·`latestStudyId` 만 준다 | O (ADMIN) | 구현완료 · **변경 예정: 그 드롭다운을 없애면 쓰는 곳이 없다 — 클럽 운영 목록은 `GET /api/admin/clubs`** |
 | PATCH | /api/admin/studies/{studyId} | 스터디 수정 | O (ADMIN) | 구현완료 — 사이트용과 로직 공유, 콘솔 정보 탭이 부른다 |
 | DELETE | /api/admin/studies/{studyId} | 스터디 삭제 | O (ADMIN) | 구현완료 — 옛 `DELETE /api/studies/{studyId}` 는 없앴다 |
 | POST | /api/admin/studies/{studyId}/publish | 스터디 공개 (= 모집 시작) | O (ADMIN) | 구현완료 |
