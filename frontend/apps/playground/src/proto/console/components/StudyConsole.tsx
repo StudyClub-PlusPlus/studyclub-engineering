@@ -19,19 +19,22 @@ import { useStudiesListHref } from '@console/lib/list-return';
 import { type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
 import { studyAuthor } from '@console/lib/users';
+import { RetroBoard } from '@core/components/MeetingRetro';
 import { ScheduleManager } from '@core/components/ScheduleManager';
-import { SegmentTabs } from '@core/components/SegmentTabs';
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
 import { discordUrl, driveUrl } from '@core/lib/joined';
-import { DISPLAY_ZONES, wallParts, zonedInstant, type ProtoMeeting } from '@core/lib/meetings';
+import { wallParts, zonedInstant, type ProtoMeeting } from '@core/lib/meetings';
 import { dropPresenters } from '@core/lib/schedule-source';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew } from '@studyclub/mock';
 import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
 import { Badge, Button, Modal, Switch, Tabs } from '@studyclub/ui';
-import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState, recruitState, toISODate, todayISO } from '@studyclub/utils';
+import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState } from '@studyclub/utils';
 import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
 import { useAnnotate } from '@/proto/annotate';
+import { recruitState, recruitmentDeadlineLabel, recruitmentDaysLeft } from '@/proto/lib/recruitment-deadline';
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 /**
  * 스터디 운영 콘솔.
@@ -55,6 +58,8 @@ const TABS = [
   { key: 'crew', label: '신청자' },
   { key: 'schedule', label: '일정' },
   { key: 'attendance', label: '출석' },
+  // 사용자 사이트 스터디 일정의 탭(일정 · 출석 · 회고)은 백오피스에도 둔다 — 네비게이터가 보는 화면은 캡틴도 본다
+  { key: 'retro', label: '회고' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -109,12 +114,14 @@ export function StudyConsole({ study }: { study: Study }) {
   // 참여 중단한 크루 — 출석부에서 고른다. 하차 · 제명을 가르지 않고, 되돌리지 않는다 (사용자 사이트와 같다).
   // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT
   const [left, setLeft] = useState<Record<string, { at: string }>>({});
-  // 출석부 회차 머리의 시간대 — 사용자 사이트 출석부 · 일정 표와 같은 KST/PDT 전환
-  const [zone, setZone] = useState<string>(DISPLAY_ZONES[0]!.iana);
+  // 출석부 회차 머리도 백오피스 공통 헤더의 시간대로 표시한다.
+  const zone = useDisplayTimeZone();
   // 일정 탭의 「스터디 시간 정하기 · 수정」 창
   const [ruleOpen, setRuleOpen] = useState(false);
 
   const [tab, setTab] = useState<TabKey>('info');
+  // 회고 탭에서 고른 회차 — 없으면 가장 최근에 끝난 회차
+  const [retroMeetingId, setRetroMeetingId] = useState<string | undefined>();
   const [crewDirty, setCrewDirty] = useState(false);
   // 반별 출석부 중 하나라도 저장 전 고침이 있으면 출석 탭이 「고친 것 있음」
   const [dirtyBooks, setDirtyBooks] = useState<Record<string, boolean>>({});
@@ -123,6 +130,7 @@ export function StudyConsole({ study }: { study: Study }) {
   // 일정 탭은 고칠 곳이 둘이다 — 일정 표와 반 규칙. 어느 쪽이든 저장 전이면 나가기 전에 묻는다.
   const scheduleDirty = tableDirty || rulesDirty;
   const [leave, setLeave] = useState<LeaveIntent | null>(null);
+  const [reuseOpen, setReuseOpen] = useState(false);
   const [nextOpen, setNextOpen] = useState(false);
   /** 출석 탭의 「회차 추가」로 넘어왔으면 일정 탭에서 회차 추가 창을 바로 연다. */
   const [addOnOpen, setAddOnOpen] = useState(false);
@@ -178,9 +186,7 @@ export function StudyConsole({ study }: { study: Study }) {
       if (!v) continue;
       for (const c of v.crew) {
         const gone = new Set(
-          v.meetings
-            .filter((m) => c.left && `${m.date}T${m.time ?? v.group.startAt}` > c.left.at)
-            .map((m) => m.id),
+          v.meetings.filter((m) => c.left && `${m.date}T${m.time ?? v.group.startAt}` > c.left.at).map((m) => m.id),
         );
         for (const [mid, s] of Object.entries(books[cls.id]?.[c.id] ?? {})) {
           if (s === 'excused' || v.book.notCounted?.has(mid) || gone.has(mid)) continue;
@@ -191,13 +197,12 @@ export function StudyConsole({ study }: { study: Study }) {
     }
     return total === 0 ? undefined : Math.round((score / total) * 100);
   }, [classes, study, meetings, active, assign, navigators, left, books]);
+  useRecruitmentClock([study]);
+  const lifecycle = lifecycleState(study);
+  const reusable = (study.program?.kind ?? study.kind) === 'study' && (lifecycle === 'ENDED' || lifecycle === 'CLOSED');
   const open = recruitState(study) === 'apply';
-  const deadline = toISODate(study.recruitment?.deadline);
-  // 마감까지 남은 날. 마감일은 필수라 늘 있다 — 값이 비어 있는 옛 데이터만 undefined.
-  const dday =
-    deadline === undefined
-      ? undefined
-      : Math.round((Date.parse(`${deadline}T00:00:00Z`) - Date.parse(`${todayISO()}T00:00:00Z`)) / 86_400_000);
+  const deadline = recruitmentDeadlineLabel(study, zone);
+  const dday = recruitmentDaysLeft(study, zone);
   // 목록에 걸어 둔 필터 · 정렬 · 페이지로 돌아간다
   const listHref = useStudiesListHref();
   // 사이트 공개 — 화면 상태로만 바꾼다(새로고침하면 되돌아간다). 목록 「스터디 공개」 칸과 같은 규칙 · 같은 확인 팝업
@@ -223,6 +228,20 @@ export function StudyConsole({ study }: { study: Study }) {
 
   /** 반의 스터디 시간(요일 · 시각 · 시간대)을 정하거나 고친다. 회차는 건드리지 않는다 — 회차는 일정 표에서만 만든다. */
   function saveRule(id: string, rule: ScheduleRule) {
+    const previous = classView({
+      study,
+      cls: classes.find((c) => c.id === id),
+      base: meetings[id] ?? [],
+      crew: [],
+      navigators: [],
+    });
+    if (previous && (previous.cls.rule.tz !== rule.tz || previous.cls.rule.time !== rule.time)) {
+      // 옛 mock 회차에도 UTC를 먼저 확정해, 기준 시간대만 바꿔도 기존 일정이 이동하지 않게 한다.
+      for (const meeting of previous.meetings) {
+        if (!meeting.scheduledAt)
+          previous.source.patch(meeting.id, { scheduledAt: previous.source.startOf(meeting).toISOString() });
+      }
+    }
     setClasses((list) => list.map((c) => (c.id === id ? { ...c, rule } : c)));
   }
 
@@ -254,6 +273,15 @@ export function StudyConsole({ study }: { study: Study }) {
     navigators,
     left,
   });
+  // 회고 탭 — 고른 반의 크루만 쓸 사람으로 본다. 반이 하나면 나누지 않는다(스터디 전체)
+  const classCrewKey =
+    classes.length > 1
+      ? active
+          .filter((c) => assign[c.id] === classId)
+          .map((c) => c.id)
+          .join(',')
+      : '';
+  const retroMembers = useMemo(() => (classCrewKey ? classCrewKey.split(',') : undefined), [classCrewKey]);
 
   function requestClass(id: string) {
     if (id === classId) return;
@@ -367,16 +395,23 @@ export function StudyConsole({ study }: { study: Study }) {
         <div className='flex shrink-0 flex-col items-end gap-2'>
           <div data-anno='attendee:1-2' className='flex items-center gap-2'>
             {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
+            {reusable && (
+              <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setReuseOpen(true)}>
+                이 내용으로 새 스터디
+              </Button>
+            )}
             {study.program?.kind === 'club' && (
               <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setNextOpen(true)}>
                 다음 기수 만들기
               </Button>
             )}
-            <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
-              {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
-              {/* 마감일 당일도 아직 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
-              {open ? (dday === undefined ? '모집중' : `모집중 · D-${dday}`) : '모집 마감'}
-            </Badge>
+            <span title={deadline}>
+              <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
+                {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
+                {/* 마감일 당일에도 마감 순간 전까지만 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
+                {open ? (dday === undefined ? '모집중' : `모집중 · D-${dday}`) : '모집 마감'}
+              </Badge>
+            </span>
             {draft && (
               <Badge tone='closingsoon' className='px-2.5 py-1 font-semibold'>
                 미공개
@@ -447,14 +482,14 @@ export function StudyConsole({ study }: { study: Study }) {
           value={String(active.length)}
           sub={study.recruitment?.capacity ? `정원 ${study.recruitment.capacity}명` : '정원 제한 없음'}
         />
-        <SummaryStat
-          label='출석률'
-          value={studyRate === undefined ? '-' : `${studyRate}%`}
-          sub='모든 반 · 지각 포함'
-        />
+        <SummaryStat label='출석률' value={studyRate === undefined ? '-' : `${studyRate}%`} sub='모든 반 · 지각 포함' />
       </div>
       <div data-anno='attendee:2 crew:1 results:1' className='mt-6'>
-        <Tabs activeKey={tab} items={TABS.map((tb) => ({ key: tb.key, label: tb.label }))} onChange={(key) => requestTab(key as TabKey)} />
+        <Tabs
+          activeKey={tab}
+          items={TABS.map((tb) => ({ key: tb.key, label: tb.label }))}
+          onChange={(key) => requestTab(key as TabKey)}
+        />
       </div>
 
       <div className='mt-5'>
@@ -615,27 +650,37 @@ export function StudyConsole({ study }: { study: Study }) {
                   headOf={view.book.headOf}
                   onWithdraw={(ids) => withdraw(view, ids)}
                   startAt={view.group.startAt}
-                  // 제목 줄 — 「출석」 · 「전체 N」 · 오른쪽 KST/PDT (사용자 사이트 출석부와 같은 줄). 반 이름은 위 칩이 말한다
+                  // 제목 줄 — 「출석」 · 「전체 N」. 반 이름은 위 칩, 표시 시간대는 공통 헤더에 둔다.
                   title='출석'
-                  toolbar={
-                    <SegmentTabs
-                      anno='attendance:11'
-                      label='회차 표시 시간대'
-                      value={zone}
-                      options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
-                      onChange={setZone}
-                    />
-                  }
+                  instantOf={instantOf}
                   whenOf={(m) => wallParts(instantOf(m as ProtoMeeting), zone)}
                 />
               );
             })()
           ))}
+        {tab === 'retro' && (
+          // 사용자 사이트 회고 탭과 같은 화면 — 캡틴으로 본다(작성 버튼 없음 · 작성 현황 · 「n명 중 m명 작성」).
+          // TODO(api): 회고는 반의 회차에 붙는다 — 서버는 groupId 로 그 반 회차 · 참여자를 준다. 프로토는 스터디 회차에 그 반 크루만 걸러 본다
+          <div>
+            {/* 반 칩 — 일정 · 출석 탭과 같은 줄 · 같은 값. 반이 하나면 그리지 않는다 */}
+            <ClassPicker classes={classes} classId={classId} onClass={requestClass} anno='retro-lead:3' />
+            <RetroBoard
+              key={classId}
+              study={study}
+              role='captain'
+              locale='ko'
+              meetingId={retroMeetingId}
+              onMeetingChange={setRetroMeetingId}
+              members={retroMembers}
+            />
+          </div>
+        )}
         {tab === 'form' && <ApplicationFormTab study={study} />}
-        {tab === 'results' && <ResultsTab study={study} crew={crew} />}
+        {tab === 'results' && <ResultsTab study={study} crew={crew} onGoCrew={() => requestTab('crew')} />}
         {tab === 'info' && <StudyInfoTab study={study} />}
       </div>
 
+      {reusable && <StudyCreateDialog open={reuseOpen} onClose={() => setReuseOpen(false)} reuseOf={study} />}
       <StudyCreateDialog open={nextOpen} onClose={() => setNextOpen(false)} nextOf={study} />
 
       <Modal

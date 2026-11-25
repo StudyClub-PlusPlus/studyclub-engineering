@@ -8,6 +8,7 @@ import { StudyBoard } from '@core/components/StudyBoard';
 import { getUser } from '@core/lib/auth';
 import { t } from '@core/lib/i18n';
 import { scheduleAccessOf, type NavigatorGroup, type ScheduleRole } from '@core/lib/meetings';
+import { retroStatuses } from '@core/lib/retros';
 import { type Study } from '@studyclub/types';
 import { Button, Modal, cx } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
@@ -89,6 +90,13 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const study = studies.find((s) => String(s.study_id) === id);
   // TODO(api): 참가자가 아닌 사람은 서버가 403 을 준다. 프로토는 찾은 스터디면 크루로 들인다.
   const access = study ? scheduleAccessOf(study) : undefined;
+  // 내가 지금 쓸 수 있는데 안 쓴 회고 수 — 회고 탭 옆 점. 캡틴은 쓰지 않는다. 화면을 옮길 때마다 다시 센다(쓰고 돌아오면 사라진다)
+  const [pendingRetros, setPendingRetros] = useState(0);
+  const myRole = access?.role;
+  useEffect(() => {
+    if (!study || !myRole || myRole === 'captain') return setPendingRetros(0);
+    setPendingRetros(retroStatuses(study).filter((s) => s.open && !s.mine).length);
+  }, [study, myRole, pathname]);
 
   if (!ready) return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
 
@@ -112,6 +120,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const tabs = [
     { href: base, label: '일정' },
     { href: `${base}/attendance`, label: '출석' },
+    { href: `${base}/retro`, label: '회고', match: `${base}/retro` },
     // 공지는 보내는 사람(캡틴·네비게이터)만 쓴다. 반 멤버가 읽는 공지 목록은 없다 (POL-0010)
     ...(canEdit ? [{ href: `${base}/notice`, label: '공지' }] : []),
   ];
@@ -138,12 +147,15 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav data-anno='manage:2' className='mt-6 flex gap-1 border-b border-border'>
+          {/* 일정 표에서 회고 열을 뺐다 — 내가 쓸 수 있는 회고가 남았으면 회고 탭 옆 점으로 알린다 */}
           {tabs.map((tb) => {
-            const on = pathname === tb.href;
+            // 회고 작성 페이지(…/retro/write)도 회고 탭에 머문다
+            const on = pathname === tb.href || ('match' in tb && pathname.startsWith(`${tb.match}/`));
             return (
               <Link
                 key={tb.href}
                 href={tb.href}
+                data-anno={tb.label === '회고' ? 'retro:2' : undefined}
                 aria-current={on ? 'page' : undefined}
                 className={cx(
                   '-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors',
@@ -151,6 +163,16 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
                 )}
               >
                 {tb.label}
+                {tb.label === '회고' && pendingRetros > 0 && (
+                  <>
+                    <span
+                      data-anno='retro:1'
+                      aria-hidden
+                      className='ml-1.5 inline-block size-1.5 -translate-y-2 rounded-full bg-brand'
+                    />
+                    <span className='sr-only'>— 쓸 수 있는 회고 {pendingRetros}개</span>
+                  </>
+                )}
               </Link>
             );
           })}

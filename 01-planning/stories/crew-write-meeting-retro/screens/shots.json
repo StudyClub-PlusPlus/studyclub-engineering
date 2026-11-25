@@ -1,0 +1,81 @@
+{
+  "shots": [
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "schedule-retro-tab",
+      "title": "스터디 일정 — 회고 열 없음 · 쓸 회고가 있으면 「회고」 탭 옆 점 (크루)",
+      "path": "/proto/core/ko/my/joined/18/schedule",
+      "scrollTo": "[data-anno~=\"manage:2\"]"
+    },
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "retro-tab",
+      "title": "회고 탭 — 문항별 · 👍 많은 순 · 마감 시각 · 「회고 작성」 (크루, 아직 안 쓴 회차)",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro?meeting=claude-code-source-study-s7",
+      "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "retro-closed",
+      "title": "회고 탭 — 기한 지난 회차 「회고 마감」(비활성)",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro?meeting=claude-code-source-study-s5",
+      "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "write",
+      "title": "회고 작성 — 날짜 · 마감 · 미팅 종료는 내 프로필 시간대 (약칭)",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro/write?meeting=claude-code-source-study-s7",
+      "fullPage": true
+    },
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "write-invalid",
+      "title": "회고 작성 — 필수 칸 오류",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro/write?meeting=claude-code-source-study-s7",
+      "click": ["회고 제출"],
+      "fullPage": true
+    },
+    {
+      "story": "crew-write-meeting-retro",
+      "name": "retro-mobile",
+      "title": "회고 탭 — 모바일",
+      "path": "/proto/core/ko/my/joined/18/schedule/retro?meeting=claude-code-source-study-s7",
+      "viewport": "mobile",
+      "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "navigator-view-meeting-retros",
+      "name": "retro-navigator",
+      "title": "회고 탭 — 네비게이터 (작성 현황 · 「n명 중 m명 작성」)",
+      "path": "/proto/core/ko/my/joined/20/schedule/retro",
+      "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "navigator-view-meeting-retros",
+      "name": "retro-captain",
+      "title": "회고 탭 — 캡틴 (작성 버튼 없음)",
+      "path": "/proto/core/ko/my/joined/1/schedule/retro",
+      "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "navigator-view-meeting-retros",
+      "name": "console-study-retro-tab",
+      "title": "콘솔 스터디 상세 — 회고 탭 (반 칩 · 캡틴으로 본 회고 탭)",
+      "path": "/proto/console/studies/20?tab=retro"
+    },
+    {
+      "story": "captain-collect-meeting-retros",
+      "name": "console-retros",
+      "title": "콘솔 회고 모아보기 — 문항별(기본 개선할 점 · 최신순)",
+      "path": "/proto/console/retros"
+    },
+    {
+      "story": "captain-collect-meeting-retros",
+      "name": "console-retros-table",
+      "title": "콘솔 회고 모아보기 — 표 (문항 열 칩 · 최신순 · 공감순, 세 문항이 한 줄에)",
+      "path": "/proto/console/retros",
+      "click": ["표"]
+    }
+  ]
+}

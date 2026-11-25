@@ -362,7 +362,7 @@
 
 [PRD](../../01-planning/stories/captain-assign-classes/PRD.md) · [시나리오](../../frontend/apps/back-office-front/screen-catalog/features/prd/captain-assign-classes.feature)
 
-**자동화 상태: 예정.** 추가 전 부분 근거: study-detail--applicants / schedule-empty / schedule; e2e/specs/participants.spec.ts (반 생성·수정·이동 일부)
+**자동화 상태: 예정.** 추가 전 부분 근거: study-detail--applicants / schedule-empty / schedule; e2e/specs/participants.spec.ts (반 생성·수정·이동 일부 · 참여 가능 시간으로 거른 뒤 일괄 이동)
 
 **현재 코드 확인:** 현재 코드 기준: 완료 기준 중복 번호를 10(기간)·11(캡틴 명단)로 수정했다. 시간 창에 시작일·종료일은 없고 요일 1개 이상만 저장 시 검증한다. 시각 공란은 차단하지 않으며 시간대는 서버 반 값으로 고정된다. 근거: src/features/schedule/GroupTimeDialog.tsx.
 
@@ -381,6 +381,14 @@
 | 9 | 일정 탭 반 정보 카드의 스터디 시간 「수정」 — 요일·시각·시간대만 변경. 회차 추가·재생성 없음 | `BO-ST-025-S03` |
 | 10 | 반의 기간은 저장하지 않음 — 첫 회차 ~ 마지막 회차 | `BO-ST-025-S03` |
 | 11 | 캡틴 전용 명단 줄 없음. 참여하려는 캡틴은 신청 폼 제출 후 크루와 같은 줄로 표시 | `BO-ST-025-S02` |
+| 12 | 참여 가능 시간 확인 — 기준 시간대의 시각(줄) × 요일(열)마다 참여 가능 인원. 칸에 올리면 그 시각에 되는 크루 닉네임 | `BO-ST-025-S06` (닉네임 말풍선은 단위 테스트 `ParticipantsTab.test.tsx`) |
+| 13 | 기준 시간대는 백오피스 표시 시간대를 따름(칸판에서 고르지 않음) · 「크루 새벽 빼기」 켜고 끄기(처음 켜짐) · 기준 0~6시 줄은 처음 숨기고 「0~6시 줄 보기」로 펼침 | `BO-ST-025-S06` (단위 테스트 `ParticipantsTab.test.tsx`) |
+| 14 | 칸 고르기로 그 시각에 되는 크루만 명단에 남기기 · 풀기 | `BO-ST-025-S06` |
+| 15 | 명단 「참여 가능 요일」 열 — 크루가 고른 현지 요일. 없으면 「-」 | `BO-ST-025-S06` |
+| 16 | 프로필 시간대가 없는 크루는 KST 로 센다 | 단위 테스트 `ParticipantsTab.test.tsx` |
+| 17 | 「가장 많이 되는 시간」 알약 — 누르면 그 구간 내내 되는 크루만 남김 | 단위 테스트 `ParticipantsTab.test.tsx` |
+| 18 | 칸 안 인원 숫자 · 「명단에서 보기」 | 단위 테스트 `ParticipantsTab.test.tsx` |
+| 19 | 표는 처음 접힘(간단히 보기) · 시간대 없는 크루는 KST 로 세고 명단은 「미설정」 | 단위 테스트 `ParticipantsTab.test.tsx` · e2e `participants.spec.ts` |
 
 | 상태 | PRD의 화면·카피 | 연결 시나리오 |
 |---|---|---|

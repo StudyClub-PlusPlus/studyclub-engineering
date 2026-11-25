@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { getUser, logout, type SessionUser } from '@console/lib/auth';
 import { IconButton } from '@studyclub/ui';
-import { LayoutDashboard, BookOpen, CalendarDays, Users, Megaphone, MessagesSquare, Mail, LogOut } from 'lucide-react';
+import { LayoutDashboard, BookOpen, CalendarDays, Users, Megaphone, MessagesSquare, Mail, LogOut, NotebookPen } from 'lucide-react';
 
 // 프로토는 playground 안에서 /proto/console 아래 매달린다. 링크는 이 접두를 붙여야 한다.
 const BASE = '/proto/console';
@@ -17,6 +17,8 @@ const NAV = [
   { href: '/events', label: '행사', icon: CalendarDays },
   // 스터디원 + 운영진을 "유저" 하나로 통합. 역할·권한 부여도 이 화면에서 한다.
   { href: '/users', label: '유저', icon: Users },
+  // 참여자가 미팅마다 남긴 회고 — 열람 전용. 운영 대상(스터디)에서 나온 기록이라 유저 아래, 공지 위
+  { href: '/retros', label: '회고', icon: NotebookPen },
   // 앞의 넷은 운영 대상, 뒤(공지·문의·알림)는 사이트와 주고받는 것이다. 공지는 메가폰
   { href: '/notices', label: '공지', icon: Megaphone },
   // 사이트에서 들어온 문의·오류 신고. 공지 아래, 알림 위. 말풍선 — 봉투(알림)·메가폰(공지)과 갈린다

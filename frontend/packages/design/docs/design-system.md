@@ -152,6 +152,18 @@
 
 > 상태별 차트(모집중/진행중/마감)는 카테고리 팔레트가 아니라 **2-5의 상태 색**을 그대로 사용. 그리드선 border, 축 텍스트 text-muted(sm).
 
+### 2-7. 히트 단계 (순차 — 많고 적음)
+
+한 색상(primary)의 밝기 4단계 + 빈 칸입니다. 값이 클수록 진합니다. 카테고리 · 상태 색과 섞지 않고, 숫자를 툴팁 · 범례로 함께 보입니다(색만으로 읽히게 두지 않는다). 이웃 단계 ΔE(OKLab×100)는 색각 이상에서도 16 이상입니다.
+
+| 토큰 | 값 | 쓰는 곳 |
+|---|---|---|
+| `--color-heat-0` | `cloud` | 0 — 빈 칸 |
+| `--color-heat-1` | `primary-200` | 최대의 1/4 이하. 숫자는 `fg`(10.5:1) |
+| `--color-heat-2` | `primary-400` | 1/2 이하. 숫자는 `fg`(5.8:1) |
+| `--color-heat-3` | `primary-600` | 3/4 이하. 숫자는 `on-primary`(4.9:1) |
+| `--color-heat-4` | `primary-900` | 최대. 숫자는 `on-primary`(9.4:1) |
+
 ---
 
 ## 3. Typography
@@ -424,9 +436,12 @@ IconButton 만 xs 24px/radius8/아이콘14 가 있다 — 표 칸 · 글줄 안�
 - disabled: disabled-bg / disabled-fg.
 - 라벨 type-label-lg ink · helper type-label-sm text-muted · 입력값 type-body-md(Console은 type-body-sm) · 필수표시 danger-fg `*`.
 - 앞 아이콘(`leadingIcon`): 검색 돋보기 등 장식 아이콘을 왼쪽 12px 에 두고 입력값은 pl 36px 에서 시작. 색 text-placeholder, aria-hidden.
+- 뒤 단추(`trailing`): 달력 · 시계 열기처럼 누르는 IconButton xs 를 칸 오른쪽 6px 에 둔다. 입력값은 pr 36px 에서 멈춘다.
 - Console 툴바(검색·필터)는 `size="sm"`(h32, type-body-sm). 값을 고른 필터 Select 는 border-brand + font-semibold 로 「걸려 있음」을 보인다(전체일 때는 border-strong · text-secondary).
 - **Checkbox / Radio**: 16px, accent brand, 포커스 링은 입력과 같은 `--shadow-focus-ring`. 라벨 type-label-lg ink, 라벨 클릭으로도 토글. Radio 는 같은 `name` 묶음에서 하나만 고르고, 묶음 제목은 `fieldset`+`legend` 로 단다. 설명(`description`)은 라벨 아래 type-label-sm text-muted. 표의 행 선택처럼 라벨이 안 보이는 자리는 `hideLabel`(라벨은 스크린리더용으로 남긴다).
-- **Time Select**: 시각 입력은 브라우저 기본 `<input type="time">` 대신 Select 두 칸(시 00~23 · 분 기본 5분 간격)을 가운데 `:`(text-muted)로 잇는다. 브라우저 기본 칸은 OS · 언어마다 모양이 달라 오전/오후 칸이 초처럼 보였다(bug-10). 값은 `HH:mm`(24시간). 시를 비우면 값이 비고 분 칸은 막힌다. 지금 값의 분이 간격에 안 맞아도 그 분은 목록에 남긴다. 두 칸은 `role="group"` 으로 묶고 각각 「… 시」 · 「… 분」 으로 읽힌다. 크기 · 오류 · 비활성은 Select 와 같다.
+- **Date Picker**: 날짜 입력은 브라우저 기본 `<input type="date">` 대신 Input 칸 + 오른쪽 달력 단추(IconButton xs tertiary, CalendarDays)다. 칸에 `YYYY-MM-DD` 를 바로 칠 수 있고(숫자 8자리는 맞춰 준다), 다 치기 전 글자는 칸에만 남았다가 칸을 떠나면 마지막 값으로 돌아간다. 값은 `YYYY-MM-DD` 또는 `''`. 달력 창은 달력 단추 바로 아래 1.5 간격(자리가 모자라면 위)에 단추 오른쪽 끝을 맞춰 뜨고 surface-raised · border · radius-card · shadow-lg · 좌우 16px · 위아래 12px, 폭 20rem. 머리는 이전 · 다음 달 IconButton sm 과 「2026년 11월」(type-label-lg semibold). 요일 머리 type-label-sm text-muted, 일요일부터 6주. 날짜 칸 36px radius-control type-label-lg tnum: 이번 달 ink · 앞뒤 달 text-placeholder · 오늘 border-strong 테두리 + semibold · 고른 날 brand 채움/on-brand · hover primary-light · min · max 밖은 앞뒤 달보다 한 단계 흐린 text-tertiary(neutral-400)로 두고 누를 수 없게 막는다(취소선 없음. 누를 수 없는 칸이라 대비 기준 예외). 아래 줄에 「오늘」 · (필수가 아니면) 「지우기」 Tertiary sm. 방향키 하루 · 한 주, Home/End 주의 처음 · 끝, PageUp/Down 한 달(Shift 면 한 해), Enter 로 고르고 Esc 는 창만 닫아 칸으로 포커스를 돌린다(모달까지 닫지 않는다). 창은 화면 기준(fixed)으로 놓아 표의 가로 스크롤 · 모달 본문에 잘리지 않는다.
+- **Time Picker**: 브라우저 기본 `<input type="time">` 은 OS · 언어마다 모양이 달라 오전/오후 칸이 초처럼 보였다(bug-10). 그래서 Date Picker 와 같은 칸 + 시계 단추(Clock)로 쓴다. 칸에 `HH:mm`(숫자 4자리 가능)을 치거나 창의 시(00~23) · 분(기본 5분 간격) 두 목록(listbox, 칸 32px, 최대 높이 14rem)에서 고른다. 시를 고르면 창이 남아 분 목록으로 넘어가고, 분을 고르면 닫힌다. 고른 칸은 brand 채움. 지금 값의 분이 간격에 안 맞아도 목록에 남긴다. 방향키 위아래로 옮기고 좌우로 시 · 분을 오간다.
+- **Time Zone Picker**: 시간대 고르기. Select 모양 단추(sm 32 · md 40 · lg 48, sm 은 제목 줄에서 Button sm 과 나란히 놓을 때, 테두리 · 글자 굵기는 Select 와 같다 — 고른 값도 보통 굵기 text-ink, 테두리는 기본 border)를 누르면 칸 폭과 같은 목록 창이 뜬다. 한 줄은 지역 이름(type-label-lg semibold) + 아래 UTC 차이(type-label-sm text-muted), 고른 줄에 brand 체크. 7개 이상이면 맨 위에 검색 칸(Input sm + 돋보기)이 붙어 이름 · 지역 ID · 별칭으로 좁히고, 같은 국가는 surface-2 머리글 아래 묶는다. 결과가 없으면 「검색 결과가 없습니다.」(role=status). 목록 아래 footer 자리에 「전체 시간대에서 찾기」 같은 Tertiary sm 을 둘 수 있다. 지역 이름표 · 순서는 앱이 `options` 로 넘긴다 — ui 는 이름을 짓지 않는다. 이름표는 「국가 · 도시」(한국 · 서울)로 앱마다 같게 쓴다. 제목 줄 · 툴바처럼 라벨을 숨기면(`hideLabel`) 스크린리더는 이름과 지금 값을 함께 읽는다(「시간대 한국 · 서울」). 몇 개 중 하나를 바로 고르는 폼 값(KST · PST · 동시 진행)은 FilterChip `role="radio"` 묶음을 쓴다.
 - **Switch**: 누르는 즉시 반영되는 설정(사이트 공개 등). 트랙 36×20 radius-full, 꺼짐 surface-3, 켜짐 brand(기본) 또는 success-600(「공개됨」처럼 켜진 상태가 좋은 소식일 때). 손잡이 16px surface-raised + shadow-sm, 이동은 duration-base ease-out. 이름은 트랙 왼쪽 type-label-lg text-secondary. 막힌 상태는 `aria-disabled` + opacity 60% 로 포커스는 남겨 막힌 이유(`aria-describedby`)를 읽게 한다. 제출하는 폼 안의 예/아니오는 Checkbox.
 
 ### 9-3. Card
@@ -496,7 +511,7 @@ IconButton 만 xs 24px/radius8/아이콘14 가 있다 — 표 칸 · 글줄 안�
 
 | 컴포넌트 | 핵심 스펙 |
 |---|---|
-| Tabs | 언더라인형. active text primary-dark + 2px underline primary, inactive text-muted |
+| Tabs | 언더라인형. active text primary-dark + 2px underline primary, inactive text-muted. 탭이 넘치면 가로로만 스크롤한다 — 바닥 선(inset 1px border) · 밑줄 · 포커스 링(inset 3px focus-ring)은 탭 줄 안에 그려 세로 스크롤바가 생기지 않게 한다 |
 | Filter Chip | pill. 미선택 border/text-secondary/surface-raised · 선택 border-strong + primary-light/primary-dark(다중) 또는 primary solid(단일). 요일 고르기처럼 한 글자면 w-9 정사각에 가깝게. 폼 값으로 하나만 고르는 묶음(카테고리 · 진행 방식 · 시간대)은 `role="radio"` + 묶음 `role="radiogroup"` — 상태는 aria-checked 로 알린다. 화면 전환 탭 줄은 Segmented · Tabs 를 쓴다 |
 | Modal/Dialog | radius `--radius-modal`, `shadow-xl`, 오버레이 rgba(23,25,35,.48), 등장 base/ease-out, 모바일은 바텀시트(상단 radius 24). 머리는 `title`(하는 일) + `description`(대상 · 기준, 작은 글씨) — 대상을 제목에 붙이지 않는다 |
 | Toast | 좌측 상태 색 스트립 4px + 아이콘, bg 흰색, shadow-lg, 자동 4s |
@@ -504,6 +519,7 @@ IconButton 만 xs 24px/radius8/아이콘14 가 있다 — 표 칸 · 글줄 안�
 | Nav | 사이트=상단 가로 네비(surface-raised + border 하단), 콘솔=좌측 사이드바(page-bg, active primary-light/primary-dark) |
 | Empty State | 일러스트/아이콘 + 안내 카피(~해요체) + 주요 CTA. 예: "아직 신청한 스터디가 없어요" |
 | Help Popover | 제목 · 값 옆 IconButton xs(「?」, 기준 안내는 ⓘ)를 누르면 아래 1.5 간격에 뜬다. surface-raised · border · radius-card · shadow-md · p-3, 폭 18rem(화면 폭 -2rem 상한), 글자 type-label-sm text-secondary. 바깥 클릭 · 포커스 이동 · Esc 로 닫고 Esc 는 단추로 포커스를 돌린다. align으로 선호 정렬을 정하고, 화면 양쪽에 최소 16px 여백이 남도록 위치를 자동 보정한다. 화면 크기 변경·스크롤에도 위치를 다시 맞춘다. 늘 펼쳐 두는 안내문 대신 쓴다 |
+| Heat Grid | 행 × 열 칸(예: 요일 × 시각)의 많고 적음을 §2-7 히트 단계로 칠한다. 칸 사이 2px 간격 · 칸 radius-xs(2px) · 행 머리 type-label-sm text-secondary · 열 머리는 몇 칸마다만 type-label-sm text-muted. 칸은 누르는 단추 — 고른 칸은 2px `fg` 테두리 + `aria-pressed`, 다시 누르면 풀린다. 마우스 · 포커스가 올라간 칸의 설명을 격자 아래 한 줄(aria-live)에 보이고, `tooltip` 을 주면 칸 옆에 말풍선(surface-raised · border · radius-card · shadow-md, 자리가 모자라면 왼쪽)으로 설명과 내용(예: 사람 이름)을 띄우며, 칸이 넓으면(열 12칸 이하) `showValues` 로 값을 칸 안에 type-label-sm 굵게 적고(0 은 비움, 색은 §2-7), 화살표 키로 칸을 옮긴다(로빙 tabindex). 아래에 「적음 → 많음」 범례와 최대값. 열이 12칸을 넘으면 좁은 화면에서 격자만 가로 스크롤 |
 | Pagination / Segmented | segmented control은 track cloud, active surface-raised + shadow-xs |
 
 ---

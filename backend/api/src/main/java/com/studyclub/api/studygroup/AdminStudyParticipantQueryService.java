@@ -4,6 +4,9 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.application.ApplicationDay;
+import com.studyclub.domain.application.StudyApplication;
+import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
@@ -14,13 +17,20 @@ import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** 백오피스 참여 명단 조회 (specs/study-group/spec.md 「참여 명단」). */
 @Service
@@ -43,6 +53,8 @@ public class AdminStudyParticipantQueryService {
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final AccountRepository accountRepository;
     private final StudyGroupDeletability studyGroupDeletability;
+    private final StudyApplicationRepository studyApplicationRepository;
+    private final ObjectMapper objectMapper;
 
     public AdminStudyParticipantQueryService(
             StudyRepository studyRepository,
@@ -50,13 +62,17 @@ public class AdminStudyParticipantQueryService {
             StudyParticipantRepository studyParticipantRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             AccountRepository accountRepository,
-            StudyGroupDeletability studyGroupDeletability) {
+            StudyGroupDeletability studyGroupDeletability,
+            StudyApplicationRepository studyApplicationRepository,
+            ObjectMapper objectMapper) {
         this.studyRepository = studyRepository;
         this.studyGroupRepository = studyGroupRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.accountRepository = accountRepository;
         this.studyGroupDeletability = studyGroupDeletability;
+        this.studyApplicationRepository = studyApplicationRepository;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -103,12 +119,20 @@ public class AdminStudyParticipantQueryService {
                         .findAllById(rows.stream().map(StudyParticipant::getAccountId).toList())
                         .stream()
                         .collect(Collectors.toMap(Account::getId, Function.identity()));
+        Map<Long, List<String>> availableDays = availableDaysOf(studyId, accounts.keySet());
         Map<Long, String> groupNames =
                 groups.stream().collect(Collectors.toMap(StudyGroup::getId, StudyGroup::getName));
 
         List<StudyParticipantsResponse.Participant> participants =
                 rows.stream()
-                        .map(p -> toParticipant(p, accounts.get(p.getAccountId()), study))
+                        .map(
+                                p ->
+                                        toParticipant(
+                                                p,
+                                                accounts.get(p.getAccountId()),
+                                                availableDays.getOrDefault(
+                                                        p.getAccountId(), List.of()),
+                                                study))
                         .sorted(
                                 Comparator.comparing(
                                                 (StudyParticipantsResponse.Participant p) ->
@@ -151,8 +175,45 @@ public class AdminStudyParticipantQueryService {
                 participants);
     }
 
+    /** 계정별 이 스터디 신청서의 참여 가능 요일 — 여러 모집 회차에 냈으면 나중 신청서. */
+    private Map<Long, List<String>> availableDaysOf(Long studyId, Set<Long> accountIds) {
+        Map<Long, List<String>> days = new HashMap<>();
+        if (accountIds.isEmpty()) {
+            return days;
+        }
+        for (StudyApplication application :
+                studyApplicationRepository.findByStudyIdAndAccountIdInOrderByIdDesc(
+                        studyId, accountIds)) {
+            days.computeIfAbsent(
+                    application.getAccountId(), id -> daysOf(application.getFormAnswer()));
+        }
+        return days;
+    }
+
+    /** {@code FORM_ANSWER.availableDays} — 아는 요일 키만, 월 → 일 순서로. 읽을 수 없으면 빈 목록. */
+    private List<String> daysOf(String formAnswer) {
+        try {
+            JsonNode node = objectMapper.readTree(formAnswer);
+            if (node.isTextual()) {
+                node = objectMapper.readTree(node.asText());
+            }
+            JsonNode raw = node.get("availableDays");
+            if (raw == null || !raw.isArray()) {
+                return List.of();
+            }
+            Set<String> picked = new HashSet<>();
+            raw.forEach(d -> picked.add(d.asText()));
+            return Arrays.stream(ApplicationDay.values())
+                    .map(ApplicationDay::key)
+                    .filter(picked::contains)
+                    .toList();
+        } catch (JacksonException e) {
+            return List.of();
+        }
+    }
+
     private static StudyParticipantsResponse.Participant toParticipant(
-            StudyParticipant p, Account account, Study study) {
+            StudyParticipant p, Account account, List<String> availableDays, Study study) {
         return new StudyParticipantsResponse.Participant(
                 p.getId(),
                 p.getAccountId(),
@@ -161,6 +222,7 @@ public class AdminStudyParticipantQueryService {
                 account != null ? account.getEmail() : null,
                 account != null ? account.getRegionGroup() : null,
                 account != null ? account.getTimeZone() : null,
+                availableDays,
                 p.getStudyGroupId(),
                 p.getParticipantRole(),
                 p.getStatus(),

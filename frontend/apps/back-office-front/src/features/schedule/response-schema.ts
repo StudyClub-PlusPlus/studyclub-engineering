@@ -17,7 +17,8 @@ export const apiGroupMeetingsSchema = z.object({
   participants: z.array(
     z.object({
       participantId: z.number(),
-      name: z.string(),
+      // 디스코드 닉네임이 없는 계정은 null (study-meeting 스펙)
+      name: z.string().nullable(),
     }),
   ),
   meetings: z.array(

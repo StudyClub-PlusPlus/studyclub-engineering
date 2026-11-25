@@ -19,6 +19,7 @@ const detail = {
 const participant = (id: number, nickname: string, status: Participant['status']): Participant => ({
   participantId: id,
   accountId: id,
+  availableDays: [],
   nickname,
   discordNickname: null,
   email: `${id}@example.com`,
@@ -69,18 +70,17 @@ function memoryStorage(): Storage {
 }
 
 type Scope = Pick<typeof screen, 'getByRole'>;
-/** 시각 칸은 시 · 분 두 Select(TimeSelect). 묶음 이름으로 찾아 HH:mm 로 읽고 쓴다 */
-function timeSelects(name: string | RegExp, scope: Scope = screen) {
-  return within(scope.getByRole('group', { name })).getAllByRole('combobox') as HTMLSelectElement[];
+/** 시각 칸은 TimePicker — HH:mm 을 바로 치는 칸. 이름으로 찾아 읽고 쓴다 */
+function timeInput(name: string | RegExp, scope: Scope) {
+  return scope.getByRole('textbox', { name }) as HTMLInputElement;
 }
 function timeValue(name: string | RegExp, scope: Scope = screen) {
-  const [hour, minute] = timeSelects(name, scope);
-  return hour.value ? `${hour.value}:${minute.value}` : '';
+  return timeInput(name, scope).value;
 }
 async function setTime(name: string | RegExp, value: string, scope: Scope = screen) {
-  const [hour, minute] = value.split(':');
-  await userEvent.selectOptions(timeSelects(name, scope)[0], hour);
-  await userEvent.selectOptions(timeSelects(name, scope)[1], minute);
+  const input = timeInput(name, scope);
+  await userEvent.clear(input);
+  await userEvent.type(input, value);
 }
 
 let server: ReturnType<typeof fakeServer>;
@@ -157,10 +157,8 @@ describe('일정 탭', () => {
     await setTimeAndAddMeetings();
 
     await userEvent.click(screen.getByRole('button', { name: '스터디 시간 수정' }));
-    await userEvent.selectOptions(
-      within(screen.getByRole('dialog')).getByRole('combobox', { name: '시간대' }),
-      'America/New_York',
-    );
+    await userEvent.click(within(screen.getByRole('dialog')).getByLabelText('시간대'));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('option', { name: /미국 · 뉴욕/ }));
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '저장' }));
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '반 정보만 바꾸기' }));
     await waitFor(() =>
@@ -238,10 +236,10 @@ describe('일정 탭', () => {
     await userEvent.click(screen.getByRole('button', { name: '킥오프 정하기' }));
     let dialog = screen.getByRole('dialog', { name: '킥오프 정하기' });
     // 처음 값은 1회차 한 주 전 · 반의 스터디 시각
-    expect(within(dialog).getByLabelText(/일자/)).not.toHaveValue(first);
+    expect(within(dialog).getByRole('textbox', { name: /일자/ })).not.toHaveValue(first);
     expect(timeValue(/시작 시각/, within(dialog))).toBe('20:30');
 
-    const date = within(dialog).getByLabelText(/일자/);
+    const date = within(dialog).getByRole('textbox', { name: /일자/ });
     await userEvent.clear(date);
     await userEvent.type(date, first);
     await userEvent.click(within(dialog).getByRole('button', { name: '저장' }));
@@ -269,7 +267,7 @@ describe('일정 탭', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '킥오프 수정' }));
     dialog = screen.getByRole('dialog', { name: '킥오프 수정' });
-    expect(within(dialog).getByLabelText(/일자/)).toHaveValue('2020-01-01');
+    expect(within(dialog).getByRole('textbox', { name: /일자/ })).toHaveValue('2020-01-01');
   });
 
   it('발표자는 참여 명단의 활동 · 휴식 중인 사람 중에서 고르고, 같은 사람을 두 칸에 넣으면 저장이 막힌다', async () => {
@@ -313,10 +311,17 @@ describe('일정 탭', () => {
     expect(date2).toHaveAccessibleDescription('이 날에는 이미 1회차가 있습니다.');
   });
 
-  it('시간대 탭 묶음에 이름이 있다', async () => {
+  it('표시 시간대를 고르면 표의 일자 · 시각이 그 시간대 기준으로 바뀐다', async () => {
     mount();
     await setTimeAndAddMeetings();
-    expect(screen.getByRole('tablist', { name: '일정 표시 시간대' })).toBeVisible();
+    const picker = screen.getByRole('button', { name: /일정 표시 시간대/ });
+    expect(picker).toHaveTextContent('한국 · 서울');
+
+    await userEvent.click(picker);
+    await userEvent.click(screen.getByRole('option', { name: /미국 · 뉴욕/ }));
+
+    expect(picker).toHaveTextContent('미국 · 뉴욕');
+    expect(screen.getByLabelText('1회차 일자 (ET)')).toBeVisible();
   });
 
   it('체크박스로 고른 회차를 확인 모달을 거쳐 지운다 — 기본 포커스는 취소', async () => {

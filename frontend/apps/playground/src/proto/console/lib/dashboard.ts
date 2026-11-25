@@ -1,7 +1,13 @@
 import { tx } from '@console/lib/l10n';
+import { meetingWindow } from '@core/lib/attendance';
+import { wallParts } from '@core/lib/meetings';
 import { getStudyCrew, site, studies } from '@studyclub/mock';
-import { type MemberRegion, type Study } from '@studyclub/types';
-import { CATEGORY_DISPLAY, MEMBER_REGIONS, attendancePoint, categoriesOf, recruitState, toISODate, todayISO } from '@studyclub/utils';
+import { type Crew, type Study, type PreviewEvent } from '@studyclub/types';
+import { CATEGORY_DISPLAY, attendancePoint, categoriesOf, todayISO } from '@studyclub/utils';
+
+import { countCrewTimeZones } from './crew-timezones';
+import { readMemberTimeZones } from '@/proto/lib/member-timezone-store';
+import { recruitState, recruitmentDeadlineAt, recruitmentDeadlineDate, recruitmentDeadlineLabel } from '@/proto/lib/recruitment-deadline';
 
 /**
  * 대시보드 집계.
@@ -26,6 +32,8 @@ export type BoardStudy = {
   title: string;
   /** 모집중 — 모집 마감일. 상시 모집은 없다 — 옛 데이터만 undefined */
   deadline?: string;
+  deadlineAt?: string;
+  deadlineLabel?: string;
 };
 
 export type TrendPoint = {
@@ -65,8 +73,8 @@ export function categoryCode(label: string): string {
   return (hit?.[0] ?? 'OTHER').toLowerCase();
 }
 
-export function aggregate(today = todayISO(), studyList: Study[] = studies) {
-  const regionCount: Record<MemberRegion, number> = { KR: 0, NA: 0, ETC: 0 };
+export function aggregate(today = todayISO(), studyList: Study[] = studies, timeZone = 'Asia/Seoul', members = readMemberTimeZones()) {
+  const activeMembers: Crew[] = [];
   // 규모는 사람 수가 아니라 **스터디 수**로 센다 — 사람으로 세면 한 사람이 여러 줄에 잡혀
   // 합계가 총원을 넘고, 같은 화면의 「활성 크루」와 어긋나 보인다.
   const byCategory = new Map<string, { running: number; total: number }>();
@@ -87,6 +95,7 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
 
   for (const study of studyList) {
     const { crew, attendance, meetings } = getStudyCrew(study);
+    const meetingDates = new Map(meetings.map((meeting) => [meeting.id, wallParts(meetingWindow(study, meeting).start, timeZone).date]));
     const active = crew;
     const running = study.status !== 'closed';
     const categories = categoriesOf(study);
@@ -103,7 +112,7 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
         // 같은 사람이 같은 스터디에 두 번 잡혀 있어도 참여는 한 건이다.
         activePeople.add(c.email);
         enrollments.add(`${c.email}|${study.id}`);
-        regionCount[c.region] += 1;
+        activeMembers.push(c);
       }
       for (const [meetingId, v] of Object.entries(attendance[c.id] ?? {})) {
         // 휴가는 분모에서 빠진다 — 미리 알리고 빠진 것을 결석과 같이 세면 성실한 사람이 손해를 본다
@@ -111,7 +120,7 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
         const pt = attendancePoint(v);
         checked += 1;
         present += pt;
-        const date = meetings.find((m) => m.id === meetingId)?.date;
+        const date = meetingDates.get(meetingId);
         const wi = date === undefined ? undefined : weekIndex.get(mondayOf(date));
         if (wi !== undefined) {
           weekly[wi]!.target += 1;
@@ -124,7 +133,7 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
     }
 
     if (recruitState(study) === 'apply') {
-      recruiting.push({ id: study.id, study_id: study.study_id, title: tx(study.title), deadline: toISODate(study.recruitment?.deadline) });
+      recruiting.push({ id: study.id, study_id: study.study_id, title: tx(study.title), deadline: recruitmentDeadlineDate(study, timeZone), deadlineAt: recruitmentDeadlineAt(study), deadlineLabel: recruitmentDeadlineLabel(study, timeZone) });
     }
   }
 
@@ -147,7 +156,7 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
   const activeCrew = activePeople.size;
 
   return {
-    updatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    updatedAt: new Date().toISOString(),
     kpi: {
       activeCrew,
       attendanceRate: checked === 0 ? 0 : Math.round((present / checked) * 100),
@@ -163,10 +172,10 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
       // 마감이 가까운 것부터. 마감일이 비어 있는 옛 데이터는 급할 게 없으므로 끝으로.
       recruiting: recruiting.sort(
         (a, b) =>
-          (a.deadline ? daysUntil(a.deadline, today) : 9999) - (b.deadline ? daysUntil(b.deadline, today) : 9999),
+          (a.deadlineAt ? Date.parse(a.deadlineAt) : Infinity) - (b.deadlineAt ? Date.parse(b.deadlineAt) : Infinity),
       ),
     },
-    regions: MEMBER_REGIONS.map((r) => ({ key: r.key, count: regionCount[r.key] })),
+    regions: countCrewTimeZones(activeMembers, members),
     categories: [...byCategory.entries()].map(([category, v]) => ({
       category,
       code: categoryCode(category),
@@ -175,4 +184,12 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
     })),
     trend,
   };
+}
+
+/** 행사 관리와 같은 실제 시작 순간을 사용한다. 표시 지역만 달라져도 예정 여부는 같다. */
+export function upcomingEvents(events: PreviewEvent[], zone: string, now = Date.now()) {
+  return events
+    .filter((event) => event.publishedAt && event.status !== 'CANCELLED' && Date.parse(event.startsAt) >= now)
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+    .map((event) => ({ id: event.id, title: event.title, date: wallParts(new Date(event.startsAt), zone).date }));
 }

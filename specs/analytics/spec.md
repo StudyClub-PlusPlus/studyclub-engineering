@@ -48,13 +48,16 @@
 | 페이지 조회 | `Page Viewed` (수동, `page_name`) | `page_view` (수동, 허용 확인 후 SPA 이동 포함) | page_name, locale | front | `PageViewTracker` |
 | 가입 | `User Signed Up` | `sign_up` | method=`google`·`apple`·`email`(테스트 로그인), signup_surface=`onboarding` | **server 정본** (GA4: server(MP)) + front 퍼널 사본 (Amplitude 만) | 온보딩 최초 완료 (`user.registered`) |
 | 로그인 | `User Logged In` | `login` | method=`google`·`apple`·`email`(테스트 로그인) | front | 온보딩을 마친 회원의 로그인 완료 |
-| 활성화 | `Activated` | `activated` | activation_action=`study_applied`, study_id (GA4 는 activation_action 만) | server (GA4: server(MP)) | 계정의 **첫** 스터디 신청 저장 (`study_application.submitted`) |
+| 활성화 | `Activated` | `activated` | activation_action=`study_applied`·`event_applied`, study_id 또는 event_id (GA4 는 activation_action 만) | server (GA4: server(MP)) | 계정의 **첫** 스터디 신청 또는 첫 행사 신청 저장 — 신청 트랜잭션이 `ACCOUNT.ACTIVATED_AT` 을 채웠을 때만 (`account.activated`) |
+| 행사 신청 완료 | `Event Registration Completed` | — | event_id, registration_id, channel=`online`·`offline`, status=`pending`·`confirmed` | server | 행사 신청 저장 (`club_event.registration_submitted`). 같은 `Idempotency-Key` 재시도는 새 신청이 없어 다시 나지 않는다 ([event-registration](../event-registration/spec.md#퍼널계측)) |
+| 행사 신청 취소 완료 | `Event Registration Cancelled` | — | event_id, registration_id, channel, cancel_type=`self`·`admin`·`event_cancelled` | server | 신청이 실제로 취소됨 (`club_event.registrations_cancelled`). 탈퇴 취소는 보내지 않는다 |
 
 - `page_name` 값 (경로 → 이름, `PageViewTracker` 의 `pathToPageName`): `landing` · `studies_list` · `study_detail` · `events_list` · `event_detail` · `notices_list` · `notice_detail` · `about` · `guide` · `terms` · `privacy` · `login` · `onboarding` · `my_page` · `my_studies`(`/my/joined`) · `saved_studies`(`/my/saved`) · `account_leave`(`/my/leave`) · `study_room_schedule` · `study_room_attendance` · `study_room_notice`(`/my/joined/{id}/schedule[/attendance|/notice]`). `study_detail` · `study_room_*` 는 `study_id` 를 함께 보낸다. 곧장 다른 화면으로 넘기는 경로(`/my/joined/{id}`, `/my/joined/{id}/attendance`)는 세지 않는다
-- 서버 이벤트 `insert_id` 는 결정적이다: `user_signed_up_{analyticsId}` · `activated_{analyticsId}` — 재전송돼도 Amplitude 가 중복을 지운다
+- 서버 이벤트 `insert_id` 는 결정적이다: `user_signed_up_{analyticsId}` · `activated_{analyticsId}` · `event_registration_completed_{registrationId}` · `event_registration_cancelled_{registrationId}` — 재전송돼도 Amplitude 가 중복을 지운다
 - 서버는 커밋 뒤·비동기로 보내고 실패는 삼킨다 ([domain-events](../domain-events/spec.md))
 - GA4 서버 전송 client_id: 가입 = 온보딩 요청 바디 `gaClientId`(현재 계정에 등록한 브라우저 식별자). 없으면, 그리고 활성화는 항상 분석 ID에서 파생한 숫자형 client_id — **유입 귀속 안 됨**
 - 활성화 정의는 가설이다 — 4주 코호트로 확정한다
+- 활성화 판정은 DB 한 곳(`ACCOUNT.ACTIVATED_AT` · `ACTIVATION_ACTION`, V63)에 있다. 예전 「그 계정의 스터디 신청이 1건이면」 판정은 동시 신청 · 재전송에 약하고 행사를 몰라 바꿨다. V63 이 이미 스터디를 신청한 계정을 첫 신청 시각으로 채워 행사 신청으로 다시 활성화되지 않는다 (stage 는 Flyway 가 꺼져 있어 채우지 않는다)
 
 ## 서비스 이벤트 (front)
 
@@ -71,6 +74,7 @@
 | `My Profile Updated` | 마이페이지 |
 | `Study Presenter Registered` · `Study Presenter Unregistered` (`study_id`, `meeting_id`, `slot`) | 스터디룸 일정 탭 — 발표자 신청·취소 API 가 성공했을 때 |
 | `Study Discord Opened` (`study_id`) | 스터디룸 정보 카드의 「디스코드」 버튼 (스터디 채널로 이동) |
+| `Meeting Retro Submitted` (`study_id`, `meeting_id`, `is_edit`, `has_feeling`) · `Meeting Retro Liked` (`study_id`, `meeting_id`, `section`=`good`·`improve`·`feeling`) | 스터디 일정 회고 — 회고 저장 API 가 성공했을 때 · 👍 누르기 API 가 성공했을 때(취소는 보내지 않는다) |
 
 정의만 있고 보내지 않는 것: `Study Apply Motivation Entered` — 신청 폼에 지원 동기 입력란이 아직 없다.
 

@@ -1,5 +1,7 @@
 'use client';
 
+
+
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -9,12 +11,10 @@ import type { Locale, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { DETAIL_ASIDE, DETAIL_GRID, PAGE } from '@core/lib/layout';
 import {
-  confirmedRecruitSchedule,
   recruitBadge,
   studyStartValue,
-  studyTimezoneLabel,
-  toISODate,
 } from '@core/lib/recruit';
+import { recruitmentZoneLabel } from '@core/lib/recruitment-timezones';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew, recruitCapacity, studies as mockStudies } from '@studyclub/mock';
 import { categoryArtUrl, categoryMeta, categoryTint, ButtonLink } from '@studyclub/ui';
@@ -22,21 +22,24 @@ import { ArrowLeft, CalendarClock, Globe, Rocket } from 'lucide-react';
 
 import { SPECS } from '@/app/(proto)/proto/core/[locale]/studies/[id]/spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { recruitmentDeadlineLabel } from '@/proto/lib/recruitment-deadline';
+import { useRecruitmentStudies } from '@/proto/lib/recruitment-zone-store';
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 /** TODO(api): GET /api/studies/{id} — 스터디 상세 조회 연동 */
 export function StudyDetailView({
   study: initialStudy,
   id,
   locale,
-  schedulePreview = false,
 }: {
   study: Study | null;
   id: string;
   locale: Locale;
-  schedulePreview?: boolean;
 }) {
   const zone = useDisplayTimeZone();
-  const [study, setStudy] = useState<Study | null>(initialStudy);
+  const [sourceStudy, setStudy] = useState<Study | null>(initialStudy);
+  const study = useRecruitmentStudies(sourceStudy ? [sourceStudy] : [])[0] ?? null;
+  useRecruitmentClock(study ? [study] : []);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   useEffect(() => {
@@ -111,38 +114,28 @@ export function StudyDetailView({
   if (!study) return null;
 
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(study.category);
-  const badge = recruitBadge(study, locale);
+  const badge = recruitBadge(study, locale, zone);
   const { background, ink } = categoryTint(study.category);
   const artUrl = categoryArtUrl(study.category);
-  const deadline = toISODate(study.recruitment?.deadline);
+  const deadline = recruitmentDeadlineLabel(study, zone);
   const joined = getStudyCrew(study).crew.length;
   const cap = recruitCapacity(study);
 
   // 목록 카드와 같은 정보를 칸으로 — 같은 개념은 같은 모양
-  const confirmed = confirmedRecruitSchedule(study, locale, zone);
   const facts = [
-    ...(confirmed
-      ? [
-          {
-            icon: CalendarClock,
-            label: t({ ko: '확정 일정', en: 'Confirmed meeting' }, locale),
-            value: confirmed.label,
-          },
-        ]
-      : study.schedule
-        ? [{ icon: CalendarClock, label: t({ ko: '일정', en: 'Schedule' }, locale), value: t(study.schedule, locale) }]
-        : []),
+    ...(study.schedule
+      ? [{ icon: CalendarClock, label: t({ ko: '일정', en: 'Schedule' }, locale), value: t(study.schedule, locale) }]
+      : []),
     {
       icon: Globe,
-      label: t(confirmed ? { ko: '내 시간대', en: 'My time zone' } : { ko: '시간대', en: 'Time zone' }, locale),
-      value: confirmed?.zone ?? studyTimezoneLabel(study, locale),
+      label: t({ ko: '모집 시간대', en: 'Recruitment time zones' }, locale),
+      value: recruitmentZoneLabel(study, locale),
     },
     { icon: Rocket, label: t({ ko: '시작 예정일', en: 'Starts' }, locale), value: studyStartValue(study, locale) },
   ];
 
   return (
     <div className={`${PAGE} pb-16 pt-8`}>
-      {schedulePreview && <p className='mb-4 type-label-lg text-fg-secondary'>확정 일정 예시 · 시간대 변환 확인용</p>}
       {SPECS.map((spec) => (
         <ScreenSpecRegistrar key={spec.chip ?? spec.screen} spec={spec} />
       ))}

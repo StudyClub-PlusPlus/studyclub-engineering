@@ -40,6 +40,15 @@ public interface StudyApplicationRepository extends JpaRepository<StudyApplicati
     List<StudyApplication> findByStudyIdAndAccountIdOrderByIdDesc(
             @Param("studyId") Long studyId, @Param("accountId") Long accountId);
 
+    /** 참여 명단의 참여 가능 요일 — 한 계정이 여러 모집 회차에 냈으면 ID 가 큰(나중) 행이 앞에 온다. */
+    @Query(
+            "SELECT application FROM StudyApplication application "
+                    + "JOIN StudyRecruitment recruitment ON recruitment.id = application.recruitmentId "
+                    + "WHERE recruitment.studyId = :studyId AND application.accountId IN :accountIds "
+                    + "ORDER BY application.id DESC")
+    List<StudyApplication> findByStudyIdAndAccountIdInOrderByIdDesc(
+            @Param("studyId") Long studyId, @Param("accountIds") Collection<Long> accountIds);
+
     @Query(
             "SELECT COUNT(application) > 0 "
                     + "FROM StudyApplication application "

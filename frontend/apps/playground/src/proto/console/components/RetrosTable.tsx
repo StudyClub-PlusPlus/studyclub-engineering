@@ -1,0 +1,537 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+
+import { PageHeader, SortLabel, type SortDir } from '@console/components/ui';
+import { useTopScroll } from '@console/lib/use-top-scroll';
+import { t } from '@core/lib/i18n';
+import { dateWithDow, scheduleAccessOf, wallParts } from '@core/lib/meetings';
+import { RETRO_SECTIONS, retroRowsOf, shortDateTime, type RetroRow, type RetroSection } from '@core/lib/retros';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
+import type { Study } from '@studyclub/types';
+import { Button, FilterChip, Input, Pagination, Segmented, Select, cx } from '@studyclub/ui';
+import { Download, Search, ThumbsUp } from 'lucide-react';
+
+import { useMswStudies } from '@/proto/lib/use-msw-studies';
+
+/**
+ * 회고 모아보기 — 진행 중인 스터디의 끝난 회차마다 참여자가 남긴 회고를 본다. 열람 전용.
+ *
+ * 처음엔 「문항별」 — 문항 하나(기본 개선할 점)의 답을 세로로 모아 최근 것부터 읽는다.
+ * 캡틴이 먼저 찾는 건 「최근에 어떤 개선 의견이 나왔나」라서, 사람마다 세 문항을 옆으로 늘어놓은 표보다 앞에 둔다.
+ * 「표」는 한 사람의 문항을 한 줄로 보는 용도 — 보일 문항 열을 고르고, 최신순 · 공감순으로 줄을 세운다.
+ * TODO(api): GET /api/admin/retros?studyId&meetingId&q&section&sort&offset&limit — 캡틴 전용
+ *            section=improve|good|feeling 이면 그 문항을 쓴 회고만, sort=recent|likes
+ *            GET /api/admin/retros/export.csv — 같은 조건
+ */
+const PAGE_SIZE = 20;
+
+type View = 'question' | 'table';
+type Sort = 'recent' | 'likes';
+type Order = 'recent' | 'likes';
+/** 문항별 보기의 고르는 순서 — 개선할 점이 먼저다. 표 · CSV 의 열 순서(RETRO_SECTIONS)는 그대로. */
+const PICK_ORDER: RetroSection[] = ['improve', 'good', 'feeling'];
+type Row = RetroRow & { study: Study; studyTitle: string; group: string };
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <Select
+      size='sm'
+      aria-label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={cx(
+        'w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
+    >
+      <option value='all'>{value === 'all' ? label : '전체'}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </Select>
+  );
+}
+
+function AnswerCell({ row, section }: { row: Row; section: RetroSection }) {
+  const r = row.retro;
+  if (!r) return null;
+  if (!r[section]) return <span className='text-fg-muted'>-</span>;
+  return (
+    // 👍 는 답 아래가 아니라 칸 오른쪽 첫 줄 높이 — 줄 높이를 덜 쓰고, 세로로 훑을 때 수가 한 줄로 맞는다
+    <span className='flex items-start gap-3'>
+      <span className='min-w-0 flex-1 whitespace-pre-wrap break-words'>{r[section]}</span>
+      <span className='tnum flex shrink-0 items-center gap-1 type-label-sm text-fg-muted'>
+        <ThumbsUp size={12} aria-hidden /> {r.likes[section]}
+      </span>
+    </span>
+  );
+}
+
+function OpinionList({ rows, section, zone }: { rows: Row[]; section: RetroSection; zone: string }) {
+  return (
+    <ul className='card divide-y divide-border'>
+      {rows.map((r) => (
+        <li key={`${r.studyId}-${r.meetingId}-${r.authorId}`} className='flex items-start gap-4 px-5 py-4'>
+          <div className='min-w-0 flex-1'>
+            <p className='whitespace-pre-wrap break-words type-body-md text-fg'>{r.retro![section]}</p>
+            <p className='tnum mt-1.5 type-label-sm text-fg-muted'>
+              {r.studyTitle} · {r.group} · {r.meetingLabel}{' '}
+              {dateWithDow(wallParts(new Date(r.meetingStartAt), zone).date)} ·{' '}
+              <span className='font-semibold text-fg-secondary'>{r.authorName}</span> ·{' '}
+              {shortDateTime(r.retro!.writtenAt, zone, true)} 작성
+            </p>
+          </div>
+          <span className='tnum flex shrink-0 items-center gap-1 type-label-md text-fg-secondary'>
+            <ThumbsUp size={14} aria-hidden /> {r.retro!.likes[section]}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function csvOf(rows: Row[], zone: string, cols: RetroSection[]): string {
+  const sections = RETRO_SECTIONS.filter((s) => cols.includes(s.key));
+  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  const head = ['스터디', '반', '회차', '참여자', ...sections.flatMap((s) => [s.label, `${s.label} 👍`]), '작성일'];
+  const body = rows.map((r) => [
+    r.studyTitle,
+    r.group,
+    r.meetingLabel,
+    r.authorName,
+    ...sections.flatMap((s) => [r.retro?.[s.key] ?? '', r.retro?.[s.key] ? r.retro.likes[s.key] : '']),
+    r.retro ? shortDateTime(r.retro.writtenAt, zone, true) : '',
+  ]);
+  return '﻿' + [head, ...body].map((line) => line.map(esc).join(',')).join('\n');
+}
+
+export function RetrosTable() {
+  const studies = useMswStudies();
+  const zone = useDisplayTimeZone();
+  const [view, setView] = useState<View>('question');
+  const [section, setSection] = useState<RetroSection>('improve');
+  const [order, setOrder] = useState<Order>('recent');
+  const [all, setAll] = useState<Row[] | null>(null);
+  const [studyId, setStudyId] = useState('all');
+  const [meetingId, setMeetingId] = useState('all');
+  const [input, setInput] = useState('');
+  const [q, setQ] = useState('');
+  const [sort, setSort] = useState<Sort>('recent');
+  // 표에 보일 문항 열 — 하나는 늘 남는다. 순서는 RETRO_SECTIONS(좋았던 점 · 개선할 점 · 소감) 그대로.
+  const [cols, setCols] = useState<RetroSection[]>(RETRO_SECTIONS.map((s) => s.key));
+  // 문항 열 머리를 누르면 그 문항의 👍 수로 줄을 세운다. 줄 순서를 다시 고르면 풀린다.
+  const [likeSort, setLikeSort] = useState<{ section: RetroSection; dir: SortDir } | null>(null);
+  const [page, setPage] = useState(1);
+  // 가로 스크롤바를 표 위에도 둔다 — 스터디 표와 같다. 20줄이면 아래 스크롤바가 화면 밖이다.
+  const scroll = useTopScroll();
+
+  useEffect(() => {
+    const ongoing = studies.filter((s) => s.status === 'ongoing');
+    setAll(
+      ongoing.flatMap((study) => {
+        const studyTitle = t(study.title, 'ko');
+        const group = scheduleAccessOf(study).group.name;
+        return retroRowsOf(study).map((r) => ({ ...r, study, studyTitle, group }));
+      }),
+    );
+  }, [studies]);
+
+  // 이름 검색은 400ms 기다렸다가 — 다른 콘솔 목록과 같다
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setQ(input.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(id);
+  }, [input]);
+
+  const studyOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of all ?? []) seen.set(r.studyId, r.studyTitle);
+    return [...seen].map(([value, label]) => ({ value, label }));
+  }, [all]);
+  const meetingOptions = useMemo(() => {
+    if (studyId === 'all') return [];
+    const seen = new Map<string, string>();
+    for (const r of all ?? []) if (r.studyId === studyId) seen.set(r.meetingId, r.meetingLabel);
+    return [...seen].map(([value, label]) => ({ value, label }));
+  }, [all, studyId]);
+
+  const filtered = useMemo(() => {
+    return (all ?? []).filter(
+      (r) =>
+        (studyId === 'all' || r.studyId === studyId) &&
+        (meetingId === 'all' || r.meetingId === meetingId) &&
+        (!q || r.authorName.includes(q)),
+    );
+  }, [all, studyId, meetingId, q]);
+
+  // 표 · CSV 에는 쓴 회고만 — 안 쓴 사람은 줄로 보이지 않고 작성률로만 센다.
+  const written = filtered.filter((r) => r.retro);
+  const count = (s: RetroSection) => written.filter((r) => r.retro![s]).length;
+  // 작성률은 기한이 지난 줄만 센다 — 기한 전 미작성은 아직 쓸 수 있어 빠진 게 아니다.
+  const closed = filtered.filter((r) => r.closed);
+  const closedWritten = closed.filter((r) => r.retro).length;
+  const rate = closed.length ? Math.round((closedWritten / closed.length) * 100) : null;
+  // 문항별 — 그 문항을 쓴 회고만. 최신순은 작성 시각, 공감순은 👍 (같으면 최신순)
+  const recent = (a: Row, b: Row) => b.retro!.writtenAt.localeCompare(a.retro!.writtenAt);
+  const opinions = written
+    .filter((r) => r.retro![section])
+    .sort((a, b) =>
+      order === 'likes' ? b.retro!.likes[section] - a.retro!.likes[section] || recent(a, b) : recent(a, b),
+    );
+  // 표 — 보이는 문항을 하나도 안 쓴 줄(소감만 보일 때 소감을 비운 회고)은 뺀다.
+  const likesOf = (r: Row) => cols.reduce((n, c) => n + (r.retro![c] ? r.retro!.likes[c] : 0), 0);
+  const tableRows = written
+    .filter((r) => cols.some((c) => r.retro![c]))
+    .sort((a, b) => {
+      if (likeSort) {
+        // 그 문항을 비운 회고(소감)는 방향과 상관없이 맨 뒤
+        const la = a.retro![likeSort.section] ? a.retro!.likes[likeSort.section] : -1;
+        const lb = b.retro![likeSort.section] ? b.retro!.likes[likeSort.section] : -1;
+        if (la !== lb) {
+          if (la < 0 || lb < 0) return lb - la;
+          return likeSort.dir === 'desc' ? lb - la : la - lb;
+        }
+      }
+      // 공감순 = 보이는 문항의 👍 합. 같으면 최신순
+      return sort === 'likes' ? likesOf(b) - likesOf(a) || recent(a, b) : recent(a, b);
+    });
+  const toggleCol = (c: RetroSection) => {
+    const next = cols.includes(c) ? cols.filter((x) => x !== c) : [...cols, c];
+    if (next.length === 0) return;
+    setCols(RETRO_SECTIONS.map((s) => s.key).filter((k) => next.includes(k)));
+    if (likeSort && !next.includes(likeSort.section)) setLikeSort(null);
+    setPage(1);
+  };
+  const visible = RETRO_SECTIONS.filter((s) => cols.includes(s.key));
+  // 한 사람의 세 문항이 한 줄에 다 보이게 — 고정 열을 줄이고(스터디 · 회차 160 · 참여자 80 · 작성일 92)
+  // 문항 열은 남는 폭을 나눠 쓴다. 콘솔 본문 폭(약 975)이면 세 문항이 다 들어가고, 더 좁은 화면에서만 가로로 민다
+  const tableWidth = 332 + 200 * visible.length;
+  const span = 3 + visible.length;
+  const shown = view === 'question' ? opinions : tableRows;
+  const pageRows = tableRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageOpinions = opinions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const download = () => {
+    const url = URL.createObjectURL(
+      new Blob(
+        [
+          csvOf(
+            view === 'table' ? tableRows : written,
+            zone,
+            view === 'table' ? cols : RETRO_SECTIONS.map((s) => s.key),
+          ),
+        ],
+        { type: 'text/csv;charset=utf-8' },
+      ),
+    );
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '회고.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const sticky = 'sticky z-[1] bg-surface-raised';
+  return (
+    <div>
+      <PageHeader
+        title='회고 모아보기'
+        action={
+          <Button
+            data-anno='retros:5'
+            size='sm'
+            variant='secondary'
+            leadingIcon={<Download size={15} />}
+            onClick={download}
+            disabled={written.length === 0}
+          >
+            CSV 내려받기
+          </Button>
+        }
+      />
+
+      <div data-anno='retros:1' className='mb-3 flex flex-wrap items-center gap-2'>
+        <FilterSelect
+          label='전체 스터디'
+          value={studyId}
+          onChange={(v) => {
+            setStudyId(v);
+            setMeetingId('all');
+            setPage(1);
+          }}
+          options={studyOptions}
+        />
+        {studyId !== 'all' && (
+          <FilterSelect
+            label='전체 회차'
+            value={meetingId}
+            onChange={(v) => {
+              setMeetingId(v);
+              setPage(1);
+            }}
+            options={meetingOptions}
+          />
+        )}
+        <Input
+          type='search'
+          size='sm'
+          aria-label='참여자 이름 검색'
+          leadingIcon={<Search size={15} />}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder='참여자 이름 검색'
+          className='w-48'
+        />
+        <div data-anno='retros:6' className='ml-auto'>
+          <Segmented<View>
+            size='sm'
+            value={view}
+            onChange={(v) => {
+              setView(v);
+              setPage(1);
+            }}
+            options={[
+              { value: 'question', label: '문항별' },
+              { value: 'table', label: '표' },
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* 요약 한 줄 — 의견 목록이 첫 화면에 보이도록 카드 대신 줄로 */}
+      <p data-anno='retros:2' className='tnum mb-4 type-body-sm text-fg-secondary'>
+        작성률 <span className='font-semibold text-fg'>{rate === null ? '-' : `${rate}%`}</span>
+        <span className='text-fg-muted'>
+          {' '}
+          ({rate === null ? '기한이 지난 회차가 아직 없어요' : `기한 지난 회고 ${closedWritten}/${closed.length} 작성`})
+        </span>
+      </p>
+
+      <div className='mb-2 flex flex-wrap items-end justify-between gap-3'>
+        {view === 'question' ? (
+          <div className='flex flex-wrap items-center gap-2'>
+            <div data-anno='retros:7'>
+              <Segmented<RetroSection>
+                size='sm'
+                shape='pill'
+                value={section}
+                onChange={(v) => {
+                  setSection(v);
+                  setPage(1);
+                }}
+                options={PICK_ORDER.map((key) => ({
+                  value: key,
+                  label: `${RETRO_SECTIONS.find((x) => x.key === key)!.label} ${count(key)}`,
+                }))}
+              />
+            </div>
+            <div data-anno='retros:8'>
+              <Segmented<Order>
+                size='sm'
+                value={order}
+                onChange={(v) => {
+                  setOrder(v);
+                  setPage(1);
+                }}
+                options={[
+                  { value: 'recent', label: '최신순' },
+                  { value: 'likes', label: '공감순' },
+                ]}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className='flex flex-wrap items-center gap-2'>
+            <div
+              data-anno='retros:10'
+              role='group'
+              aria-label='보일 문항'
+              className='flex flex-wrap items-center gap-1.5'
+            >
+              {RETRO_SECTIONS.map((s) => {
+                const on = cols.includes(s.key);
+                return (
+                  <FilterChip
+                    key={s.key}
+                    selected={on}
+                    // 마지막 남은 열은 끌 수 없다 — 문항 없는 표가 되지 않게
+                    disabled={on && cols.length === 1}
+                    onClick={() => toggleCol(s.key)}
+                  >
+                    {s.label} {count(s.key)}
+                  </FilterChip>
+                );
+              })}
+            </div>
+            <div data-anno='retros:1-1'>
+              <Segmented<Sort>
+                size='sm'
+                value={sort}
+                onChange={(v) => {
+                  setSort(v);
+                  setLikeSort(null);
+                  setPage(1);
+                }}
+                options={[
+                  { value: 'recent', label: '최신순' },
+                  { value: 'likes', label: '공감순' },
+                ]}
+              />
+            </div>
+          </div>
+        )}
+        {/* 좁힌 뒤의 건수 — 스터디 · 유저 표처럼 오른쪽 위. 무엇을 세는지 목록과 붙어 있어야 분명하다 */}
+        <span data-anno='retros:4' className='tnum ml-auto type-body-sm text-fg-muted'>
+          총 {shown.length}건
+        </span>
+      </div>
+
+      {view === 'question' &&
+        (all === null ? (
+          <div className='card px-5 py-4'>
+            <span className='block h-4 animate-pulse rounded bg-surface-2' />
+          </div>
+        ) : opinions.length === 0 ? (
+          <p className='card py-12 text-center type-body-sm text-fg-muted'>조건에 맞는 의견이 없어요.</p>
+        ) : (
+          <div data-anno='retros:9'>
+            <OpinionList rows={pageOpinions} section={section} zone={zone} />
+          </div>
+        ))}
+
+      {view === 'table' && (
+        <div className='card'>
+          <div
+            ref={scroll.topRef}
+            onScroll={scroll.onTopScroll}
+            aria-hidden='true'
+            data-anno='retros:3-1'
+            className='overflow-x-auto overflow-y-hidden border-b border-border'
+          >
+            <div style={{ width: scroll.width, height: 1 }} />
+          </div>
+          <div ref={scroll.bodyRef} onScroll={scroll.onBodyScroll} data-anno='retros:3' className='overflow-x-auto'>
+            <table
+              className='bo-table w-full table-fixed border-separate border-spacing-0'
+              style={{ minWidth: tableWidth }}
+            >
+              <colgroup>
+                <col className='w-[160px]' />
+                <col className='w-[80px]' />
+                {visible.map((s) => (
+                  <col key={s.key} />
+                ))}
+                <col className='w-[92px]' />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className={cx(sticky, 'left-0')}>스터디 · 회차</th>
+                  <th className={cx(sticky, 'left-[160px] shadow-[4px_0_6px_-4px_var(--color-border-strong)]')}>
+                    참여자
+                  </th>
+                  {visible.map((s) => {
+                    const active = likeSort?.section === s.key ? likeSort.dir : null;
+                    return (
+                      <th key={s.key} aria-sort={active ? (active === 'asc' ? 'ascending' : 'descending') : undefined}>
+                        <SortLabel
+                          label={s.label}
+                          anno={s.key === 'good' ? 'retros:3-2' : undefined}
+                          first='desc'
+                          active={active}
+                          onChange={(dir) => {
+                            setLikeSort({ section: s.key, dir });
+                            setPage(1);
+                          }}
+                        />
+                      </th>
+                    );
+                  })}
+                  <th>작성일</th>
+                </tr>
+              </thead>
+              <tbody>
+                {all === null &&
+                  Array.from({ length: 6 }, (_, i) => (
+                    <tr key={i}>
+                      <td colSpan={span}>
+                        <span className='block h-4 animate-pulse rounded bg-surface-2' />
+                      </td>
+                    </tr>
+                  ))}
+                {all !== null && tableRows.length === 0 && (
+                  <tr>
+                    <td colSpan={span} className='py-12 text-center text-fg-muted'>
+                      조건에 맞는 회고가 없어요.
+                    </td>
+                  </tr>
+                )}
+                {pageRows.map((r) => (
+                  <tr key={`${r.studyId}-${r.meetingId}-${r.authorId}`} className='align-top'>
+                    {/* 스터디 · 반 · 회차를 한 칸에 — 따로 열을 두면 문항 칸이 좁아진다 */}
+                    <td className={cx(sticky, 'left-0')}>
+                      <span className='line-clamp-2 break-words' title={r.studyTitle}>
+                        {r.studyTitle}
+                      </span>
+                      <span className='tnum mt-0.5 block type-label-sm text-fg-muted'>
+                        {r.group} · {r.meetingLabel}
+                      </span>
+                    </td>
+                    <td
+                      className={cx(
+                        sticky,
+                        'left-[160px] break-words font-semibold shadow-[4px_0_6px_-4px_var(--color-border-strong)]',
+                      )}
+                    >
+                      {r.authorName}
+                    </td>
+                    {visible.map((s) => (
+                      <td key={s.key}>
+                        <AnswerCell row={r} section={s.key} />
+                      </td>
+                    ))}
+                    {/* 날짜와 시각을 두 줄로 — 칸 폭을 줄인다 */}
+                    <td className='tnum text-fg-secondary'>
+                      {r.retro
+                        ? (() => {
+                            const [date, ...time] = shortDateTime(r.retro.writtenAt, zone, true).split(' ');
+                            return (
+                              <>
+                                <span className='block whitespace-nowrap'>{date}</span>
+                                <span className='block whitespace-nowrap type-label-sm text-fg-muted'>
+                                  {time.join(' ')}
+                                </span>
+                              </>
+                            );
+                          })()
+                        : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {shown.length > PAGE_SIZE && (
+        <div className='mt-4 flex justify-center'>
+          <Pagination page={page} total={Math.ceil(shown.length / PAGE_SIZE)} onChange={setPage} />
+        </div>
+      )}
+    </div>
+  );
+}

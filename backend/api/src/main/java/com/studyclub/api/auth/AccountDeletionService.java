@@ -21,6 +21,10 @@ import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.audit.AdminAuditLog;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
+import com.studyclub.domain.event.ClubEvent;
+import com.studyclub.domain.event.ClubEventRepository;
+import com.studyclub.domain.event.EventStatus;
+import com.studyclub.domain.event.registration.ClubEventRegistrationRepository;
 import com.studyclub.domain.feedback.FeedbackImageRepository;
 import com.studyclub.domain.notice.StudyNoticeRepository;
 import com.studyclub.domain.participant.ParticipantRole;
@@ -40,6 +44,8 @@ import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -99,6 +105,8 @@ public class AccountDeletionService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final StudyRepository studyRepository;
     private final AnalyticsPrivacyService analyticsPrivacy;
+    private final ClubEventRepository clubEventRepository;
+    private final ClubEventRegistrationRepository clubEventRegistrationRepository;
 
     @Transactional
     public void deleteAccount(Long accountId, LeaveReason reason) {
@@ -119,6 +127,11 @@ public class AccountDeletionService {
                 appleOAuthClient.revoke(identity.getProviderRefreshToken());
             }
         }
+
+        // 행사 신청 — 애플 연결 해제(외부 호출) 뒤, 알림 비식별(redactNotifications)보다 먼저 행사 행을 잠그고 종료 전 행사의 유효 신청을
+        // 취소한다. 외부 호출 동안 CLUB_EVENT 행 잠금을 잡고 있으면 같은 행사의 다른 회원 신청이 기다린다. 계정 잠금이 이미 앞에 있어
+        // 잠금 순서(계정 → 행사)는 그대로다 (specs/event-registration/spec.md 「탈퇴할 때」, P3, PR #516 리뷰).
+        cancelEventRegistrations(accountId);
 
         // 로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID) 에 걸린다.
         accountIdentityRepository.deleteByAccountId(accountId);
@@ -183,6 +196,34 @@ public class AccountDeletionService {
         // 커밋 뒤 저장소에서 지운다. 지우기에 실패해도 탈퇴는 성공이고, 행이 남아 정리 배치가 다시 지운다 (specs/user-leave/spec.md 5단계).
         uploadService.deleteAfterCommit(
                 uploadService.markDeletingByAccount(accountId, Instant.now()));
+    }
+
+    // 잠금 순서는 계정 → 행사다. 신청 제출도 계정을 먼저 잠가서, 여기서 행사 목록을 고른 뒤에 이 계정의 새 신청이 생기지 않고 교착도 없다.
+    // 이미 취소 · 종료된 행사도 잠근다 — 그 행사의 메일 예약(행사 잠금 아래에서 계정을 잠그지 않고 읽는다)과 순서를 맞추기 위해서다.
+    // 신청은 조건부 갱신이라 그 사이 본인 · 운영진이 먼저 바꾼 신청은 건드리지 않는다. 도메인 이벤트 · 자동 메일은 내지 않는다.
+    private void cancelEventRegistrations(Long accountId) {
+        List<Long> eventIds =
+                clubEventRegistrationRepository.findClubEventIdsByAccountId(accountId);
+        if (eventIds.isEmpty()) {
+            return;
+        }
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        List<Long> openEventIds = new ArrayList<>();
+        for (Long eventId : eventIds) {
+            clubEventRepository
+                    .findByIdForUpdate(eventId)
+                    .filter(event -> isOpen(event, now))
+                    .ifPresent(event -> openEventIds.add(event.getId()));
+        }
+        if (!openEventIds.isEmpty()) {
+            clubEventRegistrationRepository.cancelActiveForAccountDeletion(
+                    accountId, openEventIds, now);
+        }
+    }
+
+    // 취소되지 않았고 종료 전 — 종료 · 취소된 행사의 신청 이력은 그대로 둔다
+    private static boolean isOpen(ClubEvent event, Instant now) {
+        return event.getStatus() != EventStatus.CANCELLED && now.isBefore(event.effectiveEndsAt());
     }
 
     // 참여 중단 · 발표 신청과 같은 분반 잠금을 먼저 쥔다 — 그 사이에 커밋된 참여 중단의 상태 · LEFT_AT 을 덮어쓰지 않는다 (share 10-18 D7).
