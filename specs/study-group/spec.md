@@ -4,7 +4,8 @@
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
 > 갱신: 2026-11-21 — 참여 명단에 `participants[].availableDays` — 신청자 탭 「참여 가능 시간」 칸판 · 참여 가능 요일 열 ([share 11-21](../../docs/share/2026-11-21-availability-overlap.md)). 상태: 구현완료
-> 갱신: 2026-11-19 — 반 이동 때 [STUDY_PARTICIPANT_GROUP_MOVE](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md) 에 한 줄 남긴다 (서버 동작 5-5). 「시작 뒤 반 이동」 미결을 반별 구간 출석률로 닫았다 ([share 11-19](../../docs/share/2026-11-19-group-move-log.md)). 상태: 반 이동 기록은 구현 전
+> 갱신: 2026-11-25 — 반 이동 기록(서버 동작 5-5) 구현완료 (V65 마이그레이션). 스터디 삭제가 그 스터디의 기록도 지운다
+> 갱신: 2026-11-19 — 반 이동 때 [STUDY_PARTICIPANT_GROUP_MOVE](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md) 에 한 줄 남긴다 (서버 동작 5-5). 「시작 뒤 반 이동」 미결을 반별 구간 출석률로 닫았다 ([share 11-19](../../docs/share/2026-11-19-group-move-log.md))
 > 갱신: 2026-11-18 — 반 수정 `PATCH /{groupId}` 에 `moveUpcomingMeetings` — 시간대 · 정규 시각을 바꿀 때 시작 전 회차도 옮길 수 있다 ([회차 스펙 결정 14](../study-meeting/spec.md#결정-사항))
 > 갱신: 2026-11-16 — 담당 캡틴 바꾸기 `PATCH …/owner-captain` 추가, 참여 명단에 `ownerCaptain`. 담당 캡틴 판정을 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
 > 갱신: 2026-11-01 — `PATCH /{groupId}` 구현완료 — daysOfWeek · startTime · timezone 추가 (V54 마이그레이션)
@@ -21,7 +22,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 구현완료 |
-| PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 · 반 이동 기록 스펙확정 (11-19) |
+| PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId}/owner-captain | 담당 캡틴 바꾸기 (신청자 탭 맨 위 「담당 캡틴」 칸) | O (ADMIN) | 구현완료 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않고, 고르면 시작 전 회차를 새 시각으로 옮긴다 | O (ADMIN) | 구현완료 |

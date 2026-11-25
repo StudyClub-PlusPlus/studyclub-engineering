@@ -1,6 +1,8 @@
 package com.studyclub.api.studygroup;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
@@ -11,6 +13,7 @@ import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
+import com.studyclub.domain.participant.StudyParticipantGroupMoveRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.participant.StudyParticipantRoleChanged;
 import com.studyclub.domain.study.Study;
@@ -47,6 +50,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
@@ -75,6 +79,7 @@ class AdminStudyParticipantBulkIntegrationTest {
     @Autowired StudyParticipantRepository studyParticipantRepo;
     @Autowired StudyMeetingRepository studyMeetingRepo;
     @Autowired StudyAttendanceRepository studyAttendanceRepo;
+    @MockitoSpyBean StudyParticipantGroupMoveRepository groupMoveRepo;
     @Autowired RoleChangedEvents roleChangedEvents;
 
     private StudyProgram program;
@@ -149,6 +154,8 @@ class AdminStudyParticipantBulkIntegrationTest {
     void tearDown() {
         // 파생 삭제(derived delete)는 직접 트랜잭션이 없으면 실패하므로 JDBC로 정리한다.
         jdbcTemplate.update("DELETE FROM STUDY_ATTENDANCE WHERE STUDY_ID = ?", study.getId());
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PARTICIPANT_GROUP_MOVE WHERE STUDY_ID = ?", study.getId());
         jdbcTemplate.update(
                 "DELETE FROM ADMIN_AUDIT_LOG WHERE TARGET_ACCOUNT_ID IN (?, ?)",
                 CREW1_ID,
@@ -779,7 +786,177 @@ class AdminStudyParticipantBulkIntegrationTest {
         assertThat(event.meta().actorId()).isEqualTo(String.valueOf(ADMIN_ID));
     }
 
+    // ── 반 이동 기록 ──────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("성공 - 반만 바뀐 줄은 옛 반 · 새 반 ID 와 이름, 옮긴 캡틴, 잠금 뒤 시각으로 기록 한 줄을 남기고 응답에는 캡틴을 내지 않는다")
+    void groupMoveWritesLog() {
+        Instant before = Instant.now();
+
+        var response =
+                patch(
+                        Map.of(
+                                "changes",
+                                List.of(
+                                        Map.of(
+                                                "participantId",
+                                                crew1.getId(),
+                                                "groupId",
+                                                group2.getId()))),
+                        ADMIN_ID,
+                        study.getId());
+
+        Instant after = Instant.now();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<String, Object>> logs = groupMoveLogs();
+        assertThat(logs).hasSize(1);
+        Map<String, Object> log = logs.getFirst();
+        assertThat(log)
+                .containsEntry("STUDY_ID", study.getId())
+                .containsEntry("PARTICIPANT_ID", crew1.getId())
+                .containsEntry("ACCOUNT_ID", CREW1_ID)
+                .containsEntry("FROM_GROUP_ID", group.getId())
+                .containsEntry("FROM_GROUP_NAME", "벌크A반")
+                .containsEntry("TO_GROUP_ID", group2.getId())
+                .containsEntry("TO_GROUP_NAME", "벌크B반")
+                .containsEntry("MOVED_BY_ACCOUNT_ID", ADMIN_ID);
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                "SELECT MOVED_AT FROM STUDY_PARTICIPANT_GROUP_MOVE WHERE STUDY_ID = ?",
+                                Instant.class,
+                                study.getId()))
+                .isBetween(before, after);
+
+        @SuppressWarnings("unchecked")
+        var results = (List<Map<String, Object>>) response.getBody().get("participants");
+        assertThat(results.getFirst())
+                .containsOnlyKeys("participantId", "groupId", "participantRole");
+    }
+
+    @Test
+    @DisplayName("성공 - 역할만 바뀐 줄과 같은 반으로 보낸 줄은 반 이동 기록을 남기지 않는다")
+    void roleOnlyAndSameGroupWriteNoLog() {
+        var response =
+                patch(
+                        Map.of(
+                                "changes",
+                                List.of(
+                                        Map.of(
+                                                "participantId",
+                                                crew1.getId(),
+                                                "participantRole",
+                                                "LEADER"),
+                                        Map.of(
+                                                "participantId",
+                                                crew2.getId(),
+                                                "groupId",
+                                                group.getId()))),
+                        ADMIN_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(studyParticipantRepo.findById(crew1.getId()).orElseThrow().getParticipantRole())
+                .isEqualTo(ParticipantRole.LEADER);
+        assertThat(groupMoveLogs()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("성공 - 옛 반을 지운 뒤에도 반 이동 기록과 그때 반 이름이 남는다")
+    void groupMoveLogSurvivesGroupDeletion() {
+        StudyGroup group3 = studyGroupRepo.save(StudyGroup.create(study.getId(), "벌크C반"));
+        try {
+            patch(
+                    Map.of(
+                            "changes",
+                            List.of(
+                                    Map.of(
+                                            "participantId",
+                                            crew1.getId(),
+                                            "groupId",
+                                            group3.getId()))),
+                    ADMIN_ID,
+                    study.getId());
+            patch(
+                    Map.of(
+                            "changes",
+                            List.of(
+                                    Map.of(
+                                            "participantId",
+                                            crew1.getId(),
+                                            "groupId",
+                                            group2.getId()))),
+                    ADMIN_ID,
+                    study.getId());
+
+            assertThat(
+                            adminExchange(
+                                            "/api/admin/studies/{studyId}/groups/{groupId}",
+                                            HttpMethod.DELETE,
+                                            study.getId(),
+                                            group3.getId())
+                                    .getStatusCode())
+                    .isEqualTo(HttpStatus.NO_CONTENT);
+            assertThat(studyGroupRepo.findById(group3.getId())).isEmpty();
+
+            List<Map<String, Object>> logs = groupMoveLogs();
+            assertThat(logs).hasSize(2);
+            assertThat(logs.get(0))
+                    .containsEntry("FROM_GROUP_NAME", "벌크A반")
+                    .containsEntry("TO_GROUP_ID", group3.getId())
+                    .containsEntry("TO_GROUP_NAME", "벌크C반");
+            assertThat(logs.get(1))
+                    .containsEntry("FROM_GROUP_ID", group3.getId())
+                    .containsEntry("FROM_GROUP_NAME", "벌크C반")
+                    .containsEntry("TO_GROUP_NAME", "벌크B반");
+        } finally {
+            jdbcTemplate.update(
+                    "DELETE FROM STUDY_MEETING WHERE STUDY_GROUP_ID = ?", group3.getId());
+            jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE ID = ?", group3.getId());
+        }
+    }
+
+    @Test
+    @DisplayName("실패 - 반 이동 기록을 쓰지 못하면 반 이동 · 출석 행 · 역할 변경도 모두 되돌린다")
+    void groupMoveRollsBackWhenLogFails() {
+        StudyMeeting upcomingMeeting =
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(
+                                group2.getId(), Instant.now().plusSeconds(3600), "예정 회차"));
+        doThrow(new IllegalStateException("기록 실패")).when(groupMoveRepo).saveAll(any());
+
+        var response =
+                patch(
+                        Map.of(
+                                "changes",
+                                List.of(
+                                        Map.of(
+                                                "participantId",
+                                                crew1.getId(),
+                                                "groupId",
+                                                group2.getId(),
+                                                "participantRole",
+                                                "LEADER"))),
+                        ADMIN_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode().is5xxServerError()).isTrue();
+        StudyParticipant unchanged = studyParticipantRepo.findById(crew1.getId()).orElseThrow();
+        assertThat(unchanged.getStudyGroupId()).isEqualTo(group.getId());
+        assertThat(unchanged.getParticipantRole()).isEqualTo(ParticipantRole.MEMBER);
+        assertThat(
+                        studyAttendanceRepo.findByStudyMeetingIdAndAccountId(
+                                upcomingMeeting.getId(), CREW1_ID))
+                .isEmpty();
+        assertThat(groupMoveLogs()).isEmpty();
+    }
+
     // ── 헬퍼 ─────────────────────────────────────────────────────────────────
+
+    private List<Map<String, Object>> groupMoveLogs() {
+        return jdbcTemplate.queryForList(
+                "SELECT * FROM STUDY_PARTICIPANT_GROUP_MOVE WHERE STUDY_ID = ? ORDER BY ID",
+                study.getId());
+    }
 
     @SuppressWarnings({"rawtypes"})
     private ResponseEntity<Map> patch(Object body, Long accountId, Object studyId) {

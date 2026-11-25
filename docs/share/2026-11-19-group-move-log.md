@@ -8,7 +8,8 @@
   - specs/attendance/spec.md — 됨
   - 01-planning/stories/navigator-edit-attendance/PRD.md · captain-view-attendance-roster/PRD.md — 안 됨
   - playground 출석부 프로토 (core · console) — 안 됨
-  - 백엔드 (테이블 · 기록 · 출석률 구간) — 안 됨
+  - 백엔드 테이블 · 반 이동 기록 — 됨 (#PR)
+  - 백엔드 출석률 구간 · 출석부 응답 — 안 됨
   - core-front · back-office-front 출석부 표시 — 안 됨
 ---
 
@@ -89,5 +90,5 @@
 ## 그래서 나는 뭘 해야 하나
 
 - **기획**: 위 「해석」 세 개를 확인한다. 출석부 이동 표시 · 「A반」 칸 · 「A반 기록」 묶음의 문구와 위치를 playground 프로토에서 확인한다.
-- **백엔드**: 표를 만들고(`V60`), `AdminStudyParticipantService` 의 반 이동 단계에서 한 줄씩 쓴다. `AttendanceRateCalculator` 를 「반별 구간」으로 바꾸고 개인 = 구간 합산, 반 평균 = 그 반 구간으로 나눈다. 명부 조회에 가져온 칸(`recordedGroupName` · `otherGroupAttendances`)을 붙이고, 가져온 칸 저장은 막는다.
+- **백엔드**: 표를 만들고(`V65` — `V60` 은 다른 PR 이 먼저 썼다), `AdminStudyParticipantService` 의 반 이동 단계에서 한 줄씩 쓴다 (여기까지 됨). `AttendanceRateCalculator` 를 「반별 구간」으로 바꾸고 개인 = 구간 합산, 반 평균 = 그 반 구간으로 나눈다. 명부 조회에 가져온 칸(`recordedGroupName` · `otherGroupAttendances`)을 붙이고, 가져온 칸 저장은 막는다.
 - **프론트**: core-front · back-office-front 출석부에 이동 표시 · 가져온 칸 · 옮겨 간 줄을 그린다. 크루가 보는 화면에는 이 값이 오지 않는다.
