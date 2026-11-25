@@ -88,6 +88,11 @@ public class StorageObject extends BaseEntity {
         this.status = StorageObjectStatus.PENDING;
     }
 
+    /** 내줄 수 있는 파일인가. 연결된 것만이다 — 올리고 안 쓴 것 · 지우는 중인 것은 내주지 않는다. */
+    public boolean isServable() {
+        return status == StorageObjectStatus.ATTACHED;
+    }
+
     public Long getId() {
         return id;
     }

@@ -200,7 +200,8 @@ gigs/                    ← 퍼블릭 (CDN 서빙)
   profiles/              ← 프로필 이미지
   thumbnails/            ← 썸네일
   banners/               ← 배너/커버 이미지
-private/                 ← 비공개 (signed URL 필요)
+private/                 ← 비공개 (CDN 으로 열리지 않음 — 서버가 권한을 확인해 읽어 주거나 signed URL)
+  feedbacks/             ← 문의 첨부 이미지 (API 가 작성자·캡틴에게만 내줌, specs/feedback/spec.md)
   documents/             ← 문서/PDF
   exports/               ← 내보내기 파일
 uploads/                 ← 임시 업로드 (presigned URL 용)

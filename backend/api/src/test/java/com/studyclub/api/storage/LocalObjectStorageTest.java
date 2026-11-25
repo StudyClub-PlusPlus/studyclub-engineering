@@ -44,4 +44,18 @@ class LocalObjectStorageTest {
         assertThatThrownBy(() -> storage().put("../escape.jpg", new byte[1], "image/jpeg"))
                 .isInstanceOf(BusinessException.class);
     }
+
+    @Test
+    void 올린_파일을_읽고_없는_키는_404() throws Exception {
+        LocalObjectStorage storage = storage();
+        storage.put("private/feedbacks/a.jpg", new byte[] {7, 8}, "image/jpeg");
+
+        try (var in = storage.open("private/feedbacks/a.jpg")) {
+            assertThat(in.readAllBytes()).containsExactly(7, 8);
+        }
+        assertThatThrownBy(() -> storage.open("private/feedbacks/none.jpg"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(com.studyclub.common.error.ErrorCode.NOT_FOUND);
+    }
 }

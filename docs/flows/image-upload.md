@@ -75,7 +75,9 @@ const thumb = useImageUpload({
 
 ## 백엔드 — 새 용도를 붙일 때
 
-1. **용도 추가** — `StoragePurpose` 에 enum 하나. 폴더는 반드시 `gigs/` 아래 (`gigs/` 밖은 CloudFront 가 403 이다).
+1. **용도 추가** — `StoragePurpose` 에 enum 하나(`folder`, `isPublic`).
+   - **공개 용도**(프로필 · 썸네일): 폴더는 `gigs/` 아래 — CloudFront 가 `gigs/` 만 열어 준다. 응답에 공개 주소가 실린다
+   - **비공개 용도**(문의 첨부처럼 개인정보가 찍힐 수 있는 것): 폴더는 `gigs/` 밖(`private/…`), `isPublic=false`. 업로드 응답 `url` 은 null 이고, 응답에는 공개 주소 대신 **권한을 확인하는 API 경로**를 싣는다. 그 API 가 `UploadService.open` 으로 읽어 `Cache-Control: private, no-store` 로 내준다 (참고 구현: `FeedbackImageService` · [feedback 스펙](../../specs/feedback/spec.md#첨부-이미지-열기)). 화면은 `<img crossorigin='use-credentials'>` 로 연다
    프론트 `ImagePurpose` 타입에도 같은 이름을 추가한다
 2. **저장 API 는 `fileId` 를 받는다** — 요청 DTO 에 `Long fileId`. 주소 문자열 필드를 만들지 않는다
 3. **연결은 기능 서비스의 트랜잭션 안에서**
@@ -129,4 +131,5 @@ const thumb = useImageUpload({
 - 브라우저 → S3 직접 올리기(서명 주소). 형식 검사와 메타데이터 제거를 서버가 해야 한다
 - 기능 API 에 이미지 주소 문자열 받기
 - 저장소 호출을 `@Transactional` 안에서 하기 — 네트워크를 기다리는 동안 DB 잠금을 잡는다
-- 용도 폴더를 `gigs/` 밖에 두기
+- 공개 용도 폴더를 `gigs/` 밖에 두기 (개인정보가 든 파일은 반대로 `gigs/` 밖 비공개 용도로 둔다)
+- 비공개 용도의 파일을 공개 주소로 내보내거나 저장하기

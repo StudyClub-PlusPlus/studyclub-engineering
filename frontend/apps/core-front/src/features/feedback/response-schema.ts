@@ -22,6 +22,6 @@ export const myFeedbackPageSchema = z.object({
 
 export const myFeedbackDetailSchema = myFeedbackItemSchema.extend({
   content: z.string(),
-  images: z.array(z.object({ url: z.string() })),
+  images: z.array(z.object({ id: z.number(), url: z.string() })),
   reply: z.object({ content: z.string(), repliedAt: z.string() }).nullable(),
 });

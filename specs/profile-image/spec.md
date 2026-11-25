@@ -153,7 +153,7 @@ WHERE ID IN (...)                    -- ID 순서로 읽은 최대 100개 후보
 | 필드 | 타입 | NULL | 설명 | 소스 |
 |------|------|------|------|------|
 | fileId | Long | N | 파일 번호. 저장 API 에 넘긴다 | STORAGE_OBJECT.ID |
-| url | String | N | 볼 수 있는 주소. 연결 전에도 주소만 알면 보인다. 미리보기용 | `S3_PUBLIC_BASE_URL` + STORAGE_OBJECT.OBJECT_KEY |
+| url | String | Y | 볼 수 있는 주소. 연결 전에도 주소만 알면 보인다. 미리보기용. **비공개 용도(`FEEDBACK`)는 공개 주소가 없어 null** — 화면은 고른 파일(blob)로 미리보고, 읽기는 [feedback 스펙](../feedback/spec.md#첨부-이미지-열기)의 API 로 한다 | `S3_PUBLIC_BASE_URL` + STORAGE_OBJECT.OBJECT_KEY (공개 용도만) |
 
 ### Error Responses
 

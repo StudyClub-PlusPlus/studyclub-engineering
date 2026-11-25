@@ -4,7 +4,12 @@
 import { IMAGE_ACCEPT, IMAGE_MAX_BYTES } from '@studyclub/ui';
 import { z } from 'zod';
 
-import { ApiError } from '../../lib/http';
+import { API_BASE, ApiError } from '../../lib/http';
+
+/** 첨부 이미지 경로(`images[].url`)를 `<img src>` 로 쓸 주소로. 공개 주소가 아니라 로그인 쿠키를 싣고 열어야 하는 API 경로다. */
+export function feedbackImageSrc(path: string): string {
+  return `${API_BASE}${path}`;
+}
 
 /** `FEEDBACK.TYPE` 값 그대로. */
 export type FeedbackType = 'QUESTION' | 'IDEA' | 'BUG';
