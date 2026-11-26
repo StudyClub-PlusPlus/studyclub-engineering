@@ -74,4 +74,23 @@ class ClubEventRegistrationAdapter implements ClubEventRegistrationPort {
                 Instant.now().truncatedTo(ChronoUnit.MICROS));
         return pendingIds;
     }
+
+    @Override
+    public List<Long> cancelActiveRegistrationsForEventCancellation(
+            Long eventId, Long actorAccountId) {
+        List<Long> activeIds =
+                registrationRepository.findIdsByClubEventIdAndStatusIn(eventId, SEAT_STATUSES);
+        if (activeIds.isEmpty()) {
+            return List.of();
+        }
+        // 행사 행 잠금 아래라 읽은 유효 신청이 그대로 남아 있다 — confirmPendingRegistrations 와 같은 안전망
+        registrationRepository.cancelActiveForEventCancellation(
+                activeIds, actorAccountId, Instant.now().truncatedTo(ChronoUnit.MICROS));
+        return activeIds;
+    }
+
+    @Override
+    public int countCancellationRecipients(Long eventId) {
+        return Math.toIntExact(registrationRepository.countCancellationRecipients(eventId));
+    }
 }

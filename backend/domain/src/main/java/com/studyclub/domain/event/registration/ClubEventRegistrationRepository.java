@@ -51,6 +51,60 @@ public interface ClubEventRegistrationRepository
             @Param("actor") Long actorAccountId,
             @Param("now") Instant now);
 
+    @Query(
+            "select r.id from ClubEventRegistration r"
+                    + " where r.clubEventId = :eventId and r.status in :statuses order by r.id")
+    List<Long> findIdsByClubEventIdAndStatusIn(
+            @Param("eventId") Long eventId,
+            @Param("statuses") Collection<ClubEventRegistrationStatus> statuses);
+
+    /**
+     * 행사 취소 — 고른 신청 중 아직 유효({@code active})한 것만 {@code CANCELLED} · {@code EVENT_CANCELLED} 로. 바꾼 행
+     * 수를 돌려준다.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(
+            "update ClubEventRegistration r"
+                    + " set r.status = :cancelled, r.cancelReason = :reason,"
+                    + " r.statusChangedAt = :now, r.statusChangedBy = :actor, r.updatedAt = :now"
+                    + " where r.id in :ids and r.status in :active")
+    int cancelForEvent(
+            @Param("ids") Collection<Long> ids,
+            @Param("active") Collection<ClubEventRegistrationStatus> active,
+            @Param("cancelled") ClubEventRegistrationStatus cancelled,
+            @Param("reason") ClubEventRegistrationCancelReason reason,
+            @Param("actor") Long actorAccountId,
+            @Param("now") Instant now);
+
+    default int cancelActiveForEventCancellation(
+            Collection<Long> ids, Long actorAccountId, Instant now) {
+        return cancelForEvent(
+                ids,
+                List.of(ClubEventRegistrationStatus.PENDING, ClubEventRegistrationStatus.CONFIRMED),
+                ClubEventRegistrationStatus.CANCELLED,
+                ClubEventRegistrationCancelReason.EVENT_CANCELLED,
+                actorAccountId,
+                now);
+    }
+
+    /** 취소 안내 대상 수 — 유효 신청 또는 행사 취소로 취소된 신청 중, 계정이 아직 있는 것. 탈퇴하면 ACCOUNT 행이 지워진다. */
+    @Query(
+            "select count(r) from ClubEventRegistration r"
+                    + " where r.clubEventId = :eventId"
+                    + " and (r.status in :active or r.cancelReason = :reason)"
+                    + " and exists (select a.id from Account a where a.id = r.accountId)")
+    long countCancellationRecipients(
+            @Param("eventId") Long eventId,
+            @Param("active") Collection<ClubEventRegistrationStatus> active,
+            @Param("reason") ClubEventRegistrationCancelReason reason);
+
+    default long countCancellationRecipients(Long eventId) {
+        return countCancellationRecipients(
+                eventId,
+                List.of(ClubEventRegistrationStatus.PENDING, ClubEventRegistrationStatus.CONFIRMED),
+                ClubEventRegistrationCancelReason.EVENT_CANCELLED);
+    }
+
     /** 이 행사의 내 신청 전부, 최신 먼저 — 중복 · 참가 불가 이력 판정과 「내 최신 신청」. */
     List<ClubEventRegistration> findByAccountIdAndClubEventIdOrderByCreatedAtDescIdDesc(
             Long accountId, Long clubEventId);
