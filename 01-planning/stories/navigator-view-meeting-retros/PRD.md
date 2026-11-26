@@ -51,7 +51,7 @@ flowchart LR
   - 그 회차의 참여자마다 「작성」 · 「미작성」
   - 작성 수(「n명 중 m명 작성」)도 네비게이터 · 캡틴만 본다 — 회고 탭 2-4
 - **정책**
-  - 쓴 사람이 앞, 안 쓴 사람이 뒤
+  - 쓴 사람이 앞, 안 쓴 사람이 뒤 — 미작성자 사이 순서는 정의하지 않는다
   - 쓸 사람 = 그 회차 시작 때 반에 있던 참여자. 그전에 참여를 중단한 사람은 뺀다
   - 네비게이터 자신도 쓸 사람에 들어간다. 캡틴은 미팅 참여자가 아니라 들어가지 않는다
 
@@ -95,14 +95,15 @@ flowchart LR
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front 회고 탭 작성 현황 | 없음 | 화면 · API 연결 |
-| BE | `GET /api/studies/{studyId}/meetings/{meetingId}/retros` 응답의 `targets` · `missing` | 스펙작성중 | 스펙 확정 · 구현 |
-| BE | `GET /api/studies/{studyId}/retros/status` | 스펙작성중 | 스펙 확정 · 구현 |
+| FE | core-front 회고 탭 작성 현황 | 없음 | 화면 · API 연결 · `retros[].author`(쓴 사람) + `missing[]`(안 쓴 사람) 조합해 순서 구성 |
+| BE | `GET /api/studies/{studyId}/meetings/{meetingId}/retros` 응답의 `targets` · `missing` | 구현완료 | - |
+| BE | `GET /api/me/studies/{studyId}/retros/status` (회차별 deadline·open·mine) | 구현완료 | - |
+| FE | `GET /api/me/studies/{studyId}/meetings/{meetingId}/retros` (내 뷰어 컨텍스트 — 내 retroId · 누른 👍) | 없음 | API 연결 (회고 작성·수정 버튼 · 👍 상태 표시에 필요) |
 
 ### 계산 규칙
 
 - 쓸 사람 · 쓴 사람은 [ST-039 §3 계산 규칙](../crew-write-meeting-retro/PRD.md#계산-규칙)과 같다. 네비게이터도 쓸 사람이다
-- 👍 많은 순 — 같으면 내 답이 앞, 나머지는 쓴 순서
+- 👍 많은 순 — 같으면 내 답이 앞(FE가 participantId 로 판단), 나머지는 쓴 순서
 
 ### 권한
 

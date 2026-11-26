@@ -16,12 +16,16 @@ public final class MeetingRetroResponses {
     public record ViewerContext(
             Long participantId, Long retroId, Map<Long, Map<String, Boolean>> liked) {}
 
-    /** GET /api/studies/{studyId}/meetings/{meetingId}/retros */
+    /**
+     * GET /api/studies/{studyId}/meetings/{meetingId}/retros
+     *
+     * <p>{@code targets}: 쓸 사람 수. 네비게이터·캡틴에게만 채운다 — 크루에게는 {@code null}.
+     */
     public record RetroList(
             Long meetingId,
             Instant deadline,
             boolean open,
-            int targets,
+            Integer targets,
             List<RetroItem> retros,
             List<MissingItem> missing) {}
 
@@ -41,4 +45,10 @@ public final class MeetingRetroResponses {
 
     /** PUT/DELETE .../likes/{section} */
     public record LikeResult(int count, boolean liked) {}
+
+    /** GET /api/me/studies/{studyId}/retros/status */
+    public record RetroStatus(List<MeetingRetroStatus> meetings) {}
+
+    public record MeetingRetroStatus(
+            Long meetingId, Instant retroDeadline, Boolean retroOpen, Boolean retroMine) {}
 }

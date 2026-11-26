@@ -339,8 +339,7 @@ class MeetingRetroIntegrationTest {
         Map<?, ?> body = response.getBody();
         assertThat(((Number) body.get("meetingId")).longValue()).isEqualTo(endedMeeting.getId());
         assertThat(body.get("open")).isEqualTo(true);
-        assertThat(((Number) body.get("targets")).intValue())
-                .isEqualTo(3); // navigator + memberA + memberB
+        assertThat(body.get("targets")).isNull(); // 크루에게는 작성 현황 미노출
         assertThat((List<?>) body.get("retros")).hasSize(1);
         assertThat((List<?>) body.get("missing")).isEmpty();
     }
@@ -358,7 +357,9 @@ class MeetingRetroIntegrationTest {
         var response = getRetroList(study.getId(), endedMeeting.getId(), NAVIGATOR_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        List<Map<?, ?>> missing = (List<Map<?, ?>>) response.getBody().get("missing");
+        Map<?, ?> body = response.getBody();
+        assertThat(((Number) body.get("targets")).intValue()).isEqualTo(3); // 네비게이터에게는 노출
+        List<Map<?, ?>> missing = (List<Map<?, ?>>) body.get("missing");
         // memberB 와 navigator 가 미작성 (둘 다 쓸 사람)
         assertThat(missing).hasSizeGreaterThanOrEqualTo(1);
         assertThat(missing)
@@ -509,6 +510,115 @@ class MeetingRetroIntegrationTest {
         assertThat(((Number) ((Map<?, ?>) r.getBody()).get("count")).intValue()).isEqualTo(1);
     }
 
+    // ── 회차별 회고 상태 ──────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("retro_status_미작성이면_retroMine_false")
+    @SuppressWarnings("unchecked")
+    void retro_status_미작성이면_retroMine_false() {
+        var response = getRetroStatus(study.getId(), group.getId(), MEMBER_A_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<?, ?>> meetings = (List<Map<?, ?>>) response.getBody().get("meetings");
+
+        Map<?, ?> ended =
+                meetings.stream()
+                        .filter(
+                                m ->
+                                        ((Number) m.get("meetingId")).longValue()
+                                                == endedMeeting.getId())
+                        .findFirst()
+                        .orElseThrow();
+
+        assertThat(ended.get("retroOpen")).isEqualTo(true);
+        assertThat(ended.get("retroMine")).isEqualTo(false);
+        assertThat(ended.get("retroDeadline")).isNotNull();
+
+        // 미래 회차(nextMeeting)는 retroOpen=false
+        Map<?, ?> future =
+                meetings.stream()
+                        .filter(
+                                m ->
+                                        ((Number) m.get("meetingId")).longValue()
+                                                == nextMeeting.getId())
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(future.get("retroOpen")).isEqualTo(false);
+    }
+
+    @Test
+    @DisplayName("retro_status_작성완료_retroMine_true")
+    @SuppressWarnings("unchecked")
+    void retro_status_작성완료_retroMine_true() {
+        writeRetro(
+                study.getId(),
+                endedMeeting.getId(),
+                MEMBER_A_ID,
+                Map.of("good", "좋았어요", "improve", "개선점", "feeling", ""));
+
+        var response = getRetroStatus(study.getId(), group.getId(), MEMBER_A_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<?, ?>> meetings = (List<Map<?, ?>>) response.getBody().get("meetings");
+
+        Map<?, ?> ended =
+                meetings.stream()
+                        .filter(
+                                m ->
+                                        ((Number) m.get("meetingId")).longValue()
+                                                == endedMeeting.getId())
+                        .findFirst()
+                        .orElseThrow();
+
+        assertThat(ended.get("retroMine")).isEqualTo(true);
+    }
+
+    @Test
+    @DisplayName("retro_status_킥오프회차_null_필드")
+    @SuppressWarnings("unchecked")
+    void retro_status_킥오프회차_null_필드() {
+        StudyMeeting kickoff =
+                meetingRepo.save(
+                        StudyMeeting.kickoff(
+                                group.getId(), Instant.now().minus(30, ChronoUnit.DAYS)));
+
+        var response = getRetroStatus(study.getId(), group.getId(), MEMBER_A_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<?, ?>> meetings = (List<Map<?, ?>>) response.getBody().get("meetings");
+
+        Map<?, ?> kickoffItem =
+                meetings.stream()
+                        .filter(m -> ((Number) m.get("meetingId")).longValue() == kickoff.getId())
+                        .findFirst()
+                        .orElseThrow();
+
+        assertThat(kickoffItem.get("retroDeadline")).isNull();
+        assertThat(kickoffItem.get("retroOpen")).isNull();
+        assertThat(kickoffItem.get("retroMine")).isNull();
+    }
+
+    @Test
+    @DisplayName("retro_status_캡틴_retroMine_null")
+    @SuppressWarnings("unchecked")
+    void retro_status_캡틴_retroMine_null() {
+        var response = getRetroStatus(study.getId(), group.getId(), CAPTAIN_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<?, ?>> meetings = (List<Map<?, ?>>) response.getBody().get("meetings");
+
+        Map<?, ?> ended =
+                meetings.stream()
+                        .filter(
+                                m ->
+                                        ((Number) m.get("meetingId")).longValue()
+                                                == endedMeeting.getId())
+                        .findFirst()
+                        .orElseThrow();
+
+        assertThat(ended.get("retroMine")).isNull();
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private ResponseEntity<Map> writeRetro(
@@ -530,6 +640,15 @@ class MeetingRetroIntegrationTest {
                 Map.class,
                 studyId,
                 meetingId);
+    }
+
+    private ResponseEntity<Map> getRetroStatus(Long studyId, Long studyGroupId, Long accountId) {
+        String url =
+                "/api/me/studies/"
+                        + studyId
+                        + "/retros/status"
+                        + (studyGroupId != null ? "?studyGroupId=" + studyGroupId : "");
+        return rest.exchange(url, HttpMethod.GET, authenticatedRequest(null, accountId), Map.class);
     }
 
     private ResponseEntity<Map> getViewerContext(Long studyId, Long meetingId, Long accountId) {
