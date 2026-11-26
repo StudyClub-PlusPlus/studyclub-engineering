@@ -8,5 +8,7 @@ public enum ResendSkipReason {
     /** 실패가 아니다 — 이미 다시 보냈거나, 지금 진행 중이거나, 이미 나갔거나, 탈퇴로 취소됐다. 다시 보내면 같은 메일이 두 번 간다. */
     NOT_FAILED,
     /** 수신 회원이 탈퇴해 주소가 이미 비식별돼 있다 — 보낼 곳이 없다. */
-    RECIPIENT_GONE
+    RECIPIENT_GONE,
+    /** 원래 수신자가 현재 담당 캡틴이 아니거나 연결된 신청·스터디가 사라졌다. */
+    STATE_CHANGED
 }

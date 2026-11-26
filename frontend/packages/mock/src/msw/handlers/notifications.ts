@@ -32,7 +32,7 @@ export type ApiNotificationPage = {
 
 export type ApiNotificationResend = {
   accepted: number[];
-  skipped: { id: number; reason: 'NOT_FAILED' | 'RECIPIENT_GONE' }[];
+  skipped: { id: number; reason: 'NOT_FAILED' | 'RECIPIENT_GONE' | 'STATE_CHANGED' }[];
 };
 
 const MAX_LIMIT = 100;
@@ -43,6 +43,7 @@ const RESEND_SETTLE_MS = 1500;
 type MockRecord = Omit<ApiNotification, 'canResend'> & {
   /** 수신 회원이 탈퇴했는가 — 주소가 지워져 보낼 수 없다. */
   recipientGone: boolean;
+  stateChanged: boolean;
   resentAt: number | null;
 };
 
@@ -58,14 +59,15 @@ function seed(): MockRecord[] {
     const status: ApiNotificationStatus = i === 0 ? 'PENDING' : i === 1 ? 'PROCESSING' : failed ? 'FAILED' : 'SENT';
     return {
       id,
-      eventType: 'USER_REGISTERED',
+      eventType: i === 9 || i === 30 ? 'STUDY_APPLICATION_RECEIVED' : 'USER_REGISTERED',
       recipientType: 'EMAIL',
       recipientValue: EMAILS[i % EMAILS.length]!,
       status,
-      templateId: 1,
+      templateId: i === 9 || i === 30 ? 4 : 1,
       createdAt,
       sentAt: status === 'SENT' ? new Date(Date.parse(createdAt) + 4_000).toISOString() : null,
       recipientGone: i === 17,
+      stateChanged: i === 30,
       resentAt: null,
     };
   });
@@ -89,8 +91,8 @@ function settle(now = Date.now()) {
 }
 
 function toApi(r: MockRecord): ApiNotification {
-  const { recipientGone: _gone, resentAt: _at, ...rest } = r;
-  return { ...rest, canResend: r.status === 'FAILED' && !r.recipientGone };
+  const { recipientGone: _gone, stateChanged: _changed, resentAt: _at, ...rest } = r;
+  return { ...rest, canResend: r.status === 'FAILED' && !r.recipientGone && !r.stateChanged };
 }
 
 const invalidInput = () => HttpResponse.json({ errorCode: 'INVALID_INPUT', errorMessage: '입력값이 올바르지 않습니다.' }, { status: 400 });
@@ -147,6 +149,7 @@ async function resendNotifications({ request }: MockResolveContext) {
   for (const row of rows as MockRecord[]) {
     if (row.status !== 'FAILED') result.skipped.push({ id: row.id, reason: 'NOT_FAILED' });
     else if (row.recipientGone) result.skipped.push({ id: row.id, reason: 'RECIPIENT_GONE' });
+    else if (row.stateChanged) result.skipped.push({ id: row.id, reason: 'STATE_CHANGED' });
     else {
       row.status = 'PENDING';
       row.resentAt = Date.now();

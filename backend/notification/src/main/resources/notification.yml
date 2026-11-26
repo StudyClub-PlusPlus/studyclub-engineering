@@ -44,6 +44,8 @@ mail:
 notification:
   # 필수값 — 로컬은 docker-compose 가 주입(http://localhost:4700), 그 외 환경은 배포 환경변수에 명시한다.
   site-base-url: ${NOTIFICATION_SITE_BASE_URL}
+  # 기존 로그인용 백오피스 주소를 재사용한다. 여러 주소를 허용할 때만 메일의 대표 주소를 별도로 지정한다.
+  back-office-base-url: ${NOTIFICATION_BACK_OFFICE_BASE_URL:${auth.back-office-origins}}
   # 웹 푸시 VAPID 키 (specs/web-push/spec.md). 비어 있으면 웹 푸시가 꺼진다 — 구독 버튼도 안 보인다.
   # 키 만들기: npx web-push generate-vapid-keys. 값은 시크릿 저장소에만 둔다(PUBLIC 레포).
   web-push:

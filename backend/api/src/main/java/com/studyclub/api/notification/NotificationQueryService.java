@@ -22,6 +22,7 @@ public class NotificationQueryService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationRecipientAccounts recipientAccounts;
+    private final StudyApplicationNotificationStates applicationStates;
 
     /**
      * 발송 이력. {@code ids} 가 있으면 그 행들만 {@code offset}·{@code limit}·필터와 상관없이 모두 준다 — 재발송을 접수한 건의 끝을
@@ -63,11 +64,12 @@ public class NotificationQueryService {
 
     private List<NotificationListResponse.NotificationSummary> summaries(List<Notification> rows) {
         Set<Long> existingAccountIds = recipientAccounts.existingIds(rows);
+        Set<Long> stateChangedIds = applicationStates.changedIds(rows);
         return rows.stream()
                 .map(
                         row ->
                                 NotificationListResponse.NotificationSummary.from(
-                                        row, existingAccountIds))
+                                        row, existingAccountIds, stateChangedIds))
                 .toList();
     }
 }
