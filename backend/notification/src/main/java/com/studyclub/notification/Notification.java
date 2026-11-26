@@ -264,17 +264,29 @@ public class Notification extends BaseEntity {
      * <p>{@code RECIPIENT_USER_ID} 가 없는 건(운영 공용 발송 등)은 계정과 무관하므로 계정 검사를 건너뛴다.
      */
     public Optional<ResendSkipReason> resendSkipReason(Set<Long> existingAccountIds) {
+        return resendSkipReason(existingAccountIds, Set.of());
+    }
+
+    public Optional<ResendSkipReason> resendSkipReason(
+            Set<Long> existingAccountIds, Set<Long> stateChangedIds) {
         if (status != NotificationStatus.FAILED) {
             return Optional.of(ResendSkipReason.NOT_FAILED);
         }
         if (recipientUserId != null && !existingAccountIds.contains(recipientUserId)) {
             return Optional.of(ResendSkipReason.RECIPIENT_GONE);
         }
+        if (id != null && stateChangedIds.contains(id)) {
+            return Optional.of(ResendSkipReason.STATE_CHANGED);
+        }
         return Optional.empty();
     }
 
     public boolean canResend(Set<Long> existingAccountIds) {
         return resendSkipReason(existingAccountIds).isEmpty();
+    }
+
+    public boolean canResend(Set<Long> existingAccountIds, Set<Long> stateChangedIds) {
+        return resendSkipReason(existingAccountIds, stateChangedIds).isEmpty();
     }
 
     /**

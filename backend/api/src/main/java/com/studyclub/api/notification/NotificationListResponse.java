@@ -22,7 +22,9 @@ public record NotificationListResponse(
 
         /** {@code existingAccountIds} 는 재발송 판정 재료다 — 재발송 접수와 같은 쿼리로 센 값을 넘긴다. */
         public static NotificationSummary from(
-                Notification notification, Set<Long> existingAccountIds) {
+                Notification notification,
+                Set<Long> existingAccountIds,
+                Set<Long> stateChangedIds) {
             return new NotificationSummary(
                     notification.getId(),
                     notification.getEventType().name(),
@@ -32,7 +34,7 @@ public record NotificationListResponse(
                     notification.getTemplateId(),
                     notification.getSentAt(),
                     notification.getCreatedAt(),
-                    notification.canResend(existingAccountIds));
+                    notification.canResend(existingAccountIds, stateChangedIds));
         }
     }
 }

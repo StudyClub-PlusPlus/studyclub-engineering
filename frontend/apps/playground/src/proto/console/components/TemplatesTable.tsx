@@ -192,6 +192,9 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
             <p className='mt-1 type-body-sm text-fg-secondary'>{current.subject}</p>
             <p className='mt-3 type-body-sm text-fg-muted'>
               이 문구로는 더 이상 메일이 나가지 않으며 되돌릴 수 없습니다. 지난 발송 이력은 남습니다.
+              {current.trigger === 'STUDY_APPLICATION_RECEIVED' && rows.filter((row) => row.trigger === current.trigger).length === 1 && (
+                <> 마지막 템플릿을 삭제하면 담당 캡틴에게 새 스터디 신청 메일이 나가지 않습니다. 스터디 신청은 계속 접수되며 운영 경고가 남습니다.</>
+              )}
             </p>
           </div>
         ) : (
@@ -234,7 +237,9 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
                           onChange={(e) => setDraft({ ...draft, body: e.target.value })}
                           placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
                           helper={
-                            draft.trigger === 'EVENT_ANNOUNCEMENT'
+                            draft.trigger === 'STUDY_APPLICATION_RECEIVED'
+                              ? '{{studyTitle}} 스터디 이름, {{applicationsUrl}} 신청자 확인 링크를 삽입할 수 있습니다. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                              : draft.trigger === 'EVENT_ANNOUNCEMENT'
                               ? '{{eventTitle}} 행사명, {{eventSchedule}} 일정, {{participation}} 참여 안내, {{nickname}} 닉네임. 운영진이 작성한 내용은 {{notice}}에 들어갑니다. 본문에 {{notice}}를 포함해 주세요.'
                               : draft.trigger === 'EVENT_CANCELLATION'
                                 ? '{{eventTitle}} 행사명, {{nickname}} 닉네임을 사용할 수 있습니다. 본문에 취소 안내 내용이 들어갈 {{notice}}를 포함해 주세요.'

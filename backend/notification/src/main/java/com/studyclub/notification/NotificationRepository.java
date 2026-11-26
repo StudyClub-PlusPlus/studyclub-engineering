@@ -12,6 +12,13 @@ import org.springframework.data.repository.query.Param;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
+    /** 잠금 순서를 위한 ID 조회. 엔티티를 먼저 읽으면 뒤의 잠금 조회가 1차 캐시의 옛 상태를 재사용할 수 있다. */
+    @Query(
+            "select distinct n.referenceId from Notification n where n.id in :ids "
+                    + "and n.eventType = com.studyclub.notification.NotificationEventType.STUDY_APPLICATION_RECEIVED "
+                    + "and n.referenceId is not null")
+    List<Long> findApplicationReferencesByIdIn(@Param("ids") Collection<Long> ids);
+
     /** 테스트 전용 — 계정 하나가 받은 알림을 뒤져볼 때만 쓴다. 백오피스 조회는 볼륨이 계속 느는 아웃박스라 {@link #findPage} 를 쓴다. */
     List<Notification> findAllByOrderByCreatedAtDesc();
 

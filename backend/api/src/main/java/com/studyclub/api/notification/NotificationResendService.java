@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -23,10 +24,12 @@ public class NotificationResendService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationRecipientAccounts recipientAccounts;
+    private final StudyApplicationNotificationStates applicationStates;
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public NotificationResendResponse resend(List<Long> requestedIds) {
         List<Long> ids = requestedIds.stream().distinct().sorted().toList();
+        applicationStates.lockStudies(notificationRepository.findApplicationReferencesByIdIn(ids));
 
         // 잠그고 읽는다 — 폴링이 클레임 중이거나 다른 캡틴이 같은 건을 누르는 중이면 끝날 때까지 기다렸다가 최신 상태를 본다
         List<Notification> rows = notificationRepository.findAllByIdInForUpdate(ids);
@@ -35,10 +38,12 @@ public class NotificationResendService {
         }
 
         Set<Long> existingAccountIds = recipientAccounts.existingIds(rows);
+        Set<Long> stateChangedIds = applicationStates.changedIds(rows);
         List<Long> accepted = new ArrayList<>();
         List<NotificationResendResponse.Skipped> skipped = new ArrayList<>();
         for (Notification row : rows) {
-            Optional<ResendSkipReason> reason = row.resendSkipReason(existingAccountIds);
+            Optional<ResendSkipReason> reason =
+                    row.resendSkipReason(existingAccountIds, stateChangedIds);
             if (reason.isPresent()) {
                 skipped.add(new NotificationResendResponse.Skipped(row.getId(), reason.get()));
             } else {

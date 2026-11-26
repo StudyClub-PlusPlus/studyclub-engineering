@@ -6,5 +6,7 @@ public enum NotificationEventType {
     /** 네비게이터가 반 팀원에게 보낸 공지 메일. {@code NOTIFICATION.REFERENCE_ID} 가 {@code STUDY_NOTICE.ID} 다. */
     STUDY_NOTICE,
     /** 첫 문의 회신 알림. REFERENCE_ID 는 FEEDBACK.ID 이고 답변 본문은 싣지 않는다. */
-    FEEDBACK_REPLIED
+    FEEDBACK_REPLIED,
+    /** 담당 캡틴에게 새 신청을 알린다. REFERENCE_ID 는 STUDY_APPLICATION.ID 다. */
+    STUDY_APPLICATION_RECEIVED
 }
