@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -24,13 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/admin/feedbacks")
+@RequiredArgsConstructor
 public class AdminFeedbackController {
 
     private final AdminFeedbackService adminFeedbackService;
-
-    public AdminFeedbackController(AdminFeedbackService adminFeedbackService) {
-        this.adminFeedbackService = adminFeedbackService;
-    }
+    private final FeedbackImageService feedbackImageService;
 
     @Operation(
             summary = "문의·오류 신고 목록",
@@ -68,5 +68,15 @@ public class AdminFeedbackController {
             @RequestBody Map<String, Object> body) {
         Long requesterId = (Long) authentication.getPrincipal();
         return adminFeedbackService.patch(requesterId, feedbackId, body);
+    }
+
+    @Operation(
+            summary = "문의·오류 신고 첨부 이미지",
+            description =
+                    "캡틴만. 없는 번호 · 이 문의의 사진이 아닌 것 · 보유 기간이 지난 것 · 지우는 중인 것은 404. 응답은 캐시하지 않는다.")
+    @GetMapping("/{feedbackId}/images/{imageId}")
+    public ResponseEntity<InputStreamResource> image(
+            @PathVariable Long feedbackId, @PathVariable Long imageId) {
+        return feedbackImageService.serve(feedbackImageService.findForAdmin(feedbackId, imageId));
     }
 }

@@ -6,17 +6,17 @@ import { useEffect, useRef, useState } from 'react';
 import { getUser } from '@core/lib/auth';
 import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@core/lib/layout';
 import { getDisplayName } from '@core/lib/me';
+import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { EventChannel, EventQuestion, EventRegistration, Locale } from '@studyclub/types';
-import { Badge, Button, Checkbox, Input, Modal, Radio, Select, Textarea } from '@studyclub/ui';
-import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, MapPin, Video } from 'lucide-react';
+import { Badge, Button, Checkbox, HelpPopover, Input, Modal, Radio, Select, Textarea } from '@studyclub/ui';
+import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, Info, MapPin, Video } from 'lucide-react';
 
 import { useEventWorkspace } from './EventWorkspace';
 import {
   CHANNEL_LABEL,
   REGISTRATION_LABEL,
   SELF,
-  ZONES,
   answersForUnchangedQuestions,
   channels,
   eventQuestionVersion,
@@ -42,7 +42,6 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
   const [formQuestions, setFormQuestions] = useState<EventQuestion[]>([]);
   const [questionsUpdated, setQuestionsUpdated] = useState(false);
   const [error, setError] = useState('');
-  const [zone, setZone] = useState('');
   const [applicant, setApplicant] = useState(SELF);
   const receiptRef = useRef<HTMLHeadingElement>(null);
   const [focusRequest, setFocusRequest] = useState(0);
@@ -84,7 +83,7 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
       </div>
     );
   const registration = latestRegistrationsByEvent(state.registrations, SELF.memberId).get(id);
-  const currentZone = zone || displayTimeZone;
+  const currentZone = displayTimeZone;
   const status = eventStatus(state, event, now);
   const canApply = status === '모집 중' && (!registration || registration.status === 'CANCELLED');
   function startApplication() {
@@ -142,18 +141,15 @@ export function EventGuestDetail({ id, locale }: { id: string; locale: Locale })
           <section data-anno='event-apply:2-2' className='space-y-4 border-t border-border py-6'>
             <div className='flex flex-wrap items-center justify-between gap-3'>
               <h2 className='type-title-md'>일정과 장소</h2>
-              <Select
-                aria-label='일정 표시 시간대'
-                size='sm'
-                value={currentZone}
-                onChange={(e) => setZone(e.target.value)}
-              >
-                {ZONES.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </Select>
+              <span className='inline-flex items-center gap-1 type-label-sm text-fg-muted'>
+                내 시간대: {scheduleZoneTitle(currentZone, locale)}
+                <HelpPopover label='행사 기준 시간' icon={<Info />} align='end'>
+                  <span className='block'>{scheduleZoneTitle(event.timeZone, locale)}</span>
+                  <span className='block'>{formatDate(event.startsAt, event.timeZone)}</span>
+                  {event.endsAt && <span className='block'>~ {formatDate(event.endsAt, event.timeZone)}</span>}
+                  <span className='mt-1 block'>신청 마감: {formatDate(event.deadlineAt, event.timeZone)}</span>
+                </HelpPopover>
+              </span>
             </div>
             <dl className='space-y-4 type-body-sm'>
               <div className='flex gap-3'>

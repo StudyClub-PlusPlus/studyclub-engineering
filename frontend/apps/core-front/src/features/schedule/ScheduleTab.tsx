@@ -13,14 +13,17 @@ import {
   Select,
   SelectionCount,
   TableActionBar,
-  TimeSelect,
+  TimePicker,
   cx,
   FilterChip,
+  DatePicker,
+  TimeZonePicker,
 } from '@studyclub/ui';
 import { CalendarPlus, Mic, Plus, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import { type ApiAttendance } from '@/features/attendance/types';
+import { zoneOffset } from '@/features/onboarding/model';
 import { useDisplayTimeZone } from '@/features/profile/use-display-timezone';
 import { meetingFormSchema, type MeetingFormValues } from '@/features/schedule/form-schema';
 import { googleCalendarUrl } from '@/features/schedule/google-calendar';
@@ -60,7 +63,7 @@ import {
   unregisterPresenter,
   updateStudyMeeting,
 } from '@/features/schedule/repository';
-import { SCHEDULE_ZONES, scheduleZoneTitle } from '@/features/schedule/timezone';
+import { SCHEDULE_ZONES, scheduleZoneTitle, zonePlace } from '@/features/schedule/timezone';
 import { type ApiMeetingList } from '@/features/schedule/types';
 import { track } from '@/lib/analytics';
 import { ApiError } from '@/lib/http';
@@ -218,15 +221,14 @@ function AddMeetingForm({
     >
       <div className='flex flex-col gap-4 py-2'>
         <div className='grid gap-3 sm:grid-cols-[10rem_12rem]'>
-          <Input
-            type='date'
+          <DatePicker
             label={draft.repeat === 'none' ? '일자' : '시작 일자'}
             required
             value={draft.date}
             error={errors.date}
-            onChange={(ev) => change({ date: ev.target.value })}
+            onChange={(value) => change({ date: value })}
           />
-          <TimeSelect
+          <TimePicker
             label={`시작 시각 (${zoneLabel(inputZone, firstInstant)})`}
             required
             value={draft.time}
@@ -292,8 +294,7 @@ function AddMeetingForm({
 
         {draft.repeat !== 'none' && (
           <div className='sm:max-w-[18rem]'>
-            <Input
-              type='date'
+            <DatePicker
               label='종료일'
               labelHint={`이 날까지 · 시작부터 최대 ${REPEAT_SPAN_LABEL}`}
               required
@@ -301,7 +302,7 @@ function AddMeetingForm({
               max={maxUntil(draft.date)}
               value={draft.until}
               error={live.until ?? errors.until}
-              onChange={(ev) => change({ until: ev.target.value })}
+              onChange={(value) => change({ until: value })}
             />
           </div>
         )}
@@ -787,25 +788,19 @@ export function ScheduleTab({
             </ButtonLink>
           )}
           {canEdit ? (
-            <label className='flex items-center gap-2 type-label-sm text-fg-muted'>
-              시간대
-              <Select
-                size='sm'
-                aria-label='시간대'
-                value={zone}
-                disabled={Object.keys(incompleteWalls).length > 0}
-                onChange={(event) => setInputZone(event.target.value)}
-              >
-                {!SCHEDULE_ZONES.some((z) => z.iana === zone) && (
-                  <option value={zone}>{scheduleZoneTitle(zone)}</option>
-                )}
-                {SCHEDULE_ZONES.map(({ iana, label }) => (
-                  <option key={iana} value={iana}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <TimeZonePicker
+              className='w-48'
+              size='sm'
+              label='시간대'
+              hideLabel
+              value={zone}
+              disabled={Object.keys(incompleteWalls).length > 0}
+              onChange={setInputZone}
+              options={[
+                ...(SCHEDULE_ZONES.some((z) => z.iana === zone) ? [] : [zone]),
+                ...SCHEDULE_ZONES.map((z) => z.iana),
+              ].map((iana) => ({ value: iana, label: zonePlace(iana), detail: zoneOffset(iana, new Date()) }))}
+            />
           ) : (
             <span className='type-label-sm text-fg-muted'>내 시간대: {scheduleZoneTitle(zone)}</span>
           )}
@@ -919,9 +914,9 @@ export function ScheduleTab({
                 <colgroup>
                   {canEdit && <col className='w-10' />}
                   <col className='w-[6%]' />
-                  <col className='w-[18%]' />
-                  <col className='w-[18%]' />
-                  <col className='w-[28%]' />
+                  <col className='w-36' />
+                  <col className='w-36' />
+                  <col />
                   <col className='w-[13%]' />
                   <col className='w-[13%]' />
                 </colgroup>
@@ -956,9 +951,9 @@ export function ScheduleTab({
               <colgroup>
                 {canEdit && <col className='w-10' />}
                 <col className='w-[6%]' />
-                <col className='w-[18%]' />
-                <col className='w-[18%]' />
-                <col className='w-[28%]' />
+                <col className='w-36' />
+                <col className='w-36' />
+                <col />
                 <col className='w-[13%]' />
                 <col className='w-[13%]' />
               </colgroup>
@@ -1014,14 +1009,13 @@ export function ScheduleTab({
                       </td>
                       <td className='px-2 py-3 text-center'>
                         {editable ? (
-                          <Input
-                            type='date'
+                          <DatePicker
                             aria-label={`${meetingLabel(m)} 일자 (${abbreviation})`}
                             size='sm'
                             value={shown.date}
                             error={errors.date}
-                            onChange={(e) => changeWall(m, { date: e.target.value })}
-                            className='w-full max-w-none px-2 py-1'
+                            onChange={(value) => changeWall(m, { date: value })}
+                            className='w-full max-w-none pl-2'
                           />
                         ) : (
                           dateWithDow(shown.date)
@@ -1030,13 +1024,13 @@ export function ScheduleTab({
                       <td className='px-2 py-3 text-center'>
                         <div className='flex items-center justify-center gap-1.5'>
                           {editable ? (
-                            <TimeSelect
+                            <TimePicker
                               aria-label={`${meetingLabel(m)} 시작 시각 (${abbreviation})`}
                               size='sm'
                               value={shown.time}
                               error={errors.time}
                               onChange={(time) => changeWall(m, { time })}
-                              className='w-full'
+                              className='w-24'
                             />
                           ) : (
                             shown.time

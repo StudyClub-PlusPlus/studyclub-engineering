@@ -909,4 +909,72 @@ class ClubEventTest {
                     .hasValueSatisfying(c -> assertThat(c.getCapacity()).isEqualTo(44));
         }
     }
+
+    @Nested
+    @DisplayName("사이트 판정 — 질문 지문 · 목록 묶음 (specs/event-registration)")
+    class SiteJudgments {
+
+        @Test
+        @DisplayName("질문 지문 — 질문과 상관없는 수정(제목)에는 그대로, 질문 문구를 고치면 바뀐다")
+        void questionVersion() {
+            ClubEvent event = draft().publish();
+            String before = event.questionVersion();
+            String key = event.getQuestions().get(0).getQuestionKey();
+            assertThat(before).matches("[0-9a-f]{64}");
+
+            Draft retitled =
+                    draft().questions(
+                                    new QuestionDraft(
+                                            key,
+                                            "참여 동기",
+                                            EventQuestionType.TEXTAREA,
+                                            true,
+                                            List.of()));
+            retitled.title = "새해 네트워킹 밋업";
+            event.edit(
+                    retitled.build(), event.getVersion(), BEFORE_DEADLINE, EventSeatCounts.none());
+            assertThat(event.questionVersion()).isEqualTo(before);
+
+            event.edit(
+                    draft().questions(
+                                    new QuestionDraft(
+                                            key,
+                                            "참여 계기",
+                                            EventQuestionType.TEXTAREA,
+                                            true,
+                                            List.of()))
+                            .build(),
+                    event.getVersion(),
+                    BEFORE_DEADLINE,
+                    EventSeatCounts.none());
+            assertThat(event.questionVersion()).isNotEqualTo(before);
+        }
+
+        @Test
+        @DisplayName("질문이 없는 행사도 지문이 있다 (빈 배열의 지문)")
+        void emptyQuestionVersion() {
+            ClubEvent event = draft().questions().publish();
+
+            assertThat(event.questionVersion())
+                    .isEqualTo("4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945");
+        }
+
+        @Test
+        @DisplayName("목록 묶음 — 모집 중 · 정원 마감 · 모집 마감은 예정, 종료 · 행사 취소는 지난 행사")
+        void listGroup() {
+            ClubEvent event = draft().publish();
+
+            assertThat(event.listGroup(BEFORE_DEADLINE, EventSeatCounts.none()))
+                    .isEqualTo(EventListGroup.UPCOMING);
+            assertThat(event.listGroup(BEFORE_DEADLINE, counts(100, 0, 0, 40)))
+                    .isEqualTo(EventListGroup.UPCOMING);
+            assertThat(event.listGroup(START, EventSeatCounts.none()))
+                    .isEqualTo(EventListGroup.UPCOMING);
+            assertThat(event.listGroup(END, EventSeatCounts.none())).isEqualTo(EventListGroup.PAST);
+            assertThat(
+                            withStatus(event, EventStatus.CANCELLED)
+                                    .listGroup(BEFORE_DEADLINE, EventSeatCounts.none()))
+                    .isEqualTo(EventListGroup.PAST);
+        }
+    }
 }

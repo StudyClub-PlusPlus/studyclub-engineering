@@ -339,6 +339,33 @@ class AdminStudyCrudIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공(삭제) - 스터디를 지우면 그 스터디의 반 이동 기록도 지운다")
+    void deleteRemovesGroupMoveLog() {
+        Long studyId = createStudy("삭제 반 이동 기록");
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_PARTICIPANT_GROUP_MOVE (STUDY_ID, PARTICIPANT_ID, ACCOUNT_ID,"
+                        + " FROM_GROUP_ID, FROM_GROUP_NAME, TO_GROUP_ID, TO_GROUP_NAME,"
+                        + " MOVED_BY_ACCOUNT_ID, MOVED_AT, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, 1, 2, 3, 'A반', 4, 'B반', ?, ?, ?, ?)",
+                studyId,
+                ADMIN_ID,
+                now,
+                now,
+                now);
+
+        var response = exchange(HttpMethod.DELETE, "/api/admin/studies/" + studyId, ADMIN_ID, null);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT_GROUP_MOVE WHERE STUDY_ID = ?",
+                                Long.class,
+                                studyId))
+                .isZero();
+    }
+
+    @Test
     @DisplayName("실패(삭제) - ADMIN 이 아닌 계정은 403, 스터디는 남는다")
     void deleteRejectsMember() {
         Long studyId = createStudy("삭제 403");

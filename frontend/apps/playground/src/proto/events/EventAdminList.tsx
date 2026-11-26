@@ -29,6 +29,7 @@ export function EventAdminList() {
     const sample = createEventPreviewState().events[0]!;
     setDraft({
       ...sample,
+      timeZone: displayTimeZone,
       id: `preview-event-${crypto.randomUUID()}`,
       title: '',
       summary: '',

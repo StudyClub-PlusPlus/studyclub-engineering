@@ -13,6 +13,8 @@ export interface Participant {
   email: string;
   /** 계정 프로필의 IANA 시간대. 온보딩 전이면 null */
   timeZone: string | null;
+  /** 이 스터디 신청서의 참여 가능 요일 키(`mon` … `sun`). 신청서가 없으면 빈 배열 */
+  availableDays: string[];
   groupId: number;
   participantRole: 'LEADER' | 'MEMBER';
   status: 'ACTIVE' | 'PAUSED' | 'WITHDRAWN' | 'COMPLETED';

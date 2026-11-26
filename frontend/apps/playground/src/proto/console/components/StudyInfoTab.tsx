@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   StudyForm,
@@ -9,8 +9,11 @@ import {
   type StudyFormErrors,
   type StudyFormValues,
 } from '@console/components/StudyForm';
+import { useDisplayTimeZone, useTimeZoneChangeLock } from '@core/lib/use-display-timezone';
 import type { Study } from '@studyclub/types';
 import { Button, Modal } from '@studyclub/ui';
+
+import { saveRecruitmentZones } from '@/proto/lib/recruitment-zone-store';
 
 /**
  * 정보 탭.
@@ -22,21 +25,31 @@ import { Button, Modal } from '@studyclub/ui';
  * TODO(api): PATCH /api/studies/{id} · DELETE /api/studies/{id}
  */
 export function StudyInfoTab({ study }: { study: Study }) {
-  const [form, setForm] = useState<StudyFormValues>(() => studyToForm(study));
+  const zone = useDisplayTimeZone();
+  const [form, setForm] = useState<StudyFormValues>(() => studyToForm(study, zone));
+  const loadedStudyId = useRef(study.id);
+  const dirty = useRef(false);
+  useTimeZoneChangeLock(dirty.current);
   const [errors, setErrors] = useState<StudyFormErrors>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // 스터디가 바뀔 때만 폼을 되돌린다. 회차를 의존성에 넣으면 저장 직후 방금 만든 회차가
-  // 규칙으로 되읽혀 폼이 제자리에서 튄다.
   useEffect(() => {
-    setForm(studyToForm(study));
-    setErrors({});
-    setSaved(false);
-  }, [study]);
+    if (loadedStudyId.current !== study.id) {
+      loadedStudyId.current = study.id;
+      dirty.current = false;
+      setForm(studyToForm(study, zone));
+      setErrors({});
+      setSaved(false);
+    } else if (!dirty.current) {
+      // 모집 시간대 저장 알림으로 제목·설명 등 다른 입력값을 초기화하지 않는다.
+      setForm((current) => ({ ...current, recruitmentTimeZones: studyToForm(study, zone).recruitmentTimeZones, deadline: studyToForm(study, zone).deadline }));
+    }
+  }, [study, zone]);
 
   function change(next: StudyFormValues) {
+    dirty.current = true;
     setForm(next);
     setSaved(false);
   }
@@ -48,6 +61,8 @@ export function StudyInfoTab({ study }: { study: Study }) {
     setSaving(true);
     // TODO(api): PATCH /api/studies/{id}
     await new Promise((r) => setTimeout(r, 400));
+    dirty.current = false;
+    saveRecruitmentZones(study.id, form.recruitmentTimeZones);
     setSaving(false);
     setSaved(true);
   }

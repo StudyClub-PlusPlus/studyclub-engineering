@@ -6,7 +6,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { OnboardingConsent } from '@core/components/OnboardingConsent';
 import { OnboardingDiscord } from '@core/components/OnboardingDiscord';
-import { TimeZonePicker } from '@core/components/TimeZonePicker';
+import { TimeZoneField } from '@core/components/TimeZoneField';
 import { getUser, setUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { resetMemberData, setTimeZone, setMarketing } from '@core/lib/me';
@@ -249,7 +249,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
       }
       // Playground completion only. Never send a real consent or registration request.
       resetMemberData();
-      setTimeZone(draft.timeZone);
+      setTimeZone(draft.timeZone, 'crew@example.com');
       setMarketing(draft.marketingAgreed);
       setUser({
         id: -1001,
@@ -341,7 +341,8 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
           </p>
         </div>
 
-        <TimeZonePicker
+        <TimeZoneField
+          prioritizeCountries
           value={draft.timeZone}
           onChange={(value) => update('timeZone', value)}
           locale={locale}

@@ -4,6 +4,8 @@ import com.studyclub.api.auth.security.RequireOnboarding;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,13 +28,11 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class FeedbackController {
 
     private final FeedbackService feedbackService;
-
-    public FeedbackController(FeedbackService feedbackService) {
-        this.feedbackService = feedbackService;
-    }
+    private final FeedbackImageService feedbackImageService;
 
     @Operation(
             summary = "문의·오류 신고 제출",
@@ -68,5 +68,19 @@ public class FeedbackController {
             Authentication authentication, @PathVariable Long feedbackId) {
         Long accountId = (Long) authentication.getPrincipal();
         return feedbackService.getMine(accountId, feedbackId);
+    }
+
+    @Operation(
+            summary = "내 문의 첨부 이미지",
+            description = "본인 문의의 사진만. 남의 것 · 없는 번호 · 보유 기간이 지난 것 · 지우는 중인 것은 404. 응답은 캐시하지 않는다.")
+    @RequireOnboarding
+    @GetMapping("/me/feedbacks/{feedbackId}/images/{imageId}")
+    public ResponseEntity<InputStreamResource> myFeedbackImage(
+            Authentication authentication,
+            @PathVariable Long feedbackId,
+            @PathVariable Long imageId) {
+        Long accountId = (Long) authentication.getPrincipal();
+        return feedbackImageService.serve(
+                feedbackImageService.findMine(accountId, feedbackId, imageId));
     }
 }

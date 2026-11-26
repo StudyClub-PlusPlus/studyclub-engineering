@@ -54,17 +54,18 @@ export async function POST(req: NextRequest) {
   return withResult(res, result);
 }
 
+// 배포된 Next 는 프록시 뒤에서 req.nextUrl 의 호스트를 자기 주소(localhost:3000)로 본다. 미들웨어 리다이렉트는 Next 가
+// 상대 경로로 바꿔 주지만 라우트 핸들러 응답은 그대로 나가므로 Location 을 상대 경로로 쓴다(NextResponse.redirect 는 절대 주소만 받는다).
+function redirectInSite(path: string): NextResponse {
+  const { pathname, search } = new URL(path, 'http://site.invalid');
+  // 정규화 뒤 `//` 로 시작하면(`/x/..//evil`) 브라우저가 다른 호스트로 읽는다
+  const location = (pathname.startsWith('//') ? '/' : pathname) + search;
+  return new NextResponse(null, { status: 307, headers: { Location: location } });
+}
+
 export async function GET(req: NextRequest) {
   const next = safeNext(req.nextUrl.searchParams.get('next'));
   const result = await refreshAccess(req);
-  const url = req.nextUrl.clone();
-  if ('accessToken' in result) {
-    const target = new URL(next, url);
-    url.pathname = target.pathname;
-    url.search = target.search;
-  } else {
-    url.pathname = '/login';
-    url.search = `?next=${encodeURIComponent(next)}`;
-  }
-  return withResult(NextResponse.redirect(url), result);
+  const target = 'accessToken' in result ? next : `/login?next=${encodeURIComponent(next)}`;
+  return withResult(redirectInSite(target), result);
 }

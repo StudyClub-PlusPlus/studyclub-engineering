@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { meetingWindow } from '@core/lib/attendance';
-import { dateWithDow, type ProtoMeeting, type ScheduleRole } from '@core/lib/meetings';
+import { type ScheduleRole } from '@core/lib/meetings';
 import {
   RETRO_MAX,
   RETRO_SECTIONS,
@@ -16,6 +16,7 @@ import {
   retroStatuses,
   retrosOf,
   saveMyRetro,
+  retroMeetingDate,
   shortDateTime,
   toggleLike,
   validateRetro,
@@ -25,58 +26,10 @@ import {
   type RetroMeetingStatus,
   type RetroSection,
 } from '@core/lib/retros';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import type { Study } from '@studyclub/types';
-import { Badge, Button, ButtonLink, FilterChip, Segmented, Textarea, cx, toast } from '@studyclub/ui';
+import { Badge, Button, ButtonLink, FilterChip, Textarea, cx, toast } from '@studyclub/ui';
 import { ThumbsUp } from 'lucide-react';
-
-/* ── 스터디 일정의 회고 칸 ─────────────────────────────────────────────── */
-
-/**
- * 일정 표 한 줄의 회고 칸. 미팅이 끝나기 전에는 「-」.
- * 크루·네비게이터: 아직 안 썼고 기한 안이면 「회고 작성」, 아니면 「회고 보기」.
- * 네비게이터·캡틴: 반의 작성 현황(쓴 사람/쓸 사람)을 함께 본다. 캡틴은 미팅 참여자가 아니라 쓰지 않는다.
- */
-export function RetroCell({
-  study,
-  meeting,
-  role,
-  locale,
-}: {
-  study: Study;
-  meeting: ProtoMeeting;
-  role: ScheduleRole;
-  locale: string;
-}) {
-  const [status, setStatus] = useState<RetroMeetingStatus | undefined>();
-  useEffect(() => setStatus(retroStatusOf(study, meeting.id)), [study, meeting.id]);
-  if (!status?.ended) return <span className='inline-block py-1.5 text-fg-muted'>-</span>;
-
-  const canWrite = role !== 'captain' && status.open && !status.mine;
-  return (
-    <span className='inline-flex flex-col items-center gap-1 py-0.5'>
-      {canWrite ? (
-        <ButtonLink
-          data-anno='retro:1-1'
-          size='sm'
-          linkAs={Link}
-          href={retroHref(locale, study.study_id, meeting.id, true)}
-        >
-          회고 작성
-        </ButtonLink>
-      ) : (
-        <ButtonLink
-          data-anno='retro:1-2'
-          size='sm'
-          variant='secondary'
-          linkAs={Link}
-          href={retroHref(locale, study.study_id, meeting.id)}
-        >
-          회고 보기
-        </ButtonLink>
-      )}
-    </span>
-  );
-}
 
 /* ── 👍 ───────────────────────────────────────────────────────────────── */
 
@@ -110,38 +63,28 @@ function LikeChip({ retro, section, onToggle }: { retro: Retro; section: RetroSe
 
 /* ── 회고 탭 ───────────────────────────────────────────────────────────── */
 
-type View = 'author' | 'question';
-const VIEW_KEY = 'sc_retro_view';
-
-function readView(role: ScheduleRole): View {
-  try {
-    const v = localStorage.getItem(VIEW_KEY);
-    if (v === 'author' || v === 'question') return v;
-  } catch {
-    // 못 읽으면 역할 기본값
-  }
-  return role === 'crew' ? 'author' : 'question';
-}
-
 export function RetroBoard({
   study,
   role,
   locale,
   meetingId,
+  onMeetingChange,
+  members,
 }: {
   study: Study;
   role: ScheduleRole;
   locale: string;
   meetingId?: string;
+  /** 회차를 고를 때 — 없으면 사용자 사이트 주소(…/retro?meeting=)를 바꾼다. 백오피스 회고 탭은 탭 안 상태로 바꾼다 */
+  onMeetingChange?: (meetingId: string) => void;
+  /** 이 사람들만 쓸 사람으로 본다 — 백오피스 회고 탭에서 고른 반의 크루. 없으면 스터디 전체(사용자 사이트는 서버가 내 반만 준다) */
+  members?: readonly string[];
 }) {
   const router = useRouter();
+  const zone = useDisplayTimeZone();
   const [statuses, setStatuses] = useState<RetroMeetingStatus[] | null>(null);
-  const [view, setView] = useState<View>('author');
   const [rev, setRev] = useState(0);
-  useEffect(() => {
-    setStatuses(retroStatuses(study));
-    setView(readView(role));
-  }, [study, role, rev]);
+  useEffect(() => setStatuses(retroStatuses(study, undefined, members)), [study, members, rev]);
 
   if (!statuses) return null;
   const ended = statuses.filter((s) => s.ended);
@@ -153,21 +96,17 @@ export function RetroBoard({
     );
   }
   const current = ended.find((s) => s.meeting.id === meetingId) ?? ended[ended.length - 1];
-  const retros = retrosOf(study, current.meeting.id);
-  const missing = missingOf(study, current.meeting.id);
+  // 캡틴은 미팅 참여자가 아니다 — 「나」로 표시할 답이 없다. 프로토 로그인 회원이 그 반 참여자로도 잡혀 있어 백오피스 회고 탭에서 걸러 준다
+  const retros = retrosOf(study, current.meeting.id, undefined, members).map((r) =>
+    role === 'captain' && r.me ? { ...r, me: false } : r,
+  );
+  const missing = missingOf(study, current.meeting.id, undefined, members);
   const lead = role !== 'crew';
   const canWrite = role !== 'captain' && current.open;
+  const deadline = shortDateTime(current.deadline.toISOString(), zone, true);
   const like = (r: Retro, s: RetroSection) => {
     toggleLike(study, current.meeting.id, r.authorId, s);
     setRev((n) => n + 1);
-  };
-  const changeView = (v: View) => {
-    setView(v);
-    try {
-      localStorage.setItem(VIEW_KEY, v);
-    } catch {
-      // 다음에 열 때 기본값으로 열린다
-    }
   };
 
   return (
@@ -180,83 +119,62 @@ export function RetroBoard({
               role='radio'
               selectMode='single'
               selected={s.meeting.id === current.meeting.id}
-              onClick={() => router.replace(retroHref(locale, study.study_id, s.meeting.id))}
+              onClick={() =>
+                onMeetingChange
+                  ? onMeetingChange(s.meeting.id)
+                  : router.replace(retroHref(locale, study.study_id, s.meeting.id))
+              }
             >
               {s.label}
             </FilterChip>
           ))}
         </div>
-        <div data-anno='retro:2-2'>
-          <Segmented<View>
-            size='sm'
-            shape='pill'
-            value={view}
-            onChange={changeView}
-            options={[
-              { value: 'author', label: '작성자별' },
-              { value: 'question', label: '문항별' },
-            ]}
-          />
-        </div>
-      </div>
-
-      <div className='flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface-raised px-5 py-4'>
-        <div data-anno='retro:2-3' className='min-w-0'>
-          <p className='type-label-lg text-fg'>
-            {current.label} · {dateWithDow(current.meeting.date)}
-            {current.meeting.title ? ` · ${current.meeting.title}` : ''}
-          </p>
-          <p className='mt-0.5 type-body-sm text-fg-muted'>
-            {current.open
-              ? `${shortDateTime(current.deadline.toISOString())}까지 쓰고 고칠 수 있어요`
-              : '작성 기한이 지났어요'}
-          </p>
-        </div>
-        <div className='flex items-center gap-3'>
-          <span data-anno='retro:2-4' className='tnum type-body-sm text-fg-secondary'>
-            {current.targets}명 중 <b className='text-fg'>{current.written}명</b> 작성
-          </span>
-          {canWrite && !current.mine && (
-            <ButtonLink
-              data-anno='retro:2-5'
-              size='sm'
-              linkAs={Link}
-              href={retroHref(locale, study.study_id, current.meeting.id, true)}
-            >
-              내 회고 작성
-            </ButtonLink>
+        <div data-anno='retro:2-3' className='flex flex-wrap items-center gap-3'>
+          {/* 쓴 사람 수는 네비게이터 · 캡틴만 — 크루에게는 남이 썼는지 보이지 않는다 */}
+          {lead && (
+            <span data-anno='retro:2-4' className='tnum type-body-sm text-fg-secondary'>
+              {current.targets}명 중 <b className='text-fg'>{current.written}명</b> 작성
+            </span>
           )}
+          <span className='tnum type-body-sm text-fg-muted'>
+            {current.open ? `${deadline}까지` : `${deadline} 마감`}
+          </span>
+          {role !== 'captain' &&
+            (!current.open ? (
+              <Button data-anno='retro:2-5' size='sm' disabled>
+                회고 마감
+              </Button>
+            ) : (
+              <ButtonLink
+                data-anno='retro:2-5'
+                size='sm'
+                variant={current.mine ? 'secondary' : 'primary'}
+                linkAs={Link}
+                href={retroHref(locale, study.study_id, current.meeting.id, true)}
+              >
+                {current.mine ? '내 회고 수정' : '회고 작성'}
+              </ButtonLink>
+            ))}
         </div>
       </div>
 
       <div className={cx(lead && 'grid gap-4 lg:grid-cols-[13rem_1fr]')}>
         {lead && <WritingStatus retros={retros} missing={missing} />}
         <div className='flex min-w-0 flex-col gap-4'>
+          {/* 크루에게는 누가 안 썼는지(이름)를 보이지 않는다 — 내가 안 썼을 때만 쓰자고 권한다. 이름 목록은 네비게이터 · 캡틴의 작성 현황에만. */}
+          {canWrite && !current.mine && (
+            <p data-anno='retro:4' className='rounded-card bg-info-bg px-5 py-3 type-body-sm text-info-fg'>
+              아직 회고를 작성하지 않았어요! 회고를 작성해 생각을 나누어 보아요.
+            </p>
+          )}
           {retros.length === 0 ? (
             <p className='rounded-card border border-dashed border-border py-12 text-center type-body-sm text-fg-muted'>
               아직 이 회차에 남긴 회고가 없어요.
             </p>
-          ) : view === 'author' ? (
-            <div className='grid gap-4 md:grid-cols-2'>
-              {retros.map((r) => (
-                <AuthorCard
-                  key={r.authorId}
-                  retro={r}
-                  canEdit={r.me && current.open}
-                  editHref={retroHref(locale, study.study_id, current.meeting.id, true)}
-                  onLike={(s) => like(r, s)}
-                />
-              ))}
-            </div>
           ) : (
             RETRO_SECTIONS.map((s, i) => (
               <QuestionCard key={s.key} index={i + 1} section={s.key} retros={retros} lead={lead} onLike={like} />
             ))
-          )}
-          {!lead && missing.length > 0 && (
-            <p data-anno='retro:4' className='type-body-sm text-fg-muted'>
-              아직 쓰지 않은 참여자 {missing.length}명 · {missing.map((m) => m.name).join(', ')}
-            </p>
           )}
         </div>
       </div>
@@ -274,65 +192,6 @@ function SectionTag({ index, section }: { index: number; section: RetroSection }
   );
 }
 
-function AuthorCard({
-  retro,
-  canEdit,
-  editHref,
-  onLike,
-}: {
-  retro: Retro;
-  canEdit: boolean;
-  editHref: string;
-  onLike: (s: RetroSection) => void;
-}) {
-  return (
-    <article
-      data-anno={retro.me ? 'retro:3 retro:3-1' : 'retro:3'}
-      className={cx(
-        'rounded-card border bg-surface-raised p-5 shadow-sm',
-        retro.me ? 'border-border-strong' : 'border-border',
-      )}
-    >
-      <header className='flex items-center gap-2'>
-        <b className='type-label-lg text-fg'>{retro.authorName}</b>
-        {retro.me && <Badge tone='member'>내 회고</Badge>}
-        {retro.navigator && <Badge tone='navigator'>네비게이터</Badge>}
-        {canEdit && (
-          <span className='ml-auto'>
-            <ButtonLink data-anno='retro:3-2' size='sm' variant='tertiary' linkAs={Link} href={editHref}>
-              수정
-            </ButtonLink>
-          </span>
-        )}
-      </header>
-      {/* 넓은 화면은 「문항 · 글 · 👍」 한 줄(문항 칸 폭 고정 — 글 시작이 세로로 맞는다), 좁은 화면은 문항 아래에 「글 · 👍」.
-          제목 · 👍 는 글 첫 줄 높이에 두고 긴 글만 아래로 꺾인다. 문항별 보기의 「이름 · 글 · 👍」 줄과 같은 틀.
-          비운 문항(소감)은 백오피스 표처럼 제목과 「-」만 — 👍 할 답이 없다. */}
-      {RETRO_SECTIONS.map((s, i) => (
-        <section
-          key={s.key}
-          className='mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 border-t border-dashed border-border pt-3 md:grid-cols-[5.75rem_minmax(0,1fr)_auto]'
-        >
-          <span className='col-span-2 md:col-span-1 md:pt-1'>
-            <SectionTag index={i + 1} section={s.key} />
-          </span>
-          {retro[s.key] ? (
-            <>
-              <p className='whitespace-pre-wrap break-words pt-1.5 type-body-sm text-fg'>{retro[s.key]}</p>
-              <LikeChip retro={retro} section={s.key} onToggle={() => onLike(s.key)} />
-            </>
-          ) : (
-            <p className='pt-1.5 type-body-sm text-fg-muted'>
-              <span aria-hidden>-</span>
-              <span className='sr-only'>{s.label}을 남기지 않았어요</span>
-            </p>
-          )}
-        </section>
-      ))}
-    </article>
-  );
-}
-
 function QuestionCard({
   index,
   section,
@@ -347,8 +206,8 @@ function QuestionCard({
   onLike: (r: Retro, s: RetroSection) => void;
 }) {
   const answered = retros.filter((r) => r[section]);
-  // 네비게이터·캡틴은 👍 많은 순 — 공감이 많은 개선점부터 다음 미팅에 반영한다. 크루는 내 답이 맨 앞, 나머지는 쓴 순서.
-  const list = lead ? [...answered].sort((a, b) => b.likes[section] - a.likes[section]) : answered;
+  // 누구나 👍 많은 순 — 공감이 많은 의견부터 읽는다. 같으면 쓴 순서. 내 답은 「나」 표시로 찾는다
+  const list = [...answered].sort((a, b) => b.likes[section] - a.likes[section]);
   return (
     <section
       data-anno={index === 1 ? 'retro:3' : undefined}
@@ -423,6 +282,7 @@ export function RetroWriteForm({
   meetingId?: string;
 }) {
   const router = useRouter();
+  const zone = useDisplayTimeZone();
   const [status, setStatus] = useState<RetroMeetingStatus | null | undefined>();
   const [answers, setAnswers] = useState<RetroAnswers>({ good: '', improve: '', feeling: '' });
   const [errors, setErrors] = useState<RetroErrors>({});
@@ -489,14 +349,14 @@ export function RetroWriteForm({
       >
         <div>
           <p className='type-label-lg text-fg'>
-            {status.label} · {dateWithDow(status.meeting.date)}
+            {status.label} · {retroMeetingDate(study, status.meeting, zone)}
             {status.meeting.title ? ` · ${status.meeting.title}` : ''}
           </p>
           <p className='mt-0.5 type-body-sm text-fg-muted'>
-            {shortDateTime(status.deadline.toISOString())}까지 쓰고 고칠 수 있어요
+            {shortDateTime(status.deadline.toISOString(), zone, true)}까지 쓰고 고칠 수 있어요
           </p>
         </div>
-        <Badge tone='ended'>미팅 종료 {shortDateTime(end.toISOString())}</Badge>
+        <Badge tone='ended'>미팅 종료 {shortDateTime(end.toISOString(), zone, true)}</Badge>
       </div>
 
       <form

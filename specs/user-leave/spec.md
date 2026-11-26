@@ -69,6 +69,7 @@
 4. 아래를 **한 트랜잭션**으로 처리한다 — 하나만 지워지고 하나는 남는 중간 상태를 두지 않는다:
    - `ACCOUNT_LEAVE_REASON` 1행 insert (`reason`, `createdAt=now`). accountId 는 담지 않는다.
    - `ACCOUNT_IDENTITY` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 `UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID)` 에 걸려 [완료 기준 6](#완료-기준)이 깨진다).
+   - **행사 신청 (애플 연결 해제 뒤, 아래 `NOTIFICATION` 비식별보다 먼저)**: `CLUB_EVENT_REGISTRATION` WHERE `ACCOUNT_ID=accountId` 의 `CLUB_EVENT_ID` 를 상태와 관계없이 모아 그 `CLUB_EVENT` 행들을 ID 오름차순으로 쓰기 잠금한다. 그중 `STATUS ≠ CANCELLED` 이고 종료 전(`now < effectiveEndsAt`)인 행사의 `PENDING`·`CONFIRMED` 신청을 `STATUS=CANCELLED`·`CANCEL_REASON=ACCOUNT_DELETED`·`STATUS_CHANGED_BY=NULL` 로 조건부 갱신한다 — 자리를 돌려준다. 도메인 이벤트 · 자동 메일은 없다. 종료·취소된 행사의 신청과 끝난(`DECLINED`·`CANCELLED`) 이력은 그대로 둔다. 잠금 순서는 언제나 `ACCOUNT` → `CLUB_EVENT` 다 (신청 제출도 같은 순서라 교착이 없고, 행사 목록을 고른 뒤 새 신청이 끼어들지 않는다). 애플 연결 해제는 외부 호출이라 그 뒤에 행사 행을 잠근다 — 애플 응답을 기다리는 동안 같은 행사의 다른 회원 신청이 막히지 않게 (PR #516 리뷰). 행사 잠금을 먼저 잡아 두므로 행사 잠금 아래에서 메일을 예약하던 요청은 이미 커밋해 아래 비식별에 걸리거나, 탈퇴가 끝난 뒤 계정이 없음을 보고 예약하지 않는다 — [event-registration 「탈퇴할 때」](../event-registration/spec.md#탈퇴할-때).
    - `REFRESH_TOKEN` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (발급된 refresh token 무효화 — 탈퇴 후 남은 token 으로 새 access token 을 발급받는 경로를 차단한다).
    - `STUDY_PARTICIPANT` WHERE `ACCOUNT_ID=accountId` 전부 `STATUS=DELETED` + `LEFT_AT=now` 로 전환 (물리 삭제 아님 — 지우면 `STUDY_ATTENDANCE` 가 갈 곳을 잃어 출석률 집계에서 전체 이력이 빠진다). 이 사람이 맡고 있던 네비게이터 자리가 사라진다. 공동 네비게이터가 없었다면 그 스터디는 네비게이터가 없는 상태가 되고, 있었다면 그 사람만 남는다 — 어느 쪽이든 시스템은 구분하지 않고 똑같이 처리한다.
    - `STUDY_BOOKMARK` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).
@@ -307,10 +308,12 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 | 디스코드 연동 (`ACCOUNT.DISCORD_*`) | `ACCOUNT` 삭제에 포함 | "디스코드 연동 정보 즉시 파기" |
 | 프로필 사진 파일 (S3 `gigs/profiles/…`, `STORAGE_OBJECT` 행) | 트랜잭션 안에서 `DELETING`, 커밋 뒤 S3 파일·행 삭제. 실패 시 정리 배치가 재시도 | "프로필 즉시 파기" — 주소만 지우면 파일이 공개 주소에 남는다 |
 | `STUDY_ATTENDANCE` (출석) | 보존, 손대지 않음 | "출석 기록 보존, 비식별 처리" — FK 없어 자동으로 식별 불가 |
+| `STUDY_PARTICIPANT_GROUP_MOVE` (반 이동 기록) | 보존, 손대지 않음 | 출석률 구간의 재료라 지우면 구간을 잃는다. 옮긴 사람(`ACCOUNT_ID`)과 옮긴 캡틴(`MOVED_BY_ACCOUNT_ID`) 모두 FK 없는 ID 참조라 `STUDY_ATTENDANCE` 와 같은 매커니즘으로 비식별. 캡틴이 탈퇴해도 `MOVED_BY_ACCOUNT_ID` 를 비우지 않는다 — 권한 판정에 쓰지 않는다 ([ERD](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md#쓰는-규칙)) |
 | `STUDY_REVIEW` (후기) | 보존, 손대지 않음 | 공개 콘텐츠, 다른 회원이 참고. `STUDY_ATTENDANCE` 와 동일 매커니즘으로 자동 비식별 |
 | `STUDY_APPLICATION` (신청서 답변) | 보존, 단 `FORM_ANSWER.discordNickname` 만 비식별 | 나머지는 `STUDY_ATTENDANCE` 와 동일 매커니즘. `discordNickname` 은 행에 직접 박힌 PII 라 별도 마스킹 필요 — [상세](#study_application-의-form_answerdiscordnickname) |
 | `STUDY_PROPOSAL` (제안 본문) | `STATUS=OPEN` 인 것만 `CLOSED` 로 전환, 행·본문 보존 | [STUDY_PROPOSAL 처리](#study_proposal-처리--기존-상태-전이-재사용) — 제3자 관심 표시 보호 |
 | `NOTIFICATION` (알림 이력) | 보존 + PII 필드만 비식별 | [알림 비식별화](#알림-비식별화) |
+| `CLUB_EVENT_REGISTRATION` (행사 신청) | 종료 전 행사의 확인 대기 · 참가 확정만 `CANCELLED`·`ACCOUNT_DELETED` 로 바꿔 자리를 돌려주고, 행 · 질문 · 답 사본은 보존 | 연락처 사본이 없어 지울 칸이 없다. `ACCOUNT_ID` 는 FK 없는 ID 참조라 `STUDY_ATTENDANCE` 와 같은 매커니즘으로 비식별. 자유 서술 답은 스터디 신청과 같은 기준으로 자동 파기하지 않는다 (P3, [event-registration](../event-registration/spec.md#탈퇴할-때)) |
 | 문의 첨부 이미지 (S3 `gigs/feedbacks/…`, `STORAGE_OBJECT` 행, `FEEDBACK_IMAGE` 행) | 트랜잭션 안에서 `STORAGE_OBJECT` 를 `DELETING`·`FEEDBACK_IMAGE` 삭제, 커밋 뒤 S3 파일·행 삭제 | 프로필 사진과 같은 이유 — 주소만 지우면 파일이 공개 주소에 남는다 (2026-10-26, PR #341) |
 | `FEEDBACK` (문의·오류 신고 본문·회신·메모) | 첫 답변일부터 1년, 미답변은 접수일부터 1년까지 보존한 뒤 자동 물리 삭제 | 탈퇴로 기준일을 바꾸지 않는다. 운영 화면에는 「탈퇴한 사용자」로 보이지만 자유입력 내용에는 개인정보가 남을 수 있다 ([결정](../../docs/share/2026-10-31-feedback-retention.md)) |
 | 탈퇴 사유 | `ACCOUNT_LEAVE_REASON` 신규 1행, 계정과 미연결 | "사유만 쌓는다" |
@@ -452,6 +455,7 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 | 2026-10-02 | 확인 실패(unknown) 상태에서 탈퇴를 하드 블록하도록 변경 — "그래도 탈퇴" 우회 경로를 없애고, 확인(ok)이 성공할 때까지 탈퇴하기 버튼을 비활성화·재시도 버튼만 제공. "맡은 진행 중인 스터디" 판정에 `relation` 대신 `STUDY.STATUS` 를 쓰는 안을 리뷰에서 재검토 — `STUDY.STATUS` 전환 기능이 아직 없어 지금은 `relation` 을 유지하고, 그 기능이 생기면 `STUDY.STATUS=ONGOING` + 참여 상태 + 역할을 같이 보는 조건으로 바꾸기로 하고 후속 작업으로 메모 | 구현 PR #141 3차 리뷰 후속 논의 (j00hyun) |
 | 2026-10-03 | 마이그레이션 번호를 beta 의 V23 과 겹치지 않게 V25 로 재조정(beta 에 V23\_\_add_study_meeting_title 추가) | beta 머지 — 회차 관리 API(PR #162 이후) 추가로 발생한 번호 충돌 |
 | 2026-10-31 | 탈퇴 커밋 뒤 운영 알림 채널에 「회원 탈퇴」 알림을 보낸다 (`account.deleted` → `OpsAlertListener`). 디스코드 role 은 여전히 떼지 않고 운영자가 손으로 정리한다 | #02-squad-discord 합의 (2026-10-30, 박주현·황준희·강주영) |
+| 2026-11-20 | 행사 신청 단계 추가 — 계정 잠금 뒤 그 계정 신청이 걸린 행사를 ID 오름차순으로 잠그고, 종료 전 행사의 유효 신청을 `ACCOUNT_DELETED` 로 취소 (메일 없음). `NOTIFICATION` 비식별보다 먼저 돈다 | event-registration 스펙 PR #508 리뷰 R1 · event-participant P3 |
 
 
 ## 디스코드 연동 정보 삭제 안내 (화면 계약)

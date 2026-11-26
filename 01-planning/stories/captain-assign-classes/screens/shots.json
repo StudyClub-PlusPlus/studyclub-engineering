@@ -1,0 +1,90 @@
+{
+  "shots": [
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-simple",
+      "title": "신청자 탭 — 처음엔 표를 접고 「가장 많이 되는 시간」만 (간단히 보기)",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": [
+        "신청자"
+      ],
+      "scrollTo": "[data-anno~=\"class:3\"]"
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-board",
+      "title": "「표 펼치기」 — 시각 × 요일 칸 · 칸 안 인원 (기준: 백오피스 표시 시간대)",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": [
+        "신청자",
+        "표 펼치기"
+      ],
+      "scrollTo": "[data-anno~=\"class:3\"]"
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-hover",
+      "title": "칸에 올리면 그 시각에 되는 크루 닉네임을 말풍선으로 보인다",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": [
+        "신청자",
+        "표 펼치기"
+      ],
+      "scrollTo": "[data-anno~=\"class:3\"]",
+      "hover": "토 21시 KST · 11명"
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-best",
+      "title": "「가장 많이 되는 시간」을 누르면 그 구간 내내 되는 크루만 남고, 「명단에서 보기」가 생긴다",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": [
+        "신청자",
+        "일 7~8시 KST · 14명"
+      ],
+      "scrollTo": "[data-anno~=\"class:3\"]",
+      "fullPage": true
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-picked",
+      "title": "칸을 고르면 그 시각에 되는 크루만 명단에 남는다 · 명단의 참여 가능 요일 열",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": [
+        "신청자",
+        "표 펼치기",
+        "목 21시 KST · 10명"
+      ],
+      "scrollTo": "[data-anno~=\"class:4\"]"
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "availability-mobile",
+      "title": "모바일 — 요일 7열이라 칸판은 화면에 맞고, 명단 표는 가로로 민다",
+      "path": "/proto/console/studies/1",
+      "viewport": "mobile",
+      "click": [
+        "신청자",
+        "표 펼치기"
+      ],
+      "scrollTo": "[data-anno~=\"class:4\"], [data-anno~=\"class:5\"]",
+      "fullPage": false
+    },
+    {
+      "story": "captain-assign-classes",
+      "name": "results-days",
+      "title": "신청 결과 — 참여 가능한 요일은 응답 그대로 막대 하나, 함께 모일 시간은 신청자 탭으로",
+      "path": "/proto/console/studies/1",
+      "viewport": "desktop",
+      "click": [
+        "신청 결과"
+      ],
+      "scrollTo": "[data-anno~=\"results:5\"]"
+    }
+  ]
+}

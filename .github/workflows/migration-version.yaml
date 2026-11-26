@@ -19,6 +19,13 @@
 # 합친 가상 커밋)을 체크아웃한다. 그래서 이미 base 에 들어간 V26 이 이 PR 의 CI 에서
 # 보인다. 다만 base 가 움직여도 워크플로가 **자동 재실행되지 않아 결과가 낡는다** —
 # 브랜치 보호의 `strict`(up to date 요구)가 그 구멍을 막는다. 둘이 한 쌍이다.
+#
+# ## beta 는 strict 대신 머지 큐 (2026-11-23)
+#
+# beta 는 strict 를 끄고 머지 큐를 쓴다. 큐는 "beta + 앞에 줄 선 PR 들 + 이 PR" 을
+# 합친 임시 브랜치에서 이 잡을 돌리므로, 앞 PR 이 넣은 V26 이 그대로 보인다 —
+# strict 가 막던 구멍을 큐가 막는다. 그래서 아래 `merge_group` 트리거가 필수다.
+# develop · main 은 그대로다.
 
 name: migration-version
 
@@ -27,6 +34,9 @@ on:
     branches: [beta, develop, main]
   push:
     branches: [beta, develop, main]
+  # 머지 큐가 임시 브랜치(gh-readonly-queue/beta/...)에서 필수 검사를 돌릴 때 들어오는 이벤트.
+  # 이게 없으면 큐가 이 체크를 영원히 기다린다.
+  merge_group:
   workflow_dispatch:
 
 permissions:

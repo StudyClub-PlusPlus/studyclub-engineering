@@ -1,5 +1,4 @@
 import { getStudies, getStudy, type Locale } from '@core/lib/content';
-import { withConfirmedScheduleExample } from '@core/lib/recruit';
 
 import { StudyDetailView } from '@/proto/core/components/StudyDetailView';
 
@@ -17,21 +16,17 @@ export async function generateStaticParams() {
  */
 export default async function StudyDetail({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: Locale; id: string }>;
-  searchParams: Promise<{ scenario?: string }>;
 }) {
-  const schedulePreview = (await searchParams).scenario === 'confirmed-schedule';
   const { locale, id } = await params;
   const study = await getStudy(id);
 
   return (
     <StudyDetailView
-      study={study && schedulePreview ? withConfirmedScheduleExample(study) : study}
+      study={study}
       id={id}
       locale={locale}
-      schedulePreview={schedulePreview}
     />
   );
 }

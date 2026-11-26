@@ -13,7 +13,8 @@ import { APPLY_COMPLETE_SPEC, APPLY_SPEC, DISCORD_GATE_SPEC } from '@/proto/spec
 /** 스터디 상세보기 — 신청 버튼을 누르기 전, 상세 페이지 자체. */
 export const VIEW_SPEC: ScreenSpec = {
   screen: '스터디 상세',
-  notes: ['날짜·시각·원본 시간대가 확정된 일정만 프로필 시간대(없으면 브라우저)로 표시한다', '지역명과 해당 날짜의 시간대 약칭을 표시한다. 시간대 전환 메뉴는 없다', '미확정 일정·시간대 미정·자유 문구는 그대로 표시한다. 시작 예정일로 시간을 추측하지 않는다'],
+  notes: [
+    '시간대 공통 규칙: 01-planning/stories/timezone-expansion/PRD.md.','진행 일정은 운영자가 직접 입력한 문구를 그대로 표시한다. 회원 시간대로 자동 변환하지 않는다', '모집 시간대는 일정 문구와 별개로 표시한다', '모집 마감 일시는 회원 시간대로 변환하고 약칭을 붙인다. 현재 시각이 저장된 UTC 마감 이상이면 D-day와 관계없이 마감이다'],
   chip: '스터디 상세보기',
   scope: 'view',
   entries: [

@@ -1,5 +1,6 @@
 import { resolveWallInput } from '@core/lib/meetings';
-import { zoneAbbreviation } from '@core/lib/schedule-timezone';
+import { isValidZone, zoneAbbreviation } from '@core/lib/schedule-timezone';
+import { formattingZone } from '@core/lib/time-zone-rules';
 import { EVENT_PREVIEW_MEMBER } from '@studyclub/mock/data';
 import type {
   EventChannel,
@@ -49,12 +50,6 @@ export const REGISTRATION_LABEL = {
   DECLINED: '참가 불가',
   CANCELLED: '신청 취소',
 };
-export const ZONES = [
-  { value: 'Asia/Seoul', label: '한국 (서울)' },
-  { value: 'America/Toronto', label: '캐나다 (토론토)' },
-  { value: 'America/New_York', label: '미국 (뉴욕)' },
-  { value: 'America/Los_Angeles', label: '미국 (로스앤젤레스)' },
-];
 
 export function eventQuestionVersion(questions: EventQuestion[]) {
   return JSON.stringify(questions.map(({ id, label, type, required, options }) => [id, label, type, required, options]));
@@ -95,7 +90,7 @@ export function wallTime(iso: string, timeZone: string) {
   if (!iso || !Number.isFinite(Date.parse(iso))) return '';
   const p = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
-      timeZone,
+      timeZone: formattingZone(timeZone, new Date(iso)),
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -136,7 +131,7 @@ export function eventAdminPage(events: PreviewEvent[], page: number) {
 export function formatDate(iso: string, zone: string, locale = 'ko-KR', includeTimeZone = true) {
   const at = new Date(iso);
   const formatted = new Intl.DateTimeFormat(locale, {
-    timeZone: zone,
+    timeZone: formattingZone(zone, at),
     month: 'long',
     day: 'numeric',
     weekday: 'short',
@@ -233,7 +228,7 @@ export function validateEvent(event: PreviewEvent, state: EventPreviewState, now
     Date.parse(event.deadlineAt) <= now
   )
     return '신청 마감시간을 현재보다 늦게 설정해 주세요.';
-  if (!ZONES.some((zone) => zone.value === event.timeZone)) return '기준 시간대를 선택해 주세요.';
+  if (!isValidZone(event.timeZone)) return '기준 시간대를 선택해 주세요.';
   for (const channel of channels(event)) {
     const info = seatInfo(state, event, channel);
     if (!Number.isInteger(info.capacity) || info.capacity < 1 || info.capacity > 10000)
@@ -347,7 +342,7 @@ function eventNoticeValues(event: PreviewEvent, channel: EventChannel | 'ALL', d
     eventTitle: event.title,
     channel: channel === 'ALL' ? FORMAT_LABEL[event.format] : CHANNEL_LABEL[channel],
     eventSchedule: event.endsAt
-      ? `${formatDate(event.startsAt, displayTimeZone, 'ko-KR', false)} ~ ${formatDate(event.endsAt, displayTimeZone)}`
+      ? `${formatDate(event.startsAt, displayTimeZone)} ~ ${formatDate(event.endsAt, displayTimeZone)}`
       : formatDate(event.startsAt, displayTimeZone),
     participation: modes.map((mode) => {
       const detail = mode === 'OFFLINE' ? event.location : event.onlineUrl || '온라인 참여 링크는 추후 안내드립니다.';

@@ -1,12 +1,12 @@
 # 행사 참가자 API Spec: 캡틴이 신청자를 보고 참가를 처리한다
 
-> ERD: 신청 테이블이 아직 없다. 아래 「데이터 모델 제안: CLUB_EVENT_REGISTRATION」이 초안이고, ST-038 신청 스펙(PR #508)과 합의한 뒤 **공통 신청 테이블 PR**(P5)이 `docs/erd/CLUB_EVENT_REGISTRATION.md` 와 마이그레이션을 만든다. 그 밖: [ACCOUNT](../../docs/erd/ACCOUNT.md), [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md), 행사 테이블은 [event 「데이터 모델 제안」](../event/spec.md#데이터-모델-제안) (PR #478 V59)
-> 생성일: 2026-11-18 · 리뷰 반영: 2026-11-19 (PR #479 리뷰 P1~P6 · 탈퇴·메일 예약 동시성 · PR #509 행사 취소 행동 분석)
-> 상태: 스펙작성중
+> ERD: [CLUB_EVENT_REGISTRATION](../../docs/erd/CLUB_EVENT_REGISTRATION.md) (`V62__create_club_event_registration.sql`, 공통 신청 PR #516. 아래 「데이터 모델: CLUB_EVENT_REGISTRATION」), [ACCOUNT](../../docs/erd/ACCOUNT.md), [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md), 행사 테이블은 [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md) (V59)
+> 생성일: 2026-11-18 · 리뷰 반영: 2026-11-19 (PR #479 리뷰 P1~P6 · 탈퇴·메일 예약 동시성 · PR #509 행사 취소 행동 분석) · 확정: 2026-11-25 (PR #516 · #517 병합 뒤 `beta` 코드와 대조)
+> 상태: 스펙확정 — 구현 계획 [plan](./plan.md) · [tasks](./tasks.md)
 >
 > Story PRD:
 > - [캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다](../../01-planning/stories/captain-manage-events/PRD.md) (ST-037) §6 「참가자」 P1~P6 · §3 데이터와 처리 규칙 · 「행사 취소 행동 분석」 · 「후속 구현 합의」
-> - 경계: [크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다](../../01-planning/stories/crew-apply-event/PRD.md) (ST-038) §3 · §4 · §5 — 신청 테이블을 함께 쓴다. 크루 신청 스펙은 [PR #508](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/508) (`specs/event-registration/spec.md`)
+> - 경계: [크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다](../../01-planning/stories/crew-apply-event/PRD.md) (ST-038) §3 · §4 · §5 — 신청 테이블을 함께 쓴다. 크루 신청 스펙은 [event-registration](../event-registration/spec.md) (PR #517 에서 구현)
 >
 > 기준 스펙: [event](../event/spec.md) (잠금 · 정원 · 신청 질문의 보존 · 판정 메서드) · [event-status](../event-status/spec.md) (행사 취소가 바꾸는 신청) · [admin-users](../admin-users/spec.md#이메일-보기) (이메일 보기 규약)
 > 기준 프로토타입: playground `/proto/console/events/{id}` 참가자 탭 (`EventAdminDetail.tsx`)
@@ -14,14 +14,14 @@
 
 ## 엔드포인트 목록
 
-**백오피스: `/api/admin/events/{eventId}/registrations` (`AdminClubEventRegistrationController` 제안, 캡틴만)**
+**백오피스: `/api/admin/events/{eventId}/registrations` (`AdminClubEventRegistrationController`, 캡틴만)**
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/admin/events/{eventId}/registrations | 참가자 탭: 전체 신청 이력(재신청 전 취소 이력 포함), 최신 신청순. 이메일은 마스킹, 행별 처리 가능 여부 | O (ADMIN) | 스펙작성중 |
-| GET | /api/admin/events/{eventId}/registrations/{registrationId} | 신청서: 신청 당시 질문 사본과 답변 | O (ADMIN) | 스펙작성중 |
-| POST | /api/admin/events/{eventId}/registrations/{registrationId}/email-reveals | 신청자 한 명의 이메일 원본 보기. 볼 때마다 감사 로그 | O (ADMIN) | 스펙작성중 |
-| PATCH | /api/admin/events/{eventId}/registrations/{registrationId} | 참가 확정 · 참가 불가 · 운영진 개별 취소 | O (ADMIN) | 스펙작성중 |
+| GET | /api/admin/events/{eventId}/registrations | 참가자 탭: 전체 신청 이력(재신청 전 취소 이력 포함), 최신 신청순. 이메일은 마스킹, 행별 처리 가능 여부 | O (ADMIN) | 스펙확정 |
+| GET | /api/admin/events/{eventId}/registrations/{registrationId} | 신청서: 신청 당시 질문 사본과 답변 | O (ADMIN) | 스펙확정 |
+| POST | /api/admin/events/{eventId}/registrations/{registrationId}/email-reveals | 신청자 한 명의 이메일 원본 보기. 볼 때마다 감사 로그 | O (ADMIN) | 스펙확정 |
+| PATCH | /api/admin/events/{eventId}/registrations/{registrationId} | 참가 확정 · 참가 불가 · 운영진 개별 취소 | O (ADMIN) | 스펙확정 |
 
 행사 종료 때 남은 확인 대기 신청을 참가 불가로 바꾸는 일은 엔드포인트가 아니라 스케줄러다 (아래 「행사 종료 시 확인 대기 자동 전환」).
 
@@ -35,7 +35,7 @@
 
 | 다룬다 | 다루지 않는다 | 닿는 곳 |
 |---|---|---|
-| 운영진이 보는 신청 목록 · 신청서 · 이메일 보기 · 참가 확정 · 참가 불가 · 개별 취소 · 종료 시 자동 참가 불가 | 크루 신청 제출 · 본인 취소 · 내 신청 내역 · 사이트 행사 조회 (ST-038) | 신청 테이블 `CLUB_EVENT_REGISTRATION` (아래 제안, ST-038 과 공동) |
+| 운영진이 보는 신청 목록 · 신청서 · 이메일 보기 · 참가 확정 · 참가 불가 · 개별 취소 · 종료 시 자동 참가 불가 | 크루 신청 제출 · 본인 취소 · 내 신청 내역 · 사이트 행사 조회 ([event-registration](../event-registration/spec.md), ST-038) | 신청 테이블 `CLUB_EVENT_REGISTRATION` (V62, ST-038 과 공동) |
 | | 모집 마감 · 재모집 · 행사 취소 ([event-status](../event-status/spec.md)) | 행사 취소의 `CANCEL_REASON = EVENT_CANCELLED` |
 | | 자동 메일 템플릿 · 발송 ([event-mail](../event-mail/spec.md)) | 이 스펙의 처리가 발행하는 도메인 이벤트 |
 | | 확정 방식 전환의 일괄 확정 ([event](../event/spec.md#확정-방식-전환-수정의-연관-효과)) | 같은 `ClubEventRegistrationsConfirmedEvent` 를 쓴다 |
@@ -92,7 +92,7 @@ stateDiagram-v2
 | `DECLINED` · `CANCELLED` | false | false | false | 처리 완료 |
 
 - 세 값이 모두 false 면 화면은 「처리 완료」를 그린다. 화면이 `status` 와 행사 시각으로 다시 판정하지 않는다
-- 계산: `ClubEventRegistration.canConfirm(manageable)` 등 (제안). `manageable` 은 같은 응답의 `canManageRegistrations` 한 값을 모든 행에 넘긴다
+- 계산: `ClubEventRegistration.canConfirm(manageable)` · `canDecline(manageable)` · `canCancelByAdmin(manageable)` (아래 「이미 있는 것과 이 스펙이 더하는 것」). `manageable` 은 같은 응답의 `canManageRegistrations` 한 값을 모든 행에 넘긴다
 
 ---
 
@@ -444,12 +444,13 @@ stateDiagram-v2
 
 | 요청 | 발행하는 이벤트 | 자동 메일 조건 | 비고 |
 |---|---|---|---|
-| `CONFIRMED` | `ClubEventRegistrationsConfirmedEvent` (`club_event.registrations_confirmed`, PR #478 에서 추가 중) — `registrationIds = [이 신청]` | `EVENT_REGISTRATION_CONFIRMED` | event 의 `REVIEW → AUTO` 일괄 확정과 같은 이벤트다. 「확인 대기 신청을 참가 확정으로 바꿨다」는 같은 사실이라 구독자 하나가 둘 다 받는다 |
+| `CONFIRMED` | `ClubEventRegistrationsConfirmedEvent` (`club_event.registrations_confirmed`, 있음) — `registrationIds = [이 신청]` | `EVENT_REGISTRATION_CONFIRMED` | event 의 `REVIEW → AUTO` 일괄 확정과 같은 이벤트다. 「확인 대기 신청을 참가 확정으로 바꿨다」는 같은 사실이라 구독자 하나가 둘 다 받는다 |
 | `DECLINED` | `ClubEventRegistrationsDeclinedEvent` (`club_event.registrations_declined`, 신규) — `registrationIds = [이 신청]`, `cause = ADMIN` | `EVENT_REGISTRATION_DECLINED` | 행사 종료 자동 전환도 같은 이벤트(`cause = EVENT_ENDED`) |
-| `CANCELLED` | `ClubEventRegistrationsCancelledEvent` (`club_event.registrations_cancelled`, 신규) — `registrationIds = [이 신청]`, `cause = ADMIN` | `EVENT_REGISTRATION_CANCELLED` | 크루 본인 취소(ST-038, PR #508)도 같은 이벤트(`cause = SELF`)를 쓴다. 분석 구독자도 이 이벤트를 받는다 (아래 「퍼널·계측」). **행사 취소([event-status](../event-status/spec.md))와 탈퇴(`ACCOUNT_DELETED`)는 발행하지 않는다** — 행사 취소는 수동 취소 안내 메일로 대신하고, 탈퇴는 메일을 받을 사람이 없다 |
+| `CANCELLED` | `ClubEventRegistrationsCancelledEvent` (`club_event.registrations_cancelled`, 있음. PR #517 이 본인 취소용으로 만들었고 `Cause.ADMIN` 도 들어 있다) — `registrationIds = [이 신청]`, `cause = ADMIN` | `EVENT_REGISTRATION_CANCELLED` | 크루 본인 취소(ST-038)도 같은 이벤트(`cause = SELF`)를 쓴다. 분석 구독자도 이 이벤트를 받는다 (아래 「퍼널·계측」). **행사 취소([event-status](../event-status/spec.md))와 탈퇴(`ACCOUNT_DELETED`)는 발행하지 않는다** — 행사 취소는 수동 취소 안내 메일로 대신하고, 탈퇴는 메일을 받을 사람이 없다 |
 
-- 이벤트 모양은 PR #478 의 `ClubEventRegistrationsConfirmedEvent` 와 같게 둔다: `record (EventMeta meta, Long clubEventId, List<Long> registrationIds, Cause cause)`, 패키지 `com.studyclub.domain.event`, `aggregateType = club_event`, `aggregateId = clubEventId`, actor = 처리한 캡틴(종료 자동 전환은 null). 페이로드에 연락처·답변을 싣지 않는다
-- [domain-events 「이벤트」](../domain-events/spec.md#이벤트) 표에 두 줄을 더하는 일은 구현 PR 에서 한다. ops 알림은 보내지 않는다 (운영자 본인의 처리다)
+- 새로 만드는 것은 `ClubEventRegistrationsDeclinedEvent` 하나다. 모양은 이미 있는 `ClubEventRegistrationsCancelledEvent` 와 같게 둔다: `record (EventMeta meta, Long clubEventId, List<Long> registrationIds, Cause cause)`, `Cause` 는 `ADMIN` · `EVENT_ENDED`, 패키지 `com.studyclub.domain.event`, `aggregateType = club_event`, `aggregateId = clubEventId`, actor = 처리한 캡틴(종료 자동 전환은 null). 페이로드에 연락처·답변을 싣지 않는다
+- 확정은 원인 구분이 필요 없어 기존 `ClubEventRegistrationsConfirmedEvent(meta, clubEventId, registrationIds)` 를 그대로 쓴다 (`of(clubEventId, List.of(id), actor)`)
+- [domain-events 「이벤트」](../domain-events/spec.md#이벤트) 표에 `club_event.registrations_declined` 줄을 더하고, 기존 `club_event.registrations_cancelled` 줄의 「운영진 개별 취소(`ADMIN`)는 event-participant 가 더한다」를 구현됨으로 고치는 일은 구현 PR 에서 한다. ops 알림은 보내지 않는다 (운영자 본인의 처리다)
 - 메일 행 생성이 DB 오류 등으로 실패하면 예외를 삼키지 않고 처리 전체를 롤백한다 (`BEFORE_COMMIT` 규칙). **그 조건의 템플릿이 없을 때만** 예외로, 처리는 커밋하고 메일만 건너뛴 뒤 누락 경보를 남긴다 ([event-mail M2](../event-mail/spec.md#템플릿이-없을-때-m2))
 - 이 API 는 `CLUB_EVENT` 만 잠그고 `ACCOUNT` 는 잠그지 않는다. 메일 수신자 계정은 잠금 뒤 일반 조회로 읽고, 없으면(탈퇴) 그 사람 메일은 만들지 않는다 (아래 「탈퇴한 크루의 신청」 잠금 순서)
 
@@ -487,7 +488,7 @@ stateDiagram-v2
 | 409 | EVENT_ENDED | 종료된 행사 | 상세·목록 다시 읽기 → 조회 전용 |
 | 409 | EVENT_REGISTRATION_STATUS_NOT_ALLOWED | 지금 신청 상태로는 그 처리를 할 수 없다 (다른 캡틴이 먼저 처리 · 크루가 먼저 취소 · 종료 자동 전환이 먼저 돎) | 「현재 상태에서는 처리할 수 없습니다」 + 목록 다시 읽기 |
 
-- `EVENT_REGISTRATION_STATUS_NOT_ALLOWED` 는 **새 `ErrorCode`** 다 (409, 기본 문구 「현재 신청 상태에서는 처리할 수 없습니다.」). 화면이 목록을 다시 읽는다는 점에서 일반 `CONFLICT` 와 행동이 같지만, 행사 쪽 409(`EVENT_CANCELLED` · `EVENT_ENDED`: 탭 전체를 조회 전용으로)와 신청 한 줄의 409 를 화면이 구분해야 해서 둔다. 크루 본인 취소(ST-038)도 같은 코드를 쓰도록 제안한다
+- `EVENT_REGISTRATION_STATUS_NOT_ALLOWED` 는 PR #516 이 이미 만든 `ErrorCode` 다 (409, 기본 문구 「현재 신청 상태에서는 처리할 수 없습니다.」, `ClubEventRegistration.confirm` · `decline` · `cancelByAdmin` 이 던진다). 화면이 목록을 다시 읽는다는 점에서 일반 `CONFLICT` 와 행동이 같지만, 행사 쪽 409(`EVENT_CANCELLED` · `EVENT_ENDED`: 탭 전체를 조회 전용으로)와 신청 한 줄의 409 를 화면이 구분해야 해서 둔다. 크루 본인 취소(ST-038)도 같은 코드를 쓴다
 - `EVENT_CANCELLED` · `EVENT_ENDED` 는 PR #478 의 코드를 쓰고 상황 문구(「취소된 행사의 신청은 처리할 수 없습니다.」 등)를 넘긴다
 
 ### 프론트엔드 사용처
@@ -505,7 +506,7 @@ PRD §6 P2 「실제 서비스는 1분 주기 서버 작업으로 종료 시 남
 
 | | 주기 스케줄러 (채택) | 조회 때 지연 정산 (쓰지 않음) |
 |---|---|---|
-| 동작 | `ClubEventEndSettlementScheduler` (제안) 가 1분마다 대상 행사를 골라 처리 | 운영 상세·참가자 목록·크루 조회가 부를 때 그 행사를 처리 |
+| 동작 | `ClubEventEndSettlementScheduler` 가 1분마다 대상 행사를 골라 처리 | 운영 상세·참가자 목록·크루 조회가 부를 때 그 행사를 처리 |
 | 메일 | 아무도 화면을 열지 않아도 종료 직후 나간다 | 누군가 열 때까지 안 나간다 |
 | GET 의 성격 | GET 은 읽기만 한다 | GET 이 잠금을 잡고 쓴다. 프리페치·재시도가 쓰기가 된다 |
 | 지연 | 종료 뒤 최대 약 1분(+처리 시간) 동안 `PENDING` 이 보인다. 그동안 `canManageRegistrations = false` 라 처리 버튼은 이미 없다 | 없음 |
@@ -527,7 +528,8 @@ PRD §6 P2 「실제 서비스는 1분 주기 서버 작업으로 종료 시 남
    7. `EVENT_REGISTRATION_DECLINED` 템플릿이 없으면(M2) 상태 전환은 그대로 커밋하고 메일만 건너뛰며 누락 경보를 남긴다. 다음 주기에 같은 신청을 다시 처리하지 않는다 (이미 `DECLINED`)
 3. 한 행사의 트랜잭션이 DB 오류 등으로 실패하면 그 행사만 롤백하고 에러 로그(`clubEventId` 만, 연락처 없음)를 남긴 뒤 다음 행사로 간다. 다음 주기에 다시 시도한다
 
-- 2-4 는 행사 애그리거트가 신청 애그리거트에 시키는 일이라 `ClubEventRegistrationPort` 에 `List<Long> declinePendingRegistrationsForEventEnd(Long eventId)` 를 더한다 (바꾼 신청 ID 를 돌려준다, `confirmPendingRegistrations` 와 같은 모양)
+- 2-4 는 행사 애그리거트가 신청 애그리거트에 시키는 일이라 `ClubEventRegistrationPort` 에 `List<Long> declinePendingRegistrationsForEventEnd(Long eventId)` 를 더한다. 바꾼 신청 ID 를 돌려주고, 기존 `confirmPendingRegistrations(eventId, actorAccountId)` 와 같은 모양에서 행위자만 뺐다 (시스템 처리라 `STATUS_CHANGED_BY = NULL`). 어댑터는 기존 `findIdsByClubEventIdAndStatus` · `changeStatusWhere` 를 그대로 쓴다
+- 대상 고르기(1)는 V62 의 `idx_club_event_registration_status_event (STATUS, CLUB_EVENT_ID)` 로 `PENDING` 신청이 있는 행사 ID 를 먼저 고르고, 그 행사들을 `ClubEventRepository.findAllById` 로 읽어 `STATUS ≠ CANCELLED` ∧ `STARTS_AT ≤ now` ∧ `now ≥ effectiveEndsAt()` 로 거른다. 새 인덱스는 필요 없다
 - 서버가 여러 대면 스케줄러가 인스턴스마다 돈다. 두 인스턴스가 같은 행사를 고르면 2-1 의 잠금이 줄을 세우고, 늦은 쪽은 2-4 에서 바꿀 `PENDING` 이 없어 아무것도 하지 않는다. 메일이 두 번 생기지 않는다 (분산 락 불필요. [notification 「스케줄러 중복 실행 방지」](../notification/spec.md#한계--후속) 와 같은 판단)
 - 잠금은 행사 하나씩 짧게 잡는다. 대상 행사를 한 트랜잭션에 묶지 않는다
 - 이미 종료된 행사의 `DECLINED` 전환은 정원·`displayStatus` 에 영향이 없다 (종료가 먼저 판정된다)
@@ -542,78 +544,74 @@ PRD §6 P2 「실제 서비스는 1분 주기 서버 작업으로 종료 시 남
 
 ---
 
-## 데이터 모델 제안: CLUB_EVENT_REGISTRATION
+## 데이터 모델: CLUB_EVENT_REGISTRATION
 
-**ST-038 신청 스펙과 공동 경계다.** 테이블 이름·컬럼·인덱스를 여기서 제안하고, ST-038 스펙(PR #508)이 같은 정의를 쓰거나 고쳐 합의한 뒤, 아래 「공통 신청 테이블 PR」이 `docs/erd/CLUB_EVENT_REGISTRATION.md` 와 마이그레이션을 만든다 (P5). 이 스펙은 Flyway SQL·ERD 정본을 고치지 않는다.
+신청 테이블은 공통 신청 PR #516 이 만들었다 (P5). **정본은 [CLUB_EVENT_REGISTRATION ERD](../../docs/erd/CLUB_EVENT_REGISTRATION.md) 와 `V62__create_club_event_registration.sql`** 이고, 이 절은 이 스펙이 그 테이블에서 무엇을 쓰는지만 적는다. 이 스펙의 구현은 컬럼 · 인덱스를 더하지 않는다.
 
-신청은 행사와 **다른 애그리거트**다 ([event 「데이터 모델 제안」](../event/spec.md#데이터-모델-제안) 「신청은 별도 애그리거트(ID 참조)」). 크루 한 명의 신청 한 건이 자기 상태 전이를 가진다.
+신청은 행사와 **다른 애그리거트**다 ([event 「데이터 모델 제안」](../event/spec.md#데이터-모델-제안) 「신청은 별도 애그리거트(ID 참조)」). 엔티티는 `com.studyclub.domain.event.registration.ClubEventRegistration`(루트), 저장소는 같은 패키지의 `ClubEventRegistrationRepository` 다.
 
-| 컬럼 | 타입 | NULL | 설명 | 근거 |
-|---|---|---|---|---|
-| ID | BIGINT PK | N | | |
-| CLUB_EVENT_ID | BIGINT | N | [CLUB_EVENT](../event/spec.md#데이터-모델-제안) ID 참조. **FK 없음** (애그리거트 사이) | [database-guide 「외래키 정책」](../../docs/backend-development-guide/database-guide.md#외래키-정책) |
-| ACCOUNT_ID | BIGINT | N | 신청한 [ACCOUNT](../../docs/erd/ACCOUNT.md) ID 참조. FK 없음. 탈퇴로 계정이 지워져도 값은 남는다 | user-leave 「ID 참조는 되짚을 수 없어 자연히 비식별」 |
-| CHANNEL | VARCHAR(20) | N | `ONLINE` · `OFFLINE` | PRD §3 신청 데이터 「참여 방식」 |
-| STATUS | VARCHAR(20) | N | `PENDING` · `CONFIRMED` · `DECLINED` · `CANCELLED` | PRD §3 「신청 상태」 |
-| CANCEL_REASON | VARCHAR(30) | Y | `STATUS = CANCELLED` 일 때만. `SELF_CANCELLED`(본인, ST-038) · `ADMIN_CANCELLED`(운영진 개별) · `ACCOUNT_DELETED`(회원 탈퇴, P3) · `EVENT_CANCELLED`(행사 취소 — 취소 안내 대상). 그 밖의 상태는 NULL. 운영자가 입력하는 사유는 없다 (P6) | PRD §1 「이전 개별 취소·참가 불가자는 제외」 · §6 P3 · P6, [event-status](../event-status/spec.md#행사-취소가-신청에-하는-일) |
-| STATUS_CHANGED_AT | DATETIME(6) | Y | 마지막 상태 전이 시각. 접수 그대로면 NULL | 제안 — 처리 이력 추적 |
-| STATUS_CHANGED_BY | BIGINT | Y | 마지막 상태를 바꾼 계정(캡틴 · 본인). 시스템(종료 자동 전환 · 탈퇴)이면 NULL. FK 없음 | 제안 — 처리 이력 추적 |
-| APPLICANT_TIME_ZONE | VARCHAR(64) | Y | 신청 당시 신청자의 `ACCOUNT.TIME_ZONE` 사본. 계정에 시간대가 없었으면 NULL | crew-apply-event §5 「시간대가 없는 이전 신청은 행사 기준 시간대」, `event-preview.ts` `EventRegistration.timeZone` 「신청 당시 회원 프로필 시간대」 |
-| QUESTIONS_SNAPSHOT | JSON | N | 신청 당시 질문 사본 배열 `[{questionId, label, type, required, options}]`. 질문 없는 행사면 `[]` | PRD §4 · §6, event 「신청 질문의 보존」 |
-| ANSWERS_SNAPSHOT | JSON | N | 답 `{"<questionId>": ["…"]}`. 값은 언제나 문자열 배열 (신청서 조회 `answer` 와 같은 모양) | 같은 곳 |
-| CREATED_AT / UPDATED_AT | DATETIME(6) | N | `BaseEntity`. `CREATED_AT` 이 신청 시각 | PRD §3 「신청 시각」 |
+| 컬럼 (V62) | 이 스펙이 쓰는 곳 |
+|---|---|
+| ID · CLUB_EVENT_ID · ACCOUNT_ID · CHANNEL · STATUS · CREATED_AT | 참가자 목록 · 신청서 · 참가 처리. `CLUB_EVENT_ID = eventId` 로 경로의 두 ID 를 맞춘다 |
+| CANCEL_REASON | 개별 취소가 `ADMIN_CANCELLED` 를 적는다. 값 목록은 `ClubEventRegistrationCancelReason` (`SELF_CANCELLED` · `ADMIN_CANCELLED` · `ACCOUNT_DELETED` · `EVENT_CANCELLED`). 운영자가 입력하는 사유는 없다 (P6) |
+| STATUS_CHANGED_AT · STATUS_CHANGED_BY | 참가 처리는 처리한 캡틴, 종료 자동 전환은 NULL(시스템) |
+| QUESTIONS_SNAPSHOT · ANSWERS_SNAPSHOT | 신청서 조회. JSON 사본을 그대로 읽는다 |
+| APPLICANT_TIME_ZONE · SUBMIT_IDEMPOTENCY_KEY | 이 스펙은 쓰지 않는다 (event-mail 의 개인별 일정 · ST-038 신청 제출) |
 
-**인덱스·제약**
+**인덱스 (V62 에 이미 있다, 추가 마이그레이션 없음)**
 
-| 이름 (제안) | 컬럼 | 쓰는 곳 |
+| 이름 | 컬럼 | 이 스펙이 쓰는 곳 |
 |---|---|---|
-| `idx_club_event_registration_event_channel_status` | `(CLUB_EVENT_ID, CHANNEL, STATUS)` | 방식·상태별 COUNT — 정원 · 잔여석 · `displayStatus` · `pendingCount` · 행사 취소 · 종료 전환 · 메일 수신자 (event 스펙이 요구) |
-| `idx_club_event_registration_event_created` | `(CLUB_EVENT_ID, CREATED_AT, ID)` | 참가자 목록 정렬 · 페이지 |
-| `idx_club_event_registration_account_event` | `(ACCOUNT_ID, CLUB_EVENT_ID)` | 크루의 중복 신청 확인 · 내 행사(ST-038) · 탈퇴 처리 |
-| `idx_club_event_registration_status_event` | `(STATUS, CLUB_EVENT_ID)` | 종료 자동 전환의 대상 고르기 (`STATUS = 'PENDING'`) |
-| **없음** | ~~`UNIQUE(CLUB_EVENT_ID, ACCOUNT_ID)`~~ | 재신청하면 취소된 이전 행을 남기고 새 행을 만든다 (PRD §6, crew-apply-event §3). 유일 제약을 걸면 재신청이 막힌다 |
+| `idx_club_event_registration_event_channel_status` | `(CLUB_EVENT_ID, CHANNEL, STATUS)` | `pendingCount`(`countActiveSeats`) · 참가 처리 뒤 잔여석 · 종료 전환의 `PENDING` ID 읽기 |
+| `idx_club_event_registration_event_created` | `(CLUB_EVENT_ID, CREATED_AT, ID)` | 참가자 목록 `ORDER BY CREATED_AT DESC, ID DESC` · `offset`/`limit` · `total` |
+| `idx_club_event_registration_status_event` | `(STATUS, CLUB_EVENT_ID)` | 종료 자동 전환의 대상 고르기 (`STATUS = 'PENDING'` 인 행사 ID) |
+| `idx_club_event_registration_account_event` | `(ACCOUNT_ID, CLUB_EVENT_ID)` | 탈퇴 처리 (PR #516 구현됨) |
 
-- **중복 신청 제한**(crew-apply-event §3 「중복 신청 제한」 · 「참가 불가 처리 후 재신청 제한」)은 DB 제약이 아니라 ST-038 신청 제출이 행사 행 잠금을 잡은 뒤 「같은 계정의 `PENDING` · `CONFIRMED` · `DECLINED` 행이 있나」를 읽어 막는다. 같은 행사의 신청은 잠금으로 한 줄로 서므로 확인 후 삽입이 안전하다. 프로토 `transition` APPLY 는 `CANCELLED` 가 아닌 행이 있으면 막는다 — 같은 규칙이다
-- 질문·답 사본은 JSON 한 칸씩이다. 신청이 `CLUB_EVENT_QUESTION` 을 FK 로 물지 않는다 (event 스펙). 사본 저장 형태의 최종 결정은 ST-038 이 한다. 이 스펙은 신청서 조회의 응답 모양만 고정한다
-- 질문 버전(작성 중 질문이 바뀌었는지 확인하는 값, crew-apply-event §5)은 신청 제출 검사의 일이라 이 표에 넣지 않았다. 필요하면 ST-038 이 컬럼을 더한다
+- `UNIQUE(CLUB_EVENT_ID, ACCOUNT_ID)` 는 없다. 재신청하면 취소된 이전 행을 남기고 새 행을 만든다 (PRD §6, crew-apply-event §3). 중복 신청 제한은 신청 제출이 계정 · 행사 행 잠금 뒤 확인으로 막는다 ([event-registration](../event-registration/spec.md#신청-제출))
+- 질문·답 사본은 JSON 한 칸씩이다. 신청이 `CLUB_EVENT_QUESTION` 을 FK 로 물지 않는다 (event 스펙). 이 스펙은 신청서 조회의 응답 모양만 고정한다
 
 **연락처를 신청 행에 두지 않는 이유**
 
-- crew-apply-event §5 는 「로그인 계정의 닉네임과 이메일을 신청 정보에 자동으로 포함」이라 적었다. 이 스펙은 닉네임·이메일을 **신청 행에 복사하지 않고** 조회 때 `ACCOUNT` 에서 읽기를 제안한다
+- crew-apply-event §5 는 「로그인 계정의 닉네임과 이메일을 신청 정보에 자동으로 포함」이라 적었다. V62 는 닉네임·이메일을 **신청 행에 복사하지 않고** 조회 때 `ACCOUNT` 에서 읽는다 (P3)
 - 이유: 복사본이 있으면 탈퇴 때 지울 곳이 하나 더 생기고([user-leave](../user-leave/spec.md)), 운영자가 보는 주소가 메일이 실제로 나가는 주소(`NOTIFICATION.RECIPIENT_VALUE` 는 발송 행 만들 때 `ACCOUNT.EMAIL` 을 읽는다)와 갈릴 수 있다. 스터디 신청·반 공지도 같은 방식이다 (study-notice 「메일 주소는 서버가 `ACCOUNT` 에서 읽어 아웃박스 행에 스냅샷」)
-- 신청 시 「이메일이 비었거나 형식이 틀리면 신청을 막는다」(crew-apply-event §5)는 제출 검사라 ST-038 이 한다. 복사 여부와 별개다
-- P3 결정으로 닉네임·이메일은 신청 행에 복사하지 않고 현재 계정에서 읽는다
+- 신청 시 「이메일이 비었거나 형식이 틀리면 신청을 막는다」(crew-apply-event §5)는 제출 검사라 ST-038 이 한다 (`EVENT_APPLICANT_EMAIL_INVALID`)
 
-**`ClubEventRegistrationPort` 연결** (PR #478 에서 추가 중인 포트 · 이벤트)
+### 이미 있는 것과 이 스펙이 더하는 것
 
-행사 애그리거트는 신청 테이블을 직접 모른다. PR #478 이 둔 포트 `ClubEventRegistrationPort` 를 신청 애그리거트 쪽 어댑터가 구현하고, 지금의 임시 `EmptyClubEventRegistrationAdapter`(0건 · no-op)를 지운다.
+PR #516 · #517 이 `beta` 에 넣은 코드를 기준으로 나눈다. 이 스펙의 구현 PR 은 「더한다」 칸만 만든다.
 
-| 포트 메서드 | 상태 | 실제 어댑터의 동작 | 부르는 곳 |
+| 종류 | 이미 있다 (재사용) | 더한다 |
+|---|---|---|
+| 신청 엔티티 `ClubEventRegistration` | `confirm(actor, now)` · `decline(actor, now)` (`PENDING` 만) · `cancelByAdmin(actor, now)` (`PENDING`·`CONFIRMED` 만, `ADMIN_CANCELLED`) — 지금 상태가 아니면 409 `EVENT_REGISTRATION_STATUS_NOT_ALLOWED` · `isActive()` | 행별 판정 `canConfirm(manageable)` · `canDecline(manageable)` · `canCancelByAdmin(manageable)` (위 「행별 판정」) |
+| 신청 저장소 `ClubEventRegistrationRepository` | `countGroupedByEvent` · `findIdsByClubEventIdAndStatus(eventId, status)` · `changeStatusWhere(ids, from, to, actor, now)` (조건부 벌크 갱신) | 참가자 목록 페이지 조회(저장소 조각 `ClubEventRegistrationPageQuery.findPageByClubEventId(eventId, offset, limit)`)와 `countByClubEventId(eventId)` · 종료 전환 대상 `findDistinctClubEventIdsByStatus(PENDING)` |
+| 행사 엔티티 `ClubEvent` | `effectiveEndsAt()` · `canEdit(now)` (식은 같지만 근거가 다르다) · `getStatus()` | `canManageRegistrations(now)` |
+| 행사 저장소 `ClubEventRepository` | `findByIdForUpdate(id)` (행사 한 행 `PESSIMISTIC_WRITE`) | — |
+| 포트 `ClubEventRegistrationPort` (domain) · 어댑터 `ClubEventRegistrationAdapter` (api) | `countActiveSeatsByEventIds` · `countActiveSeats` · `confirmPendingRegistrations(eventId, actorAccountId)` | `declinePendingRegistrationsForEventEnd(eventId)` |
+| 도메인 이벤트 (`com.studyclub.domain.event`) | `ClubEventRegistrationsConfirmedEvent(meta, clubEventId, registrationIds)` · `ClubEventRegistrationsCancelledEvent(meta, clubEventId, registrationIds, cause)` — `Cause.ADMIN` 이 이미 있다 | `ClubEventRegistrationsDeclinedEvent(meta, clubEventId, registrationIds, cause)` (`Cause.ADMIN` · `EVENT_ENDED`, 이름 `club_event.registrations_declined`) |
+| 분석 `AnalyticsEventListener` (api) | `onEventRegistrationsCancelled` — `cancel_type` 을 `cause` 이름의 소문자로 보낸다. `ADMIN` 이면 `admin` 이 그대로 나간다 | 없음. 개별 취소가 `Cause.ADMIN` 으로 발행하기만 하면 된다 |
+| 감사 로그 `AdminAuditLog` · `AdminAuditRecorder` (domain · api) | `AdminAuditLog.emailReveal(actor, target)` · `EMAIL_REVEAL` 보관 규칙(`AUDIT_ACCESS_V1` · `AUDIT_ACCESS_TWO_YEARS_V1`) · 접속 주소 채우기 | 없음 (P4) |
+| 오류 코드 | `EVENT_CANCELLED` · `EVENT_ENDED` · `EVENT_REGISTRATION_STATUS_NOT_ALLOWED` | 없음 |
+| 탈퇴 `AccountDeletionService` (api) | `cancelEventRegistrations` — 계정 잠금 뒤 그 계정 신청이 걸린 모든 행사를 ID 오름차순으로 잠그고 종료 전 · 취소 아닌 행사의 유효 신청을 `ACCOUNT_DELETED` 로 바꾼다. 이벤트 · 메일 없음 | 없음 (아래 「탈퇴한 크루의 신청」 은 이미 구현됐다) |
+
+**`ClubEventRegistrationPort` 연결**
+
+행사 애그리거트는 신청 테이블을 직접 모른다. 포트 `ClubEventRegistrationPort` 는 domain 의 `com.studyclub.domain.event` 에 있고, 실제 어댑터 **`com.studyclub.api.event.ClubEventRegistrationAdapter`** 가 신청 저장소로 답한다 (PR #516 이 임시 `EmptyClubEventRegistrationAdapter` 를 지웠다). 어댑터가 api 모듈에 있는 이유: 신청 엔티티 · 저장소는 domain 의 `com.studyclub.domain.event.registration` 에 있지만 스프링 빈은 api · notification 패키지만 스캔한다. 예전 초안이 적은 「어댑터를 `com.studyclub.domain.event.registration` 에 둔다」는 이 이유로 따르지 않았다.
+
+| 포트 메서드 | 상태 | 어댑터의 동작 | 부르는 곳 |
 |---|---|---|---|
-| `countActiveSeatsByEventIds(eventIds)` | PR #478 | `SELECT CLUB_EVENT_ID, CHANNEL, STATUS, COUNT(*) … WHERE CLUB_EVENT_ID IN (…) AND STATUS IN ('PENDING','CONFIRMED') GROUP BY …` 한 번 → `EventSeatCounts` 맵 | 운영 목록 |
-| `countActiveSeats(eventId)` | PR #478 | 같은 쿼리를 행사 하나로 | 운영 상세 · 수정 · 이 스펙의 `pendingCount` · event-status `cancellationRecipientCount`(취소 전) |
-| `confirmPendingRegistrations(eventId)` | PR #478 | 잠금 트랜잭션 안에서 `PENDING` ID 를 읽고 `UPDATE … WHERE ID IN (…) AND STATUS = 'PENDING'` → 바꾼 ID | 행사 수정 `REVIEW → AUTO` |
-| `cancelActiveRegistrationsForEventCancellation(eventId)` | 신규 ([event-status](../event-status/spec.md#행사-취소가-신청에-하는-일)) | 잠금 트랜잭션 안에서 유효 신청 ID 를 읽고 `UPDATE … SET STATUS='CANCELLED', CANCEL_REASON='EVENT_CANCELLED' … WHERE ID IN (…) AND STATUS IN ('PENDING','CONFIRMED')` → 바꾼 ID (감사 기록 수 · 분석 이벤트에 쓴다) | 행사 취소 |
-| `countCancellationRecipients(eventId)` | 신규 | `STATUS = 'CANCELLED' AND CANCEL_REASON = 'EVENT_CANCELLED'` 신청의 `ACCOUNT_ID` 중 `ACCOUNT` 가 남아 있는 수 (event-status S5) | event-status 판정 필드 · event-mail 수신자 |
-| `declinePendingRegistrationsForEventEnd(eventId)` | 신규 (이 스펙) | `confirmPendingRegistrations` 와 같은 모양으로 `PENDING → DECLINED` → 바꾼 ID | 종료 자동 전환 |
+| `countActiveSeatsByEventIds(eventIds)` | 있음 (PR #516) | `countGroupedByEvent` 한 번 → `EventSeatCounts` 맵 | 운영 목록 · 사이트 목록 |
+| `countActiveSeats(eventId)` | 있음 (PR #516) | 같은 쿼리를 행사 하나로 | 운영 상세 · 수정 · 이 스펙의 `pendingCount` |
+| `confirmPendingRegistrations(eventId, actorAccountId)` | 있음 (PR #516) | `PENDING` ID 를 읽고 `changeStatusWhere(…, PENDING → CONFIRMED)` → 바꾼 ID | 행사 수정 `REVIEW → AUTO` |
+| `cancelActiveRegistrationsForEventCancellation(eventId, actorAccountId)` | 신규 ([event-status](../event-status/spec.md#행사-취소가-신청에-하는-일)) | 유효 신청을 `CANCELLED` · `EVENT_CANCELLED` 로 → 바꾼 ID | 행사 취소 |
+| `countCancellationRecipients(eventId)` | 신규 ([event-status](../event-status/spec.md#운영-상세에-더하는-판정-필드)) | 계정이 남은 취소 안내 대상 수 (S5) | event-status 판정 필드 |
+| `declinePendingRegistrationsForEventEnd(eventId)` | 신규 (이 스펙) | `confirmPendingRegistrations` 와 같은 모양으로 `PENDING → DECLINED`, `STATUS_CHANGED_BY = NULL` → 바꾼 ID | 종료 자동 전환 |
 
-- 어댑터와 신청 엔티티는 같은 애그리거트 패키지에 둔다 (제안: `com.studyclub.domain.event.registration` — `ClubEventRegistration` · `ClubEventRegistrationRepository` · 어댑터). 운영진 개별 처리(이 스펙의 PATCH)와 크루 제출·본인 취소(ST-038)는 포트가 아니라 신청 저장소·엔티티 메서드를 api 서비스가 직접 부른다. 포트는 「행사가 신청에게 묻고 시키는 것」만 담는다 (PR #478 포트 주석과 같다)
-- `ClubEventRegistrationsConfirmedEvent` 의 구독자는 PR #478 에 아직 없다. [event-mail](../event-mail/spec.md#자동-메일-신청-상태-알림) 의 자동 메일 구독자가 이 이벤트와 이 스펙의 `…DeclinedEvent` · `…CancelledEvent` 를 함께 받는다
+- 운영진 개별 처리(이 스펙의 PATCH)와 크루 제출·본인 취소(ST-038)는 포트가 아니라 신청 저장소·엔티티 메서드를 api 서비스가 직접 부른다. 포트는 「행사가 신청에게 묻고 시키는 것」만 담는다 (포트 주석과 같다)
+- `ClubEventRegistrationsConfirmedEvent` · `…CancelledEvent` 의 자동 메일 구독자는 아직 없다. [event-mail](../event-mail/spec.md#자동-메일-신청-상태-알림) 의 구독자가 이 두 이벤트와 이 스펙의 `…DeclinedEvent`, ST-038 의 `ClubEventRegistrationSubmittedEvent` 를 함께 받는다
 
-### 공통 신청 테이블 PR (P5)
+### 공통 신청 테이블 PR (P5) — 완료
 
-신청 테이블은 ST-037(이 스펙)과 ST-038(크루 신청, PR #508)이 함께 쓴다. 두 담당자가 위 구조에 합의한 뒤 **공통 부분만 담은 PR 을 먼저 머지**하고, 그 뒤 각자 API 를 구현한다.
-
-| 공통 PR 에 넣는 것 | 비고 |
-|---|---|
-| `CLUB_EVENT_REGISTRATION` 마이그레이션(`V{n}`) · `docs/erd/CLUB_EVENT_REGISTRATION.md` | 번호는 그 PR 을 올릴 때의 `beta` 최신 다음 |
-| `ClubEventRegistration` 엔티티 · `ClubEventRegistrationRepository` | 상태 전이 메서드(`confirm` · `decline` · `cancelByAdmin` · `cancelBySelf` · `cancelByAccountDeletion` · `cancelByEvent`) |
-| 실제 `ClubEventRegistrationPort` 어댑터 | PR #478 의 임시 `EmptyClubEventRegistrationAdapter`(0건 · no-op)를 지운다 |
-| 탈퇴 처리 단계 (아래 「탈퇴한 크루의 신청」) | `AccountDeletionService` 에 더한다 |
-| `APPLICANT_TIME_ZONE` · 질문·답 사본 · 취소 후 재신청(새 행) 규칙 | 저장 형태와 불변식 |
-
-- 담당: 효승님 작성 · 동일님 리뷰를 기본으로 한다. 동일님이 먼저 구현을 시작하면 동일님이 공통 PR 을 쓰고 효승님이 리뷰한다. 작업량에 따라 바꾼 담당·순서는 그 PR 설명에 적는다 (PRD 「후속 구현 합의」 P5)
-- 공통 PR 이 머지되기 전에는 이 스펙의 API 와 ST-038 의 API 를 구현하지 않는다
+PR #516 이 마이그레이션(V62) · ERD · 엔티티 · 저장소 · 실제 포트 어댑터 · 탈퇴 단계를 넣었고, PR #517 이 ST-038 의 API 를 구현했다. 이 스펙의 API 는 그 위에서 구현한다 ([plan](./plan.md) · [tasks](./tasks.md)).
 
 ## 탈퇴한 크루의 신청
 
@@ -644,7 +642,7 @@ PR #508 R1, PR #479 리뷰 「탈퇴와 메일 예약의 동시 처리」.
 
 | 작업 | 먼저 | 다음 | `ACCOUNT` |
 |---|---|---|---|
-| 회원 탈퇴 (`AccountDeletionService`, 공통 PR 이 단계를 더한다) | 탈퇴 계정 `ACCOUNT` 쓰기 잠금 (기존 첫 조회) | 그 계정 신청이 걸린 **모든** `CLUB_EVENT` 를 ID 오름차순으로 쓰기 잠금 — 유효 신청뿐 아니라 이미 `CANCELLED` 인 행사(취소 안내 대상 `EVENT_CANCELLED` 행)까지 포함 | 잠근다 |
+| 회원 탈퇴 (`AccountDeletionService.cancelEventRegistrations`, PR #516 구현) | 탈퇴 계정 `ACCOUNT` 쓰기 잠금 (기존 첫 조회) | 그 계정 신청이 걸린 **모든** `CLUB_EVENT` 를 ID 오름차순으로 쓰기 잠금 — 유효 신청뿐 아니라 이미 `CANCELLED` 인 행사(취소 안내 대상 `EVENT_CANCELLED` 행)까지 포함 | 잠근다 |
 | 크루 신청 제출 (ST-038) | 요청자 `ACCOUNT` 쓰기 잠금 | 그 행사 `CLUB_EVENT` | 잠근다 (탈퇴와 같은 순서) |
 | 이 스펙의 참가 처리 · 종료 자동 전환 · event-status 상태 전환 · event-mail 메일 예약 · 행사 수정 | — | 그 행사 `CLUB_EVENT` | **잠그지 않는다.** 잠금 뒤 일반 조회로 읽고, 없으면 그 사람 메일을 만들지 않는다 |
 
@@ -664,7 +662,7 @@ PR #508 R1, PR #479 리뷰 「탈퇴와 메일 예약의 동시 처리」.
 | 탈퇴 | 탈퇴가 커밋한 뒤 행사 쪽 작업이 잠금을 얻는다. 그 작업은 잠금 뒤 처음 일반 조회로 `ACCOUNT` 를 읽으므로(MySQL 의 읽기 시점이 그때 정해진다) 계정이 없음을 보고 새 예약을 만들지 않는다 |
 
 - 행사 쪽 작업은 잠금 **전에** `ACCOUNT` · 신청을 일반 조회로 읽지 않는다 (event 「잠금 전에 일반 `SELECT` 로 먼저 읽지 않는다」 와 같은 이유)
-- 이 순서는 [event](../event/spec.md) 의 「첫 조회로 `CLUB_EVENT` 행」 규칙에 탈퇴 · 크루 신청 제출 두 예외를 더한다. event 스펙의 잠금 표는 PR #508 · event 담당과 조율해 따로 고친다 (이 PR 은 event 스펙을 건드리지 않는다)
+- 이 순서는 [event](../event/spec.md) 의 「첫 조회로 `CLUB_EVENT` 행」 규칙에 탈퇴 · 크루 신청 제출 두 예외를 더한다. [event 스펙 잠금 표](../event/spec.md#같은-행사에-쓰는-요청의-처리-순서) 에 「회원 탈퇴 (`ACCOUNT` → `CLUB_EVENT` 잠금 순서)」 · 「크루 신청 제출」 행으로 반영했다
 
 ## 퍼널·계측
 
@@ -672,13 +670,13 @@ PRD §3 「행사 취소 행동 분석」(PR #509) 을 따른다.
 
 - **퍼널 단계**: 활성화 뒤 행동 (신청 철회). 운영진의 참가 확정 · 참가 불가 · 취소는 활성화를 새로 만들거나 되돌리지 않는다 (최초 활성화는 ST-038 의 첫 신청)
 - **이벤트**: 운영진 개별 취소(`ADMIN_CANCELLED`)가 서버에 커밋된 뒤 신청 1건마다 Amplitude **신청 취소 완료** 1건. 참가 확정 · 참가 불가 · 종료 자동 전환 · 탈퇴 취소(`ACCOUNT_DELETED`)는 보내지 않는다
-- **이름·속성 (제안, analytics 스펙에서 확정)**: `Event Registration Cancelled`, `event_id` · `registration_id` · `channel`(`online`·`offline`) · `cancel_type = admin`. 본인 취소(`self`, ST-038) · 행사 전체 취소(`event_cancelled`, [event-status](../event-status/spec.md#퍼널계측))와 같은 이벤트·속성. GA4 는 보내지 않는다
+- **이름·속성 ([analytics](../analytics/spec.md) 트래킹 플랜에 있음)**: `Event Registration Cancelled`, `event_id` · `registration_id` · `channel`(`online`·`offline`) · `cancel_type = admin`. 본인 취소(`self`, ST-038) · 행사 전체 취소(`event_cancelled`, [event-status](../event-status/spec.md#퍼널계측))와 같은 이벤트·속성. GA4 는 보내지 않는다
 - **보내는 곳·대상**: server, 사용자는 신청자 (처리한 캡틴이 아니다)
 - **시점·전달**: `ClubEventRegistrationsCancelledEvent(cause = ADMIN)` 을 `AFTER_COMMIT` · `@Async` 분석 구독자가 받아 보낸다. 실패는 삼키고 취소 · 자동 메일 예약을 되돌리지 않는다. 롤백된 처리는 커밋이 없어 보내지 않는다
 - **중복 방지**: `insert_id = event_registration_cancelled_{registrationId}` (자연키에서 결정적). 같은 신청은 한 번만 취소된다
 - **개인정보**: 이메일 · 이름 · 닉네임 · 신청 답변을 보내지 않는다. 수집 중단 · 탈퇴 계정은 [analytics](../analytics/spec.md) 의 기존 규칙대로 보내지 않는다
 - **OMTM 기대 변화**: 없음 (관찰용). 실험(A/B) 없음
-- analytics 스펙 표 반영은 이 스펙의 구현 PR 에서 ST-038 과 같은 줄로 한다
+- 트래킹 플랜의 `Event Registration Cancelled` 줄(`cancel_type` = `self` · `admin` · `event_cancelled`)은 PR #517 이 이미 넣었다. `AnalyticsEventListener.onEventRegistrationsCancelled` 가 `cause` 이름을 소문자로 보내므로 개별 취소가 `Cause.ADMIN` 으로 발행하면 코드 추가 없이 `admin` 이 나간다. 이름 · 속성 변경이 없어 트래킹 플랜 표는 고치지 않는다
 
 ## 근거와 PRD·프로토·레포 규약의 차이
 

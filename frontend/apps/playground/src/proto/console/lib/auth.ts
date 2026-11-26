@@ -48,11 +48,13 @@ export function getUser(): SessionUser | null {
 export function setUser(user: SessionUser): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+  window.dispatchEvent(new Event('bo:session-change'));
 }
 
 export function clearSession(): void {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(USER_KEY);
+  window.dispatchEvent(new Event('bo:session-change'));
 }
 
 /** 로그아웃 — localStorage 유저 제거 + 서버 라우트로 httpOnly 쿠키 제거. */

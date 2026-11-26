@@ -1,5 +1,7 @@
 'use client';
 
+
+
 import { useEffect, useRef, useState } from 'react';
 
 import { formCardClass, FormHeaderCard, QuestionFillView } from '@core/components/ApplicationFormUi';
@@ -13,10 +15,14 @@ import {
 import type { Locale, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { addApplication, getApplication, getDiscordNickname, getRegion, setDiscordNickname } from '@core/lib/me';
+import { recruitmentZoneLabel } from '@core/lib/recruitment-timezones';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { type MemberRegion } from '@studyclub/types';
 import { Button, Checkbox, Modal } from '@studyclub/ui';
-import { categoriesOf, toISODate } from '@studyclub/utils';
+import { categoriesOf } from '@studyclub/utils';
 import { CalendarClock } from 'lucide-react';
+
+import { recruitmentDeadlineLabel, recruitState } from '@/proto/lib/recruitment-deadline';
 
 /**
  * 스터디 신청 폼 — 프로토타입.
@@ -38,11 +44,10 @@ import { CalendarClock } from 'lucide-react';
  * 이름·이메일은 지원자 화면에 두지 않는다.
  */
 function StudyFormHeader({ study, locale }: { study: Study; locale: Locale }) {
+  const zone = useDisplayTimeZone();
   const cats = categoriesOf(study);
-  const deadline = toISODate(study.recruitment?.deadline);
-  const schedule = study.schedule
-    ? t(study.schedule, locale)
-    : t({ ko: '일정 미정', en: 'Schedule TBD' }, locale);
+  const deadline = recruitmentDeadlineLabel(study, zone);
+  const schedule = study.schedule ? t(study.schedule, locale) : t({ ko: '일정 미정', en: 'Schedule TBD' }, locale);
   const deadlineLabel = deadline
     ? t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale)
     : '';
@@ -58,6 +63,10 @@ function StudyFormHeader({ study, locale }: { study: Study; locale: Locale }) {
           <p className='type-label-sm uppercase text-fg-muted'>{cats.join(' · ')}</p>
         )}
         <dl className={`${cats.length > 0 ? 'mt-3' : ''} flex flex-col gap-2 type-body-sm`}>
+          <div className='flex items-start gap-2'>
+            <dt className='shrink-0 font-semibold text-fg'>{locale === 'ko' ? '모집 시간대' : 'Recruitment time zones'}</dt>
+            <dd className='text-fg-secondary'>{recruitmentZoneLabel(study, locale)}</dd>
+          </div>
           <div className='flex items-start gap-2'>
             <dt className='shrink-0 font-semibold text-fg'>{m('common.schedule', locale)}</dt>
             <dd className='flex items-center gap-1.5 text-fg-secondary'>
@@ -204,6 +213,11 @@ export function ApplyDialog({
   async function submit() {
     if (getApplication(study.id)) {
       onSubmitted();
+      return;
+    }
+    if (recruitState(study) === 'closed') {
+      close();
+      onDeadline?.(t({ ko: '모집 마감', en: 'Recruiting closed' }, locale));
       return;
     }
     const nick = nicknameIssue(draftNick);

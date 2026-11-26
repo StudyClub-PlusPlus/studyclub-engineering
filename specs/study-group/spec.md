@@ -3,7 +3,9 @@
 > ERD: [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md)
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
-> 갱신: 2026-11-19 — 반 이동 때 [STUDY_PARTICIPANT_GROUP_MOVE](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md) 에 한 줄 남긴다 (서버 동작 5-5). 「시작 뒤 반 이동」 미결을 반별 구간 출석률로 닫았다 ([share 11-19](../../docs/share/2026-11-19-group-move-log.md)). 상태: 반 이동 기록은 구현 전
+> 갱신: 2026-11-21 — 참여 명단에 `participants[].availableDays` — 신청자 탭 「참여 가능 시간」 칸판 · 참여 가능 요일 열 ([share 11-21](../../docs/share/2026-11-21-availability-overlap.md)). 상태: 구현완료
+> 갱신: 2026-11-25 — 반 이동 기록(서버 동작 5-5) 구현완료 (V65 마이그레이션). 스터디 삭제가 그 스터디의 기록도 지운다
+> 갱신: 2026-11-19 — 반 이동 때 [STUDY_PARTICIPANT_GROUP_MOVE](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md) 에 한 줄 남긴다 (서버 동작 5-5). 「시작 뒤 반 이동」 미결을 반별 구간 출석률로 닫았다 ([share 11-19](../../docs/share/2026-11-19-group-move-log.md))
 > 갱신: 2026-11-18 — 반 수정 `PATCH /{groupId}` 에 `moveUpcomingMeetings` — 시간대 · 정규 시각을 바꿀 때 시작 전 회차도 옮길 수 있다 ([회차 스펙 결정 14](../study-meeting/spec.md#결정-사항))
 > 갱신: 2026-11-16 — 담당 캡틴 바꾸기 `PATCH …/owner-captain` 추가, 참여 명단에 `ownerCaptain`. 담당 캡틴 판정을 `STUDY.OWNER_CAPTAIN_ID` 로 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
 > 갱신: 2026-11-01 — `PATCH /{groupId}` 구현완료 — daysOfWeek · startTime · timezone 추가 (V54 마이그레이션)
@@ -20,7 +22,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 구현완료 |
-| PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 · 반 이동 기록 스펙확정 (11-19) |
+| PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId}/owner-captain | 담당 캡틴 바꾸기 (신청자 탭 맨 위 「담당 캡틴」 칸) | O (ADMIN) | 구현완료 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않고, 고르면 시작 전 회차를 새 시각으로 옮긴다 | O (ADMIN) | 구현완료 |
@@ -71,6 +73,7 @@
       "email": "jamie@example.com",
       "regionGroup": null,
       "timeZone": "Asia/Seoul",
+      "availableDays": ["mon", "thu"],
       "groupId": 7,
       "participantRole": "LEADER",
       "status": "ACTIVE",
@@ -95,6 +98,7 @@
 | participants[].discordNickname | String | Y | 디스코드 서버 별명. 신청 때 받은 값으로 갱신된다. 없으면 null — 화면 「—」 | ACCOUNT.DISCORD_NICKNAME |
 | participants[].regionGroup | String | Y | `KR` · `NA` · `ETC`. 지금 어느 코드도 채우지 않아 늘 null 이다(profile-edit 「지역은 시간대에서 파생한다」). 화면은 `timeZone` 을 쓴다 | ACCOUNT.REGION_GROUP |
 | participants[].timeZone | String | Y | 프로필 IANA 시간대(`Asia/Seoul` 등). 온보딩 전이면 null. 화면은 약칭(KST · ET · PCT · PT)으로 보이고 이 값으로 거른다 | ACCOUNT.TIME_ZONE |
+| participants[].availableDays | String[] | N | 이 스터디에 낸 신청서의 참여 가능 요일 키(`mon` … `sun`), 월 → 일 순서. 신청서가 없으면 `[]`. 화면은 크루 현지 요일 그대로 보이고, 「참여 가능 시간」 칸판은 `timeZone` 과 함께 기준 시간대로 옮겨 센다 (클라이언트 계산 — [captain-assign-classes PRD §3 계산 규칙](../../01-planning/stories/captain-assign-classes/PRD.md)) | STUDY_APPLICATION.FORM_ANSWER.availableDays — 같은 계정 · 같은 스터디의 신청 행. 여러 개면 ID 가 가장 큰 것 |
 | participants[].groupId | Long | N | 반. 신청 직후에는 기본 반 (2026-10-20) | STUDY_PARTICIPANT.STUDY_GROUP_ID |
 | participants[].participantRole | String | N | `LEADER` = 네비게이터 · `MEMBER` | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | participants[].captain | Boolean | N | 이 행이 담당 캡틴이면 true — 「캡틴」 칩. 담당 캡틴은 신청했을 때만 행이 있다 | 계산: `Study.isOwnedBy(ACCOUNT_ID)` — `STUDY.OWNER_CAPTAIN_ID = ACCOUNT_ID` |
@@ -405,9 +409,11 @@
 - ✅ `ErrorCode` 에 `PARTICIPANT_NOT_ACTIVE(409)` · `GROUP_NOT_EMPTY(409)` 추가
 - ✅ `STUDY` 에 `OWNER_CAPTAIN_ID BIGINT NULL` · 인덱스 `idx_study_owner_captain` 추가, 기존 행은 `CREATED_BY` 값으로 채움 — V58 마이그레이션 (2026-11-16)
 - ✅ `ErrorCode` 에 `OWNER_CAPTAIN_NOT_ADMIN(409)` 추가 · 감사 액션 `OWNER_CAPTAIN` 추가
+- ✅ `STUDY_PARTICIPANT_GROUP_MOVE` 표와 인덱스 3개 추가 — V65 마이그레이션 (2026-11-25, → [share 11-19](../../docs/share/2026-11-19-group-move-log.md))
 
 ## 프론트엔드 사용처
 
+- back-office-front 스터디 상세 · `/studies/{id}/applicants` — `features/participants/AvailabilitySection.tsx`: `participants[].availableDays` · `timeZone` 으로 「참여 가능 시간」 칸판을 그리고 칸을 고르면 명단을 거른다. 명단 「참여 가능 요일」 열. 응답에 `availableDays` 가 없으면 빈 배열로 읽는다
 - back-office-front 스터디 상세 · `/studies/{id}/applicants` — `features/participants/ParticipantsTab.tsx`: 명단 · 반 생성/제목 수정/삭제 · 개별/일괄 반 · 역할(크루 · 네비게이터) 변경 후 한 번에 저장 — 한 줄에 `groupId` · `participantRole` 중 바뀐 것만 싣는다. 참여 명단 GET · 일괄 PATCH는 위 계약에 연결했으며 BE 구현 후 실제 연동 검증이 필요하다.
 - back-office-front 일정 탭 — 스터디 시간 정하기 · 수정(`GroupTimeDialog`)이 이 PATCH 로 `daysOfWeek` · `startTime` · `timezone` 을 저장한다. 시각이나 시간대가 바뀌고 시작 전 회차(서버 `started` 가 false)가 있으면 「아직 시작 안 한 회차 N개도 새 시각으로 옮길까요?」 를 묻고 「옮기기」면 `moveUpcomingMeetings: true`, 「반 정보만 바꾸기」면 false 를 보낸다. 요일(`weekdays`)은 참여 명단 GET 응답에 없어 브라우저 저장소에도 함께 남긴다 — 해당 GET 이 `daysOfWeek` 를 반환하면 제거 예정
 - 역할 변경 프로토: playground `console/studies/{id}` 신청자 탭
@@ -418,7 +424,7 @@
 
 ## 미확정
 
-- 보류(MVP 이후): 신청자 가능 시간 집계(`GET …/availability`) — 신청 폼의 가능한 시간 질문이 필수가 아니라 2026-10-14 에 화면과 함께 뺐다
+- ~~신청자 가능 시간 집계~~ → 별도 집계 API 없이 참여 명단에 `availableDays` 를 싣고 화면이 기준 시간대로 겹쳐 센다 (2026-11-21, → [share 11-21](../../docs/share/2026-11-21-availability-overlap.md))
 - ~~한 사람씩 바꾸는 `PATCH …/{participantId}/role` · `…/group`~~ → 일괄 `PATCH …/participants` 로 합쳤다. 화면이 「저장」으로 한 번에 반영하는데 API 가 한 사람씩이면 중간 실패 때 일부만 바뀐다 (2026-10-21)
 - ~~신청자를 명부(`STUDY_PARTICIPANT`)에 넣는 시점~~ → **신청 제출 때, 기본 반으로**. 기본 반은 스터디를 만들 때 생기는 첫 반(「기본반」)이고 지울 수 없다. 다른 반으로는 「반 · 역할 한 번에 바꾸기」(`PATCH …/participants`)로 옮긴다 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md))
 - ~~반 일정을 바꿀 때 지워지는 회차에 걸린 휴가 신청 처리~~ → 스터디 시간 수정이 회차를 지우지 않아 없어졌다 (2026-10-14)

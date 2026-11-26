@@ -1,0 +1,32 @@
+{
+  "shots": [
+    {
+      "story": "captain-reuse-ended-study",
+      "name": "detail",
+      "title": "종료 스터디 상세",
+      "path": "/proto/console/studies/22",
+      "viewport": "desktop",
+      "click": []
+    },
+    {
+      "story": "captain-reuse-ended-study",
+      "name": "reuse",
+      "title": "복제 등록 창",
+      "path": "/proto/console/studies/22",
+      "viewport": "desktop",
+      "click": [
+        "스터디 복제"
+      ]
+    },
+    {
+      "story": "captain-reuse-ended-study",
+      "name": "reuse-mobile",
+      "title": "복제 등록 창 · 모바일",
+      "path": "/proto/console/studies/22",
+      "viewport": "mobile",
+      "click": [
+        "스터디 복제"
+      ]
+    }
+  ]
+}

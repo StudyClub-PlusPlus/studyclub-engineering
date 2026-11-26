@@ -1,5 +1,7 @@
 # 운영 대시보드 화면·API Spec
 
+> 시간대 확장 (2026-11-22): 본문의 프로필 우선 조회·고정 시간대 분포는 기존 beta 계약이다. 시간대 확장에서는 공통 헤더의 요청 시간대가 우선하며, 확장 PRD §3·§7에 맞춰 API·캐시·분포 응답을 개정해야 한다. [확장 PRD](../../01-planning/stories/timezone-expansion/PRD.md) · [회차 등록 PRD](../../01-planning/stories/navigator-register-sessions/PRD.md#8-시간대).
+
 > Playground: [운영 콘솔 대시보드](https://playground.studyclub.life/proto/console)
 > Story PRD: [캡틴은 운영 현황을 한 화면에서 볼 수 있다](../../01-planning/stories/console-dashboard/PRD.md) (ST-002) — 화면이 무엇을 하는지·완료 기준은 PRD 가 정본
 > 작성일: 2026-09-16 · 수정일: 2026-10-07
