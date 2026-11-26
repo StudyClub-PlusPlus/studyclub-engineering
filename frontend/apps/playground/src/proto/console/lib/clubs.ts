@@ -48,10 +48,6 @@ export type ClubRules = {
    * 합격선은 두지 않는다 — 숫자만 보여 준다
    */
   metric: 'rate' | 'streak' | 'weekPercent';
-  /** 날 단위에서 지각(늦게, 0.5일)을 받는가 — 얼리버드 시트의 괄호 요일 `(화)` */
-  allowsLate: boolean;
-  /** 하루 휴가를 받는가. 주 단위는 휴가 대신 목표 0 = 쉬는 주 */
-  dayOff: boolean;
   /** 한 달에 쓸 수 있는 하루 휴가 수. 없으면 제한 없음 (지금 운영 그대로) */
   vacationLimit?: number;
   /** 주마다 목표를 새로 쓰는가 (0 이면 쉬는 주) */
@@ -81,8 +77,6 @@ export const CLUBS: ClubConfig[] = [
       judge: 'day',
       record: 'check',
       metric: 'rate',
-      allowsLate: true,
-      dayOff: true,
       weeklyGoal: false,
       weeklyNote: false,
       source: 'crew',
@@ -99,8 +93,6 @@ export const CLUBS: ClubConfig[] = [
       judge: 'week',
       record: 'minutes',
       metric: 'weekPercent',
-      allowsLate: false,
-      dayOff: false,
       weeklyGoal: true,
       weeklyNote: true,
       source: 'crew',
@@ -116,8 +108,6 @@ export const CLUBS: ClubConfig[] = [
       judge: 'day',
       record: 'check',
       metric: 'streak',
-      allowsLate: false,
-      dayOff: false,
       weeklyGoal: false,
       weeklyNote: false,
       source: 'auto',

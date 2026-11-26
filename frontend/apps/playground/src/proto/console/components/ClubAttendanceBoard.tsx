@@ -20,7 +20,7 @@ import { patchMember, quietMembers, restingNext, type ClubRoom } from '@/proto/c
  * 칸을 눌러도 저장하지 않는다. 여러 칸을 고친 뒤 「저장」으로 한 번에 반영한다 (스터디 출석부와 같다).
  */
 
-const STATUS_LABEL: Record<DayMark, string> = { present: '했음', late: '지각', absent: '안 함', excused: '휴가' };
+const STATUS_LABEL: Record<DayMark, string> = { present: '출석', late: '지각', absent: '결석', excused: '휴가' };
 
 /** 저장 전 고친 칸 수 */
 function changedCount(a: ClubRoom, b: ClubRoom): number {

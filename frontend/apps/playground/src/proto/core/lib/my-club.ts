@@ -4,7 +4,8 @@ import type { ClubConfig, ClubRules } from '@console/lib/clubs';
  * 「내 클럽」 — 크루가 자기 클럽에서 매일 쓰는 화면의 데이터와 계산.
  *
  * 세 클럽의 실제 운영(시트 · 디스코드)을 따른다.
- * - 얼리버드: 날마다 「했다」, 지각은 0.5일. 앞에 보이는 숫자는 이번 달 출석률
+ * - 날 단위 기록 값은 스터디와 같다 — 출석 · 지각(0.5일) · 결석 · 휴가 (2026-11-26). 클럽마다 다르지 않다
+ * - 얼리버드: 크루가 날마다 남긴다. 시트의 괄호 요일 `(화)` 는 지각. 앞에 보이는 숫자는 이번 달 출석률
  * - Daily LeetCode: 기록을 자동으로 받는다. 앞에 보이는 숫자는 연속일(스트릭) — 달이 바뀌어도 이어진다
  * - WEEKLY X: 날마다 공부 시간, 주마다 목표 시간 · 한 줄. 앞에 보이는 숫자는 주 달성률(%) — 합격선 없음, 목표 0 은 쉬는 주
  * 어느 쪽인지는 클럽 설정(`ClubConfig.rules`)이 정한다 — 클럽 이름으로 나누지 않는다.
@@ -122,13 +123,19 @@ export function fmtMin(min: number): string {
 
 /* ── 날 단위 ─────────────────────────────────────────────────────── */
 
-/** 이 클럽에서 크루가 보는 기록 값 — 설정에서 고른다 */
+/** 날 단위 기록 값 — 스터디 출석과 같은 네 값. 클럽마다 고르지 않는다 */
+export const DAY_MARKS: readonly DayMark[] = ['present', 'late', 'absent', 'excused'];
+
+/** 크루가 오늘 칸에 스스로 남기는 값 — 결석은 캡틴이 적는다 (스터디도 결석은 네비게이터 · 캡틴이) */
+export const CREW_MARKS: readonly DayMark[] = ['present', 'late', 'excused'];
+
+/** 이 클럽 출석부의 값 — 날 단위면 네 값, 주 단위(공부 시간)는 없다 */
 export function marksFor(rules: ClubRules): DayMark[] {
-  return ['present', ...(rules.allowsLate ? (['late'] as const) : []), ...(rules.dayOff ? (['excused'] as const) : [])];
+  return rules.judge === 'day' ? [...DAY_MARKS] : [];
 }
 
 /**
- * 이번 달 출석률 — 출석 1 · 지각 0.5 · 안 한 날 0. 휴가는 분모에서 뺀다.
+ * 이번 달 출석률 — 출석 1 · 지각 0.5 · 결석 0 · 기록 없는 지난 날 0(제안). 휴가는 분모에서 뺀다.
  * 오늘은 기록이 있을 때만 센다 (아직 하루가 남았다).
  */
 export function dayRate(state: MyClubState, month: string, today: string): number | null {
@@ -150,16 +157,21 @@ export function doneDays(state: MyClubState, month: string): number {
 }
 
 /**
- * 연속일 — 오늘 했으면 오늘부터, 아니면 어제부터 거꾸로 센다. 빠진 날에서 끊긴다.
+ * 연속일 — 오늘 했으면 오늘부터, 아니면 어제부터 거꾸로 센다. 출석 · 지각은 하루를 더하고,
+ * 휴가는 건너뛴다(세지도 끊지도 않는다). 결석 · 기록 없는 날에서 끊긴다.
  * 기록이 있는 첫날까지 이어지면 그 전 스트릭(`streakBefore`)을 더한다 — 달이 바뀌어도 이어진다.
  */
 export function currentStreak(state: MyClubState, today: string): number {
   const first = Object.keys(state.days).sort()[0];
-  let d = state.days[today] ? today : addDays(today, -1);
+  const done = (v: DayMark | undefined) => v === 'present' || v === 'late';
+  let d = done(state.days[today]) ? today : addDays(today, -1);
   let n = 0;
   while (first && d >= first) {
-    if (!state.days[d]) return n;
-    n++;
+    const v = state.days[d];
+    if (v !== 'excused') {
+      if (!done(v)) return n;
+      n++;
+    }
     d = addDays(d, -1);
   }
   return n + state.streakBefore;
@@ -225,7 +237,7 @@ const EARLY_PATTERN: (DayMark | undefined)[] = [
   'present',
   'late',
   'present',
-  undefined,
+  'absent',
   'present',
   'present',
   'present',
@@ -331,7 +343,7 @@ const STAT_RULES: Rule<StatKey>[] = [
   { key: 'weekNow', when: (r) => r.metric === 'weekPercent' },
   { key: 'lastWeek', when: (r) => r.metric === 'weekPercent' },
   { key: 'average', when: (r) => r.metric === 'weekPercent' },
-  { key: 'dayOff', when: (r) => r.dayOff },
+  { key: 'dayOff', when: (r) => r.judge === 'day' },
   { key: 'months', when: () => true },
 ];
 

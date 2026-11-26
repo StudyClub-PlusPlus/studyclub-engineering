@@ -28,7 +28,7 @@ import { metricOf, patchMember, sourceOf, type ClubRoom } from './room';
  * - 크루(사용자 사이트 › 출석 탭)는 **보기** — 클럽 멤버 전원의 기록을 본다. 자기 기록은 「오늘」 탭에서 남긴다
  * - 캡틴(같은 탭 · 운영 콘솔 출석부)은 **고치기** — 누구 칸이든 고친다. 고친 칸에는 표시가 남는다
  *
- * 칸 모양은 클럽 설정(`rules`)이 정한다 — 날 단위는 날짜 칸(얼리버드: 했음 · 지각 · 휴가 / LeetCode: 연속일 숫자),
+ * 칸 모양은 클럽 설정(`rules`)이 정한다 — 날 단위는 날짜 칸(값은 스터디와 같은 출석 · 지각 · 결석 · 휴가 — LeetCode 는 출석 · 지각 칸에 그날까지 연속일 숫자),
  * 주 단위는 한 주의 날마다 공부 시간 + 목표 · 합계 · 달성률 · 한 줄 (WEEKLY X 시트).
  */
 
@@ -38,8 +38,8 @@ const CELL: Record<DayMark, string> = {
   absent: 'bg-error-50 text-error-700',
   excused: 'bg-surface-2 text-fg-secondary',
 };
-const SHORT: Record<DayMark, string> = { present: '했', late: '지', absent: '안', excused: '휴' };
-const LABEL: Record<DayMark, string> = { present: '했음', late: '지각', absent: '안 함', excused: '휴가' };
+const SHORT: Record<DayMark, string> = { present: '출', late: '지', absent: '결', excused: '휴' };
+const LABEL: Record<DayMark, string> = { present: '출석', late: '지각', absent: '결석', excused: '휴가' };
 const SOURCE_LABEL = { crew: '크루가 남김', auto: '자동 기록', captain: '캡틴이 고침' } as const;
 
 type Anno = Partial<Record<'table' | 'name' | 'extra' | 'dayHead' | 'cell' | 'total' | 'counts' | 'legend', string>>;
@@ -108,17 +108,15 @@ function Legend({ room, anno, extra }: { room: ClubRoom; anno?: string; extra?: 
       {r.judge === 'day' &&
         marksFor(r).map((k) => (
           <li key={k} className='flex items-center gap-1.5'>
-            <span className={cx('grid h-5 w-5 place-items-center rounded-sm', CELL[k])}>
-              {r.metric === 'streak' ? '1' : SHORT[k]}
-            </span>
-            {r.metric === 'streak' ? '푼 날 — 숫자는 그날까지 연속일' : LABEL[k]}
+            <span className={cx('grid h-5 w-5 place-items-center rounded-sm', CELL[k])}>{SHORT[k]}</span>
+            {LABEL[k]}
             {k === 'late' && ' (0.5일)'}
           </li>
         ))}
       {r.judge === 'day' && (
         <li className='flex items-center gap-1.5'>
           <span className='h-5 w-5 rounded-sm border border-border bg-surface-1' />
-          기록 없음 (안 한 날)
+          기록 없음
         </li>
       )}
       <li className='flex items-center gap-1.5'>
@@ -163,7 +161,10 @@ function DayBoard({ room, days, onRoom, baseline, lead, nameExtra, showCounts, a
     );
   }
 
-  const counts = days.map((d) => rows.filter((m) => room.states[m.id]?.days[d]).length);
+  // 출석 · 지각만 센다 — 결석 · 휴가는 한 날이 아니다
+  const counts = days.map(
+    (d) => rows.filter((m) => ['present', 'late'].includes(room.states[m.id]?.days[d] ?? '')).length,
+  );
 
   return (
     <div>
@@ -232,7 +233,11 @@ function DayBoard({ room, days, onRoom, baseline, lead, nameExtra, showCounts, a
                     const was = baseline?.states[m.id]?.days[d];
                     const changed = baseline !== undefined && was !== v;
                     const captain = sourceOf(room, m.id, d) === 'captain' && v !== undefined;
-                    const text = v ? (r.metric === 'streak' ? String(currentStreak(s!, d)) : SHORT[v]) : '';
+                    const text = v
+                      ? r.metric === 'streak' && (v === 'present' || v === 'late')
+                        ? String(currentStreak(s!, d))
+                        : SHORT[v]
+                      : '';
                     const label = `${m.name} ${shortDay(d)} ${v ? LABEL[v] : '기록 없음'}${captain ? ' · 캡틴이 고침' : ''}`;
                     const body = (
                       <>
@@ -284,7 +289,7 @@ function DayBoard({ room, days, onRoom, baseline, lead, nameExtra, showCounts, a
               <tr data-anno={anno.counts} className='bg-surface-1'>
                 {lead && <td className='sticky left-0 z-10 bg-surface-1' />}
                 <td className={cx('sticky z-10 bg-surface-1 px-2 py-1.5 type-label-sm text-fg-muted', nameLeft)}>
-                  {r.metric === 'streak' ? '푼 사람' : '한 사람'}
+                  출석 · 지각
                 </td>
                 {room.club.rosterQuestion && <td />}
                 {days.map((d, i) => (

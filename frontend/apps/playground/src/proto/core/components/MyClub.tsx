@@ -102,7 +102,7 @@ export function ClubDemoBar() {
   );
 }
 
-const MARK_LABEL: Record<DayMark, string> = { present: '했음', late: '지각', absent: '안 함', excused: '휴가' };
+const MARK_LABEL: Record<DayMark, string> = { present: '출석', late: '지각', absent: '결석', excused: '휴가' };
 const MARK_CELL: Record<DayMark, string> = {
   present: 'bg-success-100 text-success-700',
   late: 'bg-warning-100 text-warning-700',
@@ -211,7 +211,7 @@ const STATS: Record<StatKey, (c: Ctx) => { label: string; value: string; sub: st
   monthRate: ({ state, month, today }) => ({
     label: '이번 달 출석률',
     value: pct(dayRate(state, month, today)),
-    sub: '했음 1 · 지각 0.5 · 안 한 날 0 · 휴가는 빼고',
+    sub: '출석 1 · 지각 0.5 · 결석 · 기록 없는 날 0 · 휴가는 빼고',
   }),
   streak: ({ state, today }) => ({
     label: '연속일',
@@ -317,26 +317,20 @@ function TodaySection({ club, state, setState, today, month }: Ctx) {
         <div className='mt-4 flex flex-col gap-3'>
           <div className='flex flex-wrap gap-2'>
             <span data-anno='myclub:3-1' className='flex flex-wrap gap-2'>
-              <Button onClick={() => check('present')}>
-                {club.rules.allowsLate ? '목표 시간에 했어요' : '오늘 했어요'}
+              <Button onClick={() => check('present')}>출석 — 목표 시간에 했어요</Button>
+              <Button variant='secondary' onClick={() => check('late')}>
+                지각 — 늦었지만 했어요
               </Button>
-              {club.rules.allowsLate && (
-                <Button variant='secondary' onClick={() => check('late')}>
-                  늦었지만 했어요
-                </Button>
-              )}
             </span>
-            {club.rules.dayOff && (
-              <span data-anno='myclub:3-2'>
-                <Button
-                  variant='tertiary'
-                  disabled={limit !== undefined && used >= limit}
-                  onClick={() => check('excused')}
-                >
-                  오늘 휴가{limit !== undefined ? ` (${limit - used}일 남음)` : ''}
-                </Button>
-              </span>
-            )}
+            <span data-anno='myclub:3-2'>
+              <Button
+                variant='tertiary'
+                disabled={limit !== undefined && used >= limit}
+                onClick={() => check('excused')}
+              >
+                오늘 휴가{limit !== undefined ? ` (${limit - used}일 남음)` : ''}
+              </Button>
+            </span>
           </div>
           <span data-anno='myclub:3-3' className='max-w-md'>
             <Input
@@ -358,7 +352,8 @@ const DEMO_PROBLEM = '오늘의 문제 (예시)';
 
 function AutoSection({ club, state, today }: Ctx) {
   const name = club.rules.autoSourceName ?? '외부 서비스';
-  const done = state.days[today];
+  const mark = state.days[today];
+  const done = mark === 'present' || mark === 'late';
   return (
     <Card data-anno='myclub:4' padding='lg'>
       <div className='flex flex-wrap items-baseline justify-between gap-2'>
@@ -371,11 +366,13 @@ function AutoSection({ club, state, today }: Ctx) {
         </p>
       )}
       <div data-anno='myclub:4-2' className='mt-3 flex flex-wrap items-center gap-3'>
-        <Badge tone={done ? 'present' : 'neutral'}>{done ? '풀었음' : '아직 기록 없음'}</Badge>
+        <Badge tone={mark ? MARK_TONE[mark] : 'neutral'}>{mark ? MARK_LABEL[mark] : '아직 기록 없음'}</Badge>
         <span className='type-body-sm text-fg-secondary'>
           {done
             ? `연속 ${currentStreak(state, today)}일째`
-            : `${name}에서 풀면 반영돼요. 기록이 틀리면 캡틴에게 알려 주세요.`}
+            : mark
+              ? '캡틴이 남긴 기록이에요.'
+              : `${name}에서 풀면 출석으로 반영돼요. 기록이 틀리면 캡틴에게 알려 주세요.`}
         </span>
       </div>
     </Card>
@@ -424,7 +421,7 @@ function CalendarSection({ club, state, month, today }: Ctx) {
         ))}
         <span className='flex items-center gap-1.5'>
           <span className='inline-block h-3 w-3 rounded-xs bg-surface-1' />
-          기록 없음 (안 한 날)
+          기록 없음
         </span>
       </div>
     </Card>
