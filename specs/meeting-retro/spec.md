@@ -106,7 +106,7 @@ erDiagram
 
 - 순서: `writtenAt` 오름차순
 - 👍 를 누른 사람은 내려주지 않는다 — 수만
-- `missing` 은 그 반의 LEADER · CO_LEADER 와 ADMIN 에게만 채운다. 크루에게는 늘 `[]` — 안 쓴 사람 이름을 크루에게 보이지 않는다. 내가 썼는지 · 내가 누른 👍 는 `GET .../retros/me` 로 확인한다
+- `missing` 은 그 반의 LEADER 와 ADMIN 에게만 채운다. 크루에게는 늘 `[]` — 안 쓴 사람 이름을 크루에게 보이지 않는다. 내가 썼는지 · 내가 누른 👍 는 `GET .../retros/me` 로 확인한다
 - 끝나지 않은 회차는 `409 RETRO_NOT_OPEN`
 
 ## PUT /api/me/studies/{studyId}/meetings/{meetingId}/retro
