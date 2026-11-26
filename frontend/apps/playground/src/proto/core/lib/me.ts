@@ -1,8 +1,12 @@
 'use client';
 
 import { seedMyAttendance } from '@core/lib/attendance';
+import { getUser } from '@core/lib/auth';
 import { resolveDisplayZone } from '@core/lib/schedule-timezone';
 import type { MemberRegion } from '@studyclub/types';
+
+import { saveMemberTimeZone } from '@/proto/lib/member-timezone-store';
+
 
 /**
  * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청·거주 지역.
@@ -68,6 +72,8 @@ export type Application = {
   status: ApplicationStatus;
   /** 신청 당시 거주 지역. 가능 시간을 어느 시간대로 적었는지 여기서 결정된다. */
   region: MemberRegion;
+  /** 제출 당시 요일 답변의 기준 시간대. */
+  timeZone?: string;
   /** 참여 가능한 요일. 예: `mon`, `wed`. */
   cells?: string[];
   motivation?: string;
@@ -86,7 +92,7 @@ export function getApplication(studyId: string): Application | undefined {
  */
 export function addApplication(app: Application) {
   if (getApplication(app.studyId)) return;
-  writeJSON(APPLICATION_KEY, [...getApplications(), app]);
+  writeJSON(APPLICATION_KEY, [...getApplications(), { ...app, timeZone: app.timeZone ?? getTimeZone() }]);
 }
 
 export function cancelApplication(studyId: string) {
@@ -108,9 +114,7 @@ export function getRegion(): MemberRegion {
 }
 
 /**
- * 나의 시간대. 회차 시각을 이 기준으로 적고, 반도 이 값으로 갈린다.
- *
- * 지역(`MemberRegion`)은 여기서 파생한다 — 두 값을 따로 저장하면 한쪽만 고쳐져 어긋난다.
+ * 회원의 표시 시간대. 모집 권역·소속 반·기존 신청 답변은 변경하지 않는다.
  */
 export function getTimeZone(): string {
   const saved = readJSON<string>(ZONE_KEY, '');
@@ -118,9 +122,9 @@ export function getTimeZone(): string {
   return resolveDisplayZone(saved, browser);
 }
 
-export function setTimeZone(zone: string) {
+export function setTimeZone(zone: string, email = getUser()?.email) {
   writeJSON(ZONE_KEY, zone);
-  setRegion(zone === 'Asia/Seoul' ? 'KR' : 'NA');
+  if (email) saveMemberTimeZone(email, zone);
   window.dispatchEvent(new Event('sc:timezone-change'));
 }
 

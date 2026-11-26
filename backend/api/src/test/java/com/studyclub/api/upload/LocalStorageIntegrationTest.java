@@ -3,6 +3,7 @@ package com.studyclub.api.upload;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studyclub.api.auth.JwtService;
+import com.studyclub.api.storage.LocalObjectStorage;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
@@ -10,6 +11,7 @@ import com.studyclub.domain.storage.StorageObjectRepository;
 import com.studyclub.domain.storage.StorageProvider;
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -40,6 +42,7 @@ class LocalStorageIntegrationTest {
     @Autowired JwtService jwt;
     @Autowired AccountRepository accountRepository;
     @Autowired StorageObjectRepository storageObjectRepository;
+    @Autowired LocalObjectStorage localStorage;
 
     @Test
     @SuppressWarnings("rawtypes")
@@ -89,5 +92,23 @@ class LocalStorageIntegrationTest {
                         new HttpEntity<>(Map.of("fileId", fileId), json),
                         Map.class);
         assertThat(attached.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void 정적_경로는_gigs_만_내주고_비공개_폴더는_파일이_있어도_열지_않는다() {
+        String name = UUID.randomUUID() + ".jpg";
+        localStorage.put("gigs/feedbacks/" + name, new byte[] {1, 2, 3}, "image/jpeg");
+        localStorage.put("private/feedbacks/" + name, new byte[] {1, 2, 3}, "image/jpeg");
+
+        assertThat(
+                        rest.getForEntity("/local-storage/gigs/feedbacks/" + name, byte[].class)
+                                .getStatusCode())
+                .as("공개 폴더는 열린다")
+                .isEqualTo(HttpStatus.OK);
+        assertThat(
+                        rest.getForEntity("/local-storage/private/feedbacks/" + name, byte[].class)
+                                .getStatusCode())
+                .as("파일이 실제로 있어도 비공개 폴더는 정적 경로로 열리지 않는다")
+                .isEqualTo(HttpStatus.NOT_FOUND);
     }
 }

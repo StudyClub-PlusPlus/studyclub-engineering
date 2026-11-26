@@ -22,6 +22,7 @@
  *         "click": ["문항별"],                        // 찍기 전에 누를 버튼·링크의 글자 (순서대로)
  *         "scrollTo": "[data-anno=\"retros:3\"]",     // 찍기 전에 이 요소를 화면 가운데로
  *         "scrollLeft": { "selector": "...", "px": 600 }, // 가로 스크롤 상자를 민다
+ *         "hover": "월 21시 KST · 9명",               // 찍기 직전에 마우스를 올릴 버튼의 글자 (말풍선 · 툴팁)
  *         "annotate": false                          // true 면 번호 주석을 켜고 찍는다
  *       }
  *     ]
@@ -170,6 +171,9 @@ async function capture(browser, shot) {
   if (shot.annotate) {
     await page.keyboard.press('a');
     await page.waitForTimeout(600);
+  }
+  if (shot.hover) {
+    await page.getByRole('button', { name: shot.hover, exact: true }).first().hover({ timeout: 15_000 });
   }
   await page.waitForTimeout(400);
 

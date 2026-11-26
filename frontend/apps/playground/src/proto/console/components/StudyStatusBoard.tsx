@@ -26,10 +26,12 @@ export function StudyStatusBoard({
   ongoing,
   recruiting,
   events,
+  today,
 }: {
   ongoing: BoardStudy[];
   recruiting: BoardStudy[];
   events: BoardEvent[];
+  today: string;
 }) {
   return (
     <section data-anno='3' className='card mt-6 grid grid-cols-1 overflow-hidden lg:grid-cols-3'>
@@ -54,7 +56,7 @@ export function StudyStatusBoard({
         rowHref={(s) => `${BASE}/studies/${s.study_id}`}
         empty='모집중 스터디가 없습니다'
         className='border-b border-border lg:border-b-0 lg:border-r'
-        row={(s) => <DeadlineCell deadline={s.deadline} />}
+        row={(s) => <DeadlineCell deadline={s.deadline} label={s.deadlineLabel} today={today} />}
       />
       <Quadrant
         anno='3-3'
@@ -62,9 +64,10 @@ export function StudyStatusBoard({
         count={events.length}
         href={`${BASE}/events`}
         items={events}
-        rowHref={() => `${BASE}/events`}
+        rowHref={(e) => `${BASE}/events/${e.id}`}
+        itemLabel="행사"
         empty='예정된 행사가 없습니다'
-        row={(e) => <DateCell date={e.date} />}
+        row={(e) => <DateCell date={e.date} today={today} />}
       />
     </section>
   );
@@ -82,6 +85,7 @@ function Quadrant<T extends { id: string; title: string }>({
   row,
   rowHref,
   className = '',
+  itemLabel = '스터디',
 }: {
   anno?: string;
   title: string;
@@ -94,6 +98,7 @@ function Quadrant<T extends { id: string; title: string }>({
   row: (item: T) => React.ReactNode;
   rowHref: (item: T) => string;
   className?: string;
+  itemLabel?: string;
 }) {
   const shown = items.slice(0, BOARD_PREVIEW);
   const rest = items.length - shown.length;
@@ -134,7 +139,7 @@ function Quadrant<T extends { id: string; title: string }>({
                 href={href}
                 className='flex h-11 items-center justify-center type-label-sm text-fg-muted hover:text-fg-secondary'
               >
-                외 {rest}개 스터디
+                외 {rest}개 {itemLabel}
               </Link>
             </li>
           )}
@@ -145,24 +150,24 @@ function Quadrant<T extends { id: string; title: string }>({
 }
 
 /** 모집 마감 칸. 날짜만으로는 급한지 알 수 없어 남은 일수를 같이 적는다. */
-function DeadlineCell({ deadline }: { deadline?: string }) {
+function DeadlineCell({ deadline, label, today }: { deadline?: string; label?: string; today: string }) {
   if (deadline === undefined) return <span className='w-[110px] shrink-0 text-right type-body-sm text-fg-muted'>—</span>;
-  const d = daysUntil(deadline);
+  const d = daysUntil(deadline, today);
   // 임박을 따로 가르지 않는다 — 운영 화면은 남은 날을 숫자로 읽는 자리고, 재촉은 사용자 사이트의 일이다.
   // 지난 것만 구분한다 — 그건 이미 벌어진 일이라 눈에 띄어야 한다.
   const tone = d < 0 ? 'text-error-700' : 'text-fg-secondary';
   // 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이고, 여기 쓰면 끝난 것으로 읽힌다
-  const label = d < 0 ? '마감 경과' : `D-${d}`;
+  const remaining = d < 0 ? '마감 경과' : `D-${d}`;
   return (
-    <span className={`tnum w-[110px] shrink-0 whitespace-nowrap text-right type-label-lg ${tone}`}>
-      ~{deadline.slice(5)} ({label})
+    <span title={label} aria-label={label ? `${label} 마감 (${remaining})` : undefined} className={`tnum w-[110px] shrink-0 whitespace-nowrap text-right type-label-lg ${tone}`}>
+      ~{deadline.slice(5)} ({remaining})
     </span>
   );
 }
 
 /** 날짜 + 남은 일수. 날짜만으로는 이번 주인지 다음 달인지 읽는 사람이 세어야 한다. */
-function DateCell({ date }: { date: string }) {
-  const d = daysUntil(date);
+function DateCell({ date, today }: { date: string; today: string }) {
+  const d = daysUntil(date, today);
   return (
     <span className='tnum w-[110px] shrink-0 whitespace-nowrap text-right type-body-sm text-fg-secondary'>
       {date.slice(5)} {d > 0 ? `(D-${d})` : d === 0 ? '(오늘)' : ''}

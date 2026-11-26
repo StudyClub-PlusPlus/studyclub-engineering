@@ -1,9 +1,11 @@
 'use client';
 
+
 import { useState } from 'react';
 
 import { NotificationTabs } from '@console/components/NotificationTabs';
 import { TableCard } from '@console/components/ui';
+import { formatConsoleTimestamp } from '@console/lib/display-timezone';
 import {
   TEMPLATE_CHANNEL_LABEL,
   TRIGGERS,
@@ -11,6 +13,7 @@ import {
   type NotificationTemplate,
   type NotificationTrigger,
 } from '@console/lib/templates';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { Button, Input, Modal, Select, Tabs, Textarea } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
@@ -35,6 +38,7 @@ const EMPTY: Draft = { trigger: 'USER_REGISTERED', subject: '', body: '' };
  * TODO(api): POST /api/admin/notification-templates · PUT·DELETE /api/admin/notification-templates/{id}
  */
 export function TemplatesTable({ initialTemplates }: { initialTemplates: NotificationTemplate[] }) {
+  const zone = useDisplayTimeZone();
   const { state, dispatch } = useEventWorkspace();
   const storedRows = state?.notificationTemplates;
   const rows = mergeNotificationTemplates(storedRows ?? [], initialTemplates, state?.deletedTemplateTriggers);
@@ -123,7 +127,7 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
               </td>
               <td className='whitespace-nowrap text-fg-secondary'>{TEMPLATE_CHANNEL_LABEL[t.channel] ?? t.channel}</td>
               <td className='truncate text-fg-secondary'>{t.subject}</td>
-              <td className='tnum whitespace-nowrap text-fg-secondary'>{stamp(t.updatedAt)}</td>
+              <td className='tnum whitespace-nowrap text-fg-secondary'>{formatConsoleTimestamp(t.updatedAt, zone)}</td>
             </tr>
           ))}
           {rows.length === 0 && (
@@ -281,21 +285,4 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
       </Modal>
     </div>
   );
-}
-
-/**
- * 보는 사람의 시간대로 그린다. 약칭은 적지 않는다 — 발송 이력과 같은 규칙.
- * **24시간제로 적는다** — 프로토의 다른 지면(회차·반·지역 시계·발송 이력)이 모두 그렇다.
- */
-function stamp(iso: string): string {
-  const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return iso;
-  return at.toLocaleString('ko-KR', {
-    year: '2-digit',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
 }

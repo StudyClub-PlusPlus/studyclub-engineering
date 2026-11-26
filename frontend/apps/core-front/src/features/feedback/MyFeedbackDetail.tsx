@@ -8,9 +8,17 @@ import type { Locale } from '@studyclub/types';
 import { Button, Modal } from '@studyclub/ui';
 import { ChevronLeft } from 'lucide-react';
 
-import { LOAD_FAILED_MESSAGE, NOT_FOUND_MESSAGE, formatStamp, isNotFound, isOnboardingRequired } from './feedback';
+import {
+  LOAD_FAILED_MESSAGE,
+  NOT_FOUND_MESSAGE,
+  feedbackImageSrc,
+  formatStamp,
+  isNotFound,
+  isOnboardingRequired,
+} from './feedback';
 import { FeedbackStatusBadge, FeedbackTypeBadge } from './FeedbackBadges';
 import { useMyFeedback, type MyFeedbackDetail as Detail } from './queries';
+import { RetryableImage } from './RetryableImage';
 import { useOnboardedAccount } from './useOnboardedAccount';
 import { PAGE, READ } from '@/lib/layout';
 
@@ -96,14 +104,13 @@ function FeedbackArticle({ feedback: f }: { feedback: Detail }) {
               {f.images.map((img, i) => (
                 <button
                   // ui-native: 첨부 썸네일 — 이미지 전체가 누르는 곳
-                  key={`${i}-${img.url}`}
+                  key={img.id}
                   type='button'
                   onClick={() => setZoomed(i)}
                   aria-label={`첨부 이미지 ${i + 1} 크게 보기`}
                   className='overflow-hidden rounded-control border border-border transition-opacity hover:opacity-90'
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- 내가 붙인 이미지, 외부(CDN) 주소 그대로 */}
-                  <img src={img.url} alt={`첨부 이미지 ${i + 1}`} className='h-24 w-36 object-cover' />
+                  <RetryableImage src={feedbackImageSrc(img.url)} alt={`첨부 이미지 ${i + 1}`} className='h-24 w-36 object-cover' />
                 </button>
               ))}
             </div>
@@ -136,12 +143,7 @@ function FeedbackArticle({ feedback: f }: { feedback: Detail }) {
         size='lg'
       >
         {zoomed !== null && f.images[zoomed] && (
-          // eslint-disable-next-line @next/next/no-img-element -- 내가 붙인 이미지, 외부(CDN) 주소 그대로
-          <img
-            src={f.images[zoomed].url}
-            alt={`첨부 이미지 ${zoomed + 1}`}
-            className='mx-auto max-h-[70vh] w-auto max-w-full object-contain'
-          />
+          <RetryableImage key={f.images[zoomed].id} src={feedbackImageSrc(f.images[zoomed].url)} alt={`첨부 이미지 ${zoomed + 1}`} className='mx-auto max-h-[70vh] w-auto max-w-full object-contain' />
         )}
       </Modal>
     </>

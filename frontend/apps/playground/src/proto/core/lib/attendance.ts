@@ -197,3 +197,10 @@ export function myRate(study: Study, stored: Record<string, MyStatus>, now = new
   const score = target.reduce((sum, m) => sum + attendancePoint(stored[m.id] ?? 'absent'), 0);
   return Math.round((score / target.length) * 100);
 }
+
+/** 표시 날짜가 달라도 기본 출석 대상은 실제로 시작한 가장 최근 회차다. */
+export function latestStartedMeeting<T extends StudyMeeting>(meetings: T[], startOf: (meeting: T) => Date, now = Date.now()) {
+  return meetings.map((meeting) => ({ meeting, start: startOf(meeting).getTime() }))
+    .filter(({ start }) => start <= now)
+    .sort((a, b) => b.start - a.start)[0]?.meeting;
+}

@@ -26,7 +26,7 @@ export const apiAdminFeedbackPageSchema = z.object({
 export const apiAdminFeedbackDetailSchema = apiAdminFeedbackSchema.extend({
   selectableStatuses: z.array(feedbackStatusSchema),
   content: z.string(),
-  images: z.array(z.object({ url: z.string() })),
+  images: z.array(z.object({ id: z.number(), url: z.string() })),
   browser: z.string().nullable(),
   viewport: z.object({ width: z.number(), height: z.number() }).nullable(),
   reply: z.object({ content: z.string(), repliedAt: z.string() }).nullable(),

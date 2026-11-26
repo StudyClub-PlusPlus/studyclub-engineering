@@ -7,11 +7,13 @@ import { Button, Modal, Textarea } from '@studyclub/ui';
 import { ChevronLeft } from 'lucide-react';
 
 import { FeedbackTypeBadge } from '@/features/feedbacks/components/FeedbackBadges';
+import { RetryableImage } from '@/features/feedbacks/components/RetryableImage';
 import { StatusPicker } from '@/features/feedbacks/components/StatusPicker';
 import { COPY, EMPTY_VALUE, formatStamp, personLabel, viewportLabel } from '@/features/feedbacks/labels';
 import { useChangeFeedbackStatus, useReplyFeedback, useSaveFeedbackMemo } from '@/features/feedbacks/queries';
 import { MEMO_MAX, REPLY_MAX, REPLY_MIN, type ApiAdminFeedbackDetail } from '@/features/feedbacks/types';
 import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
+import { apiUrl } from '@/lib/http';
 import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 /** 목록으로 돌아가는 길 — 상세 머리 위와 「없는 건」 안내에서 같이 쓴다. */
@@ -87,14 +89,13 @@ export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
               {detail.images.map((image, i) => (
                 <button
                   // ui-native: 첨부 썸네일 — 이미지 전체가 누르는 곳
-                  key={image.url}
+                  key={image.id}
                   type='button'
                   onClick={() => setZoom(i)}
                   aria-label={`첨부 이미지 ${i + 1} 크게 보기`}
                   className='h-28 w-40 overflow-hidden rounded-control border border-border hover:border-brand'
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- 사용자가 올린 이미지 원본 */}
-                  <img src={image.url} alt={`첨부 이미지 ${i + 1}`} className='h-full w-full object-cover' />
+                  <RetryableImage src={apiUrl(image.url)} alt={`첨부 이미지 ${i + 1}`} className='h-full w-full object-cover' />
                 </button>
               ))}
             </div>
@@ -123,12 +124,7 @@ export function FeedbackDetail({ detail }: { detail: ApiAdminFeedbackDetail }) {
         size='lg'
       >
         {zoom !== null && detail.images[zoom] && (
-          // eslint-disable-next-line @next/next/no-img-element -- 사용자가 올린 이미지 원본
-          <img
-            src={detail.images[zoom].url}
-            alt={`첨부 이미지 ${zoom + 1}`}
-            className='mx-auto max-h-[70vh] w-auto rounded-control'
-          />
+          <RetryableImage key={detail.images[zoom].id} src={apiUrl(detail.images[zoom].url)} alt={`첨부 이미지 ${zoom + 1}`} className='mx-auto max-h-[70vh] w-auto rounded-control' />
         )}
       </Modal>
     </div>

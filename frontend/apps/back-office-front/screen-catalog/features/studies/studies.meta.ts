@@ -124,4 +124,26 @@ export const studyScreenStates: ScreenStateDef[] = [
     },
     screenshot: { fullPage: true },
   },
+  {
+    // PRD 부분 연결: BO-ST-025-S01. 전체 기준은 features/prd/와 대응표 참고.
+    id: 'study-detail--group-time-edit',
+    label: '스터디 상세 — 일정 탭, 스터디 시간 수정 창',
+    pageId: 'study-detail',
+    rationale:
+      '반 카드의 「스터디 시간 수정」으로 창을 열면 요일 칩과, 한 줄에 반씩 놓인 시각 · 시간대 칸(둘 다 32px)이 보이는지 확인한다. 테스트 인증 쿠키 필요.',
+    recipe: {
+      storage: [{ key: 'bo_schedule_time:1', value: SCHEDULE_SEED }],
+      render: { url: '/studies/1?tab=schedule' },
+      steps: [
+        { action: 'click', selector: 'button[aria-label="스터디 시간 수정"]' },
+        { action: 'wait', ms: 300 },
+      ],
+    },
+    viewports: ['desktop'],
+    assertions: {
+      visible: ['[role="dialog"]', '[role="dialog"] button[aria-haspopup="listbox"]'],
+      text: { '[role="dialog"]': '스터디 시간 수정' },
+    },
+    screenshot: { fullPage: true },
+  },
 ];

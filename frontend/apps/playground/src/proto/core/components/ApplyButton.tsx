@@ -1,5 +1,6 @@
 'use client';
 
+
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type MouseEvent } from 'react';
 
@@ -15,6 +16,7 @@ import { createPortal } from 'react-dom';
 import { ApplyCompleteDialog } from './ApplyCompleteDialog';
 import { ApplyDialog } from './ApplyDialog';
 import { ApplyDiscordGate } from './ApplyDiscordGate';
+import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 /**
  * 신청 버튼 + 로그인 확인 + 디스코드 연동 확인 + 폼 + 완료 팝업.
@@ -24,6 +26,7 @@ import { ApplyDiscordGate } from './ApplyDiscordGate';
  */
 export function ApplyButton({ study, locale }: { study: Study; locale: Locale }) {
   const router = useRouter();
+  useRecruitmentClock([study]);
   const pathname = usePathname();
   const [formOpen, setFormOpen] = useState(false);
   const [discordOpen, setDiscordOpen] = useState(false);

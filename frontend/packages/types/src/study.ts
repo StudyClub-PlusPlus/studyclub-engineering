@@ -4,6 +4,8 @@ export type StudyStatus = "recruiting" | "ongoing" | "closed";
 export type StudyFormat = "online" | "offline" | "hybrid";
 export type StudyKind = "study" | "club";
 export type StudyTimezone = "KST" | "PST" | "both";
+/** 모집 범위. 실제 반 일정의 기준 시간대와 별개다. */
+export type RecruitmentTimeZones = { mode: 'unset' | 'all' | 'selected'; zones: string[] };
 
 export type StudyCategory =
   | "AI · ML"
@@ -67,6 +69,7 @@ export type Study = {
   format: StudyFormat;
   schedule?: L10n;
   timezone?: StudyTimezone;
+  recruitmentTimeZones?: RecruitmentTimeZones;
   lead?: string;
   seats?: { total: number; taken: number };
   discord_url?: string;

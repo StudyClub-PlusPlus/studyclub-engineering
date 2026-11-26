@@ -40,7 +40,7 @@ export type ApiGroupMeetings = {
   };
   me: { participantId: number | null; canEdit: boolean };
   /** 발표자 후보 — 그 반 활성 참여자, 이름순. */
-  participants: { participantId: number; name: string }[];
+  participants: { participantId: number; name: string | null }[];
   meetings: ApiMeeting[];
 };
 

@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react';
 
 import { classLabel, hasSchedule, type StudyClass } from '@console/lib/classes';
-import { EMPTY_RULE, STUDY_TZS, WEEKDAY_LABELS, otherClock, tzAbbr, type ScheduleRule } from '@console/lib/schedule';
-import { Button, Input, Modal, FilterChip } from '@studyclub/ui';
+import { EMPTY_RULE, WEEKDAY_LABELS, otherClock, type ScheduleRule } from '@console/lib/schedule';
+import { TimeZoneField } from '@core/components/TimeZoneField';
+import { isValidZone, scheduleZoneTitle } from '@core/lib/schedule-timezone';
+import { useDisplayTimeZone, useTimeZoneChangeLock } from '@core/lib/use-display-timezone';
+import { Button, Modal, FilterChip, TimePicker } from '@studyclub/ui';
 
 /**
  * 반의 스터디 시간(요일 · 시각 · 시간대) — 일정 탭에서 연다.
@@ -34,12 +37,12 @@ export function ClassScheduleDialog({
   }, [open, cls]);
 
   const editing = hasSchedule(cls);
+  const viewerZone = useDisplayTimeZone();
+  useTimeZoneChangeLock(open);
 
-  const valid = rule.weekdays.length > 0;
+  const valid = rule.weekdays.length > 0 && isValidZone(rule.tz);
   const invalid = touched && !valid;
-  // 시간대 칩의 KST/PDT 표기는 오늘 기준 — 기간을 받지 않으니 기준일이 없다
-  const at = new Date();
-  const other = otherClock(rule);
+  const other = otherClock(rule, viewerZone);
 
   function toggleDay(d: number) {
     const on = rule.weekdays.includes(d);
@@ -94,34 +97,27 @@ export function ClassScheduleDialog({
             </label>
             <div className='flex flex-wrap items-center gap-2'>
               <div className='w-48'>
-                <Input
-                  size='sm'
-                  type='time'
+                <TimePicker
                   id='rule-time'
                   value={rule.time}
-                  onChange={(ev) => setRule({ ...rule, time: ev.target.value })}
+                  onChange={(value) => setRule({ ...rule, time: value })}
                 />
               </div>
-              {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다 */}
-              <div role='group' aria-label='시간대' className='flex gap-1'>
-                {STUDY_TZS.map((tz) => {
-                  const on = rule.tz === tz.key;
-                  return (
-                    <FilterChip key={tz.key} selected={on} selectMode='single' onClick={() => setRule({ ...rule, tz: tz.key })}>
-                      {tz.label} <span className='opacity-70'>{tzAbbr(tz.key, at)}</span>
-                    </FilterChip>
-                  );
-                })}
+              <div className='min-w-48 flex-1'>
+                <TimeZoneField
+                  prioritizeCountries
+                  locale='ko' label='기준 시간대' hideLabel compact annotation={false}
+                  value={rule.tz} onChange={(tz) => setRule({ ...rule, tz })}
+                />
               </div>
             </div>
           </div>
 
-          {/* 반대편 시각을 같이 적는다 — 목 21:00 KST 는 미국에서 수요일이다 */}
-          {other ? (
-            <p className='type-label-sm text-fg-muted'>
-              {STUDY_TZS.find((t) => t.key !== rule.tz)?.label} 기준 <b className='font-semibold'>{other}</b>
+          {other && (
+            <p className='type-label-sm text-fg-muted' aria-live='polite'>
+              {scheduleZoneTitle(viewerZone)} 기준 · {other}
             </p>
-          ) : null}
+          )}
 
           <p id='rule-msg' role='status' className='type-label-sm'>
             {touched && !valid ? (

@@ -13,7 +13,7 @@ import jakarta.persistence.UniqueConstraint;
 /**
  * 문의에 첨부한 이미지 한 장. 문의 애그리거트 안이라 FEEDBACK 과는 FK 로 묶이고(마이그레이션), 업로드 행(STORAGE_OBJECT)과는 ID 로만 잇는다.
  *
- * <p>주소는 연결할 때의 공개 주소를 그대로 적어 둔다 — {@code ACCOUNT.PROFILE_IMG_URL} 과 같은 방식.
+ * <p>공개 주소는 두지 않는다 — 파일은 비공개 폴더에 있고, 권한을 확인하는 API 가 읽어서 내준다.
  */
 @Entity
 @Table(
@@ -41,19 +41,15 @@ public class FeedbackImage extends BaseEntity {
     @Column(name = "STORAGE_OBJECT_ID", nullable = false)
     private Long storageObjectId;
 
-    @Column(name = "IMAGE_URL", nullable = false, length = 512)
-    private String imageUrl;
-
     /** 0부터. 제출 때 고른 순서. */
     @Column(name = "DISPLAY_ORDER", nullable = false)
     private int displayOrder;
 
     protected FeedbackImage() {}
 
-    public FeedbackImage(Long feedbackId, Long storageObjectId, String imageUrl, int displayOrder) {
+    public FeedbackImage(Long feedbackId, Long storageObjectId, int displayOrder) {
         this.feedbackId = feedbackId;
         this.storageObjectId = storageObjectId;
-        this.imageUrl = imageUrl;
         this.displayOrder = displayOrder;
     }
 
@@ -67,10 +63,6 @@ public class FeedbackImage extends BaseEntity {
 
     public Long getStorageObjectId() {
         return storageObjectId;
-    }
-
-    public String getImageUrl() {
-        return imageUrl;
     }
 
     public int getDisplayOrder() {

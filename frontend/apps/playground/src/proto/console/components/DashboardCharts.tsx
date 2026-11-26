@@ -3,10 +3,9 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { crewZoneLabel, groupTimeZones, type ZoneCount } from '@console/lib/crew-timezones';
 import type { TrendPoint } from '@console/lib/dashboard';
-import { type MemberRegion } from '@studyclub/types';
-import { Segmented } from '@studyclub/ui';
-import { MEMBER_REGIONS } from '@studyclub/utils';
+import { Button, Segmented } from '@studyclub/ui';
 
 /**
  * 대시보드 차트.
@@ -15,11 +14,7 @@ import { MEMBER_REGIONS } from '@studyclub/utils';
  * **비율 두 가지**뿐이라 SVG 도넛과 가로 막대로 충분하다.
  */
 
-const REGION_COLOR: Record<MemberRegion, string> = {
-  KR: 'var(--color-primary-600)',
-  NA: 'var(--color-info-500)',
-  ETC: 'var(--color-neutral-300)',
-};
+const ZONE_COLORS = ['var(--color-primary-600)', 'var(--color-info-500)', 'var(--color-primary-300)', 'var(--color-neutral-400)', 'var(--color-neutral-300)'];
 
 export function Card({
   title,
@@ -43,59 +38,68 @@ export function Card({
   );
 }
 
-/** 지역 분포 — 도넛. 조각이 셋뿐이라 범례에 수치를 같이 적는다. */
-export function RegionDonut({ data }: { data: { key: MemberRegion; count: number }[] }) {
-  const total = data.reduce((a, b) => a + b.count, 0) || 1;
+/** 시간대 분포 — 기존 도넛과 범례를 유지하고 작은 항목만 펼쳐 본다. */
+export function RegionDonut({ data }: { data: ZoneCount[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const { rows, rest } = groupTimeZones(data);
+  const total = data.reduce((sum, row) => sum + row.count, 0);
+  const othersCount = rest.reduce((sum, row) => sum + row.count, 0);
+  const pct = (count: number) => total ? Math.round(count / total * 100) : 0;
   const R = 56;
   const C = 2 * Math.PI * R;
   let offset = 0;
+  if (!total) return <p className='py-6 text-center type-body-sm text-fg-muted'>활성 크루가 없습니다.</p>;
 
   return (
-    <div className='flex flex-wrap items-center gap-4'>
-      <svg viewBox='0 0 140 140' className='h-[120px] w-[120px] shrink-0 -rotate-90'>
-        <circle cx='70' cy='70' r={R} fill='none' stroke='var(--color-surface-2)' strokeWidth='20' />
-        {data.map((d) => {
-          const len = (d.count / total) * C;
-          const el = (
-            <circle
-              key={d.key}
-              cx='70'
-              cy='70'
-              r={R}
-              fill='none'
-              stroke={REGION_COLOR[d.key]}
-              strokeWidth='20'
-              strokeDasharray={`${len} ${C - len}`}
-              strokeDashoffset={-offset}
-            />
-          );
-          offset += len;
-          return el;
-        })}
-      </svg>
-
-      <ul className='flex min-w-0 flex-1 flex-col gap-2.5'>
-        {data.map((d) => {
-          const meta = MEMBER_REGIONS.find((r) => r.key === d.key);
-          const pct = Math.round((d.count / total) * 100);
-          return (
-            <li key={d.key} className='flex items-center gap-2.5'>
-              <span
-                className='h-2.5 w-2.5 shrink-0 rounded-full'
-                style={{ background: REGION_COLOR[d.key] }}
-                aria-hidden='true'
-              />
-              {/* 지역 이름과 시간대는 한 덩어리다 — 줄여야 할 때는 여백을 먼저 줄이고 이 칸은 지킨다 */}
-              <span className='flex-1 whitespace-nowrap type-label-lg text-fg'>
-                {meta?.label.ko ?? d.key}
-                <span className='ml-1.5 type-label-sm text-fg-muted'>{meta?.tzLabel}</span>
-              </span>
-              <span className='tnum shrink-0 type-label-lg text-fg'>{pct}%</span>
-              <span className='tnum w-12 shrink-0 text-right type-label-sm text-fg-muted'>{d.count}명</span>
+    <div>
+      <div className='flex flex-col gap-4'>
+        <svg viewBox='0 0 140 140' className='h-[120px] w-[120px] shrink-0 self-center -rotate-90' role='img' aria-label='크루 시간대 분포'>
+          <circle cx='70' cy='70' r={R} fill='none' stroke='var(--color-surface-2)' strokeWidth='20' />
+          {rows.map((row, index) => {
+            const len = row.count / total * C;
+            const el = (
+              <circle key={row.key} cx='70' cy='70' r={R} fill='none'
+                stroke={ZONE_COLORS[index]} strokeWidth='20'
+                strokeDasharray={len + ' ' + (C - len)} strokeDashoffset={-offset}>
+                <title>{(row.key === 'others' ? '기타' : crewZoneLabel(row.key)) + ' · ' + row.count + '명 · ' + pct(row.count) + '%'}</title>
+              </circle>
+            );
+            offset += len;
+            return el;
+          })}
+        </svg>
+        <ul className='flex min-w-0 flex-col gap-2.5'>
+          {rows.map((row, index) => (
+            <li key={row.key} className='relative flex items-center gap-2.5'>
+              <span className='h-2.5 w-2.5 shrink-0 rounded-full' style={{ background: ZONE_COLORS[index] }} aria-hidden='true' />
+              {row.key === 'others' ? (
+                <span className='flex-1' onMouseEnter={() => setShowSummary(true)} onMouseLeave={() => setShowSummary(false)}>
+                  <Button variant='tertiary' size='md' className='min-h-8 min-w-0 px-0 text-fg' aria-expanded={expanded} aria-controls='timezone-others'
+                    aria-describedby={showSummary ? 'timezone-others-summary' : undefined}
+                    onFocus={() => setShowSummary(true)} onBlur={() => setShowSummary(false)}
+                    onKeyDown={(event) => { if (event.key === 'Escape') setShowSummary(false); }}
+                    onClick={() => { setExpanded(!expanded); setShowSummary(false); }}>
+                    기타 {expanded ? '⌃' : '⌄'}
+                  </Button>
+                  {showSummary && <span id='timezone-others-summary' role='tooltip' className='absolute bottom-full left-0 z-10 mb-1 rounded-control border border-border bg-surface-raised px-3 py-2 type-label-sm shadow-lg'>
+                    {othersCount}명 · {pct(othersCount)}% · {rest.length}개 시간대
+                  </span>}
+                </span>
+              ) : <span className='min-w-0 flex-1 break-keep type-label-lg text-fg'>{crewZoneLabel(row.key)}</span>}
+              <span className='tnum w-10 shrink-0 whitespace-nowrap text-right type-label-lg text-fg'>{pct(row.count)}%</span>
+              <span className='tnum w-12 shrink-0 whitespace-nowrap text-right type-label-sm text-fg-muted'>{row.count}명</span>
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+      </div>
+      {expanded && <ul id='timezone-others' className='mt-4 flex flex-col gap-2 border-t border-border pt-3' aria-label='기타 시간대 상세'>
+        {rest.map((row) => <li key={row.key} className='flex items-center gap-2.5 type-label-sm'>
+          <span className='min-w-0 flex-1 break-keep text-fg-secondary'>{crewZoneLabel(row.key)}</span>
+          <span className='tnum w-10 shrink-0 whitespace-nowrap text-right'>{pct(row.count)}%</span>
+          <span className='tnum w-12 shrink-0 whitespace-nowrap text-right text-fg-muted'>{row.count}명</span>
+        </li>)}
+      </ul>}
     </div>
   );
 }

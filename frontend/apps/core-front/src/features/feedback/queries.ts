@@ -32,7 +32,8 @@ export type MyFeedbackPage = {
 export type MyFeedbackDetail = MyFeedbackItem & {
   /** 평문. HTML 로 해석하지 않는다 */
   content: string;
-  images: { url: string }[];
+  /** `url` 은 공개 주소가 아니라 로그인 쿠키로 여는 API 경로 — `feedbackImageSrc` 로 주소를 만든다. */
+  images: { id: number; url: string }[];
   /** 회신이 없으면 null — 화면은 「답변을 준비하고 있어요」 */
   reply: { content: string; repliedAt: string } | null;
 };

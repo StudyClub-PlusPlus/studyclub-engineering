@@ -1,5 +1,9 @@
 # 운영 대시보드 화면·API Spec
 
+> **시간대 확장 (2026-11-24):** 조회자 시간대·분포·주간 경계는 [timezone/spec.md](../timezone/spec.md) §3.4 · §8 과 아래 §2.2 **개정안**이 정본이다. `GET /api/admin/stats/crew-timezones` 는 KST/ET/PT/UNKNOWN 네 칸 → **IANA 분포, 차트 최대 5칸** (§4.5 확장 개정안). 헤더 API: `GET/PATCH /api/admin/me/display-time-zone`.
+>
+> 시간대 확장 (2026-11-22, 구 beta 메모): 본문 §2.2·§4.5 는 프로필 우선 계약 — **아래 개정안으로 대체 예정**.
+
 > Playground: [운영 콘솔 대시보드](https://playground.studyclub.life/proto/console)
 > Story PRD: [캡틴은 운영 현황을 한 화면에서 볼 수 있다](../../01-planning/stories/console-dashboard/PRD.md) (ST-002) — 화면이 무엇을 하는지·완료 기준은 PRD 가 정본
 > 작성일: 2026-09-16 · 수정일: 2026-10-07
@@ -62,6 +66,17 @@
 명시한 Query가 빈 값이거나 유효하지 않으면 프로필 유무와 관계없이 400 `INVALID_INPUT`을 반환한다. 프로필을 읽는 DB 조회가 실패하면 해당 API 요청은 조회 실패로 처리한다. 이를 프로필 값 누락으로 간주하여 브라우저·서울로 대체하지 않는다.
 
 관련 결정: [11-01 대시보드 프로필 시간대 우선](../../docs/share/2026-11-01-dashboard-profile-timezone.md).
+
+#### 2.2.1. 확장 개정안 (구현 대상 — [timezone/spec.md](../timezone/spec.md))
+
+위 §2.2 3~5번은 **beta**이다. 확장 후:
+
+1. 프론트는 백오피스 헤더의 `effectiveDisplayTimeZone`을 요약·현황 보드·출석 추세 Query `timeZone`에 넣는다.
+2. 유효한 Query가 오면 서버는 **프로필(`TIME_ZONE`)로 덮어쓰지 않는다** (헤더 값 그대로).
+3. Query가 없으면 `ADMIN_DISPLAY_TIME_ZONE` → `TIME_ZONE` → `Asia/Seoul`.
+4. 응답 `timeZone` 은 최종 집계 기준. 캐시 키에 이 값을 포함한다.
+
+`GET /api/admin/me/display-time-zone` · `PATCH` 로 헤더를 영구 저장한다.
 
 ### 2.3. 주간 구간
 
@@ -698,7 +713,17 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 
 화면 4의 인원·비율을 반환한다. Query는 없다. 조회자의 시간대는 분류에 영향을 주지 않는다.
 
-**200 응답**
+> **beta (아래 JSON)** — 구현완료.
+>
+> **확장 개정안** ([timezone/spec.md](../timezone/spec.md) · PRD §7):
+> - 대상: 기존과 같이 **활성 크루**, `ACCOUNT.TIME_ZONE` IANA 별 1인 1표. 미설정(`TIME_ZONE` null·무효)은 **`unset` 한 칸**.
+> - 차트 **최대 5칸** (각 지역·`other`·`unset` 이 차트 조각 하나). 묶기 **전** 항목 수 = **지역(서로 다른 IANA) 수 + (`unset` 이 있으면 1)**.
+> - **합계 ≤ 5** — 전부 그대로 표시. `other` 없음. (예: 지역 4 + `unset` → 5칸.)
+> - **합계 > 5** 이고 **`unset` 있음** — 인원 내림차순 **상위 3 지역** + **`other`**(나머지 지역 전부) + **`unset`** = 5칸. (예: 지역 **5** + `unset` → 합계 6 → 상위 3 + `other`에 나머지 **2** 지역 + `unset`.)
+> - **합계 > 5** 이고 **`unset` 없음** — 상위 **4** 지역 + **`other`**(나머지 전부) = 5칸. (예: 지역 **6** → 상위 4 + `other`에 나머지 **2** 지역.)
+> - `other` 펼침: 묶인 IANA 별 **인원·비율**(분모 = 전체 활성 크루) — `timeZoneGroups[].breakdown[]` (`code`, `count`, `percentage`).
+
+**200 응답 (beta)**
 
 ```json
 {
@@ -717,12 +742,37 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 |---|---|---|---|
 | asOf | Datetime | N | 공통 규칙 |
 | totalCrew | Long | N | 이 API 기준 시점의 2-1 활성 크루 수 |
-| timeZoneGroups | Array | N | `KST / ET / PT / UNKNOWN` 네 항목을 이 순서로 항상 반환. 미분류가 0명이면 프론트에서 해당 차트 조각·범례를 숨김 |
-| timeZoneGroups[].code | Enum | N | 각 크루의 조회 시점 ACCOUNT.TIME_ZONE을 화면 4의 분류표로 분류한 그룹 코드 |
+| timeZoneGroups | Array | N | beta: `KST / ET / PT / UNKNOWN` 네 항목. 확장: 위 5칸 규칙 |
+| timeZoneGroups[].code | Enum / String | N | beta: 4분류 enum. 확장: IANA · `other` · `unset` |
 | timeZoneGroups[].count | Long | N | 해당 그룹의 고유 활성 회원 수. 합계 = totalCrew |
 | timeZoneGroups[].percentage | Double | Y | count / totalCrew × 100. 미분류도 분모에 포함. totalCrew 0이면 null |
+| timeZoneGroups[].breakdown | Array | Y | 확장: `code=other` 일 때만. 하위 IANA 별 `count` · `percentage` (전체 활성 크루 기준) |
 
 대상이 없어도 네 그룹을 반환한다. 각 `count`는 0, `percentage`는 `null`이다. 그룹별 부분 성공은 제공하지 않는다.
+
+**200 응답 (확장 예시)**
+
+```json
+{
+  "asOf": "2026-11-25T03:00:00Z",
+  "totalCrew": 25,
+  "timeZoneGroups": [
+    { "code": "Asia/Seoul", "count": 10, "percentage": 40.0 },
+    { "code": "America/Los_Angeles", "count": 7, "percentage": 28.0 },
+    { "code": "America/Toronto", "count": 5, "percentage": 20.0 },
+    {
+      "code": "other",
+      "count": 2,
+      "percentage": 8.0,
+      "breakdown": [
+        { "code": "Europe/London", "count": 1, "percentage": 4.0 },
+        { "code": "Australia/Sydney", "count": 1, "percentage": 4.0 }
+      ]
+    },
+    { "code": "unset", "count": 1, "percentage": 4.0 }
+  ]
+}
+```
 
 ### 4.6. GET /api/admin/stats/attendance-trend
 

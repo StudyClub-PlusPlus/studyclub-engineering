@@ -90,11 +90,7 @@ public class FeedbackService {
                     uploadService.attach(
                             fileIds.get(order), accountId, StoragePurpose.FEEDBACK, now);
             feedbackImageRepository.save(
-                    new FeedbackImage(
-                            feedback.getId(),
-                            attached.getId(),
-                            uploadService.publicUrl(attached),
-                            order));
+                    new FeedbackImage(feedback.getId(), attached.getId(), order));
         }
         return MyFeedbackItem.from(feedback);
     }
@@ -128,13 +124,23 @@ public class FeedbackService {
                 feedback.getContent(),
                 feedback.submitterStatus(),
                 feedback.getCreatedAt(),
-                images(feedbackImageRepository, feedback.getId()),
+                images(feedbackImageRepository, feedback.getId(), MY_IMAGE_PATH),
                 FeedbackReply.of(feedback));
     }
 
-    static List<FeedbackImageUrl> images(FeedbackImageRepository repository, Long feedbackId) {
+    /** 내 문의 이미지 경로. 사진은 이 경로로만 열린다 — 캡틴용은 {@link AdminFeedbackController}. */
+    static final String MY_IMAGE_PATH = "/api/me/feedbacks";
+
+    static final String ADMIN_IMAGE_PATH = "/api/admin/feedbacks";
+
+    static List<FeedbackImageUrl> images(
+            FeedbackImageRepository repository, Long feedbackId, String basePath) {
         return repository.findAllByFeedbackIdOrderByDisplayOrderAsc(feedbackId).stream()
-                .map(image -> new FeedbackImageUrl(image.getImageUrl()))
+                .map(
+                        image ->
+                                new FeedbackImageUrl(
+                                        image.getId(),
+                                        basePath + "/" + feedbackId + "/images/" + image.getId()))
                 .toList();
     }
 

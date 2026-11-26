@@ -1,5 +1,7 @@
 # 스터디 API Spec
 
+> **시간대 확장 (2026-11-24):** 모집 시간대·목록 필터·시각 표시는 [timezone/spec.md](../timezone/spec.md) 가 정본이다. `STUDY.TIMEZONE` enum(`KST`/`PST`/`BOTH`)과 목록 Query `timezone` enum 은 **폐기 예정** — `recruitmentTimeZones` · Query `recruitmentZone`(단일 IANA) · `FormattedInstant` 로 대체한다. 데이터는 `STUDY_RECRUITMENT` + `STUDY_RECRUITMENT_ZONE` 에 저장(§4). 본문의 `timezone` 필드·표는 이관 완료 전까지 beta 계약으로 읽는다.
+>
 > ERD: [STUDY](../../docs/erd/STUDY.md) · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md)
 > Story PRD: [등록](../../01-planning/stories/study-create/PRD.md) · [수정·삭제](../../01-planning/stories/study-edit/PRD.md) · [공개](../../01-planning/stories/captain-publish-study/PRD.md) · [다음 기수](../../01-planning/stories/captain-reregister-cohort/PRD.md) · [운영 콘솔 목록](../../01-planning/stories/captain-list-all-studies/PRD.md) · [사용자 상세](../../01-planning/stories/crew-view-study-detail/PRD.md) · [운영 현황](../../01-planning/stories/study-detail/PRD.md) · [목록](../../01-planning/stories/crew-browse-studies/PRD.md)
 > 갱신: 2026-11-16 — 등록 시 `STUDY.OWNER_CAPTAIN_ID`(담당 캡틴)도 채운다. `CREATED_BY` 는 등록자 기록만 ([share 11-16](../../docs/share/2026-11-16-owner-captain-assignable.md))
@@ -72,6 +74,34 @@
 **새 엔드포인트가 필요한 이유** ([common-guide](../../docs/common-guide.md) — 기존 API 로 안 되는 이유): 수정 경로 하나에
 「캡틴만」과 「캡틴·네비게이터」 두 판정이 섞이면 호출 화면으로 분기해야 한다 — 규약이 금지하는 권한 우회 지점이다.
 등록·삭제는 캡틴만 하는 일이라 백오피스 경로에만 둔다.
+
+#### 원본에서 복사해 등록 (ST-042 · 스펙작성중)
+
+기존 `POST /api/admin/studies`를 확장한다. 다음은 복제 기능의 구현 계약이며, 일반 등록과 클럽 기수 추가의 기존 계약은 유지한다.
+
+| 조건 | 처리 |
+| --- | --- |
+| `sourceStudyId` 생략 또는 null | 기존 등록 분기. 마감일 필수 정책을 따른다 |
+| `sourceStudyId` 지정, `studyProgramId` 생략 또는 null, `studyKind` 생략 또는 `STUDY` | 캡틴 권한을 확인하고 서버에서 원본을 조회한다. 일반 STUDY의 ENDED·CLOSED만 복제할 수 있다 |
+| 원본 ID와 기존 프로그램 ID를 함께 지정하거나 복제에 `studyKind=CLUB` 지정 | 잘못된 등록 모드 조합으로 400. 생성 작업을 시작하지 않는다 |
+
+- **AC-1 · 글과 모집 값.** 제목·한 줄 소개·상세 설명·카테고리는 편집 후 제출한 값을 저장한다. 제목 중복을 허용한다. 모집 마감일·정원·일정·시작일·디스코드·드라이브는 원본에서 상속하지 않는다. 복제도 `recruitDeadline`은 필수이며 기존 미래 시각 검증을 따른다.
+- **AC-2 · 썸네일 수명.** 복제 요청의 `keepSourceThumbnail`은 기본 true다. true면 원본 이미지를 새 키로 복사하고, false면 `thumbnailFileId`가 있으면 새 이미지, 없으면 기본 이미지를 사용한다. true와 새 파일 ID를 함께 보내면 400이다. 기존 일반 등록의 `thumbnailFileId` 계약은 유지한다. 유지 시 서버가 원본으로부터 이미지를 확보한다. 다른 캡틴이 올린 파일도 원본 스터디의 복제 권한으로 처리한다. 새 이미지를 선택한 경우 기존 업로드 계약의 `thumbnailFileId`를 검증해 사용한다. 원본 또는 복제본의 썸네일을 나중에 교체·제거하거나 스터디를 삭제해도 **다른 쪽의 이미지 URL에서 실제 파일을 계속 읽을 수 있어야 한다.** 기존 교체 경로가 이전 파일을 삭제하므로 URL 문자열만 복사하는 구현은 이 조건을 충족하지 않는다. 서버에서 원본 파일을 새 키로 복사하여 수명을 독립시킨다.
+- **AC-3 · 신청 질문.** 서버가 원본에서 질문 순서·유형·문구·필수 여부·선택지·기타 허용·도움말·플레이스홀더를 읽어 복제한다. 원본 폼 제목·폼 설명·응답·신청자·참여자·반·출석은 복사하지 않는다. 질문이 없으면 빈 폼으로 등록한다. 복제 후 한쪽의 질문을 수정해도 상대 질문은 그대로다.
+- **AC-4 · 저장과 실패.** 새 프로그램, DRAFT 스터디, 모집 정보, 새 기본 반과 질문을 하나의 등록 트랜잭션에서 저장한다. 질문 저장 등 중간 실패 시 모두 롤백하고 원본을 보존한다. 커밋 실패 시 디스코드 연동을 시작하지 않으며, 복제를 위해 별도 생성한 파일이 있다면 실패 시 정리한다.
+- **AC-5 · 성공 응답.** 기존 등록처럼 본문 없는 `201 Created`와 `Location: /api/admin/studies/{새 studyId}`를 반환한다. 백오피스는 Location의 ID로 상세를 연다.
+
+**백엔드 인수 테스트 (구현 시)**
+
+1. 기존 일반 등록과 클럽 기수 추가 요청을 그대로 재실행한다. 복제의 마감일 생략·null은 400으로 거절한다.
+2. ENDED·CLOSED 각각에서 동일 제목으로 등록하고 원본과 다른 프로그램·스터디 ID, DRAFT 상태, 응답 Location을 확인한다. 권한 없음, 없는 원본, 진행 중 원본, 클럽 원본, 모드 조합 오류에서는 생성 건수가 증가하지 않아야 한다.
+3. 원본 썸네일을 유지해 복제한 뒤 원본/복제본을 번갈아 교체·삭제하는 독립 케이스에서 상대 이미지의 실제 조회 성공을 검증한다. 원본 이미지 없음, 명시적 제거, 새 업로드 교체도 확인한다.
+4. 선택지·필수 여부가 있는 질문과 응답이 있는 원본으로 복제한다. 질문 정의만 복사되고 응답 건수는 0인지, 빈 폼 원본도 등록되는지 확인한다.
+5. 질문 저장 중 실패를 주입한다. 프로그램·스터디·모집·기본 반의 건수가 모두 이전과 같고 원본 질문·이미지가 유지되는지 확인한 뒤 같은 입력으로 재시도한다.
+
+6. 마감일 누락·null·과거 시각은 400으로 거절하고 미래 마감일은 해당 순간까지 모집한다.
+
+[ST-042 PRD](../../01-planning/stories/captain-reuse-ended-study/PRD.md)
 
 **사이트 상세가 권한을 보는 이유**: 사이트 상세는 원래 공개 경로지만, 네비게이터가 맡은 DRAFT 스터디를 사이트에서 읽어야
 고칠 수 있다. 가르는 기준이 「어느 화면에서 불렀나」가 아니라 **「호출자가 누구인가」**(토큰의 계정)라서 규약이 금지하는
@@ -403,7 +433,7 @@ private StudyDetailResponse toDetail(Study study) {
 - **Method**: POST
 - **Path**: `/api/admin/studies` — `AdminStudyController`. 옛 `POST /api/studies` 는 없앴다
 - **인증**: 필요 — `ACCOUNT.SYSTEM_ROLE=ADMIN` 만 (`assertCaptain`) (지금 단계에서는 **캡틴 = 운영자**. 일반 회원에게 셀프서비스로 캡틴 자격을 여는 건 이후 Story)
-- **설명**: 캡틴(=ADMIN)이 새 스터디(`STUDY_PROGRAM.STUDY_KIND` 는 요청의 `studyKind`, 기본 `STUDY`, `STATUS=DRAFT`)를 등록한다. 프로그램은 따로 등록하지 않는다 — 새 프로그램이면 첫 기수와 함께 만들고, 클럽의 새 기수는 `studyProgramId` 로 붙인다. `STUDY_RECRUITMENT` 행 1개와 **기본 반**(`STUDY_GROUP`, 이름 「기본반」) 1개를 항상 함께 생성한다 — 신청자가 들어갈 반이다 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)). `recruitDeadline` 은 필수다 — 상시 모집은 없다.
+- **설명**: 캡틴(=ADMIN)이 새 스터디(`STUDY_PROGRAM.STUDY_KIND` 는 요청의 `studyKind`, 기본 `STUDY`, `STATUS=DRAFT`)를 등록한다. 프로그램은 따로 등록하지 않는다 — 새 프로그램이면 첫 기수와 함께 만들고, 클럽의 새 기수는 `studyProgramId` 로 붙인다. `STUDY_RECRUITMENT` 행 1개와 **기본 반**(`STUDY_GROUP`, 이름 「기본반」) 1개를 항상 함께 생성한다 — 신청자가 들어갈 반이다 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)). 등록과 복제 모두 모집 마감일이 필수다. POL-0002의 상시 모집 폐지 정책을 따른다.
 
 ### Request Body
 
@@ -426,14 +456,16 @@ private StudyDetailResponse toDetail(Study study) {
 
 | 필드              | 타입    | 필수 | 검증                                                                                                                                                                 | 소스                                                                                      |
 | ----------------- | ------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| keepSourceThumbnail | Boolean | N | 복제에서 기본 true. 원본 파일을 새 키로 복사. false면 thumbnailFileId 또는 기본 이미지 사용. 일반 등록에서 지정하면 400 | 요청 옵션 |
+| sourceStudyId     | Long | N | 생략·null이면 기존 등록. 지정하면 일반 STUDY의 ENDED·CLOSED 원본에서 신청 질문과 기본 썸네일을 가져온다. `studyProgramId`와 함께 보내거나 `studyKind=CLUB`이면 400. 상세 조건은 ST-042 절 참조 | 복제 원본 STUDY.ID |
 | studyProgramId    | Long    | N    | null 이면 title 로 StudyProgram 자동 생성(새 프로그램). 값이 있으면 해당 프로그램이 존재하고 `STUDY_KIND=CLUB` 이어야 함 — 스터디는 기수가 1개다                     | STUDY.PROGRAM_ID (STUDY_PROGRAM 참조)                                                     |
 | studyKind         | String  | N    | `STUDY` / `CLUB`. **새 프로그램일 때만** 받는다 (기본 `STUDY`). `studyProgramId` 가 있으면 무시하지 않고 400 — 기존 프로그램의 종류는 여기서 바꾸지 않는다           | STUDY_PROGRAM.STUDY_KIND                                                                  |
 | title             | String  | Y    | 1~60자 (trim 후)                                                                                                                                                     | STUDY.TITLE                                                                               |
 | oneLineSummary    | String  | Y    | 비어 있으면 등록 불가                                                                                                                                                | STUDY.ONE_LINE_SUMMARY                                                                    |
 | description       | String  | N    | —                                                                                                                                                                    | STUDY.DESCRIPTION                                                                         |
 | category          | String  | Y    | StudyCategory enum 값 중 하나. 유효값은 GET 응답의 enum 표 참조                                                                                                      | STUDY.CATEGORY                                                                            |
-| thumbnailFileId   | Long    | N    | `POST /api/uploads/images`(`purpose=STUDY_THUMBNAIL`) 가 준 번호. 내 것·썸네일용·아직 연결 안 됨이어야 하고, 아니면 400. **주소 문자열은 받지 않는다** — [이미지 업로드](../../docs/flows/image-upload.md) | STUDY.THUMBNAIL_URL (번호로 찾은 공개 주소) |
-| recruitDeadline   | String  | Y    | 필수. 미래여야 함                                                                                                                                                    | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT (NOT NULL). 항상 STUDY_RECRUITMENT 행 1개 함께 생성 |
+| thumbnailFileId | Long | N | 복제 시 원본 유지 여부는 keepSourceThumbnail으로 지정하며 false일 때 파일 ID=교체, 생략·null=기본 이미지. 새 파일 ID는 기존 업로드 검증(내 것·썸네일용·연결 전)을 따른다. 일반 등록의 생략·null은 썸네일 없음. 파일 수명 독립성은 ST-042 AC-2 참조 | STUDY.THUMBNAIL_URL |
+| recruitDeadline | String | Y | 필수. 미래의 ISO 8601 UTC 시각 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT. 정책상 NOT NULL, 현행 API·DB의 NULL 허용은 별도 기존 불일치로 정리 필요 |
 | capacity          | Integer | N    | 1 이상의 정수. 비우면(null) 제한 없음                                                                                                                                | STUDY_RECRUITMENT.RECRUITMENT_CAPACITY                                                    |
 | schedule          | String  | N    | 자유 텍스트                                                                                                                                                          | STUDY.SCHEDULE                                                                            |
 | timezone          | String  | N    | `KST` / `PST` / `BOTH` 중 하나, 또는 null(미정). enum 이 아닌 값은 400                                                                                               | STUDY.TIMEZONE                                                                            |
@@ -463,9 +495,11 @@ Location: /api/admin/studies/{id}
 
 | 상태 | errorCode     | 조건                                                                                                                                                                                                                                                                                                                                                                       |
 | ---- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400  | INVALID_INPUT | title·oneLineSummary·category·recruitDeadline 누락, title 60자 초과, category 가 유효하지 않은 enum 값, recruitDeadline 이 과거, capacity 가 1 미만, studyKind 가 유효하지 않은 값, timezone 이 유효하지 않은 enum 값, `studyProgramId` 와 `studyKind` 를 함께 보냄, `studyProgramId` 가 없는 프로그램이거나 `CLUB` 이 아님. 실패한 필드 전부를 `필드명: 사유` 형태로 응답 |
+| 400  | INVALID_INPUT | title·oneLineSummary·category·recruitDeadline 누락, title 60자 초과, category 가 유효하지 않은 enum 값, recruitDeadline 이 과거, capacity 가 1 미만, studyKind 가 유효하지 않은 값, timezone 이 유효하지 않은 enum 값, `studyProgramId` 와 `studyKind` 를 함께 보냄, `studyProgramId` 가 없는 프로그램이거나 `CLUB` 이 아님. 복제 요청의 원본이 STUDY의 ENDED·CLOSED가 아님, `sourceStudyId`와 `studyProgramId`를 함께 지정하거나 복제에 `studyKind=CLUB` 지정. 실패한 필드 전부를 `필드명: 사유` 형태로 응답 |
 | 401  | UNAUTHORIZED  | 로그인 필요                                                                                                                                                                                                                                                                                                                                                                |
 | 403  | FORBIDDEN     | `SYSTEM_ROLE` 이 `ADMIN` 아님                                                                                                                                                                                                                                                                                                                                              |
+
+복제 원본이 존재하지 않으면 404 `NOT_FOUND`를 반환한다. 권한·원본 조회·상태·요청 조합 검증 실패 시 새 데이터를 생성하지 않는다.
 
 500(저장 실패)은 별도 errorCode 없이 처리.
 
@@ -478,10 +512,10 @@ Location: /api/admin/studies/{id}
 - ~~권한 범위~~ → **결정**: `SYSTEM_ROLE=ADMIN` 만 개설 가능 ("캡틴 = 운영자", 지금 단계). 일반 회원에게 캡틴 자격을 부여하는 신청/승인 플로우는 범위 밖 — 필요해지면 별도 Story
 
 - ~~DRAFT → OPEN 전환 주체~~ → **결정**: 개설자(=ADMIN)가 직접 전환한다. 별도 승인 단계 없음 — ERD 상태 다이어그램의 "운영자 공개"를 개설자 본인이 수행하는 것으로 해석
-- ~~상시 모집~~ → **폐지**: `recruitDeadline` 은 필수이고 `RECRUIT_DEADLINE_AT` 은 NOT NULL 이다. 계속 이어지는 참여는 `STUDY_PROGRAM.STUDY_KIND=CLUB` 의 기수 이월로 표현한다 ([STUDY](../../docs/erd/STUDY.md)). 스키마 변경 필요: V19 가 NULL 허용으로 바꿨으므로 다시 NOT NULL (기존 NULL 행 처리 필요)
+- **상시 모집 폐지 유지** — POL-0002에 따라 복제도 모집 마감일을 필수로 입력한다. 상시 모집 재도입은 별도 정책 변경으로 다룬다.
 - ~~종류 전환~~ → **결정**: `STUDY_PROGRAM.STUDY_KIND` 는 한 번 정하면 변경하지 못한다. 변경 API 를 두지 않는다
 - ~~`publishAt` (공개 예약)~~ → **폐지**: 예약 공개는 없다. `STUDY.PUBLISH_AT` 컬럼과 응답의 `publishAt` 을 두지 않는다. 등록 후 `STATUS=DRAFT` 로 비공개 상태이며, 캡틴이 모집을 시작하면(=공개) `OPEN` 이 된다
-- **[NEEDS CLARIFICATION] 이름 중복** — 운영 규칙상 스터디 이름은 겹치지 않게 관리한다. 클럽 새 기수 제목을 프로그램 제목 그대로 채우면 기수마다 같아지므로, 기수 표기를 붙일지 `STUDY.TITLE` 유니크 제약을 둘지 정해야 한다
+- **이름 중복 허용** — 일반 스터디 복제와 클럽 새 기수 모두 동일 제목을 허용한다. 스터디 ID로 구분하고 등록 후 제목을 수정할 수 있다 (PR #532 리뷰 결정).
 - **[NEEDS CLARIFICATION] 진행 일정 타입** — 지금은 `STUDY.SCHEDULE VARCHAR(255)` 자유 텍스트. 기간 정렬·필터가 필요하면 `START_AT`/`END_AT` 로 받아야 한다
 - ~~다중 카테고리~~ → **결정**: 지원하지 않는다. `category` 단일 값만 받는다 — 등록 폼도 라디오 버튼(단일 선택)으로 맞췄다. 여러 분야에 걸쳐도 대표 분야 하나만 고른다
 - **운영 종료(`ENDED → CLOSED`) API 미구현** — 캡틴이 채널 삭제를 확인하고 누르는 수동 전환이며(자동 검증 없음), `PROGRAM_ID` 안에서 `ID` 가 가장 큰 행에서만 허용해야 한다 — [ERD](../../docs/erd/STUDY.md#채널-삭제와-closed). 만들 때 이 제약을 서버에서도 검증할 것
@@ -724,6 +758,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 | STUDY_APPLICATION | RECRUITMENT_ID in 위 회차         | 신청 기록                      |
 | STUDY_GROUP       | STUDY_ID = studyId                | 반                             |
 | STUDY_PARTICIPANT | STUDY_ID = studyId                | 크루 명단                      |
+| STUDY_PARTICIPANT_GROUP_MOVE | STUDY_ID = studyId     | 반 이동 기록 ([ERD](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md)) |
 | ATTENDANCE        | STUDY_ID = studyId (또는 연관 FK) | 출석 기록                      |
 
 > 위 테이블 목록은 현재 ERD 기준이며, 관련 테이블이 추가되면 함께 갱신한다.

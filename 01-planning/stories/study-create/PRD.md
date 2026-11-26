@@ -1,5 +1,7 @@
 # 캡틴은 스터디를 등록할 수 있다.
 
+> 시간대 공통 규칙: [확장 PRD](../timezone-expansion/PRD.md).
+
 기준 프로토타입: 스터디 등록 모달 (playground 운영 콘솔 · 스터디 관리 → 스터디 등록) — https://playground.studyclub.life/proto/console/studies
 
 ## 1. 기본설명
@@ -119,7 +121,7 @@ flowchart LR
 - **내용**: 날짜 입력
 - **정책**
   - 비어 있으면 「모집 마감일을 입력하세요.」
-  - 오늘 이후여야 한다
+  - 입력 당시 헤더 시간대의 23:59:59를 UTC로 저장하며, 현재보다 미래여야 한다
   - 상시 모집은 없다
   - 모집 상태는 이 값과 정원으로 계산한다. 등록 때 상태를 고르지 않는다 — [POL-0002 스터디 상태](../../_registry/policies/POL-0002-study-status.md)
 - **데이터**: `STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT`
@@ -132,7 +134,7 @@ flowchart LR
 
 - **내용**: 이 모달의 주액션
 - **동작**
-  - 검증 통과 → 저장하고 완료 화면으로 바뀐다
+  - 검증 통과 → 창을 닫고 「미공개로 등록되었습니다」 토스트를 표시한다
   - 검증 실패 → 해당 칸에 오류, 저장하지 않는다
   - 처리 중 → 다시 누를 수 없다
 - **정책**
@@ -209,15 +211,12 @@ flowchart LR
   - 이 기수 전용 자료함이다
 - **데이터**: `STUDY.DRIVE_URL`
 
-### 16. 시간대
+### 16. 모집 시간대
 
-- **내용**: 「미정」 · 「KST」 · 「PST」 · 「동시 진행(KST·PST)」. 기본은 미정
-- **동작**: 하나만 고른다
-- **정책**
-  - 선택 입력이다. 미정으로 등록할 수 있다
-  - 어느 시간대 기준으로 도는지만 말한다. 요일·시각은 진행 일정이 말한다
-  - 기존 클럽의 새 기수이면 최신 기수의 시간대가 채워진다
-- **데이터**: `STUDY.TIMEZONE` — 비어 있으면 사이트에 「시간대 미정」
+- **내용**: 미정 / 모든 시간대에서 모집 / 특정 시간대 선택. 기본 미정.
+- **동작**: 특정 시간대는 국가별 검색 목록에서 복수 선택. 기본은 회원이 1명 이상인 지역, 기존 선택 유지, ‘전체 시간대에서 찾기’ 제공.
+- **정책**: 특정 지역은 1개 이상 필수. 모집 안내·검색용이며 반 기준·회차·신청 자격은 변경하지 않음. 새 기수는 최신 기수의 모집 범위를 채움.
+- **데이터**: `recruitmentTimeZones: { mode: unset | all | selected, zones: IANA[] }`. 기존 TIMEZONE 계약 확장 필요.
 
 ### 17. 썸네일
 
@@ -243,7 +242,7 @@ flowchart LR
 | 기본 | 새 프로그램 · 스터디 · 정원 제한 없음 · 설명 템플릿 | — |
 | 검증 실패 | 칸별 오류 | `60자 이내로 입력하세요.` · `모집 마감일을 입력하세요.` · `기수를 추가할 프로그램을 고르세요.` · `http(s):// 로 시작하는 주소를 입력하세요.` · `1 이상의 정수로 입력하세요. …` |
 | 처리중 | 등록 잠김 | — |
-| 완료 | 완료 화면 | — |
+| 완료 | 등록 창 닫기 · 토스트 | 등록되었습니다 |
 
 ### 데이터 관계
 
@@ -262,7 +261,8 @@ erDiagram
     varchar CATEGORY
     varchar THUMBNAIL_URL
     varchar SCHEDULE
-    varchar TIMEZONE "KST / PST / BOTH / null"
+    varchar RECRUITMENT_TIMEZONE_MODE "unset / all / selected"
+    json RECRUITMENT_TIMEZONES "IANA ID 목록; 논리 모델"
     datetime START_AT
     varchar DISCORD_CHANNEL_URL
     varchar DRIVE_URL
@@ -279,7 +279,7 @@ erDiagram
 
 - 범위 밖: 공개, 수정·삭제, 신청 폼, 반 편성, 커리큘럼·후기·통계 입력
 - 썸네일은 고르면 바로 올리고(`thumbnailFileId`) 저장 때 스터디에 붙인다
-- 시간대는 `STUDY.TIMEZONE`(V40) 에 저장한다. 비우면 미정
+- 모집 시간대는 확장 PRD §4의 모드+지역 목록으로 저장한다. 기존 TIMEZONE은 이관 대상이다.
 
 ## 3. 시스템 요건
 

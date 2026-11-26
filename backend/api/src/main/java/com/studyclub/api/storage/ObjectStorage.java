@@ -1,6 +1,7 @@
 package com.studyclub.api.storage;
 
 import com.studyclub.domain.storage.StorageProvider;
+import java.io.InputStream;
 import java.util.Optional;
 
 /**
@@ -33,6 +34,14 @@ public interface ObjectStorage {
      *     EXTERNAL_SERVICE_ERROR}
      */
     void delete(String key);
+
+    /**
+     * 파일을 읽는다. 비공개 폴더의 파일을 API 가 권한을 확인한 뒤 내줄 때 쓴다. 호출자가 스트림을 닫는다.
+     *
+     * @throws com.studyclub.common.error.BusinessException 없는 키는 {@code NOT_FOUND}, 설정이 없거나 저장소가
+     *     거부하면 {@code EXTERNAL_SERVICE_ERROR}
+     */
+    InputStream open(String key);
 
     /** 키 → 누구나 볼 수 있는 주소. {@code <공개 주소 접두어>/<키>}. */
     String publicUrl(String key);

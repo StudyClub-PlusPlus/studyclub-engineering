@@ -23,6 +23,8 @@ export const participantsResponseSchema = z.union([
         discordNickname: z.union([z.null(), z.string()]),
         email: z.string(),
         timeZone: z.union([z.null(), z.string()]),
+        // 서버 배포 전 응답에는 이 칸이 없다 — 빈 배열로 읽는다
+        availableDays: z.array(z.string()).optional().default([]),
         groupId: z.number(),
         participantRole: z.union([z.literal('LEADER'), z.literal('MEMBER')]),
         status: z.union([z.literal('ACTIVE'), z.literal('PAUSED'), z.literal('WITHDRAWN'), z.literal('COMPLETED')]),

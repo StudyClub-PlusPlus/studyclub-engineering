@@ -1,8 +1,8 @@
 # 행사 신청 API Spec: 크루가 사이트에서 행사를 보고 신청·취소한다
 
-> ERD: [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md) · [CLUB_EVENT_CHANNEL](../../docs/erd/CLUB_EVENT_CHANNEL.md) · [CLUB_EVENT_QUESTION](../../docs/erd/CLUB_EVENT_QUESTION.md) (`V59__create_club_event.sql`). 신청 테이블 `CLUB_EVENT_REGISTRATION` 은 아직 없다 — 아래 [데이터 모델](#데이터-모델-club_event_registration-공동-정의) (PR #479 제안과 같은 정의)
+> ERD: [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md) · [CLUB_EVENT_CHANNEL](../../docs/erd/CLUB_EVENT_CHANNEL.md) · [CLUB_EVENT_QUESTION](../../docs/erd/CLUB_EVENT_QUESTION.md) (`V59__create_club_event.sql`). [CLUB_EVENT_REGISTRATION](../../docs/erd/CLUB_EVENT_REGISTRATION.md) (`V62__create_club_event_registration.sql`, 공통 신청 PR #516) · [ACCOUNT](../../docs/erd/ACCOUNT.md) 활성화 칸 (`V63__account_activation.sql`)
 > 생성일: 2026-11-18 · 리뷰 반영: 2026-11-20 (PR #508 리뷰 — 본인 취소 대상 고정 · 신청 재시도 키 · 탈퇴 계정 토큰, R1~R6 결정. R4 는 PR #509 PRD 「활성화와 행동 분석」)
-> 상태: 스펙작성중 — 미확정 없음. 리뷰 승인 뒤 `스펙확정`
+> 상태: 구현중 — 미확정 없음. 구현: `ClubEventController` · `MyClubEventController` · `ClubEventSiteService` (크루 신청 API PR)
 >
 > Story PRD:
 > - [크루는 행사에 신청하고 참가 확정 상태를 확인할 수 있다](../../01-planning/stories/crew-apply-event/PRD.md) (ST-038)
@@ -20,17 +20,17 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/events | 행사 목록: 예정된 행사 · 지난 행사 묶음, 표시 상태, 내 신청 상태 | X (로그인하면 내 신청 상태를 싣는다) | 스펙작성중 |
-| GET | /api/events/{eventId} | 행사 상세: 모집 상세 · 일정 · 장소 · 방식별 잔여석 · 현재 질문 · 신청 가능 여부 · 내 신청 요약 | X (로그인하면 내 신청을 싣는다) | 스펙작성중 |
-| POST | /api/events/{eventId}/registrations | 신청 제출: `Idempotency-Key` 로 재시도를 막고, 행사 잠금 뒤 정원 · 중복 · 질문 버전을 다시 확인하고 접수 | O (`@RequireOnboarding`) | 스펙작성중 |
-| GET | /api/events/{eventId}/registrations/me | 내 신청서: 이 행사의 최신 신청 한 건과 신청 당시 질문 · 답 | O (`@RequireOnboarding`) | 스펙작성중 |
-| DELETE | /api/events/{eventId}/registrations/me?registrationId={id} | 본인 취소: 화면이 보고 있던 그 신청만, 신청 마감 시각 전까지. 행은 지우지 않고 `CANCELLED` 로 남긴다 | O (`@RequireOnboarding`) | 스펙작성중 |
+| GET | /api/events | 행사 목록: 예정된 행사 · 지난 행사 묶음, 표시 상태, 내 신청 상태 | X (로그인하면 내 신청 상태를 싣는다) | 구현중 |
+| GET | /api/events/{eventId} | 행사 상세: 모집 상세 · 일정 · 장소 · 방식별 잔여석 · 현재 질문 · 신청 가능 여부 · 내 신청 요약 | X (로그인하면 내 신청을 싣는다) | 구현중 |
+| POST | /api/events/{eventId}/registrations | 신청 제출: `Idempotency-Key` 로 재시도를 막고, 행사 잠금 뒤 정원 · 중복 · 질문 버전을 다시 확인하고 접수 | O (`@RequireOnboarding`) | 구현중 |
+| GET | /api/events/{eventId}/registrations/me | 내 신청서: 이 행사의 최신 신청 한 건과 신청 당시 질문 · 답 | O (`@RequireOnboarding`) | 구현중 |
+| DELETE | /api/events/{eventId}/registrations/me?registrationId={id} | 본인 취소: 화면이 보고 있던 그 신청만, 신청 마감 시각 전까지. 행은 지우지 않고 `CANCELLED` 로 남긴다 | O (`@RequireOnboarding`) | 구현중 |
 
 **마이페이지: `/api/me/events` (`MyClubEventController`)**
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/me/events | 내 행사: 행사별 최신 신청 한 건, 최근 신청 순 | O (`@RequireOnboarding`) | 스펙작성중 |
+| GET | /api/me/events | 내 행사: 행사별 최신 신청 한 건, 최근 신청 순 | O (`@RequireOnboarding`) | 구현중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -149,6 +149,7 @@
 - 신청 제출이 행사보다 계정을 먼저 잠그는 이유: 탈퇴는 「그 계정의 신청이 걸린 행사」를 계정 잠금 뒤에 고른다. 신청 제출이 같은 계정 잠금을 먼저 잡아야, 탈퇴가 행사 목록을 고른 뒤에 새 신청이 생기지 않는다. 잠금 순서가 탈퇴와 같아 교착도 생기지 않는다
 - 이것은 [event](../event/spec.md) 의 「트랜잭션의 첫 조회로 `CLUB_EVENT` 행」 규칙의 예외다. 그 규칙의 목적(잠금 전에 행사 · 신청을 일반 `SELECT` 로 읽지 않는다)은 그대로 지킨다 — 계정 잠금은 행사 · 신청을 읽지 않는다. event 스펙의 잠금 표에 「신청 제출: `ACCOUNT` → `CLUB_EVENT`」 · 「회원 탈퇴」 행을 더한다 (R1 결정 — event 스펙 담당(효승님)에게 공유해 그 스펙에도 반영)
 - 본인 취소는 계정을 잠그지 않는다. 탈퇴와 겹쳐도 둘 다 같은 신청을 `WHERE STATUS IN ('PENDING','CONFIRMED')` 조건부 갱신으로 바꾸므로 한쪽만 바꾼다
+- 신청 제출 · 본인 취소 트랜잭션은 `READ_COMMITTED` 다. 신청 제출은 계정 잠금 뒤 같은 키의 신청을 일반 조회로 찾는데, REPEATABLE READ 면 그 조회가 읽기 시점을 고정해 행사 잠금 뒤에 센 신청 수가 앞 요청의 커밋을 못 본다 (스터디 신청 제출과 같은 이유)
 - 잠금은 짧게 끝낸다. 같은 트랜잭션에서는 `NOTIFICATION` 아웃박스 행 저장(`BEFORE_COMMIT`)까지만 하고 실제 발송은 커밋 뒤 폴러가 맡는다 ([event](../event/spec.md))
 
 겹친 요청의 결과:
@@ -641,7 +642,7 @@
 | 3 | 잠금 뒤 `registrationId` 의 신청을 읽는다. 없거나 · 내 것이 아니거나 · 이 행사의 것이 아니면 | 404 `NOT_FOUND` | 남의 신청이 있는지 알리지 않는다 |
 | 4 | 그 신청이 `PENDING` · `CONFIRMED` 가 아님 (다른 탭에서 이미 취소 · 운영진이 먼저 처리) | 409 `EVENT_REGISTRATION_STATUS_NOT_ALLOWED` | PR #479 와 같은 코드. 화면은 최신 내역을 다시 읽는다 |
 | 5 | `now ≥ DEADLINE_AT` | 409 `EVENT_SELF_CANCEL_CLOSED` (새 코드) | §4 「신청 마감 시각 이후에는 운영진 문의 안내」, S3 |
-| 6 | `UPDATE … SET STATUS = 'CANCELLED', CANCEL_REASON = 'SELF_CANCELLED', STATUS_CHANGED_AT = now, STATUS_CHANGED_BY = 나 WHERE ID = ? AND STATUS IN ('PENDING','CONFIRMED')`. 바뀐 행이 0 이면 4 와 같은 409 | — | event 「조건부 갱신」 |
+| 6 | `ClubEventRegistration.cancelBySelf(now)` — `STATUS = CANCELLED`, `CANCEL_REASON = SELF_CANCELLED`, `STATUS_CHANGED_AT = now`, `STATUS_CHANGED_BY = 나`. 이 신청을 바꾸는 요청(운영진 처리 · 탈퇴 · 행사 취소)은 모두 같은 행사 행 잠금을 잡으므로 4 에서 읽은 상태가 그대로다. 엔티티가 상태를 한 번 더 확인해 아니면 4 와 같은 409 | — | event 「같은 행사에 쓰는 요청의 처리 순서」 |
 | 7 | `ClubEventRegistrationsCancelledEvent(cause = SELF)` 를 낸다. `BEFORE_COMMIT` 구독자가 취소 메일 행을 만든다 (템플릿 없으면 건너뜀, M2). 분석 구독자는 커밋 뒤 「신청 취소 완료」를 보낸다 | — | 「도메인 이벤트와 자동 메일」 · 「퍼널·계측」 |
 
 - 모집 마감(`STATUS = CLOSED`)은 보지 않는다 (S3)
@@ -795,7 +796,7 @@ R4 결정 · [crew-apply-event 「활성화와 행동 분석」](../../01-planni
 ### 활성화: 첫 스터디 신청 **또는** 첫 행사 신청
 
 - 계정의 **처음으로 성공한 신청 한 번**이 활성화다. 행사 신청은 `PENDING` · `CONFIRMED` 모두 접수 순간에 센다. 이후 참가 확정 · 취소 · 재신청 · 다른 신청은 활성화를 다시 만들거나 되돌리지 않는다
-- **판정을 DB 한 곳에 둔다**: `ACCOUNT.ACTIVATED_AT` (DATETIME(6), NULL) · `ACCOUNT.ACTIVATION_ACTION` (`STUDY_APPLIED` · `EVENT_APPLIED`). 신청 트랜잭션 안에서 `UPDATE ACCOUNT SET ACTIVATED_AT = now, ACTIVATION_ACTION = ? WHERE ID = ? AND ACTIVATED_AT IS NULL` — 바뀐 행이 1 이면 첫 활성화다. 스터디 신청 · 행사 신청이 동시에 와도 행 잠금으로 한쪽만 1 을 받는다. 재시도는 이미 값이 있어 0 이다
+- **판정을 DB 한 곳에 둔다**: `ACCOUNT.ACTIVATED_AT` (DATETIME(6), NULL) · `ACCOUNT.ACTIVATION_ACTION` (`STUDY_APPLIED` · `EVENT_APPLIED`). 신청 트랜잭션이 이미 잡은 `ACCOUNT` 행 잠금 아래에서 `ACTIVATED_AT` 이 비었을 때만 채운다 (`Account.activate(action, now)` — 채웠으면 true). 스터디 신청 · 행사 신청 모두 계정 행을 먼저 잠그므로 동시에 와도 한쪽만 true 를 받는다. 재시도는 이미 값이 있어 false 다
 - 바뀐 행이 1 이면 `AccountActivatedEvent(accountId, action, studyId | eventId)` 를 낸다. 분석 구독자가 커밋 뒤 Amplitude · GA4 `Activated` 를 보낸다
 - **기존 스터디 활성화도 같은 판정으로 바꾼다.** 지금은 「그 계정의 스터디 신청이 1건이면」(`AnalyticsEventListener`)이라 동시 신청 · 재전송에 약하고 행사를 모른다. 마이그레이션이 이미 스터디 신청이 있는 계정의 `ACTIVATED_AT` 을 첫 신청 시각으로 채워(`STUDY_APPLIED`), 기존 회원이 행사 신청으로 다시 활성화되지 않게 한다
 - 탈퇴하면 `ACCOUNT` 행과 함께 사라진다. 분석 기록은 [analytics](../analytics/spec.md) 의 탈퇴 · 수집 중단 규칙을 따른다

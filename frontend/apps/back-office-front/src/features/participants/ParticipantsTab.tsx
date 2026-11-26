@@ -1,18 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { Badge, Button, Checkbox, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import {
+  Badge,
+  Button,
+  Checkbox,
+  IconButton,
+  Select,
+  SelectionCount,
+  TableActionBar,
+  TimeZonePicker,
+  cx,
+} from '@studyclub/ui';
+import { availableDaysText } from '@studyclub/utils';
 import { useIsMutating } from '@tanstack/react-query';
+import { X } from 'lucide-react';
 
 import { TableCard } from '@/components/ui';
+import { AvailabilitySection, pickLabel, type AvailabilityPick } from '@/features/participants/AvailabilitySection';
 import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupChangesDialog';
 import { GroupsSection } from '@/features/participants/GroupsSection';
 import { OwnerCaptainSection } from '@/features/participants/OwnerCaptainSection';
 import { participantKeys, useParticipants } from '@/features/participants/queries';
 import type { Participant, ParticipantsResponse } from '@/features/participants/types';
 import { useGroupAssignment } from '@/features/participants/use-group-assignment';
-import { DISPLAY_ZONES, zoneLabel, zoneTitle } from '@/features/schedule/time';
+import { DISPLAY_ZONES, utcOffset, ZONE_PLACE, zoneLabel } from '@/features/schedule/time';
 import { ApiError } from '@/lib/http';
 import { useUrlState } from '@/lib/use-url-state';
 
@@ -61,7 +74,13 @@ function ParticipantAssignment({
   data: ParticipantsResponse;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
-  const [filters, setFilters] = useUrlState(FILTER_DEFAULTS, FILTER_ALLOWED);
+  const [filters, setUrlFilters] = useUrlState(FILTER_DEFAULTS, FILTER_ALLOWED);
+  const [timePick, setTimePick] = useState<AvailabilityPick | null>(null);
+  // 반 · 시간대 필터를 바꾸면 센 사람이 달라진다 — 고른 시각은 푼다
+  const setFilters = (next: Partial<typeof FILTER_DEFAULTS>) => {
+    setUrlFilters(next);
+    setTimePick(null);
+  };
   const tz = filters.tz;
   const group = data.groups.some((g) => String(g.groupId) === filters.group) ? filters.group : 'all';
   const [selected, setSelected] = useState<number[]>([]);
@@ -80,9 +99,18 @@ function ParticipantAssignment({
   // 반 생성·수정·삭제 중에도 배정은 잠근다(지워지는 반으로 옮기지 않게). 이동 차단은 배정 저장만 본다.
   const groupSaving = useIsMutating({ mutationKey: participantKeys.groups(studyId) }) > 0;
   const busy = saving || groupSaving;
-  const rows = data.participants.filter(
+  const filtered = data.participants.filter(
     (p) => (tz === 'all' || p.timeZone === tz) && (group === 'all' || String(p.groupId) === group),
   );
+  // 참여 가능 시간은 반 · 시간대 필터로 좁힌 명단 중 지금 참여 중인 사람을 센다
+  const people = useMemo(
+    () =>
+      filtered
+        .filter((p) => p.status === 'ACTIVE' || p.status === 'PAUSED')
+        .map((p) => ({ id: p.participantId, name: p.nickname, days: p.availableDays, timeZone: p.timeZone })),
+    [filtered],
+  );
+  const rows = timePick ? filtered.filter((p) => timePick.ids.includes(p.participantId)) : filtered;
   const editable = rows.filter((p) => p.status === 'ACTIVE' || p.status === 'PAUSED');
   const picked = editable.filter((p) => selected.includes(p.participantId));
   // 스펙: 배정 실패 응답의 errorMessage 에 걸린 participantId 를 적는다.
@@ -101,12 +129,21 @@ function ParticipantAssignment({
       />
       <OwnerCaptainSection studyId={studyId} owner={data.ownerCaptain} />
       <GroupsSection studyId={studyId} data={data} disabled={busy || dirty} />
-      <section aria-label='참여 크루' className='space-y-3'>
-        <div className='space-y-2'>
+      {data.participants.length > 0 && (
+        <AvailabilitySection people={people} pick={timePick} onPick={setTimePick} rosterId='crew-roster' />
+      )}
+      <section id='crew-roster' aria-label='참여 크루' className='scroll-mt-20 space-y-3'>
+        {/* 반 · 시간대 필터는 제목 줄 오른쪽 끝 (playground 신청자 탭과 같은 자리). 두 칸 모두 sm(32px) 로 높이를 맞춘다 */}
+        <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
           <h2 className='font-semibold'>참여 크루 {data.participantCount}명</h2>
-          <div className='flex flex-wrap gap-2'>
+          <div className='flex flex-wrap items-center gap-2'>
             {data.groups.length > 1 && (
-              <Select aria-label='반 필터' value={group} onChange={(e) => setFilters({ group: e.target.value })}>
+              <Select
+                size='sm'
+                aria-label='반 필터'
+                value={group}
+                onChange={(e) => setFilters({ group: e.target.value })}
+              >
                 <option value='all'>전체 반</option>
                 {data.groups.map((g) => (
                   <option key={g.groupId} value={g.groupId}>
@@ -115,14 +152,30 @@ function ParticipantAssignment({
                 ))}
               </Select>
             )}
-            <Select aria-label='시간대 필터' value={tz} onChange={(e) => setFilters({ tz: e.target.value })}>
-              <option value='all'>전체 시간대</option>
-              {DISPLAY_ZONES.map((z) => (
-                <option key={z.iana} value={z.iana}>
-                  {zoneTitle(z.iana)}
-                </option>
-              ))}
-            </Select>
+            <TimeZonePicker
+              className='w-48'
+              size='sm'
+              label='시간대 필터'
+              hideLabel
+              value={tz}
+              onChange={(next) => setFilters({ tz: next })}
+              options={[
+                { value: 'all', label: '전체 시간대' },
+                ...DISPLAY_ZONES.map((z) => ({ value: z.iana, label: ZONE_PLACE[z.iana], detail: utcOffset(z.iana) })),
+              ]}
+            />
+            {timePick && (
+              <span className='inline-flex items-center gap-1 rounded-pill border border-brand bg-brand-subtle pl-3 pr-1 type-label-lg text-fg'>
+                {pickLabel(timePick)}에 되는 크루 {rows.length}명
+                <IconButton
+                  size='xs'
+                  variant='tertiary'
+                  icon={<X />}
+                  aria-label='시각 필터 풀기'
+                  onClick={() => setTimePick(null)}
+                />
+              </span>
+            )}
           </div>
         </div>
         {mutation.error && (
@@ -133,6 +186,8 @@ function ParticipantAssignment({
           </p>
         )}
         <TableCard
+          // 칸이 많아 좁은 화면에서 줄이지 않고 가로로 민다
+          tableClassName='min-w-[64rem]'
           top={
             <TableActionBar
               position='top'
@@ -233,6 +288,7 @@ function ParticipantAssignment({
               <th>디스코드 닉네임</th>
               <th>이메일</th>
               <th>시간대</th>
+              <th>참여 가능 요일</th>
               <th>반</th>
               <th>역할</th>
             </tr>
@@ -268,7 +324,10 @@ function ParticipantAssignment({
                   </td>
                   <td>{p.discordNickname ?? '-'}</td>
                   <td>{p.email}</td>
-                  <td title={p.timeZone ?? undefined}>{p.timeZone ? zoneLabel(p.timeZone) : '-'}</td>
+                  {/* 시간대 없는 크루 — 칸판은 KST 로 세지만 명단은 「미설정」 그대로 보인다 (#527 과 맞춤) */}
+                  <td title={p.timeZone ?? undefined}>{p.timeZone ? zoneLabel(p.timeZone) : '미설정'}</td>
+                  {/* 크루가 고른 현지 요일 그대로 — 기준 시간대로 옮기면 하루가 이틀에 걸친다 */}
+                  <td className='whitespace-nowrap'>{availableDaysText(p.availableDays) || '-'}</td>
                   <td>
                     {data.groups.length > 1 ? (
                       // 칸 너비가 아니라 글자 너비로 — 화살표가 상자 안에 붙게 감싼다
@@ -321,7 +380,7 @@ function ParticipantAssignment({
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className='text-center text-fg-muted'>
+                <td colSpan={8} className='text-center text-fg-muted'>
                   {data.participants.length === 0 ? '아직 크루가 없습니다.' : '조건에 맞는 크루가 없습니다.'}
                 </td>
               </tr>

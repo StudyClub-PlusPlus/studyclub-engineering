@@ -316,7 +316,10 @@ describe('운영 상세', () => {
       detail({
         title: '<b>마감</b> 이라고 글자가 그대로 보여요',
         content: '스터디 카드에 <b>마감</b> 처럼\n태그가 그대로 나옵니다.',
-        images: [{ url: 'https://cdn.example/a.webp' }, { url: 'https://cdn.example/b.webp' }],
+        images: [
+          { id: 11, url: '/api/admin/feedbacks/241/images/11' },
+          { id: 12, url: '/api/admin/feedbacks/241/images/12' },
+        ],
       }),
       async () => detail(),
     );
@@ -332,10 +335,9 @@ describe('운영 상세', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '첨부 이미지 2 크게 보기' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByRole('img', { name: '첨부 이미지 2' })).toHaveAttribute(
-      'src',
-      'https://cdn.example/b.webp',
-    );
+    const zoomed = within(dialog).getByRole('img', { name: '첨부 이미지 2' });
+    expect(zoomed.getAttribute('src')).toMatch(/\/api\/admin\/feedbacks\/241\/images\/12$/);
+    expect(zoomed).toHaveAttribute('crossorigin', 'use-credentials');
   });
 
   it('첨부가 없으면 칸을 두지 않고, 모르는 브라우저·화면 크기는 「-」, 탈퇴한 제출자는 「탈퇴한 사용자」', async () => {

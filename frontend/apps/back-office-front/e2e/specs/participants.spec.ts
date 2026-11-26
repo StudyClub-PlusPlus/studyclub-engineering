@@ -49,6 +49,7 @@ function participants() {
         discordNickname: 'crew/서울',
         email: 'crew@example.com',
         timeZone: 'Asia/Seoul',
+        availableDays: ['mon', 'thu'],
         groupId: 1,
         participantRole: 'MEMBER',
         status: 'ACTIVE',
@@ -62,6 +63,7 @@ function participants() {
         discordNickname: 'navigator/미국',
         email: 'navigator@example.com',
         timeZone: 'America/New_York',
+        availableDays: ['mon'],
         groupId: 1,
         participantRole: 'LEADER',
         status: 'PAUSED',
@@ -75,6 +77,7 @@ function participants() {
         discordNickname: null,
         email: 'captain@example.com',
         timeZone: 'Asia/Seoul',
+        availableDays: [] as string[],
         groupId: 2,
         participantRole: 'MEMBER',
         status: 'ACTIVE',
@@ -200,6 +203,39 @@ test('참여자 반 편성: 반 생성·수정·삭제와 일괄 이동을 저�
       ],
     },
   });
+});
+
+test('참여 가능 시간: 칸을 골라 그 시각에 되는 크루만 남기고 한 번에 반을 옮긴다', async ({ page, context }) => {
+  const writes = await mockParticipants(context);
+  await page.goto('/studies/20?tab=crew');
+  const board = page.getByRole('region', { name: '참여 가능 시간' });
+  await expect(board.locator('h2').getByText('2명', { exact: true })).toBeVisible();
+
+  const table = page.getByRole('table');
+  const daysCell = (nickname: string) => table.getByRole('row').filter({ hasText: nickname }).getByRole('cell').nth(5);
+  await expect(table.getByRole('columnheader', { name: '참여 가능 요일' })).toBeVisible();
+  await expect(daysCell('김크루')).toHaveText('월 · 목');
+  await expect(daysCell('이네비')).toHaveText('월');
+  await expect(daysCell('박캡틴')).toHaveText('-');
+
+  // 표는 처음에 접혀 있다 — 펼쳐서 칸을 고른다
+  await board.getByRole('button', { name: '표 펼치기' }).click();
+  // KST 월 12시 = 뉴욕 일요일 밤 → 서울의 김크루만. KST 화 12시 = 뉴욕 월요일 밤 → 이네비만
+  await expect(board.getByRole('button', { name: '화 12시 KST · 1명' })).toBeVisible();
+  await board.getByRole('button', { name: '월 12시 KST · 1명' }).click();
+  await expect(page.getByRole('region', { name: '참여 크루' }).getByText('월 12시 KST에 되는 크루 1명')).toBeVisible();
+  await expect(table.getByText('이네비')).toHaveCount(0);
+  await expect(table.getByText('박캡틴')).toHaveCount(0);
+  await page.screenshot({ path: 'test-results/participants-availability.png', fullPage: true });
+
+  await page.getByRole('checkbox', { name: '보이는 크루 전체 선택' }).check();
+  await page.getByRole('combobox', { name: '바꿀 반' }).selectOption('2');
+  await page.getByRole('button', { name: SAVE }).click();
+  await expect(page.getByRole('status')).toHaveText('저장했습니다.');
+  expect(writes).toContainEqual({ method: 'PATCH', body: { changes: [{ participantId: 41, groupId: 2 }] } });
+
+  await page.getByRole('button', { name: '시각 필터 풀기' }).click();
+  await expect(table.getByText('이네비')).toBeVisible();
 });
 
 test('저장 중 이동을 막고 권한 회수 응답이면 명단을 숨긴다', async ({ page, context }) => {

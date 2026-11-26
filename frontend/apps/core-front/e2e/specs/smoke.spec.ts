@@ -253,4 +253,19 @@ test.describe('스터디 목록 필터', () => {
     await page.getByRole('tab', { name: /전체|All/i }).click();
     await expect(page.locator('main')).toBeVisible();
   });
+
+  test('모집 시간대는 지역 이름 목록에서 고르고 주소에 남는다', async ({ page }) => {
+    await page.goto('/ko/studies');
+    const picker = page.getByRole('button', { name: /모집 시간대 필터/ });
+    await expect(picker).toHaveText(/시간대 전체/);
+
+    await picker.click();
+    const list = page.getByRole('listbox', { name: '모집 시간대 필터' });
+    await expect(list.getByRole('option')).toHaveText(['시간대 전체', '한국', '미국 · LA', '동시 모집']);
+    await list.getByRole('option', { name: '한국' }).click();
+
+    await expect(picker).toHaveText(/한국/);
+    await expect(page).toHaveURL(/[?&]tz=KST\b/);
+    await expect(list).toBeHidden();
+  });
 });

@@ -1,3 +1,6 @@
+import { zonedInstant, resolveWallInput, dateWithDow, wallParts } from '@core/lib/meetings';
+import { zoneAbbreviation } from '@core/lib/schedule-timezone';
+import { formattingZone } from '@core/lib/time-zone-rules';
 import type { Study, StudyMeeting } from '@studyclub/types';
 
 /**
@@ -10,20 +13,8 @@ import type { Study, StudyMeeting } from '@studyclub/types';
  * 여기는 규칙만 다룬다.
  */
 
-/**
- * 스터디가 도는 시간대.
- *
- * **약어(PST/PDT)를 값으로 쓰지 않는다.** PST 는 겨울(−8), PDT 는 여름(−7)이라 서머타임 전환 주에
- * 한 시간이 어긋난다. 저장은 지역 ID 로 하고, 화면에 붙는 이름만 그날 기준으로 찍는다.
- *
- * 선택지는 둘뿐이다 — 모이는 권역이 한국과 미국 서부 두 곳이고, 동부를 쓰는 스터디가 하나도 없다.
- */
-export type StudyTz = 'Asia/Seoul' | 'America/Los_Angeles';
-
-export const STUDY_TZS: { key: StudyTz; label: string }[] = [
-  { key: 'Asia/Seoul', label: '한국' },
-  { key: 'America/Los_Angeles', label: '미국 서부' },
-];
+/** 반의 기준 IANA 시간대. */
+export type StudyTz = string;
 
 export type ScheduleRule = {
   /** 시작일 · 종료일 (yyyy-mm-dd). 회차가 놓일 구간. */
@@ -115,49 +106,18 @@ export function ruleFromMeetings(study: Study, meetings: StudyMeeting[]): Schedu
 
 /** 그 시각 그 시간대의 이름. 같은 지역도 계절에 따라 달라진다 (PST ↔ PDT). */
 export function tzAbbr(tz: StudyTz, at: Date): string {
-  if (tz === 'Asia/Seoul') return 'KST';
-  // 미국 서부는 −7(여름)이면 PDT, −8(겨울)이면 PST.
-  return tzOffsetMs(at, tz) === -7 * 3_600_000 ? 'PDT' : 'PST';
+  return zoneAbbreviation(tz, at);
 }
 
-/** 어느 시점의 그 시간대 UTC 오프셋(ms). Intl 이 아는 규칙을 그대로 쓴다 — 직접 계산하지 않는다. */
-function tzOffsetMs(at: Date, tz: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(at);
-  const p: Record<string, string> = {};
-  for (const part of parts) p[part.type] = part.value;
-  const asUtc = Date.UTC(
-    Number(p.year),
-    Number(p.month) - 1,
-    Number(p.day),
-    Number(p.hour) % 24,
-    Number(p.minute),
-    Number(p.second),
-  );
-  return asUtc - at.getTime();
-}
-
-/** 그 시간대의 벽시계(날짜+시각)가 가리키는 실제 시점. */
+/** 반의 벽시계 입력을 UTC 순간으로 바꾼다. */
 export function wallToInstant(date: string, time: string, tz: StudyTz): Date {
-  const naive = Date.parse(`${date}T${time || '00:00'}:00Z`);
-  // 오프셋은 시점에 따라 다르다. 한 번 빼고 그 결과로 다시 확인한다 — 전환일 경계를 넘기기 위해서다.
-  const first = tzOffsetMs(new Date(naive), tz);
-  const second = tzOffsetMs(new Date(naive - first), tz);
-  return new Date(naive - second);
+  return zonedInstant(date, time || '00:00', tz);
 }
 
 /** 같은 시점을 다른 시간대의 벽시계로 읽는다. 예: 「수 05:00 PDT」 */
 export function clockIn(at: Date, tz: StudyTz): string {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
+    timeZone: formattingZone(tz, at),
     hour12: false,
     weekday: 'short',
     hour: '2-digit',
@@ -176,18 +136,15 @@ export function clockIn(at: Date, tz: StudyTz): string {
  * 「동시」로 모이는 스터디가 대부분이라, 한쪽 시각만 적으면 나머지 절반은 매번 환산해야 한다.
  * 요일까지 함께 적는다 — 목 21:00 KST 는 미국에서 **수요일**이다.
  */
-export function otherClock(rule: ScheduleRule): string | undefined {
-  if (!rule.time || rule.weekdays.length === 0) return undefined;
-  const other: StudyTz = rule.tz === 'Asia/Seoul' ? 'America/Los_Angeles' : 'Asia/Seoul';
-  const sample = ruleDates(rule)[0] ?? anyDateOn(rule.weekdays[0]!);
-  return clockIn(wallToInstant(sample, rule.time, rule.tz), other);
-}
-
-/** 구간이 아직 없을 때 요일만으로 환산해 보이기 위한 임시 날짜. */
-function anyDateOn(weekday: number): string {
-  const base = new Date();
-  base.setUTCDate(base.getUTCDate() + ((weekday - base.getUTCDay() + 7) % 7));
-  return base.toISOString().slice(0, 10);
+export function otherClock(rule: ScheduleRule, viewerZone: string): string | undefined {
+  if (!rule.time || rule.weekdays.length === 0 || viewerZone === rule.tz) return undefined;
+  const now = new Date();
+  const today = wallParts(now, rule.tz).date;
+  const candidates = Array.from({ length: 8 }, (_, i) => addDays(today, i)).filter((date) => rule.weekdays.includes(weekdayOf(date)));
+  const instant = candidates.map((date) => resolveWallInput(date, rule.time, rule.tz).instant).find((at) => at && at >= now);
+  if (!instant) return undefined;
+  const wall = wallParts(instant, viewerZone);
+  return dateWithDow(wall.date) + ' ' + wall.time;
 }
 
 /** 규칙을 한 줄로 적는다 — 크루에게 보이는 문구와 같은 모양. */

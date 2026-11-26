@@ -25,6 +25,10 @@ public interface ClubEventRepository extends JpaRepository<ClubEvent, Long>, Clu
     Optional<ClubEvent> findByCreatedByAndCreateIdempotencyKey(
             Long createdBy, String createIdempotencyKey);
 
+    /** 사이트 목록 — 공개된 행사 전부를 참여 방식과 함께 한 번에 (페이지 없음, R2). 순서는 호출자가 정한다. */
+    @Query("select distinct e from ClubEvent e left join fetch e.channels")
+    List<ClubEvent> findAllWithChannels();
+
     /** 목록 한 페이지의 행사를 참여 방식과 함께 — 행마다 방식을 따로 읽지 않는다. 순서는 보장하지 않는다. */
     @Query("select distinct e from ClubEvent e left join fetch e.channels where e.id in :ids")
     List<ClubEvent> findAllWithChannelsByIdIn(@Param("ids") Collection<Long> ids);

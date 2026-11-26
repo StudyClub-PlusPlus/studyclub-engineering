@@ -109,6 +109,8 @@ erDiagram
 
 <!-- spec:start publish -->
 
+> 시간대 공통 규칙: 01-planning/stories/timezone-expansion/PRD.md.
+>
 > 공개 전환은 화면 상태로만 처리한다. 새로고침하면 되돌아간다 — 저장 API 가 아직 없다
 >
 > 등록·수정·삭제는 이 화면 범위 밖이다 (각각 별도 Story)
