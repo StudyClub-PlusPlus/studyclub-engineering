@@ -15,6 +15,8 @@ import { type Study } from '@studyclub/types';
 import { Button, HelpPopover } from '@studyclub/ui';
 import { ExternalLink, Info } from 'lucide-react';
 
+import { kindRules } from '@/proto/lib/study-kind';
+
 /**
  * 사용자 사이트 스터디 정보 카드 — 내 분반의 시간 · 네비게이터 · 바로가기 · 규칙.
  * 스터디 일정의 탭 위에 두어 일정·출석부 어느 탭에서도 보인다.
@@ -53,12 +55,14 @@ export function StudyBoard({
     weekdays: group.weekdays ?? (firstRegular ? [dowOf(firstRegular.date)] : []),
   };
   const time = regularScheduleDisplay(regularGroup, meetingsOf(study), viewerZone);
+  // 클럽은 모임 시각 · 네비게이터가 없다 — 그 칸을 두지 않는다. 바로가기 · 규칙은 같다
+  const meets = kindRules(study).meetings;
 
   return (
     <StudyInfoCard
       anno='manage:3'
-      time={<RegularTime summary={time} />}
-      navigator={navigatorNameOf(study, role)}
+      time={meets ? <RegularTime summary={time} /> : undefined}
+      navigator={meets ? navigatorNameOf(study, role) : undefined}
       leadingAction={
         role === 'captain' ? (
           <span data-anno='book:2'>
@@ -66,7 +70,9 @@ export function StudyBoard({
               size='sm'
               variant='secondary'
               trailingIcon={<ExternalLink size={14} />}
-              onClick={() => router.push(`/proto/console/studies/${study.study_id}?tab=attendance`)}
+              onClick={() =>
+                router.push(meets ? `/proto/console/studies/${study.study_id}?tab=attendance` : '/proto/console/clubs')
+              }
             >
               백오피스 출석부
             </Button>

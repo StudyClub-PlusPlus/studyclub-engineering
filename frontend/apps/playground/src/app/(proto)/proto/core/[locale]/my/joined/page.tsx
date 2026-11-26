@@ -135,9 +135,9 @@ function weekRangeLabel(days: WeekDay[]): string {
   return `${ymd.slice(0, 4)}년 ${Number(ymd.slice(5, 7))}월`;
 }
 
-/** 내 스터디룸에서 들어가는 곳 — 스터디는 스터디 일정, 클럽은 「내 클럽」. 종류 규칙 표가 정한다 */
+/** 내 스터디룸에서 들어가는 스터디 일정. 주소 값은 study_id(STUDY.ID). 클럽도 같은 껍데기에 탭만 다르다 */
 function schedulePath(locale: Locale, study: Study): string {
-  return kindRules(study).crewRoom(study, locale);
+  return `/proto/core/${locale}/my/joined/${study.study_id}/schedule`;
 }
 
 function weekChip(category: string | undefined): { accent: string; tint: number } {
@@ -275,7 +275,13 @@ export default function MyJoinedPage() {
 
   // 주간 일정은 회차가 있는 것만 — 클럽은 회차가 없다
   const days = useMemo(
-    () => weekDays(mine.filter((s) => kindRules(s).meetings), locale, wallTz, weekStart),
+    () =>
+      weekDays(
+        mine.filter((s) => kindRules(s).meetings),
+        locale,
+        wallTz,
+        weekStart,
+      ),
     [mine, locale, wallTz, weekStart],
   );
   const thisWeek = weekStart === mondayOf(ymdInTz(new Date(), wallTz));
@@ -384,7 +390,9 @@ export default function MyJoinedPage() {
               <StudyItem key={study.id} study={study} locale={locale} wallTz={wallTz} />
             ))}
           </ul>
-          {pages > 1 && <Pagination data-anno='5' className='mt-8' page={pageSafe} total={pages} onChange={changePage} />}
+          {pages > 1 && (
+            <Pagination data-anno='5' className='mt-8' page={pageSafe} total={pages} onChange={changePage} />
+          )}
         </div>
       )}
     </div>

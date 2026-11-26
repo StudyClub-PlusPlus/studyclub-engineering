@@ -38,9 +38,16 @@ const SKIP_LABEL: Record<string, string> = {
 const PAGE = 20;
 
 /** 보는 사람의 시간대로 HH:mm. */
-const hhmm = (iso: string) => new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+const hhmm = (iso: string) =>
+  new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
 const when = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+  new Date(iso).toLocaleString('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
 /**
  * 공지 탭 — 네비게이터(캡틴)가 자기 반 팀원 중 고른 사람에게 메일·디스코드로 공지를 보낸다 (POL-0010).
@@ -110,7 +117,13 @@ export default function StudyManageNoticesPage() {
   const bodyOver = bodyLen > NOTICE_LIMITS.body;
   const mentioned = recipients.filter((r) => picked.has(r.participantId) && r.discordLinked).length;
   const valid =
-    titleLen > 0 && !titleOver && bodyLen > 0 && !bodyOver && channels.length > 0 && picked.size > 0 && Boolean(compose?.canSend);
+    titleLen > 0 &&
+    !titleOver &&
+    bodyLen > 0 &&
+    !bodyOver &&
+    channels.length > 0 &&
+    picked.size > 0 &&
+    Boolean(compose?.canSend);
 
   function toggleChannel(ch: NoticeChannel, on: boolean) {
     setChannels((cur) => (on ? [...cur.filter((c) => c !== ch), ch] : cur.filter((c) => c !== ch)));
@@ -213,7 +226,11 @@ export default function StudyManageNoticesPage() {
           <fieldset data-anno='notice:1-3'>
             <legend className='mb-2 text-sm font-semibold text-fg'>보낼 곳</legend>
             <div className='flex flex-wrap gap-x-6 gap-y-2'>
-              <Checkbox label='메일' checked={channels.includes('EMAIL')} onChange={(e) => toggleChannel('EMAIL', e.target.checked)} />
+              <Checkbox
+                label='메일'
+                checked={channels.includes('EMAIL')}
+                onChange={(e) => toggleChannel('EMAIL', e.target.checked)}
+              />
               <Checkbox
                 label='디스코드'
                 checked={discordOn && discordAvailable}
@@ -262,7 +279,9 @@ export default function StudyManageNoticesPage() {
           </div>
 
           <ul data-anno='notice:2-3' className='mt-3 divide-y divide-border rounded-control border border-border'>
-            {visible.length === 0 && <li className='px-4 py-6 text-center text-sm text-fg-muted'>이 상태의 팀원이 없습니다.</li>}
+            {visible.length === 0 && (
+              <li className='px-4 py-6 text-center text-sm text-fg-muted'>이 상태의 팀원이 없습니다.</li>
+            )}
             {visible.map((r: NoticeRecipient) => (
               <li key={r.participantId} className='flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5'>
                 <Checkbox
@@ -305,7 +324,12 @@ export default function StudyManageNoticesPage() {
                       {n.senderName} · {when(n.sentAt)} · {n.recipientCount}명
                     </p>
                   </div>
-                  <p className={cx('mt-1 whitespace-pre-line text-sm text-fg-secondary', !openBody.has(n.noticeId) && 'line-clamp-3')}>
+                  <p
+                    className={cx(
+                      'mt-1 whitespace-pre-line text-sm text-fg-secondary',
+                      !openBody.has(n.noticeId) && 'line-clamp-3',
+                    )}
+                  >
                     {n.body}
                   </p>
                   {n.body.split('\n').length > 3 || n.body.length > 120 ? (

@@ -6,7 +6,7 @@ import { ClubBookSection, pastMonthsOf, usePastBooks } from '@console/components
 import { ClubCarryOver } from '@console/components/ClubCarryOver';
 import { ClubCohortPanel, type AutoDraft, type NextState } from '@console/components/ClubCohortPanel';
 import { ClubPastCohorts } from '@console/components/ClubPastCohorts';
-import { DEMO_TODAY, pastCohorts, seedBook, seedMembers, type DemoDay } from '@console/lib/club-seed';
+import { DEMO_TODAY, pastCohorts, seedMembers, type DemoDay } from '@console/lib/club-seed';
 import {
   clubOf,
   clubStudyId,
@@ -15,7 +15,6 @@ import {
   DEFAULT_PUBLISH_DAY,
   isoDay,
   monthOf,
-  type ClubBook,
   type ClubKey,
   type ClubMember,
   type Month,
@@ -23,6 +22,7 @@ import {
 import { Button, Modal, Segmented, Tabs } from '@studyclub/ui';
 
 import { useAnnotate } from '@/proto/annotate';
+import { bookFromRoom, useClubRoom } from '@/proto/club/room';
 
 /**
  * 클럽 운영 — 매달 기수가 바뀌는 클럽(얼리버드 · WEEKLY X · Daily LeetCode)을 한 화면에서 굴린다.
@@ -36,7 +36,6 @@ type Dirty = { carry: boolean; book: boolean };
 
 type ClubState = {
   members: ClubMember[];
-  book: ClubBook;
   excluded: string[];
   /** 캡틴이 직접 바꾼 다음 기수 상태. 없으면 자동 초안 · 자동 공개 규칙으로 정한다 */
   next?: NextState;
@@ -45,12 +44,11 @@ type ClubState = {
   auto: AutoDraft;
 };
 
-function seed(key: ClubKey, today: string): ClubState {
+function seed(key: ClubKey): ClubState {
   const club = clubOf(key);
   const members = seedMembers(club);
   return {
     members,
-    book: seedBook(club, members, today),
     excluded: key === 'earlybird' ? [`${key}-5`] : [],
     auto: { on: true, day: DEFAULT_DRAFT_DAY, publishDay: DEFAULT_PUBLISH_DAY },
   };
@@ -62,9 +60,9 @@ export function ClubConsole() {
   const [clubKey, setClubKey] = useState<ClubKey>('earlybird');
   const [tab, setTab] = useState<TabKey>('cohort');
   const [state, setState] = useState<Record<ClubKey, ClubState>>(() => ({
-    earlybird: seed('earlybird', DEMO_TODAY.after),
-    weeklyx: seed('weeklyx', DEMO_TODAY.after),
-    leetcode: seed('leetcode', DEMO_TODAY.after),
+    earlybird: seed('earlybird'),
+    weeklyx: seed('weeklyx'),
+    leetcode: seed('leetcode'),
   }));
   const [dirty, setDirty] = useState<Dirty>({ carry: false, book: false });
   const [leave, setLeave] = useState<(() => void) | null>(null);
@@ -82,6 +80,8 @@ export function ClubConsole() {
   const club = clubOf(clubKey);
   const { loadPast, savePast } = usePastBooks(club);
   const cur = state[clubKey];
+  // 기록은 사용자 사이트(크루의 오늘 · 출석 탭)와 같은 것을 본다
+  const [room, setRoom] = useClubRoom(club, today);
   const current = monthOf(today);
   // 다음 기수 — 자동이 켜져 있으면 초안 날에 초안, 공개 날에 모집중. 캡틴이 먼저 만들거나 먼저 열 수 있다
   const dayNow = Number(today.slice(8, 10));
@@ -127,9 +127,9 @@ export function ClubConsole() {
                 // 날을 바꾸면 처음부터 다시 본다 — 그날까지의 출석 · 초안 상태로
                 setDemo(v);
                 setState({
-                  earlybird: seed('earlybird', DEMO_TODAY[v]),
-                  weeklyx: seed('weeklyx', DEMO_TODAY[v]),
-                  leetcode: seed('leetcode', DEMO_TODAY[v]),
+                  earlybird: seed('earlybird'),
+                  weeklyx: seed('weeklyx'),
+                  leetcode: seed('leetcode'),
                 });
               })
             }
@@ -189,7 +189,7 @@ export function ClubConsole() {
               club={club}
               current={current}
               members={cur.members}
-              book={cur.book}
+              book={bookFromRoom(room)}
               excluded={cur.excluded}
               onDirtyChange={onCarryDirty}
               onSave={async (excluded) => {
@@ -215,15 +215,15 @@ export function ClubConsole() {
             month={bookMonth}
             onMonth={(m) => guard(() => setBookMonth(m))}
             today={today}
-            current={{ members: cur.members, book: cur.book }}
+            current={{ members: cur.members, room }}
             pastMonths={pastMonthsOf(club, today)}
             loadPast={loadPast}
             savePast={savePast}
             onDirtyChange={onBookDirty}
-            onSave={async (book) => {
-              // TODO(api): POST /api/admin/studies/{studyId}/attendances — 클럽은 날마다 회차 하나. body: { studyGroupId, updates[] }
+            onSave={async (next) => {
+              // TODO(api): PUT /api/admin/clubs/{programId}/checkins — body: { month, updates[] (멤버 · 날짜 · 값) , weeks[] (멤버 · 주 · 목표) }
               await new Promise((r) => setTimeout(r, 400));
-              patch((s) => ({ ...s, book }));
+              setRoom(() => next);
             }}
             onWithdraw={(ids) =>
               // TODO(api): POST /api/admin/studies/{studyId}/attendances 의 withdrawals[] — STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT

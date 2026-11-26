@@ -75,4 +75,4 @@
 | ST-041 | 캡틴은 백오피스에서 스터디 미팅 회고를 모아 볼 수 있다. | 캡틴 | [PRD](../stories/captain-collect-meeting-retros/PRD.md) | 콘솔 › 회고 시안 | [meeting-retro](../../specs/meeting-retro/spec.md) | | 열람 전용 |
 | ST-042 | 캡틴은 지난 기수를 끝까지 마친 참여자를 다음 기수로 이어 받을 수 있다. | 캡틴 | [PRD](../stories/captain-carry-over-club-members/PRD.md) | [콘솔 › 클럽 › 기수](https://playground.studyclub.life/proto/console/clubs) | [club-cohort](../../specs/club-cohort/spec.md) | | 클럽 자동 연장 — 멤버가 계속 남고 캡틴은 빠질 사람만 고른다 (POL-0012) |
 | ST-043 | 캡틴은 클럽 기수의 월간 출석부를 입력할 수 있다. | 캡틴 | [PRD](../stories/captain-club-monthly-attendance/PRD.md) | [콘솔 › 클럽 › 출석부](https://playground.studyclub.life/proto/console/clubs) | [club-cohort](../../specs/club-cohort/spec.md) | | R1 은 시트와 함께 쓴다 — 출석 여부만 |
-| ST-044 | 크루는 「내 클럽」에서 매일 인증하고 이번 달 기록을 볼 수 있다. | 크루 | [PRD](../stories/crew-my-club/PRD.md) | 사용자 사이트 › 내 클럽 | | | 스케치 · R2. 일정 · 회차 · 미팅 없음 — 칸은 클럽 설정이 고른다. 합격선 · 자동 제명 없음, 쉬어도 멤버 |
+| ST-044 | 크루는 「내 클럽」에서 매일 인증하고 이번 달 기록을 볼 수 있다. | 크루 | [PRD](../stories/crew-my-club/PRD.md) | 사용자 사이트 › 스터디 일정(클럽) › 오늘 · 출석 | | | 스케치 · R2. 스터디와 같은 껍데기, 탭만 오늘 · 출석 · 공지. 출석 탭은 멤버 전원의 판(캡틴 출석부와 같은 부품) |

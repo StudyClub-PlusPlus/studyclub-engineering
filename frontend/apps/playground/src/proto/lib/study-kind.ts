@@ -19,8 +19,11 @@ export type KindRules = {
   asksDays: boolean;
   /** 회차(모임)가 있는가 — 클럽은 없다. 주간 일정 · 다음 회차에 넣지 않는다 */
   meetings: boolean;
-  /** 참여한 크루가 들어가는 곳 — 스터디는 스터디 일정, 클럽은 「내 클럽」(클럽 하나에 주소 하나) */
-  crewRoom: (study: Pick<Study, 'study_id' | 'program'>, locale: string) => string;
+  /**
+   * 사용자 사이트 「스터디 일정」의 탭 — 껍데기(머리 · 규칙 카드 · 탭 줄)는 같고 탭만 다르다.
+   * 첫 탭(주소 끝 없음)의 이름과 그 뒤 탭들. 스터디: 일정 · 출석 · 회고 · 공지 / 클럽: 오늘 · 출석 · 공지
+   */
+  crewTabs: { first: string; rest: readonly ('attendance' | 'retro' | 'notice')[] };
   /** 머리의 다음 기수 링크 — 클럽의 다음 기수는 클럽 운영이 만든다 (POL-0012) */
   nextCohort?: { label: string; href: string };
 };
@@ -33,7 +36,7 @@ export const KIND_RULES: Record<StudyKind, KindRules> = {
     reusable: true,
     asksDays: true,
     meetings: true,
-    crewRoom: (s, locale) => `/proto/core/${locale}/my/joined/${s.study_id}/schedule`,
+    crewTabs: { first: '일정', rest: ['attendance', 'retro', 'notice'] },
   },
   club: {
     hiddenTabs: ['schedule'],
@@ -42,7 +45,7 @@ export const KIND_RULES: Record<StudyKind, KindRules> = {
     reusable: false,
     asksDays: false,
     meetings: false,
-    crewRoom: (s, locale) => `/proto/core/${locale}/my/clubs/${s.program?.id}`,
+    crewTabs: { first: '오늘', rest: ['attendance', 'notice'] },
     nextCohort: { label: '다음 기수 · 클럽 운영', href: '/proto/console/clubs' },
   },
 };

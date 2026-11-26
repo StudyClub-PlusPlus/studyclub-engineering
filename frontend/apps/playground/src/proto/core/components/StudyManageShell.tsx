@@ -91,11 +91,6 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const study = studies.find((s) => String(s.study_id) === id);
   // TODO(api): 참가자가 아닌 사람은 서버가 403 을 준다. 프로토는 찾은 스터디면 크루로 들인다.
   const access = study ? scheduleAccessOf(study) : undefined;
-  // 클럽은 스터디 일정(일정 · 회차 · 미팅)이 없다 — 「내 클럽」으로 보낸다. 어디로 갈지는 종류 규칙 표가 정한다
-  const room = study ? kindRules(study).crewRoom(study, locale) : undefined;
-  useEffect(() => {
-    if (room && !room.startsWith(base)) router.replace(room);
-  }, [room, base, router]);
   // 내가 지금 쓸 수 있는데 안 쓴 회고 수 — 회고 탭 옆 점. 캡틴은 쓰지 않는다. 화면을 옮길 때마다 다시 센다(쓰고 돌아오면 사라진다)
   const [pendingRetros, setPendingRetros] = useState(0);
   const myRole = access?.role;
@@ -123,12 +118,17 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
 
   const { role, group, canEdit } = access;
   const captain = role === 'captain';
-  const tabs = [
-    { href: base, label: '일정' },
-    { href: `${base}/attendance`, label: '출석' },
-    { href: `${base}/retro`, label: '회고', match: `${base}/retro` },
+  // 껍데기는 스터디 · 클럽이 같고 탭만 종류 규칙 표에서 고른다 — 스터디: 일정 · 출석 · 회고 · 공지 / 클럽: 오늘 · 출석 · 공지
+  const crewTabs = kindRules(study).crewTabs;
+  const REST: Record<(typeof crewTabs.rest)[number], { href: string; label: string; match?: string } | null> = {
+    attendance: { href: `${base}/attendance`, label: '출석' },
+    retro: { href: `${base}/retro`, label: '회고', match: `${base}/retro` },
     // 공지는 보내는 사람(캡틴·네비게이터)만 쓴다. 반 멤버가 읽는 공지 목록은 없다 (POL-0010)
-    ...(canEdit ? [{ href: `${base}/notice`, label: '공지' }] : []),
+    notice: canEdit ? { href: `${base}/notice`, label: '공지' } : null,
+  };
+  const tabs = [
+    { href: base, label: crewTabs.first },
+    ...crewTabs.rest.map((k) => REST[k]).filter((x): x is NonNullable<typeof x> => x !== null),
   ];
 
   return (
@@ -156,7 +156,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
           {/* 일정 표에서 회고 열을 뺐다 — 내가 쓸 수 있는 회고가 남았으면 회고 탭 옆 점으로 알린다 */}
           {tabs.map((tb) => {
             // 회고 작성 페이지(…/retro/write)도 회고 탭에 머문다
-            const on = pathname === tb.href || ('match' in tb && pathname.startsWith(`${tb.match}/`));
+            const on = pathname === tb.href || ('match' in tb && tb.match && pathname.startsWith(`${tb.match}/`));
             return (
               <Link
                 key={tb.href}

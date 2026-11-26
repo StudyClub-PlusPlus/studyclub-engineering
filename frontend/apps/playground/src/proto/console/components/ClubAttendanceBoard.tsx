@@ -1,62 +1,39 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { BulkSelect, SelectAll } from '@console/components/AttendanceTab';
 import { ClubPasteDialog } from '@console/components/ClubPasteDialog';
-import {
-  ATTENDANCE_STATUSES,
-  clubDays,
-  clubRate,
-  daysIn,
-  isoDay,
-  monthOf,
-  shortDate,
-  STATUS_LABEL,
-  weekdayOf,
-  type ClubBook,
-  type ClubConfig,
-  type ClubMember,
-} from '@console/lib/clubs';
-import { type AttendanceStatus } from '@studyclub/types';
+import { daysIn, isoDay, monthOf, shortDate, type ClubConfig, type ClubMember } from '@console/lib/clubs';
+import { isoWeek, marksFor, type DayMark } from '@core/lib/my-club';
 import { Badge, Button, Checkbox, HelpPopover, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
 import { ClipboardPaste } from 'lucide-react';
 
+import { ClubBoard, boardWeeks } from '@/proto/club/ClubBoard';
+import { patchMember, quietMembers, restingNext, type ClubRoom } from '@/proto/club/room';
+
 /**
- * 클럽 월간 출석부 — 사람 × 그 달의 날짜.
+ * 클럽 월간 출석부 (운영 콘솔) — 사용자 사이트 출석 탭과 **같은 판**(`ClubBoard`)에 캡틴 도구를 얹는다.
  *
- * 클럽에는 모임(회차)이 없다. 그래서 열은 회차가 아니라 기수 기간의 날짜다 (1일~말일).
- * 캡틴은 지금처럼 시트 · 디스코드로 출석을 확인하고, 여기에는 그 결과만 옮긴다 — 칸을 하나씩 누르거나 시트에서 붙여넣는다.
+ * 기록은 크루가 남기거나(얼리버드 · WEEKLY X) 자동으로 들어온다(Daily LeetCode). 캡틴은 다 적지 않고 **확인하고 고친다**.
+ * 고친 칸에는 「캡틴이 고침」 표시가 남는다. 칸 모양 · 숫자는 클럽 설정이 정한다 — 날 단위는 날짜 칸, 주 단위는 한 주의 공부 시간.
  * 칸을 눌러도 저장하지 않는다. 여러 칸을 고친 뒤 「저장」으로 한 번에 반영한다 (스터디 출석부와 같다).
  */
 
-const CELL_STYLE: Record<AttendanceStatus, string> = {
-  present: 'bg-success-100 text-success-700',
-  late: 'bg-warning-100 text-warning-700',
-  absent: 'bg-error-50 text-error-700',
-  excused: 'bg-surface-2 text-fg-secondary',
-};
+const STATUS_LABEL: Record<DayMark, string> = { present: '했음', late: '지각', absent: '안 함', excused: '휴가' };
 
-const CHANGED_RING: Record<AttendanceStatus, string> = {
-  present: 'ring-success-700',
-  late: 'ring-warning-700',
-  absent: 'ring-error-700',
-  excused: 'ring-fg-secondary',
-};
-
-/** 칸 안 글자 — 날짜 칸이 좁아 한 글자로 */
-const SHORT: Record<AttendanceStatus, string> = { present: '출', late: '지', absent: '결', excused: '휴' };
-
-function clone(book: ClubBook): ClubBook {
-  return Object.fromEntries(Object.entries(book).map(([id, row]) => [id, { ...row }]));
-}
-
-function changedCount(a: ClubBook, b: ClubBook): number {
+/** 저장 전 고친 칸 수 */
+function changedCount(a: ClubRoom, b: ClubRoom): number {
   let n = 0;
-  for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) {
-    const l = a[id] ?? {};
-    const r = b[id] ?? {};
-    for (const d of new Set([...Object.keys(l), ...Object.keys(r)])) if (l[d] !== r[d]) n += 1;
+  for (const id of Object.keys(b.states)) {
+    const l = a.states[id];
+    const r = b.states[id];
+    if (!l || !r) continue;
+    for (const d of new Set([...Object.keys(l.days), ...Object.keys(r.days)])) if (l.days[d] !== r.days[d]) n += 1;
+    for (const d of new Set([...Object.keys(l.minutes), ...Object.keys(r.minutes)]))
+      if (l.minutes[d] !== r.minutes[d]) n += 1;
+    for (const w of new Set([...Object.keys(l.weeks), ...Object.keys(r.weeks)]))
+      if (l.weeks[w]?.goalMin !== r.weeks[w]?.goalMin) n += 1;
   }
   return n;
 }
@@ -64,9 +41,8 @@ function changedCount(a: ClubBook, b: ClubBook): number {
 export function ClubAttendanceBoard({
   club,
   cohortTitle,
-  today,
+  room,
   members,
-  book,
   onSave,
   onWithdraw,
   onReinstate,
@@ -76,64 +52,67 @@ export function ClubAttendanceBoard({
 }: {
   club: ClubConfig;
   cohortTitle: string;
-  /** 오늘 (YYYY-MM-DD) — 이 날 뒤의 칸은 아직 입력할 수 없다 */
-  today: string;
+  /** 그 기수의 기록 — 오늘(`room.today`) 뒤의 칸은 아직 입력할 수 없다 */
+  room: ClubRoom;
+  /** 명단 — 참여 중단 날짜는 여기서 온다 */
   members: ClubMember[];
-  book: ClubBook;
-  onSave: (next: ClubBook) => Promise<void>;
+  onSave: (next: ClubRoom) => Promise<void>;
   /** 참여 중단 — 오늘 날짜로 끝난다 */
   onWithdraw: (ids: string[]) => void;
   /** 참여 중단 취소 — 다시 참여 중으로. 이번 기수에서만 */
   onReinstate?: (id: string) => void;
   onDirtyChange?: (dirty: boolean) => void;
-  /** 끝난 기수 — 출석은 고칠 수 있다. 참여 중단은 없다 (기수가 이미 끝났다) */
+  /** 끝난 기수 — 기록은 고칠 수 있다. 참여 중단은 없다 (기수가 이미 끝났다) */
   ended?: boolean;
   /** 제목 옆 기수(월) 고르기 */
   monthPicker?: ReactNode;
 }) {
+  const today = room.today;
   const month = monthOf(today);
-  const days = useMemo(
-    () => Array.from({ length: daysIn(month) }, (_, i) => isoDay(month, i + 1)),
-    [month.year, month.month], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-  const [draft, setDraft] = useState<ClubBook>(() => clone(book));
+  const days = Array.from({ length: daysIn(month) }, (_, i) => isoDay(month, i + 1));
+  const base: ClubRoom = { ...room, members };
+  const [draftStates, setDraftStates] = useState(room.states);
+  // 저장 · 크루 화면에서 기록이 바뀌면 그 값에서 다시 시작한다
+  useEffect(() => setDraftStates(room.states), [room.states]);
+  const draft: ClubRoom = { ...base, states: draftStates };
+  const setDraft = (f: (r: ClubRoom) => ClubRoom) => setDraftStates((st) => f({ ...base, states: st }).states);
   const [saving, setSaving] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [bulkDay, setBulkDay] = useState(today);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [reinstate, setReinstate] = useState<ClubMember | null>(null);
+  const week = club.rules.judge === 'week';
+  const weeks = boardWeeks(today);
+  const [monday, setMonday] = useState(weeks[0]);
 
-  const changed = changedCount(book, draft);
+  const changed = changedCount(base, draft);
   const dirty = changed > 0;
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
-  // 중단한 사람은 맨 아래로 — 지금 챙길 사람이 위에 남는다
-  const rows = [...members].sort((a, b) => Number(Boolean(a.leftOn)) - Number(Boolean(b.leftOn)));
-  const active = rows.filter((m) => !m.leftOn);
+  const active = members.filter((m) => !m.leftOn);
   const selected = active.filter((m) => picked.has(m.id));
+  const quiet = ended ? [] : quietMembers(draft);
+  const restNext = ended ? [] : restingNext(draft);
 
-  /** 이 칸을 고칠 수 있는가 — 오늘 이후 · 중단한 날 이후는 잠긴다 */
-  const editable = (m: ClubMember, day: string) => day <= today && !(m.leftOn && day > m.leftOn);
+  /** 이 칸을 고칠 수 있는가 — 오늘 이후 · 중단한 날 이후 · 쉬는 달은 잠긴다 */
+  const editable = (m: ClubMember, day: string) =>
+    day <= today && !(m.leftOn && day > m.leftOn) && draft.states[m.id]?.membership.kind !== 'resting';
 
-  function cycle(cur: AttendanceStatus | undefined): AttendanceStatus | undefined {
-    if (cur === undefined) return ATTENDANCE_STATUSES[0];
-    const i = ATTENDANCE_STATUSES.indexOf(cur);
-    return i === ATTENDANCE_STATUSES.length - 1 ? undefined : ATTENDANCE_STATUSES[i + 1];
-  }
-
-  function setCell(id: string, day: string, s: AttendanceStatus | undefined) {
-    setDraft((prev) => {
-      const row = { ...(prev[id] ?? {}) };
-      if (s) row[day] = s;
-      else delete row[day];
-      return { ...prev, [id]: row };
-    });
+  function setCell(id: string, day: string, v: DayMark | undefined) {
+    setDraft((r) =>
+      patchMember(r, id, (s) => {
+        const d2 = { ...s.days };
+        if (v) d2[day] = v;
+        else delete d2[day];
+        return { ...s, days: d2, byCaptain: { ...(s.byCaptain ?? {}), [day]: true } };
+      }),
+    );
   }
 
   function applyBulk(v: string) {
     for (const m of selected)
-      if (editable(m, bulkDay)) setCell(m.id, bulkDay, v === 'clear' ? undefined : (v as AttendanceStatus));
+      if (editable(m, bulkDay)) setCell(m.id, bulkDay, v === 'clear' ? undefined : (v as DayMark));
   }
 
   async function save() {
@@ -143,7 +122,7 @@ export function ClubAttendanceBoard({
   }
 
   const bulkOptions = [
-    ...ATTENDANCE_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
+    ...marksFor(club.rules).map((s) => ({ value: s, label: STATUS_LABEL[s] })),
     { value: 'clear', label: '기록 지우기' },
   ];
 
@@ -156,17 +135,28 @@ export function ClubAttendanceBoard({
           </h2>
           <span className='tnum type-label-sm text-fg-muted'>전체 {members.length}</span>
           {monthPicker}
+          {week && (
+            <span data-anno='clubbook:1-6'>
+              <Select size='sm' aria-label='주' value={monday} onChange={(e) => setMonday(e.target.value)}>
+                {weeks.map((w, i) => (
+                  <option key={w} value={w}>
+                    {isoWeek(w)}주차{i === 0 && !ended ? ' (이번 주)' : ''}
+                  </option>
+                ))}
+              </Select>
+            </span>
+          )}
           {ended && (
             <span data-anno='clubbook:1-5' className='inline-flex items-center gap-1'>
               <Badge tone='ended'>끝난 기수</Badge>
               <HelpPopover label='끝난 기수 출석 고치기 설명'>
-                끝난 기수도 출석을 고칠 수 있습니다. 고친 출석은 그 기수의 출석률에만 반영되고, 이미 다음 기수로 넘어간
+                끝난 기수도 기록을 고칠 수 있습니다. 고친 기록은 그 기수의 숫자에만 반영되고, 이미 다음 기수로 넘어간
                 명단은 바뀌지 않습니다.
               </HelpPopover>
             </span>
           )}
         </div>
-        {
+        {!week && (
           <Button
             data-anno='clubbook:1-3'
             size='sm'
@@ -176,247 +166,155 @@ export function ClubAttendanceBoard({
           >
             시트에서 붙여넣기
           </Button>
-        }
+        )}
       </div>
 
-      <ul data-anno='clubbook:2' className='mb-3 flex flex-wrap items-center gap-3 type-label-sm text-fg-muted'>
-        {ATTENDANCE_STATUSES.map((s) => (
-          <li key={s} className='flex items-center gap-1.5'>
-            <span className={`grid h-5 w-5 place-items-center rounded-sm ${CELL_STYLE[s]}`}>{SHORT[s]}</span>
-            {STATUS_LABEL[s]}
-            {s === 'late' && ' (0.5일)'}
-          </li>
-        ))}
-        <li className='flex items-center gap-1.5'>
-          <span className='h-5 w-5 rounded-sm border border-border bg-surface-1' />
-          기록 없음
-        </li>
-      </ul>
+      {(quiet.length > 0 || restNext.length > 0) && (
+        <div data-anno='clubbook:8' className='card mb-3 flex flex-col gap-1.5 px-4 py-3 type-body-sm'>
+          {quiet.length > 0 && (
+            <p>
+              <span className='font-semibold text-fg'>살펴볼 사람</span>
+              <span className='ml-2 text-fg-secondary'>사흘째 기록 없음 — {quiet.map((m) => m.name).join(', ')}</span>
+            </p>
+          )}
+          {restNext.length > 0 && (
+            <p>
+              <span className='font-semibold text-fg'>다음 달 쉬기</span>
+              <span className='ml-2 text-fg-secondary'>{restNext.map((m) => m.name).join(', ')}</span>
+            </p>
+          )}
+          <p className='type-label-sm text-fg-muted'>자동으로 내보내지 않습니다 — 연락은 캡틴이 합니다.</p>
+        </div>
+      )}
 
       <div className='card overflow-clip'>
-        {
-          <TableActionBar
-            position='top'
-            className='top-[var(--table-action-bar-top,4rem)] bottom-auto border-b border-border bg-surface-raised px-4'
-            data-anno='clubbook:4'
-            selection={
-              <>
-                <SelectionCount count={selected.length} total={active.length} unit='명' />
-                <Select
-                  data-anno='clubbook:4-1'
-                  size='sm'
-                  aria-label='바꿀 날짜'
-                  disabled={selected.length === 0}
-                  value={bulkDay}
-                  onChange={(e) => setBulkDay(e.target.value)}
-                >
-                  {days
-                    .filter((d) => d <= today)
-                    .map((d) => (
-                      <option key={d} value={d}>
-                        {shortDate(d)}
-                      </option>
-                    ))}
-                </Select>
-                <span data-anno='clubbook:4-2'>
-                  <BulkSelect
-                    label='바꿀 출석 상태'
-                    placeholder='출석 상태'
-                    options={bulkOptions}
-                    disabled={saving || selected.length === 0}
-                    onPick={applyBulk}
-                  />
-                </span>
-                {!ended && (
-                  <Button
-                    data-anno='clubbook:4-3'
+        <TableActionBar
+          position='top'
+          className='top-[var(--table-action-bar-top,4rem)] bottom-auto border-b border-border bg-surface-raised px-4'
+          data-anno='clubbook:4'
+          selection={
+            <>
+              <SelectionCount count={selected.length} total={active.length} unit='명' />
+              {!week && (
+                <>
+                  <Select
+                    data-anno='clubbook:4-1'
                     size='sm'
-                    variant='danger'
-                    disabled={saving || selected.length === 0}
-                    onClick={() => setWithdrawOpen(true)}
+                    aria-label='바꿀 날짜'
+                    disabled={selected.length === 0}
+                    value={bulkDay}
+                    onChange={(e) => setBulkDay(e.target.value)}
                   >
-                    참여 중단
-                  </Button>
-                )}
-                {selected.length > 0 && (
-                  <Button size='sm' variant='tertiary' onClick={() => setPicked(new Set())}>
-                    선택 해제
-                  </Button>
-                )}
-              </>
-            }
-            save={
-              <span data-anno='clubbook:4-4' className='flex items-center gap-2'>
-                {dirty && <span className='tnum type-label-sm text-fg-muted'>저장 안 한 칸 {changed}</span>}
-                {dirty && (
-                  <Button variant='tertiary' size='sm' onClick={() => setDraft(clone(book))} disabled={saving}>
-                    변경 취소
-                  </Button>
-                )}
-                <Button size='sm' onClick={save} loading={saving} disabled={!dirty}>
-                  저장
-                </Button>
-              </span>
-            }
-          />
-        }
-        <div className='overflow-x-auto'>
-          <table data-anno='clubbook:3' className='min-w-full border-separate border-spacing-0 type-body-sm'>
-            <thead>
-              <tr className='bg-surface-1'>
-                <th className='sticky left-0 z-10 w-10 bg-surface-1 px-3 py-2'>
-                  {
-                    <SelectAll
-                      checked={active.length > 0 && selected.length === active.length}
-                      partial={selected.length > 0 && selected.length < active.length}
-                      onChange={() =>
-                        setPicked(selected.length === active.length ? new Set() : new Set(active.map((m) => m.id)))
-                      }
+                    {days
+                      .filter((d) => d <= today)
+                      .map((d) => (
+                        <option key={d} value={d}>
+                          {shortDate(d)}
+                        </option>
+                      ))}
+                  </Select>
+                  <span data-anno='clubbook:4-2'>
+                    <BulkSelect
+                      label='바꿀 기록'
+                      placeholder='기록'
+                      options={bulkOptions}
+                      disabled={saving || selected.length === 0}
+                      onPick={applyBulk}
                     />
+                  </span>
+                </>
+              )}
+              {!ended && (
+                <Button
+                  data-anno='clubbook:4-3'
+                  size='sm'
+                  variant='danger'
+                  disabled={saving || selected.length === 0}
+                  onClick={() => setWithdrawOpen(true)}
+                >
+                  참여 중단
+                </Button>
+              )}
+              {selected.length > 0 && (
+                <Button size='sm' variant='tertiary' onClick={() => setPicked(new Set())}>
+                  선택 해제
+                </Button>
+              )}
+            </>
+          }
+          save={
+            <span data-anno='clubbook:4-4' className='flex items-center gap-2'>
+              {dirty && <span className='tnum type-label-sm text-fg-muted'>저장 안 한 칸 {changed}</span>}
+              {dirty && (
+                <Button variant='tertiary' size='sm' onClick={() => setDraftStates(room.states)} disabled={saving}>
+                  변경 취소
+                </Button>
+              )}
+              <Button size='sm' onClick={save} loading={saving} disabled={!dirty}>
+                저장
+              </Button>
+            </span>
+          }
+        />
+        <div className='p-3'>
+          <ClubBoard
+            room={draft}
+            baseline={base}
+            days={days}
+            week={monday}
+            onRoom={setDraft}
+            showCounts={!week}
+            lead={{
+              head: (
+                <SelectAll
+                  checked={active.length > 0 && selected.length === active.length}
+                  partial={selected.length > 0 && selected.length < active.length}
+                  onChange={() =>
+                    setPicked(selected.length === active.length ? new Set() : new Set(active.map((m) => m.id)))
                   }
-                </th>
-                <th
-                  data-anno='clubbook:3-1'
-                  className='sticky left-10 z-10 w-32 bg-surface-1 px-2 py-2 text-left type-label-sm text-fg-muted'
+                />
+              ),
+              cell: (m) =>
+                m.leftOn ? null : (
+                  <Checkbox
+                    label={`${m.name} 선택`}
+                    hideLabel
+                    checked={picked.has(m.id)}
+                    onChange={() =>
+                      setPicked((p) => {
+                        const n = new Set(p);
+                        if (n.has(m.id)) n.delete(m.id);
+                        else n.add(m.id);
+                        return n;
+                      })
+                    }
+                  />
+                ),
+            }}
+            nameExtra={(m) =>
+              m.leftOn && !ended && onReinstate ? (
+                <Button
+                  data-anno={members.find((x) => x.leftOn)?.id === m.id ? 'clubbook:3-7' : undefined}
+                  size='sm'
+                  variant='tertiary'
+                  disabled={saving}
+                  onClick={() => setReinstate(m)}
                 >
-                  디스코드 별명
-                </th>
-                {club.rosterQuestion && (
-                  <th
-                    data-anno='clubbook:3-2'
-                    className='w-24 whitespace-nowrap px-2 py-2 text-left type-label-sm text-fg-muted'
-                  >
-                    {club.rosterQuestion.label}
-                  </th>
-                )}
-                {days.map((d, i) => {
-                  const weekend = ['토', '일'].includes(weekdayOf(d));
-                  return (
-                    <th
-                      key={d}
-                      data-anno={i === 0 ? 'clubbook:3-3' : undefined}
-                      className={`min-w-9 px-0.5 py-1 text-center type-label-sm ${
-                        d === today
-                          ? 'text-brand'
-                          : d > today
-                            ? 'text-fg-muted'
-                            : weekend
-                              ? 'text-fg-secondary'
-                              : 'text-fg'
-                      }`}
-                      aria-label={`${shortDate(d)}${d === today ? ' 오늘' : ''}`}
-                    >
-                      <span className='tnum block'>{Number(d.slice(8))}</span>
-                      <span className='block text-fg-muted'>{d === today ? '오늘' : weekdayOf(d)}</span>
-                    </th>
-                  );
-                })}
-                <th
-                  data-anno='clubbook:3-5'
-                  className='sticky right-0 z-10 min-w-16 whitespace-nowrap bg-surface-1 px-2 py-2 text-right type-label-sm text-fg-muted'
-                >
-                  출석
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((m, ri) => {
-                const row = draft[m.id];
-                const rate = clubRate(row);
-                const left = Boolean(m.leftOn);
-                return (
-                  <tr
-                    key={m.id}
-                    data-anno={left ? 'clubbook:3-6' : undefined}
-                    className={left ? 'text-fg-muted' : undefined}
-                  >
-                    <td className='sticky left-0 z-10 border-t border-border bg-surface-raised px-3 py-1'>
-                      {!left && (
-                        <Checkbox
-                          label={`${m.name} 선택`}
-                          hideLabel
-                          checked={picked.has(m.id)}
-                          onChange={() =>
-                            setPicked((p) => {
-                              const n = new Set(p);
-                              if (n.has(m.id)) n.delete(m.id);
-                              else n.add(m.id);
-                              return n;
-                            })
-                          }
-                        />
-                      )}
-                    </td>
-                    <td className='sticky left-10 z-10 border-t border-border bg-surface-raised px-2 py-1'>
-                      <span className='block truncate type-label-lg' title={m.name}>
-                        {m.name}
-                      </span>
-                      {left && <span className='block type-label-sm'>{shortDate(m.leftOn!)} 참여 중단</span>}
-                      {left && !ended && onReinstate && (
-                        <Button
-                          data-anno={ri === rows.findIndex((x) => x.leftOn) ? 'clubbook:3-7' : undefined}
-                          size='sm'
-                          variant='tertiary'
-                          disabled={saving}
-                          onClick={() => setReinstate(m)}
-                        >
-                          참여 중단 취소
-                        </Button>
-                      )}
-                    </td>
-                    {club.rosterQuestion && (
-                      <td className='tnum whitespace-nowrap border-t border-border px-2 py-1 type-label-sm'>
-                        {m.extra}
-                      </td>
-                    )}
-                    {days.map((d, di) => {
-                      const s = row?.[d];
-                      const can = editable(m, d);
-                      const was = book[m.id]?.[d];
-                      const isChanged = was !== s;
-                      if (!can) {
-                        return (
-                          <td key={d} className='border-t border-border px-0.5 py-1'>
-                            <span
-                              role='img'
-                              aria-label={s ? STATUS_LABEL[s] : '입력할 수 없음'}
-                              className={`grid h-8 place-items-center rounded-sm type-label-sm ${
-                                s ? CELL_STYLE[s] : 'text-fg-muted'
-                              }`}
-                            >
-                              {s ? SHORT[s] : left && d > m.leftOn! ? '—' : ''}
-                            </span>
-                          </td>
-                        );
-                      }
-                      const label = `${m.name} ${shortDate(d)} ${s ? STATUS_LABEL[s] : '기록 없음'}`;
-                      return (
-                        <td key={d} className='border-t border-border px-0.5 py-1'>
-                          <button
-                            // ui-native: 출석부 칸 — 칸 전체가 누르는 곳이고 누를 때마다 상태가 돈다
-                            type='button'
-                            data-anno={ri === 0 && di === 0 ? 'clubbook:3-4' : undefined}
-                            onClick={() => setCell(m.id, d, cycle(s))}
-                            aria-label={isChanged ? `${label} · 저장되지 않음` : label}
-                            title={`눌러서 ${ATTENDANCE_STATUSES.map((x) => STATUS_LABEL[x]).join(' → ')} → 기록 없음`}
-                            className={`h-8 w-full rounded-sm type-label-sm transition-colors ${
-                              s ? CELL_STYLE[s] : 'bg-surface-1 hover:bg-surface-2'
-                            } ${isChanged ? `ring-2 ${s ? CHANGED_RING[s] : 'ring-border-strong'}` : ''}`}
-                          >
-                            {s ? SHORT[s] : ''}
-                          </button>
-                        </td>
-                      );
-                    })}
-                    <td className='tnum sticky right-0 z-10 min-w-16 whitespace-nowrap border-t border-border bg-surface-raised px-2 py-1 text-right type-label-sm'>
-                      <span className='block text-fg'>{clubDays(row)}일</span>
-                      <span className='block text-fg-muted'>{rate === undefined ? '-' : `${rate}%`}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                  참여 중단 취소
+                </Button>
+              ) : null
+            }
+            anno={{
+              table: 'clubbook:3',
+              name: 'clubbook:3-1',
+              extra: 'clubbook:3-2',
+              dayHead: 'clubbook:3-3',
+              cell: 'clubbook:3-4',
+              total: 'clubbook:3-5',
+              counts: 'clubbook:3-8',
+              legend: 'clubbook:2',
+            }}
+          />
         </div>
       </div>
 

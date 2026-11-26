@@ -1,11 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 
 import type { ClubConfig } from '@console/lib/clubs';
-import { type Locale } from '@core/lib/content';
-import { t } from '@core/lib/i18n';
 import {
   DEMO_DAYS,
   DEMO_LABEL,
@@ -27,7 +24,6 @@ import {
   recentWeeks,
   sectionsFor,
   seedHistory,
-  seedMyClub,
   shortDay,
   statsFor,
   streakMonths,
@@ -44,7 +40,9 @@ import {
   type WeekEntry,
 } from '@core/lib/my-club';
 import { type Study } from '@studyclub/types';
-import { Badge, Button, ButtonLink, CapacityBar, Card, Input, Segmented, StatCard, cx } from '@studyclub/ui';
+import { Badge, Button, CapacityBar, Card, Input, Segmented, StatCard, cx } from '@studyclub/ui';
+
+import { patchMember, useClubDemo, useClubRoom } from '@/proto/club/room';
 
 /**
  * 내 클럽 — 클럽 멤버가 매일 쓰는 화면 (R2).
@@ -55,44 +53,51 @@ import { Badge, Button, ButtonLink, CapacityBar, Card, Input, Segmented, StatCar
  * TODO(api): GET /api/clubs/{programId}/me · PUT /api/clubs/{programId}/me/checkins · PUT …/me/weeks/{monday} · PUT …/me/rest
  */
 export function MyClub({ club, study, locale }: { club: ClubConfig; study: Study; locale: string }) {
-  const [demo, setDemo] = useState<DemoDay>('wed');
-  const [resting, setResting] = useState<'active' | 'resting'>('active');
+  const [demo] = useClubDemo();
   return (
-    <div className='flex flex-col gap-6'>
-      <div className='flex flex-wrap items-center justify-end gap-x-4 gap-y-2'>
-        <span className='flex items-center gap-2'>
-          <span className='type-label-sm text-fg-muted'>검토용 오늘</span>
-          <Segmented
-            size='sm'
-            aria-label='검토용 오늘'
-            options={(Object.keys(DEMO_DAYS) as DemoDay[]).map((d) => ({ value: d, label: DEMO_LABEL[d] }))}
-            value={demo}
-            onChange={setDemo}
-          />
-        </span>
-        <span className='flex items-center gap-2'>
-          <span className='type-label-sm text-fg-muted'>검토용 상태</span>
-          <Segmented
-            size='sm'
-            aria-label='검토용 멤버 상태'
-            options={[
-              { value: 'active', label: '참여 중' },
-              { value: 'resting', label: '쉬는 중' },
-            ]}
-            value={resting}
-            onChange={setResting}
-          />
-        </span>
-      </div>
-      {/* 오늘 · 상태를 바꾸면 그 기준으로 다시 시드한다 */}
+    <div data-anno='myclub:1' className='flex flex-col gap-6'>
+      <ClubDemoBar />
+      {/* 오늘 · 상태를 바꾸면 그 기준의 기록으로 다시 그린다 */}
       <Body
-        key={`${club.key}-${demo}-${resting}`}
+        key={`${club.key}-${demo.day}-${demo.resting}`}
         club={club}
         study={study}
         locale={locale}
-        today={DEMO_DAYS[demo]}
-        resting={resting === 'resting'}
+        today={DEMO_DAYS[demo.day]}
+        resting={demo.resting}
       />
+    </div>
+  );
+}
+
+/** 검토용 「오늘」 · 「상태」 — 오늘 탭과 출석 탭이 같은 값을 쓴다 (프로토 도구) */
+export function ClubDemoBar() {
+  const [demo, setDemo] = useClubDemo();
+  return (
+    <div className='flex flex-wrap items-center justify-end gap-x-4 gap-y-2'>
+      <span className='flex items-center gap-2'>
+        <span className='type-label-sm text-fg-muted'>검토용 오늘</span>
+        <Segmented
+          size='sm'
+          aria-label='검토용 오늘'
+          options={(Object.keys(DEMO_DAYS) as DemoDay[]).map((d) => ({ value: d, label: DEMO_LABEL[d] }))}
+          value={demo.day}
+          onChange={(day) => setDemo({ ...demo, day })}
+        />
+      </span>
+      <span className='flex items-center gap-2'>
+        <span className='type-label-sm text-fg-muted'>검토용 내 상태</span>
+        <Segmented
+          size='sm'
+          aria-label='검토용 내 상태'
+          options={[
+            { value: 'active', label: '참여 중' },
+            { value: 'resting', label: '쉬는 중' },
+          ]}
+          value={demo.resting ? 'resting' : 'active'}
+          onChange={(v) => setDemo({ ...demo, resting: v === 'resting' })}
+        />
+      </span>
     </div>
   );
 }
@@ -146,10 +151,10 @@ function Body({
   resting: boolean;
 }) {
   const month = monthKey(today);
-  const [state, setState] = useState<MyClubState>(() =>
-    seedMyClub(club, today, resting ? { kind: 'resting', until: month } : { kind: 'active' }),
-  );
-  const [y, m] = month.split('-').map(Number);
+  // 출석 탭 · 캡틴 출석부와 같은 기록 — 내 줄만 여기서 고친다
+  const [room, setRoom] = useClubRoom(club, today, resting);
+  const state = room.states[room.meId];
+  const setState = (f: (s: MyClubState) => MyClubState) => setRoom((r) => patchMember(r, r.meId, f));
   const ctx: Ctx = {
     club,
     study,
@@ -165,26 +170,6 @@ function Body({
 
   return (
     <>
-      <header data-anno='myclub:1' className='flex flex-wrap items-end justify-between gap-3'>
-        <div>
-          <p className='type-label-sm text-fg-muted'>내 클럽 · 멤버</p>
-          <h1 className='mt-1 type-title-xl text-fg'>{club.title}</h1>
-          <p className='mt-1 type-body-sm text-fg-secondary'>
-            {y}년 {m}월{study.schedule ? ` · ${t(study.schedule, locale as Locale)}` : ''}
-          </p>
-        </div>
-        <span data-anno='myclub:1-1'>
-          <ButtonLink
-            href={`/proto/core/${locale}/studies/${study.study_id}`}
-            linkAs={Link}
-            variant='secondary'
-            size='sm'
-          >
-            클럽 소개 · 규칙
-          </ButtonLink>
-        </span>
-      </header>
-
       {state.membership.kind === 'active' && (
         <section data-anno='myclub:2' className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
           {statsFor(club.rules).map((k) => {

@@ -42,6 +42,8 @@ export type MyClubState = {
   membership: Membership;
   /** 크루가 「다음 달 쉬기」를 눌렀나 */
   restNextMonth: boolean;
+  /** 날짜 → 캡틴이 고친 기록. 없으면 클럽의 인증 출처(크루 · 자동)가 남긴 것 */
+  byCaptain?: Record<string, true>;
 };
 
 export type MonthResult = { month: string; result: 'completed' | 'rested' | 'withdrawn'; rate?: number };
@@ -230,49 +232,63 @@ const EARLY_PATTERN: (DayMark | undefined)[] = [
 ];
 const MIN_PATTERN = [120, 90, 150, 60, 100, 80, 0, 110, 95, 130, 70, 140, 60, 45, 120, 75, 0];
 
-export function seedMyClub(club: ClubConfig, today: string, membership: Membership): MyClubState {
+/** 기록을 남긴 사람 — 크루 직접 · 외부 자동 · 캡틴이 고침. 출석부 칸에 표시한다 */
+export type RecordSource = 'crew' | 'auto' | 'captain';
+
+/**
+ * 멤버 한 사람의 시드. `variant` 로 사람마다 기록을 조금씩 다르게 한다 — 0 이 「나」.
+ * variant 4 는 며칠째 기록이 없는 사람(캡틴의 「살펴볼 사람」 예시).
+ */
+export function seedMyClub(club: ClubConfig, today: string, membership: Membership, variant = 0): MyClubState {
   const month = monthKey(today);
-  // TODO(api): 신청서 답(「목표하는 나의 X 시간」)에서 읽는다. 프로토는 10시간
   const state: MyClubState = {
     days: {},
     notes: {},
     minutes: {},
     weeks: {},
-    appliedGoalMin: 10 * 60,
+    // TODO(api): 신청서 답(「목표하는 나의 X 시간」)에서 읽는다
+    appliedGoalMin: (10 + (variant % 3) * 5) * 60,
     streakBefore: 0,
     membership,
-    restNextMonth: false,
+    restNextMonth: variant === 3,
   };
   if (membership.kind === 'resting') return state;
   const r = club.rules;
+  // 며칠째 기록이 없는 사람 — 사흘 전까지만 기록이 있다
+  const until = variant === 4 ? addDays(today, -3) : today;
   if (r.judge === 'day' && r.metric === 'streak') {
-    // 자동 기록 — 이번 달 5일에 한 번 빠져 스트릭이 다시 시작됐다
+    // 자동 기록 — 사람마다 한 번씩 빠진 날이 있어 스트릭이 다시 시작됐다
+    const miss = 5 + ((variant * 4) % 9);
     daysOfMonth(month)
-      .filter((d) => d < today && Number(d.slice(8)) !== 5)
+      .filter((d) => d < until && Number(d.slice(8)) !== miss)
       .forEach((d) => (state.days[d] = 'present'));
-    state.streakBefore = 0;
     return state;
   }
   if (r.judge === 'day') {
     daysOfMonth(month)
-      .filter((d) => d < today)
+      .filter((d) => d < until)
       .forEach((d, i) => {
-        const v = EARLY_PATTERN[i % EARLY_PATTERN.length];
+        const v = EARLY_PATTERN[(i + variant * 4) % EARLY_PATTERN.length];
         if (v && marksFor(r).includes(v)) state.days[d] = v;
       });
-    state.notes[addDays(today, -1)] = '6시 10분 기상 — 스트레칭까지';
+    if (variant === 0) state.notes[addDays(today, -1)] = '6시 10분 기상 — 스트레칭까지';
     return state;
   }
   // 주 단위 — 최근 6주. 한 주는 쉬는 주(목표 0), 이번 주는 목표를 안 써서 지난 목표를 이어 쓴다
+  const scale = state.appliedGoalMin / 600;
   const weeks = recentWeeks(today, 6).reverse();
-  for (let d = weeks[0], i = 0; d < today; d = addDays(d, 1), i++)
-    state.minutes[d] = MIN_PATTERN[i % MIN_PATTERN.length];
-  state.weeks[weeks[0]] = { goalMin: 600, note: '알고리즘 강의 2개' };
-  state.weeks[weeks[1]] = { goalMin: 0, note: '출장 주간 — 쉽니다' };
-  weekDays(weeks[1]).forEach((d) => delete state.minutes[d]);
-  state.weeks[weeks[2]] = { goalMin: 600 };
-  state.weeks[weeks[3]] = { goalMin: 720, note: '공부 방식을 바꾸는 주간' };
-  state.weeks[weeks[4]] = { goalMin: 720, note: 'SQL 문제 30개' };
+  for (let d = weeks[0], i = 0; d < until; d = addDays(d, 1), i++)
+    state.minutes[d] = Math.round((MIN_PATTERN[(i + variant * 5) % MIN_PATTERN.length] * scale) / 5) * 5;
+  const g = (min: number) => Math.round(min * scale);
+  state.weeks[weeks[0]] = { goalMin: g(600), note: variant === 0 ? '알고리즘 강의 2개' : undefined };
+  state.weeks[weeks[1]] = {
+    goalMin: variant % 2 === 0 ? 0 : g(600),
+    note: variant === 0 ? '출장 주간 — 쉽니다' : undefined,
+  };
+  if (variant % 2 === 0) weekDays(weeks[1]).forEach((d) => delete state.minutes[d]);
+  state.weeks[weeks[2]] = { goalMin: g(600) };
+  state.weeks[weeks[3]] = { goalMin: g(720), note: ['공부 방식을 바꾸는 주간', '루틴 만들기', undefined][variant % 3] };
+  state.weeks[weeks[4]] = { goalMin: g(720), note: ['SQL 문제 30개', undefined, '시간 조금 늘려 보기'][variant % 3] };
   return state;
 }
 
