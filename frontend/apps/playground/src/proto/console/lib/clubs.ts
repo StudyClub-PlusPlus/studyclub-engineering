@@ -39,22 +39,31 @@ export type ClubConfig = {
  * TODO(api): STUDY_PROGRAM 의 클럽 설정 칸 — docs/share/2026-11-25-club-own-model.md · 캡틴 확인 전
  */
 export type ClubRules = {
-  /** 판정 단위 — 날: 그날 했나 · 주: 주 합계가 목표 이상인가 */
+  /** 판정 단위 — 날: 그날 했나 · 주: 주 합계가 목표의 몇 % 인가 */
   judge: 'day' | 'week';
   /** 매일 남기는 것 — 했다 / 공부 시간(분) */
   record: 'check' | 'minutes';
-  /** 날 단위에서 「늦게 했어요」(지각, 0.5일)를 받는가 */
+  /**
+   * 앞에 보이는 숫자 — 출석률(얼리버드) · 연속일 스트릭(Daily LeetCode) · 주 달성률 %(WEEKLY X).
+   * 합격선은 두지 않는다 — 숫자만 보여 준다
+   */
+  metric: 'rate' | 'streak' | 'weekPercent';
+  /** 날 단위에서 지각(늦게, 0.5일)을 받는가 — 얼리버드 시트의 괄호 요일 `(화)` */
   allowsLate: boolean;
-  /** 주마다 목표를 새로 쓰는가 */
-  weeklyGoal: boolean;
-  /** 회고 — 없음 / 주간 */
-  retro: 'none' | 'weekly';
-  /** 한 달에 쓸 수 있는 휴가 — 날 단위면 날 수, 주 단위면 주 수. 없으면 제한 없음 (지금 세 클럽 운영 그대로) */
+  /** 하루 휴가를 받는가. 주 단위는 휴가 대신 목표 0 = 쉬는 주 */
+  dayOff: boolean;
+  /** 한 달에 쓸 수 있는 하루 휴가 수. 없으면 제한 없음 (지금 운영 그대로) */
   vacationLimit?: number;
-  /** 인증하는 사람 — 크루 직접 / 외부 기록 자동(R3, 그 전까지는 크루 직접) */
+  /** 주마다 목표를 새로 쓰는가 (0 이면 쉬는 주) */
+  weeklyGoal: boolean;
+  /** 주마다 한 줄(다짐 · 회고 · 사정 무엇이든, 선택)을 남기는가 */
+  weeklyNote: boolean;
+  /** 인증하는 사람 — 크루 직접 / 외부 기록 자동 */
   source: 'crew' | 'auto';
   /** 자동일 때 기록을 받아 오는 곳의 이름 (화면 안내) */
   autoSourceName?: string;
+  /** 날마다 같은 「오늘의 문제」가 있는가 */
+  dailyProblem: boolean;
 };
 
 /** 출석 값 — 스터디와 같다. 순서가 칸을 누를 때 도는 순서다 */
@@ -68,7 +77,17 @@ export const CLUBS: ClubConfig[] = [
     rosterQuestion: { label: '목표 시간' },
     capacity: 20,
     mockStudy: 'early-bird',
-    rules: { judge: 'day', record: 'check', allowsLate: true, weeklyGoal: false, retro: 'none', source: 'crew' },
+    rules: {
+      judge: 'day',
+      record: 'check',
+      metric: 'rate',
+      allowsLate: true,
+      dayOff: true,
+      weeklyGoal: false,
+      weeklyNote: false,
+      source: 'crew',
+      dailyProblem: false,
+    },
   },
   {
     key: 'weeklyx',
@@ -76,14 +95,35 @@ export const CLUBS: ClubConfig[] = [
     rosterQuestion: { label: '목표하는 나의 X 시간' },
     capacity: 20,
     mockStudy: 'weeklyx',
-    rules: { judge: 'week', record: 'minutes', allowsLate: false, weeklyGoal: true, retro: 'weekly', source: 'crew' },
+    rules: {
+      judge: 'week',
+      record: 'minutes',
+      metric: 'weekPercent',
+      allowsLate: false,
+      dayOff: false,
+      weeklyGoal: true,
+      weeklyNote: true,
+      source: 'crew',
+      dailyProblem: false,
+    },
   },
   {
     key: 'leetcode',
     title: 'Daily LeetCode',
     rosterQuestion: { label: '리트코드 닉네임' },
     mockStudy: 'daily-leetcode',
-    rules: { judge: 'day', record: 'check', allowsLate: false, weeklyGoal: false, retro: 'none', source: 'auto', autoSourceName: 'LeetCode' },
+    rules: {
+      judge: 'day',
+      record: 'check',
+      metric: 'streak',
+      allowsLate: false,
+      dayOff: false,
+      weeklyGoal: false,
+      weeklyNote: false,
+      source: 'auto',
+      autoSourceName: 'LeetCode',
+      dailyProblem: true,
+    },
   },
 ];
 

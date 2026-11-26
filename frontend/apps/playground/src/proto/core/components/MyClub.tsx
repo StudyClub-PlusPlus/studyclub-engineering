@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import type { ClubConfig } from '@console/lib/clubs';
 import { type Locale } from '@core/lib/content';
@@ -10,67 +10,94 @@ import {
   DEMO_DAYS,
   DEMO_LABEL,
   addDays,
+  averagePercent,
+  currentStreak,
+  dayOffUsed,
   dayRate,
   daysOfMonth,
+  doneDays,
   fmtMin,
   goalOf,
+  isoWeek,
+  marksFor,
   monthKey,
+  monthLabel,
   mondayOf,
-  retroWindow,
-  seedHistory,
+  nextMonthKey,
+  recentWeeks,
   sectionsFor,
-  statsFor,
-  unitOf,
+  seedHistory,
   seedMyClub,
   shortDay,
+  statsFor,
   streakMonths,
-  vacationsUsed,
   weekDays,
+  weekPercent,
   weekTotal,
-  weekVerdict,
   weekday,
-  weeksOfMonth,
   type DayMark,
+  type DemoDay,
   type MonthResult,
+  type MyClubState,
   type SectionKey,
   type StatKey,
   type WeekEntry,
-  type DemoDay,
-  type MyClubState,
-  type WeekVerdict,
 } from '@core/lib/my-club';
 import { type Study } from '@studyclub/types';
-import { Badge, Button, ButtonLink, CapacityBar, Card, Input, Segmented, StatCard, Textarea, cx } from '@studyclub/ui';
+import { Badge, Button, ButtonLink, CapacityBar, Card, Input, Segmented, StatCard, cx } from '@studyclub/ui';
 
 /**
  * 내 클럽 — 클럽 멤버가 매일 쓰는 화면 (R2).
  *
- * 일정 · 회차 · 미팅이 없다. 날 단위 클럽은 「오늘 인증」과 이번 달 달력, 주 단위 클럽은 「이번 주 목표 · 공부 시간 · 주간 회고」.
- * 어느 쪽인지는 클럽 설정(`club.rules`)이 정한다 — 같은 틀에 칸만 다르다.
+ * 일정 · 회차 · 미팅이 없다. 칸과 숫자는 클럽 설정(`club.rules`)과 멤버 상태가 고른다 — 클럽 이름으로 나누지 않는다.
+ * 합격선은 없다 — 출석률 · 스트릭 · 주 달성률을 숫자로만 보여 준다. 자동 제명도 없다.
  *
- * TODO(api): GET /api/clubs/{programId}/me · PUT /api/clubs/{programId}/me/checkins · PUT …/me/weeks/{monday}
+ * TODO(api): GET /api/clubs/{programId}/me · PUT /api/clubs/{programId}/me/checkins · PUT …/me/weeks/{monday} · PUT …/me/rest
  */
 export function MyClub({ club, study, locale }: { club: ClubConfig; study: Study; locale: string }) {
   const [demo, setDemo] = useState<DemoDay>('wed');
+  const [resting, setResting] = useState<'active' | 'resting'>('active');
   return (
     <div className='flex flex-col gap-6'>
-      <div className='flex flex-wrap items-center justify-end gap-2'>
-        <span className='type-label-sm text-fg-muted'>검토용 오늘</span>
-        <Segmented
-          size='sm'
-          aria-label='검토용 오늘'
-          options={(Object.keys(DEMO_DAYS) as DemoDay[]).map((d) => ({ value: d, label: DEMO_LABEL[d] }))}
-          value={demo}
-          onChange={setDemo}
-        />
+      <div className='flex flex-wrap items-center justify-end gap-x-4 gap-y-2'>
+        <span className='flex items-center gap-2'>
+          <span className='type-label-sm text-fg-muted'>검토용 오늘</span>
+          <Segmented
+            size='sm'
+            aria-label='검토용 오늘'
+            options={(Object.keys(DEMO_DAYS) as DemoDay[]).map((d) => ({ value: d, label: DEMO_LABEL[d] }))}
+            value={demo}
+            onChange={setDemo}
+          />
+        </span>
+        <span className='flex items-center gap-2'>
+          <span className='type-label-sm text-fg-muted'>검토용 상태</span>
+          <Segmented
+            size='sm'
+            aria-label='검토용 멤버 상태'
+            options={[
+              { value: 'active', label: '참여 중' },
+              { value: 'resting', label: '쉬는 중' },
+            ]}
+            value={resting}
+            onChange={setResting}
+          />
+        </span>
       </div>
-      {/* 오늘을 바꾸면 그 날 기준으로 다시 시드한다 */}
-      <Body key={`${club.key}-${demo}`} club={club} study={study} locale={locale} today={DEMO_DAYS[demo]} />
+      {/* 오늘 · 상태를 바꾸면 그 기준으로 다시 시드한다 */}
+      <Body
+        key={`${club.key}-${demo}-${resting}`}
+        club={club}
+        study={study}
+        locale={locale}
+        today={DEMO_DAYS[demo]}
+        resting={resting === 'resting'}
+      />
     </div>
   );
 }
 
-const MARK_LABEL: Record<DayMark, string> = { present: '인증', late: '늦게', absent: '못 함', excused: '휴가' };
+const MARK_LABEL: Record<DayMark, string> = { present: '했음', late: '지각', absent: '안 함', excused: '휴가' };
 const MARK_CELL: Record<DayMark, string> = {
   present: 'bg-success-100 text-success-700',
   late: 'bg-warning-100 text-warning-700',
@@ -83,14 +110,13 @@ const MARK_TONE: Record<DayMark, 'present' | 'late' | 'absent' | 'leave'> = {
   absent: 'absent',
   excused: 'leave',
 };
-const VERDICT: Record<WeekVerdict, { label: string; tone: 'present' | 'absent' | 'leave' | 'inprogress' | 'neutral' }> =
-  {
-    achieved: { label: '달성', tone: 'present' },
-    missed: { label: '미달', tone: 'absent' },
-    vacation: { label: '휴가', tone: 'leave' },
-    ongoing: { label: '진행 중', tone: 'inprogress' },
-    upcoming: { label: '예정', tone: 'neutral' },
-  };
+const RESULT: Record<MonthResult['result'], { label: string; tone: 'present' | 'leave' | 'ended' }> = {
+  completed: { label: '완주', tone: 'present' },
+  rested: { label: '쉼', tone: 'leave' },
+  withdrawn: { label: '중단', tone: 'ended' },
+};
+
+const pct = (x: number | null) => (x === null ? '-' : `${x}%`);
 
 /** 칸마다 받는 것 — 칸은 이것만 보고 그린다 */
 type Ctx = {
@@ -106,9 +132,23 @@ type Ctx = {
   history: MonthResult[];
 };
 
-function Body({ club, study, locale, today }: { club: ClubConfig; study: Study; locale: string; today: string }) {
-  const [state, setState] = useState<MyClubState>(() => seedMyClub(club, today));
+function Body({
+  club,
+  study,
+  locale,
+  today,
+  resting,
+}: {
+  club: ClubConfig;
+  study: Study;
+  locale: string;
+  today: string;
+  resting: boolean;
+}) {
   const month = monthKey(today);
+  const [state, setState] = useState<MyClubState>(() =>
+    seedMyClub(club, today, resting ? { kind: 'resting', until: month } : { kind: 'active' }),
+  );
   const [y, m] = month.split('-').map(Number);
   const ctx: Ctx = {
     club,
@@ -145,16 +185,18 @@ function Body({ club, study, locale, today }: { club: ClubConfig; study: Study; 
         </span>
       </header>
 
-      <section data-anno='myclub:2' className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
-        {statsFor(club.rules).map((k) => {
-          const v = STATS[k](ctx);
-          return <StatCard key={k} anno={`myclub:${STAT_ANNO[k]}`} label={v.label} value={v.value} sub={v.sub} />;
-        })}
-      </section>
+      {state.membership.kind === 'active' && (
+        <section data-anno='myclub:2' className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+          {statsFor(club.rules).map((k) => {
+            const v = STATS[k](ctx);
+            return <StatCard key={k} anno={`myclub:${STAT_ANNO[k]}`} label={v.label} value={v.value} sub={v.sub} />;
+          })}
+        </section>
+      )}
 
-      {/* 칸 목록은 클럽 설정에서 고른다 — 클럽 이름으로 나누지 않는다 */}
+      {/* 칸 목록은 클럽 설정 · 멤버 상태에서 고른다 — 클럽 이름으로 나누지 않는다 */}
       <div className='grid items-start gap-6 lg:grid-cols-2'>
-        {sectionsFor(club.rules).map((k) => {
+        {sectionsFor(club.rules, state.membership).map((k) => {
           const Section = SECTIONS[k];
           return (
             <div key={k} className={cx(!HALF.has(k) && 'lg:col-span-2')}>
@@ -171,70 +213,91 @@ function Body({ club, study, locale, today }: { club: ClubConfig; study: Study; 
 
 const STAT_ANNO: Record<StatKey, string> = {
   monthRate: '2-1',
-  weekTotal: '2-1',
-  weeksAchieved: '2-2',
-  vacation: '2-3',
-  streak: '2-4',
+  streak: '2-1',
+  weekNow: '2-1',
+  monthDone: '2-2',
+  lastWeek: '2-2',
+  average: '2-3',
+  dayOff: '2-4',
+  months: '2-5',
 };
 
 const STATS: Record<StatKey, (c: Ctx) => { label: string; value: string; sub: string }> = {
-  monthRate: ({ state, month, today }) => {
-    const r = dayRate(state, month, today);
-    return { label: '이번 달 달성률', value: r === null ? '-' : `${r}%`, sub: '인증 1 · 늦게 0.5 · 휴가는 빼고 센다' };
-  },
-  weekTotal: ({ state, monday }) => ({
-    label: '이번 주',
-    value: `${fmtMin(weekTotal(state, monday))} / ${fmtMin(goalOf(state, monday).min)}`,
-    sub: '주 합계 / 목표',
+  monthRate: ({ state, month, today }) => ({
+    label: '이번 달 출석률',
+    value: pct(dayRate(state, month, today)),
+    sub: '했음 1 · 지각 0.5 · 안 한 날 0 · 휴가는 빼고',
   }),
-  weeksAchieved: ({ state, month, today }) => {
-    const weeks = weeksOfMonth(month);
-    const n = weeks.filter((w) => weekVerdict(state, w, today) === 'achieved').length;
-    return { label: '이번 달 달성 주', value: `${n} / ${weeks.length}주`, sub: '끝난 주 중 목표를 채운 주' };
+  streak: ({ state, today }) => ({
+    label: '연속일',
+    value: `${currentStreak(state, today)}일`,
+    sub: '하루 빠지면 다시 1부터 · 달이 바뀌어도 이어진다',
+  }),
+  monthDone: ({ state, month, today }) => {
+    const elapsed = daysOfMonth(month).filter((d) => d < today || (d === today && state.days[d])).length;
+    return { label: '이번 달 한 날', value: `${doneDays(state, month)} / ${elapsed}일`, sub: '오늘까지' };
   },
-  vacation: ({ club, state, month }) => {
-    const used = vacationsUsed(club, state, month);
-    const unit = unitOf(club.rules);
+  weekNow: ({ state, monday }) => {
+    const goal = goalOf(state, monday).min;
+    return goal === 0
+      ? { label: '이번 주', value: '쉬는 주', sub: '목표 0 — 달성률에 세지 않는다' }
+      : {
+          label: `이번 주 · ${isoWeek(monday)}주차`,
+          value: pct(weekPercent(state, monday)),
+          sub: `${fmtMin(weekTotal(state, monday))} / ${fmtMin(goal)}`,
+        };
+  },
+  lastWeek: ({ state, monday }) => {
+    const w = addDays(monday, -7);
+    const p = weekPercent(state, w);
+    return {
+      label: `지난 주 · ${isoWeek(w)}주차`,
+      value: p === null ? '쉬는 주' : pct(p),
+      sub: `${fmtMin(weekTotal(state, w))} / ${fmtMin(goalOf(state, w).min)}`,
+    };
+  },
+  average: ({ state, today }) => ({
+    label: '최근 4주 평균',
+    value: pct(averagePercent(state, recentWeeks(today, 5).slice(1))),
+    sub: '끝난 주만 · 쉬는 주는 빼고',
+  }),
+  dayOff: ({ club, state, month }) => {
+    const used = dayOffUsed(state, month);
     const limit = club.rules.vacationLimit;
     return limit === undefined
-      ? { label: '휴가', value: `${used}${unit}`, sub: '이번 달에 쓴 휴가 · 제한 없음' }
-      : { label: '휴가', value: `${used} / ${limit}${unit}`, sub: '한 달에 쓸 수 있는 휴가' };
+      ? { label: '휴가', value: `${used}일`, sub: '이번 달에 쓴 휴가 · 제한 없음' }
+      : { label: '휴가', value: `${used} / ${limit}일`, sub: '한 달에 쓸 수 있는 휴가' };
   },
-  streak: ({ history }) => ({
+  months: ({ history }) => ({
     label: '연속 완주',
     value: `${streakMonths(history)}개월`,
-    sub: '한 달을 끝까지 하면 이어진다',
+    sub: '쉰 달은 세지도 끊지도 않는다',
   }),
 };
 
 /* ── 칸 — 칸마다 한 가지 일. 새 진행 방식은 칸을 더하고 sectionsFor 에 한 줄 ─ */
 
 /** 넓은 화면에서 반 폭으로 나란히 두는 칸 */
-const HALF = new Set<SectionKey>(['goal', 'minutes']);
+const HALF = new Set<SectionKey>(['goal', 'note']);
 
-const SECTIONS: Record<SectionKey, (c: Ctx) => React.ReactNode> = {
+const SECTIONS: Record<SectionKey, (c: Ctx) => ReactNode> = {
+  resting: RestingSection,
   today: TodaySection,
+  auto: AutoSection,
   calendar: CalendarSection,
-  goal: GoalCard,
+  goal: GoalSection,
   minutes: MinutesSection,
-  retro: RetroSection,
+  note: NoteSection,
   weeks: WeeksSection,
+  membership: MembershipSection,
   history: HistorySection,
 };
 
-/** 휴가를 더 쓸 수 있나 · 버튼에 붙일 남은 수 */
-function vacationLeft(c: Ctx): { can: boolean; label: string } {
-  const limit = c.club.rules.vacationLimit;
-  if (limit === undefined) return { can: true, label: '' };
-  const left = limit - vacationsUsed(c.club, c.state, c.month);
-  return { can: left > 0, label: ` (${left}${unitOf(c.club.rules)} 남음)` };
-}
-
-function TodaySection(c: Ctx) {
-  const { club, state, setState, today } = c;
+function TodaySection({ club, state, setState, today, month }: Ctx) {
   const mark = state.days[today];
   const [note, setNote] = useState('');
-  const vac = vacationLeft(c);
+  const limit = club.rules.vacationLimit;
+  const used = dayOffUsed(state, month);
 
   function check(v: DayMark | undefined) {
     setState((s) => {
@@ -254,14 +317,7 @@ function TodaySection(c: Ctx) {
 
   return (
     <Card data-anno='myclub:3' padding='lg'>
-      <div className='flex flex-wrap items-baseline justify-between gap-2'>
-        <h2 className='type-title-sm text-fg'>오늘 인증 · {shortDay(today)}</h2>
-        {club.rules.source === 'auto' && (
-          <p data-anno='myclub:3-4' className='type-label-sm text-fg-muted'>
-            {club.rules.autoSourceName ?? '외부'} 기록을 자동으로 받아 오기 전까지는 직접 인증합니다
-          </p>
-        )}
-      </div>
+      <h2 className='type-title-sm text-fg'>오늘 인증 · {shortDay(today)}</h2>
       {mark ? (
         <div className='mt-4 flex flex-wrap items-center gap-3'>
           <Badge tone={MARK_TONE[mark]}>{MARK_LABEL[mark]}</Badge>
@@ -281,15 +337,21 @@ function TodaySection(c: Ctx) {
               </Button>
               {club.rules.allowsLate && (
                 <Button variant='secondary' onClick={() => check('late')}>
-                  늦게 했어요
+                  늦었지만 했어요
                 </Button>
               )}
             </span>
-            <span data-anno='myclub:3-2'>
-              <Button variant='tertiary' disabled={!vac.can} onClick={() => check('excused')}>
-                오늘 휴가{vac.label}
-              </Button>
-            </span>
+            {club.rules.dayOff && (
+              <span data-anno='myclub:3-2'>
+                <Button
+                  variant='tertiary'
+                  disabled={limit !== undefined && used >= limit}
+                  onClick={() => check('excused')}
+                >
+                  오늘 휴가{limit !== undefined ? ` (${limit - used}일 남음)` : ''}
+                </Button>
+              </span>
+            )}
           </div>
           <span data-anno='myclub:3-3' className='max-w-md'>
             <Input
@@ -306,200 +368,119 @@ function TodaySection(c: Ctx) {
   );
 }
 
-function CalendarSection({ state, month, today }: Ctx) {
+/** TODO(api): 오늘의 문제 — 외부 서비스의 그날 문제. 프로토는 고정 제목 */
+const DEMO_PROBLEM = '오늘의 문제 (예시)';
+
+function AutoSection({ club, state, today }: Ctx) {
+  const name = club.rules.autoSourceName ?? '외부 서비스';
+  const done = state.days[today];
   return (
     <Card data-anno='myclub:4' padding='lg'>
-      <h2 className='type-title-sm text-fg'>{Number(month.slice(5))}월 기록</h2>
-      <MonthCalendar state={state} month={month} today={today} />
-      <div className='mt-3 flex flex-wrap gap-3 type-label-sm text-fg-muted'>
-        {(Object.keys(MARK_LABEL) as DayMark[]).map((k) => (
-          <span key={k} className='flex items-center gap-1.5'>
-            <span className={cx('inline-block h-3 w-3 rounded-xs', MARK_CELL[k])} />
-            {MARK_LABEL[k]}
-          </span>
-        ))}
+      <div className='flex flex-wrap items-baseline justify-between gap-2'>
+        <h2 className='type-title-sm text-fg'>오늘 · {shortDay(today)}</h2>
+        <span className='type-label-sm text-fg-muted'>{name} 기록을 자동으로 받아 옵니다</span>
+      </div>
+      {club.rules.dailyProblem && (
+        <p data-anno='myclub:4-1' className='mt-3 type-body-md text-fg'>
+          {DEMO_PROBLEM}
+        </p>
+      )}
+      <div data-anno='myclub:4-2' className='mt-3 flex flex-wrap items-center gap-3'>
+        <Badge tone={done ? 'present' : 'neutral'}>{done ? '풀었음' : '아직 기록 없음'}</Badge>
+        <span className='type-body-sm text-fg-secondary'>
+          {done
+            ? `연속 ${currentStreak(state, today)}일째`
+            : `${name}에서 풀면 반영돼요. 기록이 틀리면 캡틴에게 알려 주세요.`}
+        </span>
       </div>
     </Card>
   );
 }
 
-function MinutesSection({ state, setState, monday, today }: Ctx) {
-  const locked = Boolean(state.weeks[monday]?.retro || state.weeks[monday]?.vacation);
-  return (
-    <MinutesCard
-      state={state}
-      setState={setState}
-      monday={monday}
-      today={today}
-      goal={goalOf(state, monday).min}
-      total={weekTotal(state, monday)}
-      locked={locked}
-    />
-  );
-}
-
-function RetroSection({ state, today, monday, patchWeek }: Ctx) {
-  // 월요일에는 지난주 회고를 낸다 (월요일 끝까지). 그 밖에는 이번 주 회고 — 일요일에 열린다
-  const week = weekday(today) === 1 ? addDays(monday, -7) : monday;
-  return <RetroCard key={week} state={state} week={week} today={today} patchWeek={patchWeek} />;
-}
-
-function WeeksSection({ state, month, today }: Ctx) {
-  const weeks = weeksOfMonth(month);
-  return (
-    <Card data-anno='myclub:8' padding='lg'>
-      <h2 className='type-title-sm text-fg'>{Number(month.slice(5))}월의 주</h2>
-      <p className='mt-1 type-label-sm text-fg-muted'>
-        주는 월요일 ~ 일요일, 월요일이 속한 달에 셉니다.
-        {weeks[0] > `${month}-01` &&
-          ` ${shortDay(`${month}-01`)} ~ ${shortDay(addDays(weeks[0], -1))}은 지난달 마지막 주입니다.`}
-      </p>
-      <table className='mt-3 w-full type-body-sm'>
-        <thead>
-          <tr className='text-left type-label-sm text-fg-muted'>
-            <th className='py-2 font-medium'>주</th>
-            <th className='py-2 font-medium'>목표</th>
-            <th className='py-2 font-medium'>합계</th>
-            <th className='py-2 font-medium'>판정</th>
-            <th className='py-2 font-medium'>회고</th>
-          </tr>
-        </thead>
-        <tbody>
-          {weeks.map((w) => {
-            const v = VERDICT[weekVerdict(state, w, today)];
-            const future = w > today;
-            return (
-              <tr key={w} className='border-t border-border'>
-                <td className='py-2.5 tnum text-fg'>
-                  {shortDay(w)} ~ {shortDay(addDays(w, 6))}
-                </td>
-                <td className='py-2.5 tnum text-fg-secondary'>{future ? '-' : fmtMin(goalOf(state, w).min)}</td>
-                <td className='py-2.5 tnum text-fg-secondary'>{future ? '-' : fmtMin(weekTotal(state, w))}</td>
-                <td className='py-2.5'>
-                  <Badge tone={v.tone}>{v.label}</Badge>
-                </td>
-                <td className='py-2.5 text-fg-secondary'>{state.weeks[w]?.retro ? '냄' : future ? '-' : '아직'}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </Card>
-  );
-}
-
-function HistorySection({ club, history }: Ctx) {
-  return (
-    <Card data-anno='myclub:9' padding='lg'>
-      <h2 className='type-title-sm text-fg'>지난 달</h2>
-      <ul className='mt-3 flex flex-col divide-y divide-border'>
-        {[...history].reverse().map((h) => (
-          <li key={h.month} className='flex items-center justify-between py-2.5'>
-            <span className='type-body-md text-fg'>{Number(h.month.slice(5))}월</span>
-            <span className='flex items-center gap-3'>
-              <span className='tnum type-body-sm text-fg-secondary'>
-                {club.rules.judge === 'week' ? `달성 주 ${h.rate}%` : `달성률 ${h.rate}%`}
-              </span>
-              <Badge tone={h.result === 'completed' ? 'present' : 'ended'}>
-                {h.result === 'completed' ? '완주' : '중단'}
-              </Badge>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
-}
-
-function MonthCalendar({ state, month, today }: { state: MyClubState; month: string; today: string }) {
+function CalendarSection({ club, state, month, today }: Ctx) {
   const days = daysOfMonth(month);
   const lead = (weekday(days[0]) + 6) % 7; // 월요일 시작
   return (
-    <div className='mt-3 grid grid-cols-7 gap-1 text-center'>
-      {['월', '화', '수', '목', '금', '토', '일'].map((d) => (
-        <span key={d} className='py-1 type-label-sm text-fg-muted'>
-          {d}
+    <Card data-anno='myclub:5' padding='lg'>
+      <h2 className='type-title-sm text-fg'>{monthLabel(month)} 기록</h2>
+      <div className='mt-3 grid grid-cols-7 gap-1 text-center'>
+        {['월', '화', '수', '목', '금', '토', '일'].map((d) => (
+          <span key={d} className='py-1 type-label-sm text-fg-muted'>
+            {d}
+          </span>
+        ))}
+        {Array.from({ length: lead }, (_, i) => (
+          <span key={`b${i}`} />
+        ))}
+        {days.map((d) => {
+          const mk = state.days[d];
+          return (
+            <div
+              key={d}
+              className={cx(
+                'flex h-14 flex-col items-center justify-center rounded-sm type-label-sm',
+                d > today ? 'text-fg-placeholder' : mk ? MARK_CELL[mk] : 'bg-surface-1 text-fg-muted',
+                d === today && 'ring-2 ring-primary',
+              )}
+              title={state.notes[d]}
+            >
+              <span className='tnum'>{Number(d.slice(8))}</span>
+              {mk && <span>{MARK_LABEL[mk]}</span>}
+            </div>
+          );
+        })}
+      </div>
+      <div className='mt-3 flex flex-wrap gap-3 type-label-sm text-fg-muted'>
+        {marksFor(club.rules).map((k) => (
+          <span key={k} className='flex items-center gap-1.5'>
+            <span className={cx('inline-block h-3 w-3 rounded-xs', MARK_CELL[k])} />
+            {MARK_LABEL[k]}
+          </span>
+        ))}
+        <span className='flex items-center gap-1.5'>
+          <span className='inline-block h-3 w-3 rounded-xs bg-surface-1' />
+          기록 없음 (안 한 날)
         </span>
-      ))}
-      {Array.from({ length: lead }, (_, i) => (
-        <span key={`b${i}`} />
-      ))}
-      {days.map((d) => {
-        const mk = state.days[d];
-        return (
-          <div
-            key={d}
-            className={cx(
-              'flex h-14 flex-col items-center justify-center rounded-sm type-label-sm',
-              d > today ? 'text-fg-placeholder' : mk ? MARK_CELL[mk] : 'bg-surface-1 text-fg-muted',
-              d === today && 'ring-2 ring-primary',
-            )}
-            title={state.notes[d]}
-          >
-            <span className='tnum'>{Number(d.slice(8))}</span>
-            {mk && <span>{MARK_LABEL[mk]}</span>}
-          </div>
-        );
-      })}
-    </div>
+      </div>
+    </Card>
   );
 }
 
-function GoalCard(c: Ctx) {
-  const { state, monday, today, patchWeek } = c;
+function GoalSection({ state, monday, today, patchWeek }: Ctx) {
   const goal = goalOf(state, monday);
-  const vac = vacationLeft(c);
   // 목표는 그 주 월요일 끝까지 쓴다 (캡틴 확인 전 제안)
   const editable = today === monday;
   const [hours, setHours] = useState(String(goal.min / 60));
-  const [text, setText] = useState(goal.text ?? '');
-  const entry = state.weeks[monday];
   return (
-    <Card data-anno='myclub:5' padding='lg'>
+    <Card data-anno='myclub:6' padding='lg'>
       <h2 className='type-title-sm text-fg'>
-        이번 주 목표 · {shortDay(monday)} ~ {shortDay(addDays(monday, 6))}
+        {isoWeek(monday)}주차 목표 · {shortDay(monday)} ~ {shortDay(addDays(monday, 6))}
       </h2>
       {goal.carried && (
         <p className='mt-2 type-body-sm text-fg-secondary'>
-          아직 이번 주 목표를 쓰지 않아 지난주 목표({fmtMin(goal.min)})를 이어 씁니다.
+          아직 이번 주 목표를 쓰지 않아 지난 목표({fmtMin(goal.min)})를 이어 씁니다.
         </p>
       )}
       {editable ? (
         <div className='mt-4 flex flex-col gap-3'>
-          <div className='grid gap-3 sm:grid-cols-[10rem_1fr]'>
-            <span data-anno='myclub:5-1'>
-              <Input
-                label='목표 시간'
-                type='number'
-                min={1}
-                max={80}
-                step={0.5}
-                suffix='시간'
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
-              />
-            </span>
-            <span data-anno='myclub:5-2'>
-              <Input
-                label='무엇을 할까요'
-                placeholder='예: SQL 문제 30개'
-                maxLength={100}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-              />
-            </span>
-          </div>
-          <span data-anno='myclub:5-3' className='flex items-center gap-3'>
+          <span data-anno='myclub:6-1' className='max-w-[12rem]'>
+            <Input
+              label='목표 시간'
+              type='number'
+              min={0}
+              max={80}
+              step={0.5}
+              suffix='시간'
+              helper='0 이면 쉬는 주'
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+            />
+          </span>
+          <span data-anno='myclub:6-2' className='flex items-center gap-3'>
             <Button
               size='sm'
-              disabled={!(Number(hours) > 0)}
-              onClick={() =>
-                patchWeek(monday, (e) => ({
-                  ...e,
-                  goalMin: Math.round(Number(hours) * 60),
-                  goalText: text.trim() || undefined,
-                }))
-              }
+              disabled={hours === '' || !(Number(hours) >= 0)}
+              onClick={() => patchWeek(monday, (e) => ({ ...e, goalMin: Math.round(Number(hours) * 60) }))}
             >
               목표 저장
             </Button>
@@ -508,49 +489,20 @@ function GoalCard(c: Ctx) {
         </div>
       ) : (
         <div className='mt-3'>
-          <p className='tnum type-title-md text-fg'>{fmtMin(goal.min)}</p>
-          {goal.text && <p className='mt-1 type-body-sm text-fg-secondary'>{goal.text}</p>}
+          <p className='tnum type-title-md text-fg'>{goal.min === 0 ? '쉬는 주' : fmtMin(goal.min)}</p>
           <p className='mt-2 type-label-sm text-fg-muted'>
             목표는 월요일에 씁니다 — 다음 목표는 {shortDay(addDays(monday, 7))}
           </p>
         </div>
       )}
-      <div data-anno='myclub:5-4' className='mt-4 border-t border-border pt-3'>
-        {entry?.vacation ? (
-          <p className='type-body-sm text-fg-secondary'>이번 주는 휴가입니다 — 판정에서 뺍니다.</p>
-        ) : (
-          <Button
-            variant='tertiary'
-            size='sm'
-            disabled={!vac.can || Boolean(entry?.retro)}
-            onClick={() => patchWeek(monday, (e) => ({ ...e, vacation: true }))}
-          >
-            이번 주 휴가로 쓰기{vac.label}
-          </Button>
-        )}
-      </div>
     </Card>
   );
 }
 
-function MinutesCard({
-  state,
-  setState,
-  monday,
-  today,
-  goal,
-  total,
-  locked,
-}: {
-  state: MyClubState;
-  setState: (f: (s: MyClubState) => MyClubState) => void;
-  monday: string;
-  today: string;
-  goal: number;
-  total: number;
-  locked: boolean;
-}) {
-  const left = goal - total;
+function MinutesSection({ state, setState, monday, today }: Ctx) {
+  const goal = goalOf(state, monday).min;
+  const total = weekTotal(state, monday);
+  const p = weekPercent(state, monday);
   function setDay(d: string, part: 'h' | 'm', v: string) {
     const n = Math.max(0, Math.floor(Number(v) || 0));
     setState((s) => {
@@ -561,22 +513,16 @@ function MinutesCard({
     });
   }
   return (
-    <Card data-anno='myclub:6' padding='lg'>
+    <Card data-anno='myclub:7' padding='lg'>
       <h2 className='type-title-sm text-fg'>공부 시간</h2>
-      <p data-anno='myclub:6-1' className='mt-2 type-body-md font-semibold text-fg'>
-        {left > 0 ? `이번 주 목표까지 ${fmtMin(left)} 남았어요` : '이번 주 목표를 채웠어요'}
+      <p data-anno='myclub:7-1' className='mt-2 type-body-md font-semibold text-fg'>
+        {goal === 0
+          ? `쉬는 주예요 — 적어도 달성률에 세지 않아요 (합계 ${fmtMin(total)})`
+          : `${fmtMin(total)} / ${fmtMin(goal)} · ${pct(p)}`}
       </p>
-      <CapacityBar
-        className='mt-2'
-        variant='goal'
-        taken={total}
-        total={goal}
-        showLabel
-        label={`${fmtMin(total)} / ${fmtMin(goal)}`}
-      />
-      <ul data-anno='myclub:6-2' className='mt-4 flex flex-col gap-1.5'>
+      {goal > 0 && <CapacityBar className='mt-2' variant='goal' taken={total} total={goal} showLabel label={pct(p)} />}
+      <ul data-anno='myclub:7-2' className='mt-4 grid gap-1.5 sm:grid-cols-2'>
         {weekDays(monday).map((d) => {
-          const future = d > today;
           const v = state.minutes[d];
           return (
             <li
@@ -584,10 +530,8 @@ function MinutesCard({
               className={cx('grid grid-cols-[5.5rem_1fr] items-center gap-2', d === today && 'font-semibold')}
             >
               <span className='type-body-sm text-fg'>{shortDay(d)}</span>
-              {future ? (
+              {d > today ? (
                 <span className='type-body-sm text-fg-placeholder'>-</span>
-              ) : locked ? (
-                <span className='tnum type-body-sm text-fg-secondary'>{fmtMin(v ?? 0)}</span>
               ) : (
                 <span className='grid max-w-[14rem] grid-cols-2 gap-2'>
                   <Input
@@ -618,93 +562,159 @@ function MinutesCard({
         })}
       </ul>
       <p className='mt-3 type-label-sm text-fg-muted'>
-        {locked
-          ? '회고를 냈거나 휴가인 주라 고칠 수 없어요.'
-          : '이번 주 회고를 내기 전까지 지난 날도 적고 고칠 수 있어요.'}
+        이번 주 지난 날도 적고 고칠 수 있어요. 지난 주 기록은 캡틴이 고칩니다.
       </p>
     </Card>
   );
 }
 
-function RetroCard({
-  state,
-  week,
-  today,
-  patchWeek,
-}: {
-  state: MyClubState;
-  week: string;
-  today: string;
-  patchWeek: Ctx['patchWeek'];
-}) {
-  const win = retroWindow(week, today);
-  const done = state.weeks[week]?.retro;
-  const [good, setGood] = useState('');
-  const [next, setNext] = useState('');
-  const total = weekTotal(state, week);
-  const goal = goalOf(state, week).min;
+function NoteSection({ state, monday, patchWeek }: Ctx) {
+  const saved = state.weeks[monday]?.note;
+  const [text, setText] = useState(saved ?? '');
   return (
-    <Card data-anno='myclub:7' padding='lg'>
-      <div className='flex flex-wrap items-baseline justify-between gap-2'>
-        <h2 className='type-title-sm text-fg'>
-          주간 회고 · {shortDay(week)} ~ {shortDay(addDays(week, 6))}
-        </h2>
-        <span className='tnum type-label-sm text-fg-secondary'>
-          {fmtMin(total)} / {fmtMin(goal)} · {total >= goal ? '목표 달성' : '목표 미달'}
+    <Card data-anno='myclub:8' padding='lg'>
+      <h2 className='type-title-sm text-fg'>이번 주 한 줄</h2>
+      <p className='mt-1 type-label-sm text-fg-muted'>다짐 · 회고 · 사정 무엇이든 (선택)</p>
+      <div className='mt-3 flex flex-col gap-3'>
+        <span data-anno='myclub:8-1'>
+          <Input
+            placeholder='예: 공부 방식을 바꾸는 주간'
+            maxLength={200}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+        </span>
+        <span data-anno='myclub:8-2' className='flex items-center gap-3'>
+          <Button
+            size='sm'
+            variant='secondary'
+            disabled={(text.trim() || undefined) === saved}
+            onClick={() => patchWeek(monday, (e) => ({ ...e, note: text.trim() || undefined }))}
+          >
+            저장
+          </Button>
+          {saved && <span className='type-label-sm text-fg-muted'>저장됨</span>}
         </span>
       </div>
-      {done ? (
-        <div className='mt-3 flex flex-col gap-2 type-body-sm'>
-          <p className='text-fg'>{done.good}</p>
-          {done.next && <p className='text-fg-secondary'>다음 주: {done.next}</p>}
-          <p className='type-label-sm text-fg-muted'>{shortDay(done.at)}에 냈어요 — 이 주 기록은 잠겼어요</p>
-        </div>
-      ) : win === 'before' ? (
-        <p className='mt-3 type-body-sm text-fg-secondary'>
-          {shortDay(addDays(week, 6))}에 열립니다. 다음 날({shortDay(addDays(week, 7))}) 23:59까지 낼 수 있어요.
-        </p>
-      ) : win === 'closed' ? (
-        <p className='mt-3 type-body-sm text-fg-secondary'>내지 않고 지나갔어요.</p>
-      ) : (
-        <div className='mt-3 flex flex-col gap-3'>
-          <span data-anno='myclub:7-1'>
-            <Textarea
-              label='이번 주 잘된 것 · 아쉬운 것'
-              required
-              rows={3}
-              maxLength={1000}
-              value={good}
-              onChange={(e) => setGood(e.target.value)}
-            />
-          </span>
-          <span data-anno='myclub:7-2'>
-            <Textarea
-              label='다음 주에 바꿀 것'
-              rows={2}
-              maxLength={500}
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-            />
-          </span>
-          <span data-anno='myclub:7-3' className='flex items-center gap-3'>
-            <Button
-              size='sm'
-              disabled={!good.trim()}
-              onClick={() =>
-                patchWeek(week, (e) => ({
-                  ...e,
-                  retro: { good: good.trim(), next: next.trim() || undefined, at: today },
-                }))
-              }
-            >
-              회고 내기
+    </Card>
+  );
+}
+
+function WeeksSection({ state, today }: Ctx) {
+  const weeks = recentWeeks(today, 6);
+  return (
+    <Card data-anno='myclub:9' padding='lg'>
+      <h2 className='type-title-sm text-fg'>최근 주</h2>
+      <table className='mt-3 w-full type-body-sm'>
+        <thead>
+          <tr className='text-left type-label-sm text-fg-muted'>
+            <th className='py-2 font-medium'>주차</th>
+            <th className='py-2 font-medium'>목표</th>
+            <th className='py-2 font-medium'>합계</th>
+            <th className='py-2 font-medium'>달성률</th>
+            <th className='py-2 font-medium'>한 줄</th>
+          </tr>
+        </thead>
+        <tbody>
+          {weeks.map((w) => {
+            const goal = goalOf(state, w).min;
+            return (
+              <tr key={w} className='border-t border-border'>
+                <td className='py-2.5 text-fg'>
+                  <span className='tnum'>{isoWeek(w)}주차</span>
+                  <span className='ml-2 tnum type-label-sm text-fg-muted'>
+                    {shortDay(w)} ~ {shortDay(addDays(w, 6))}
+                  </span>
+                </td>
+                <td className='py-2.5 tnum text-fg-secondary'>{goal === 0 ? '쉬는 주' : fmtMin(goal)}</td>
+                <td className='py-2.5 tnum text-fg-secondary'>{fmtMin(weekTotal(state, w))}</td>
+                <td className='py-2.5 tnum text-fg'>
+                  {pct(weekPercent(state, w))}
+                  {w === mondayOf(today) && <span className='ml-1 type-label-sm text-fg-muted'>진행 중</span>}
+                </td>
+                <td className='py-2.5 text-fg-secondary'>{state.weeks[w]?.note ?? ''}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
+
+function MembershipSection({ state, setState, month }: Ctx) {
+  const next = nextMonthKey(month);
+  return (
+    <Card data-anno='myclub:10' padding='lg'>
+      <h2 className='type-title-sm text-fg'>쉬어 가기</h2>
+      <p className='mt-1 type-body-sm text-fg-secondary'>
+        휴가 · 방학으로 한 달을 쉬어도 멤버로 남습니다. 쉬는 달이 끝나면 다시 이어 갑니다 — 다시 신청하지 않아요. 쉰
+        달은 완주에도 중단에도 세지 않습니다.
+      </p>
+      <div data-anno='myclub:10-1' className='mt-3 flex flex-wrap items-center gap-3'>
+        {state.restNextMonth ? (
+          <>
+            <Badge tone='leave'>{monthLabel(next)}은 쉽니다</Badge>
+            <Button variant='tertiary' size='sm' onClick={() => setState((s) => ({ ...s, restNextMonth: false }))}>
+              쉬기 취소
             </Button>
-            <span className='type-label-sm text-fg-muted'>
-              {shortDay(addDays(week, 7))} 23:59까지 · 내면 이 주 기록이 잠겨요
+          </>
+        ) : (
+          <Button variant='secondary' size='sm' onClick={() => setState((s) => ({ ...s, restNextMonth: true }))}>
+            {monthLabel(next)} 쉬기
+          </Button>
+        )}
+        <span className='type-label-sm text-fg-muted'>{monthLabel(month)} 말일까지 정할 수 있어요</span>
+      </div>
+    </Card>
+  );
+}
+
+function RestingSection({ state, setState }: Ctx) {
+  if (state.membership.kind !== 'resting') return null;
+  const until = state.membership.until;
+  return (
+    <Card data-anno='myclub:11' padding='lg'>
+      <div className='flex flex-wrap items-center gap-2'>
+        <Badge tone='leave'>쉬는 중</Badge>
+        <h2 className='type-title-sm text-fg'>{monthLabel(until)}은 쉬어 갑니다</h2>
+      </div>
+      <p className='mt-2 type-body-sm text-fg-secondary'>
+        {monthLabel(nextMonthKey(until))} 1일부터 다시 이어 갑니다. 멤버 자리는 그대로예요.
+      </p>
+      <span data-anno='myclub:11-1' className='mt-3 inline-block'>
+        <Button
+          variant='secondary'
+          size='sm'
+          onClick={() => setState((s) => ({ ...s, membership: { kind: 'active' } }))}
+        >
+          지금 돌아오기
+        </Button>
+      </span>
+    </Card>
+  );
+}
+
+function HistorySection({ club, history }: Ctx) {
+  const rateLabel = club.rules.metric === 'weekPercent' ? '평균 달성률' : '출석률';
+  return (
+    <Card data-anno='myclub:12' padding='lg'>
+      <h2 className='type-title-sm text-fg'>지난 달</h2>
+      <ul className='mt-3 flex flex-col divide-y divide-border'>
+        {[...history].reverse().map((h) => (
+          <li key={h.month} className='flex items-center justify-between py-2.5'>
+            <span className='type-body-md text-fg'>{monthLabel(h.month)}</span>
+            <span className='flex items-center gap-3'>
+              {h.rate !== undefined && club.rules.metric !== 'streak' && (
+                <span className='tnum type-body-sm text-fg-secondary'>
+                  {rateLabel} {h.rate}%
+                </span>
+              )}
+              <Badge tone={RESULT[h.result].tone}>{RESULT[h.result].label}</Badge>
             </span>
-          </span>
-        </div>
-      )}
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }
