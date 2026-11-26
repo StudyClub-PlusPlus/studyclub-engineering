@@ -115,3 +115,13 @@ describe('response validation', () => {
     expect(new Headers(fetchMock.mock.calls[0]![1]?.headers).has('x-user-nickname')).toBe(false);
   });
 });
+
+describe('갱신 장애와 인증 만료 구분', () => {
+  it.each([429, 500, 502, 503, 504])('갱신의 %i 오류를 인증 만료 401로 바꾸지 않는다', async (status) => {
+    fetchMock
+      .mockResolvedValueOnce(json({ message: 'expired access' }, 401))
+      .mockResolvedValueOnce(json({ message: '잠시 후 다시 시도해 주세요.' }, status));
+    await expect(http('/api/me', z.null())).rejects.toMatchObject({ status, message: '잠시 후 다시 시도해 주세요.' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
