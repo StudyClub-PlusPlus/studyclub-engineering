@@ -977,4 +977,169 @@ class ClubEventTest {
                     .isEqualTo(EventListGroup.PAST);
         }
     }
+
+    // ── 상태 전환 ──────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("상태 전환 판정 · changeStatus (specs/event-status)")
+    class StatusChange {
+
+        private final Instant afterDeadline = DEADLINE.plusSeconds(1);
+        private final Instant started = START.plusSeconds(1);
+
+        @Test
+        @DisplayName("canClose — 공개 중 ∧ 종료 전. 신청 마감 · 시작 뒤에도 true (S3)")
+        void canClose() {
+            ClubEvent event = draft().publish();
+
+            assertThat(event.canClose(BEFORE_DEADLINE)).isTrue();
+            assertThat(event.canClose(afterDeadline)).isTrue();
+            assertThat(event.canClose(started)).isTrue();
+            assertThat(event.canClose(END.minusNanos(1))).isTrue();
+            assertThat(event.canClose(END)).isFalse();
+            assertThat(withStatus(event, EventStatus.CLOSED).canClose(BEFORE_DEADLINE)).isFalse();
+            assertThat(withStatus(event, EventStatus.CANCELLED).canClose(BEFORE_DEADLINE))
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("canReopen — 모집 마감 ∧ 신청 마감 전 ∧ 시작 전. 마감 정각부터 false")
+        void canReopen() {
+            ClubEvent event = withStatus(draft().publish(), EventStatus.CLOSED);
+
+            assertThat(event.canReopen(DEADLINE.minusNanos(1))).isTrue();
+            assertThat(event.canReopen(DEADLINE)).isFalse();
+            assertThat(event.canReopen(started)).isFalse();
+            assertThat(event.canReopen(END)).isFalse();
+            assertThat(withStatus(event, EventStatus.PUBLISHED).canReopen(BEFORE_DEADLINE))
+                    .isFalse();
+            assertThat(withStatus(event, EventStatus.CANCELLED).canReopen(BEFORE_DEADLINE))
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("reopenBlockedReason — 시작이 마감보다 먼저, 모집 마감이 아니거나 종료면 null")
+        void reopenBlockedReason() {
+            ClubEvent event = withStatus(draft().publish(), EventStatus.CLOSED);
+
+            assertThat(event.reopenBlockedReason(DEADLINE.minusNanos(1))).isNull();
+            assertThat(event.reopenBlockedReason(DEADLINE))
+                    .isEqualTo(EventReopenBlockedReason.DEADLINE_PASSED);
+            assertThat(event.reopenBlockedReason(START.minusNanos(1)))
+                    .isEqualTo(EventReopenBlockedReason.DEADLINE_PASSED);
+            assertThat(event.reopenBlockedReason(START))
+                    .isEqualTo(EventReopenBlockedReason.STARTED);
+            assertThat(event.reopenBlockedReason(END)).isNull();
+            assertThat(withStatus(event, EventStatus.PUBLISHED).reopenBlockedReason(afterDeadline))
+                    .isNull();
+            assertThat(withStatus(event, EventStatus.CANCELLED).reopenBlockedReason(afterDeadline))
+                    .isNull();
+        }
+
+        @Test
+        @DisplayName("canCancel — 취소 아님 ∧ 종료 전. 모집 마감 · 시작 뒤에도 true")
+        void canCancel() {
+            ClubEvent event = draft().publish();
+
+            assertThat(event.canCancel(started)).isTrue();
+            assertThat(event.canCancel(END)).isFalse();
+            assertThat(withStatus(event, EventStatus.CLOSED).canCancel(afterDeadline)).isTrue();
+            assertThat(withStatus(event, EventStatus.CANCELLED).canCancel(BEFORE_DEADLINE))
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("모집 마감 · 재모집 · 행사 취소는 상태를 바꾸고 버전을 1 올린다")
+        void changes() {
+            ClubEvent event = draft().publish();
+
+            assertThat(event.changeStatus(EventStatus.CLOSED, 0L, afterDeadline)).isTrue();
+            assertThat(event.getStatus()).isEqualTo(EventStatus.CLOSED);
+            assertThat(event.getVersion()).isEqualTo(1L);
+
+            assertThat(event.changeStatus(EventStatus.PUBLISHED, 1L, BEFORE_DEADLINE)).isTrue();
+            assertThat(event.getStatus()).isEqualTo(EventStatus.PUBLISHED);
+            assertThat(event.getVersion()).isEqualTo(2L);
+
+            assertThat(event.changeStatus(EventStatus.CANCELLED, 2L, started)).isTrue();
+            assertThat(event.getStatus()).isEqualTo(EventStatus.CANCELLED);
+            assertThat(event.getVersion()).isEqualTo(3L);
+        }
+
+        @Test
+        @DisplayName("같은 상태 요청은 버전이 낡았어도 false · 버전 그대로 (S1)")
+        void sameStatusIgnoresVersion() {
+            ClubEvent event = draft().publish();
+
+            assertThat(event.changeStatus(EventStatus.PUBLISHED, 99L, BEFORE_DEADLINE)).isFalse();
+            assertThat(event.getVersion()).isZero();
+
+            withStatus(event, EventStatus.CLOSED);
+            assertThat(event.changeStatus(EventStatus.CLOSED, 99L, afterDeadline)).isFalse();
+            assertThat(event.getStatus()).isEqualTo(EventStatus.CLOSED);
+            assertThat(event.getVersion()).isZero();
+        }
+
+        @Test
+        @DisplayName("취소 > 종료 > 같은 상태 > 버전 > 시작 > 마감 순서로 먼저 걸린 하나만 던진다")
+        void failsInSpecOrder() {
+            ClubEvent event = draft().publish();
+
+            // 2 — 취소가 종료보다 먼저, 같은 취소 재시도도 409
+            withStatus(event, EventStatus.CANCELLED);
+            assertCode(
+                    () -> event.changeStatus(EventStatus.CANCELLED, 0L, END),
+                    ErrorCode.EVENT_CANCELLED);
+            assertCode(
+                    () -> event.changeStatus(EventStatus.PUBLISHED, 0L, BEFORE_DEADLINE),
+                    ErrorCode.EVENT_CANCELLED);
+            // 3 — 종료가 같은 상태보다 먼저
+            withStatus(event, EventStatus.CLOSED);
+            assertCode(
+                    () -> event.changeStatus(EventStatus.CLOSED, 0L, END), ErrorCode.EVENT_ENDED);
+            // 5 — 버전이 시작 · 마감보다 먼저
+            assertCode(
+                    () -> event.changeStatus(EventStatus.PUBLISHED, 99L, started),
+                    ErrorCode.EVENT_VERSION_CONFLICT);
+            // 6 — 시작이 마감보다 먼저
+            assertCode(
+                    () -> event.changeStatus(EventStatus.PUBLISHED, 0L, started),
+                    ErrorCode.EVENT_ALREADY_STARTED);
+            // 7
+            assertCode(
+                    () -> event.changeStatus(EventStatus.PUBLISHED, 0L, DEADLINE),
+                    ErrorCode.EVENT_REOPEN_DEADLINE_PASSED);
+
+            assertThat(event.getStatus()).isEqualTo(EventStatus.CLOSED);
+            assertThat(event.getVersion()).isZero();
+        }
+
+        @Test
+        @DisplayName("409 문구는 상태 전환 안내다 — 수정 기준 기본 문구를 쓰지 않는다")
+        void messages() {
+            ClubEvent event = withStatus(draft().publish(), EventStatus.CANCELLED);
+
+            assertThatThrownBy(() -> event.changeStatus(EventStatus.CLOSED, 0L, BEFORE_DEADLINE))
+                    .hasMessage("취소된 행사는 모집 상태를 변경할 수 없습니다.");
+        }
+
+        @Test
+        @DisplayName("수동 마감 뒤 수정으로 신청 마감을 미래로 늘려도 자동으로 다시 열리지 않는다 (S3)")
+        void extendingDeadlineDoesNotReopen() {
+            ClubEvent event = draft().publish();
+            event.changeStatus(EventStatus.CLOSED, 0L, afterDeadline);
+            Draft extended = draft().deadlineAt(afterDeadline.plus(Duration.ofHours(1)));
+            extended.questions = List.of();
+
+            event.edit(extended.build(), 1L, afterDeadline, EventSeatCounts.none());
+
+            assertThat(event.getStatus()).isEqualTo(EventStatus.CLOSED);
+            assertThat(event.displayStatus(afterDeadline, EventSeatCounts.none()))
+                    .isEqualTo(EventDisplayStatus.RECRUITMENT_CLOSED);
+            assertThat(event.canReopen(afterDeadline)).isTrue();
+            assertThat(event.changeStatus(EventStatus.PUBLISHED, 2L, afterDeadline)).isTrue();
+            assertThat(event.displayStatus(afterDeadline, EventSeatCounts.none()))
+                    .isEqualTo(EventDisplayStatus.RECRUITING);
+        }
+    }
 }

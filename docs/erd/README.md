@@ -77,6 +77,8 @@ erDiagram
   ACCOUNT ||--o{ STUDY_PROPOSAL : "제안"
   STUDY_PROPOSAL ||--o{ STUDY_PROPOSAL_INTEREST : "관심 표시"
   ACCOUNT ||--o{ STUDY_PROPOSAL_INTEREST : ""
+  STUDY_MEETING |o..o{ STUDY_MEETING_RETRO : "회고 (FK 없음)"
+  STUDY_MEETING_RETRO ||--o{ STUDY_MEETING_RETRO_LIKE : "공감"
 ```
 
 ## 전체 ERD (컬럼 포함)
@@ -416,6 +418,23 @@ erDiagram
     datetime MOVED_AT
   }
 
+  STUDY_MEETING_RETRO {
+    bigint   ID                 PK
+    bigint   MEETING_ID            "→ STUDY_MEETING (FK 없음)"
+    bigint   PARTICIPANT_ID        "→ STUDY_PARTICIPANT (FK 없음), 회차·참여자 유일"
+    varchar  GOOD                  "1~500자"
+    varchar  IMPROVE               "1~500자"
+    varchar  FEELING               "0~500자, 빈 문자열 = 안 남김"
+    datetime UPDATED_AT            "작성일로 보인다"
+  }
+
+  STUDY_MEETING_RETRO_LIKE {
+    bigint   ID                 PK
+    bigint   RETRO_ID           FK "→ STUDY_MEETING_RETRO"
+    varchar  SECTION               "GOOD · IMPROVE · FEELING"
+    bigint   ACCOUNT_ID            "누른 사람 (FK 없음)"
+  }
+
   STUDY_ATTENDANCE {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
@@ -485,6 +504,8 @@ erDiagram
   STUDY_GROUP           ||--o{ STUDY_ATTENDANCE      : "분반별 집계"
 
   STUDY_MEETING         ||--o{ STUDY_ATTENDANCE      : "회차 출석"
+  STUDY_MEETING         |o..o{ STUDY_MEETING_RETRO   : "회고 (FK 없음)"
+  STUDY_MEETING_RETRO   ||--o{ STUDY_MEETING_RETRO_LIKE : "공감"
   STUDY_PROPOSAL        ||--o{ STUDY_PROPOSAL_INTEREST : "나도"
 
   STUDY_APPLICATION     ||..o| STUDY_PARTICIPANT       : "승인 시 생성"
@@ -516,6 +537,8 @@ erDiagram
 | 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 분반에 소속된 사람        | `STATUS`, `PARTICIPANT_ROLE`         |
 | 모집  | [STUDY_PARTICIPANT_GROUP_MOVE](./STUDY_PARTICIPANT_GROUP_MOVE.md) | 반 이동 기록 — 옛 반 · 새 반 이름과 시각 | —                                    |
 | 운영  | [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |
+| 운영  | [STUDY_MEETING_RETRO](./STUDY_MEETING_RETRO.md)                     | 미팅 회고 — 참여자가 남긴 좋았던 점·개선할 점·소감 | —                           |
+| 운영  | [STUDY_MEETING_RETRO_LIKE](./STUDY_MEETING_RETRO_LIKE.md)           | 회고 공감 — 회고 × 문항 × 계정 한 줄 | —                                 |
 | 운영  | [STUDY_DISCORD_LINK](./STUDY_DISCORD_LINK.md)           | 스터디 ↔ 디스코드 카테고리·역할 ID  | —                                    |
 | 반응  | [STUDY_REVIEW](./STUDY_REVIEW.md)                       | 후기                     | —                                    |
 | 반응  | [STUDY_BOOKMARK](./STUDY_BOOKMARK.md)                   | 북마크                    | —                                    |

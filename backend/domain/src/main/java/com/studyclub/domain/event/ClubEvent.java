@@ -43,7 +43,7 @@ import lombok.NoArgsConstructor;
  * 재료를 넘긴다 (specs/event/spec.md 「상태」, endpoint-convention 「판정은 서버가 내려준다」).
  *
  * <p>{@code VERSION} 은 JPA {@code @Version} 이 아니다. 비교 대상이 방금 읽은 값이 아니라 <b>화면이 보낸 값</b>이라 {@link
- * #edit} 가 직접 비교하고 올린다 (Q14).
+ * #edit} · {@link #changeStatus} 가 직접 비교하고 올린다 (Q14).
  */
 @Entity
 @Table(
@@ -209,6 +209,40 @@ public class ClubEvent extends BaseEntity {
         return canEdit(now) && now.isBefore(startsAt);
     }
 
+    /** 모집을 마감할 수 있나 — 공개 중 ∧ 종료 전. 신청 마감이 지났어도 된다 (S3). */
+    public boolean canClose(Instant now) {
+        return status == EventStatus.PUBLISHED && now.isBefore(effectiveEndsAt());
+    }
+
+    /** 모집 마감한 행사를 지금 바로 다시 열 수 있나. */
+    public boolean canReopen(Instant now) {
+        return status == EventStatus.CLOSED
+                && now.isBefore(effectiveEndsAt())
+                && reopenBlockedReason(now) == null;
+    }
+
+    /**
+     * 모집 마감한 종료 전 행사를 다시 열 수 없는 이유. 시작을 먼저 본다 — 시작한 행사는 마감도 지났지만 마감을 고쳐도 열 수 없다. 모집 마감이 아니거나 종료된
+     * 행사는 null.
+     */
+    public EventReopenBlockedReason reopenBlockedReason(Instant now) {
+        if (status != EventStatus.CLOSED || !now.isBefore(effectiveEndsAt())) {
+            return null;
+        }
+        if (!now.isBefore(startsAt)) {
+            return EventReopenBlockedReason.STARTED;
+        }
+        if (!now.isBefore(deadlineAt)) {
+            return EventReopenBlockedReason.DEADLINE_PASSED;
+        }
+        return null;
+    }
+
+    /** 행사를 취소할 수 있나 — 취소 아님 ∧ 종료 전. */
+    public boolean canCancel(Instant now) {
+        return status != EventStatus.CANCELLED && now.isBefore(effectiveEndsAt());
+    }
+
     /** 지금 없앨 수 있는 참여 방식. 단일 방식 행사는 없애면 방식이 0 개라 빈 배열, 혼합이면 유효 신청이 없는 방식만. */
     public List<EventChannel> removableChannels(EventSeatCounts counts) {
         if (channels.size() < 2) {
@@ -320,6 +354,48 @@ public class ClubEvent extends BaseEntity {
         apply(draft);
         version = version + 1;
         return switchedToAuto;
+    }
+
+    /**
+     * 저장 상태 전환 — specs/event-status/spec.md 「처리 순서」 2~7 · 9 를 그 순서대로 본다. 먼저 걸리는 것 하나만 던지고, 던지면 아무것도
+     * 바꾸지 않는다. 호출자는 1(행사 행 쓰기 잠금)을 먼저 한다.
+     *
+     * <p>이미 요청한 상태면 버전을 보지 않고 {@code false} 를 돌려준다 (S1) — 늦게 온 같은 요청은 앞 요청이 올린 버전을 모른다.
+     *
+     * @return 상태가 실제로 바뀌었나
+     */
+    public boolean changeStatus(EventStatus target, Long expectedVersion, Instant now) {
+        Objects.requireNonNull(target);
+        // 2 · 3
+        if (status == EventStatus.CANCELLED) {
+            throw new BusinessException(ErrorCode.EVENT_CANCELLED, "취소된 행사는 모집 상태를 변경할 수 없습니다.");
+        }
+        if (!now.isBefore(effectiveEndsAt())) {
+            throw new BusinessException(ErrorCode.EVENT_ENDED, "종료된 행사는 취소하거나 모집 상태를 변경할 수 없습니다.");
+        }
+        // 4
+        if (target == status) {
+            return false;
+        }
+        // 5
+        if (!Objects.equals(version, expectedVersion)) {
+            throw new BusinessException(ErrorCode.EVENT_VERSION_CONFLICT);
+        }
+        // 6 · 7
+        if (target == EventStatus.PUBLISHED) {
+            EventReopenBlockedReason blocked = reopenBlockedReason(now);
+            if (blocked == EventReopenBlockedReason.STARTED) {
+                throw new BusinessException(
+                        ErrorCode.EVENT_ALREADY_STARTED, "이미 시작한 행사에는 새 신청을 받을 수 없습니다.");
+            }
+            if (blocked == EventReopenBlockedReason.DEADLINE_PASSED) {
+                throw new BusinessException(ErrorCode.EVENT_REOPEN_DEADLINE_PASSED);
+            }
+        }
+        // 9
+        status = target;
+        version = version + 1;
+        return true;
     }
 
     private void checkQuestionKeys(List<QuestionDraft> drafts) {
