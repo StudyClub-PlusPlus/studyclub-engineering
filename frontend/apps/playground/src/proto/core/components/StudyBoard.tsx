@@ -55,14 +55,14 @@ export function StudyBoard({
     weekdays: group.weekdays ?? (firstRegular ? [dowOf(firstRegular.date)] : []),
   };
   const time = regularScheduleDisplay(regularGroup, meetingsOf(study), viewerZone);
-  // 클럽은 모임 시각 · 네비게이터가 없다 — 그 칸을 두지 않는다. 바로가기 · 규칙은 같다
+  // 클럽은 모임 시각이 없다 — 시간 칸만 두지 않는다. 네비게이터 · 바로가기 · 규칙은 스터디와 같다
   const meets = kindRules(study).meetings;
 
   return (
     <StudyInfoCard
       anno='manage:3'
       time={meets ? <RegularTime summary={time} /> : undefined}
-      navigator={meets ? navigatorNameOf(study, role) : undefined}
+      navigator={navigatorNameOf(study, role)}
       leadingAction={
         role === 'captain' ? (
           <span data-anno='book:2'>
