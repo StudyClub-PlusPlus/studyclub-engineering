@@ -126,9 +126,6 @@ export function fmtMin(min: number): string {
 /** 날 단위 기록 값 — 스터디 출석과 같은 네 값. 클럽마다 고르지 않는다 */
 export const DAY_MARKS: readonly DayMark[] = ['present', 'late', 'absent', 'excused'];
 
-/** 크루가 오늘 칸에 스스로 남기는 값 — 결석은 캡틴이 적는다 (스터디도 결석은 네비게이터 · 캡틴이) */
-export const CREW_MARKS: readonly DayMark[] = ['present', 'late', 'excused'];
-
 /** 이 클럽 출석부의 값 — 날 단위면 네 값, 주 단위(공부 시간)는 없다 */
 export function marksFor(rules: ClubRules): DayMark[] {
   return rules.judge === 'day' ? [...DAY_MARKS] : [];
@@ -325,7 +322,7 @@ export type StatKey = 'monthRate' | 'dayOff' | 'streak' | 'monthDone' | 'weekNow
 type Rule<K> = { key: K; when: (r: ClubRules) => boolean };
 
 const SECTION_RULES: Rule<SectionKey>[] = [
-  { key: 'today', when: (r) => r.record === 'check' && r.source === 'crew' },
+  { key: 'today', when: (r) => r.record === 'check' && r.source !== 'auto' },
   { key: 'auto', when: (r) => r.source === 'auto' },
   { key: 'goal', when: (r) => r.weeklyGoal },
   { key: 'minutes', when: (r) => r.record === 'minutes' },

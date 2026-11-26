@@ -100,7 +100,7 @@ export function patchMember(room: ClubRoom, id: string, f: (s: MyClubState) => M
 /* ── 기록 → 숫자 · 출처 ─────────────────────────────────────────────── */
 
 export function sourceOf(room: ClubRoom, id: string, day: string): RecordSource {
-  if (room.states[id]?.byCaptain?.[day]) return 'captain';
+  if (room.club.rules.source === 'captain' || room.states[id]?.byCaptain?.[day]) return 'captain';
   return room.club.rules.source;
 }
 

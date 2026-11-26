@@ -278,71 +278,22 @@ const SECTIONS: Record<SectionKey, (c: Ctx) => ReactNode> = {
   history: HistorySection,
 };
 
-function TodaySection({ club, state, setState, today, month }: Ctx) {
+/**
+ * 오늘 기록 — 보기만 한다. 출석은 캡틴만 입력한다 (2026-11-26) — 크루는 인증 · 휴가를 직접 남기지 않는다.
+ */
+function TodaySection({ state, today }: Ctx) {
   const mark = state.days[today];
-  const [note, setNote] = useState('');
-  const limit = club.rules.vacationLimit;
-  const used = dayOffUsed(state, month);
-
-  function check(v: DayMark | undefined) {
-    setState((s) => {
-      const days = { ...s.days };
-      const notes = { ...s.notes };
-      if (v) {
-        days[today] = v;
-        if (note.trim()) notes[today] = note.trim();
-      } else {
-        delete days[today];
-        delete notes[today];
-      }
-      return { ...s, days, notes };
-    });
-    if (!v) setNote('');
-  }
-
   return (
     <Card data-anno='myclub:3' padding='lg'>
-      <h2 className='type-title-sm text-fg'>오늘 인증 · {shortDay(today)}</h2>
-      {mark ? (
-        <div className='mt-4 flex flex-wrap items-center gap-3'>
-          <Badge tone={MARK_TONE[mark]}>{MARK_LABEL[mark]}</Badge>
-          {state.notes[today] && <span className='type-body-sm text-fg-secondary'>{state.notes[today]}</span>}
-          <span data-anno='myclub:3-1'>
-            <Button variant='tertiary' size='sm' onClick={() => check(undefined)}>
-              인증 취소
-            </Button>
-          </span>
-        </div>
-      ) : (
-        <div className='mt-4 flex flex-col gap-3'>
-          <div className='flex flex-wrap gap-2'>
-            <span data-anno='myclub:3-1' className='flex flex-wrap gap-2'>
-              <Button onClick={() => check('present')}>출석 — 목표 시간에 했어요</Button>
-              <Button variant='secondary' onClick={() => check('late')}>
-                지각 — 늦었지만 했어요
-              </Button>
-            </span>
-            <span data-anno='myclub:3-2'>
-              <Button
-                variant='tertiary'
-                disabled={limit !== undefined && used >= limit}
-                onClick={() => check('excused')}
-              >
-                오늘 휴가{limit !== undefined ? ` (${limit - used}일 남음)` : ''}
-              </Button>
-            </span>
-          </div>
-          <span data-anno='myclub:3-3' className='max-w-md'>
-            <Input
-              size='sm'
-              placeholder='메모 한 줄 (선택)'
-              maxLength={100}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </span>
-        </div>
-      )}
+      <h2 className='type-title-sm text-fg'>오늘 출석 · {shortDay(today)}</h2>
+      <div data-anno='myclub:3-1' className='mt-4 flex flex-wrap items-center gap-3'>
+        <Badge tone={mark ? MARK_TONE[mark] : 'neutral'}>{mark ? MARK_LABEL[mark] : '아직 기록 없음'}</Badge>
+        <span className='type-body-sm text-fg-secondary'>
+          {mark
+            ? '캡틴이 남긴 기록이에요.'
+            : '출석은 캡틴이 디스코드 인증을 보고 입력해요. 휴가는 캡틴에게 말해 주세요.'}
+        </span>
+      </div>
     </Card>
   );
 }
@@ -372,7 +323,7 @@ function AutoSection({ club, state, today }: Ctx) {
             ? `연속 ${currentStreak(state, today)}일째`
             : mark
               ? '캡틴이 남긴 기록이에요.'
-              : `${name}에서 풀면 출석으로 반영돼요. 기록이 틀리면 캡틴에게 알려 주세요.`}
+              : `${name}에서 풀면 출석으로 반영돼요. 기록이 틀리거나 휴가가 필요하면 캡틴에게 알려 주세요.`}
         </span>
       </div>
     </Card>

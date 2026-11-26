@@ -54,8 +54,11 @@ export type ClubRules = {
   weeklyGoal: boolean;
   /** 주마다 한 줄(다짐 · 회고 · 사정 무엇이든, 선택)을 남기는가 */
   weeklyNote: boolean;
-  /** 인증하는 사람 — 크루 직접 / 외부 기록 자동 */
-  source: 'crew' | 'auto';
+  /**
+   * 기록을 남기는 곳 — 캡틴 입력(얼리버드) / 크루가 공부 시간을 적음(WEEKLY X) / 외부 기록 자동(Daily LeetCode).
+   * 날 단위 출석은 크루가 직접 남기지 않는다 (2026-11-26)
+   */
+  source: 'captain' | 'crew' | 'auto';
   /** 자동일 때 기록을 받아 오는 곳의 이름 (화면 안내) */
   autoSourceName?: string;
   /** 날마다 같은 「오늘의 문제」가 있는가 */
@@ -79,7 +82,7 @@ export const CLUBS: ClubConfig[] = [
       metric: 'rate',
       weeklyGoal: false,
       weeklyNote: false,
-      source: 'crew',
+      source: 'captain',
       dailyProblem: false,
     },
   },

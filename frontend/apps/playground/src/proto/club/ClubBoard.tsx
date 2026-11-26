@@ -41,6 +41,9 @@ const CELL: Record<DayMark, string> = {
 const SHORT: Record<DayMark, string> = { present: '출', late: '지', absent: '결', excused: '휴' };
 const LABEL: Record<DayMark, string> = { present: '출석', late: '지각', absent: '결석', excused: '휴가' };
 const SOURCE_LABEL = { crew: '크루가 남김', auto: '자동 기록', captain: '캡틴이 고침' } as const;
+/** 캡틴이 고친 칸 점 — 캡틴만 입력하는 클럽은 모든 칸이 캡틴 것이라 찍지 않는다 */
+const markEdited = (room: ClubRoom, id: string, d: string) =>
+  room.club.rules.source !== 'captain' && sourceOf(room, id, d) === 'captain';
 
 type Anno = Partial<Record<'table' | 'name' | 'extra' | 'dayHead' | 'cell' | 'total' | 'counts' | 'legend', string>>;
 
@@ -119,12 +122,16 @@ function Legend({ room, anno, extra }: { room: ClubRoom; anno?: string; extra?: 
           기록 없음
         </li>
       )}
-      <li className='flex items-center gap-1.5'>
-        <span className='relative h-5 w-5 rounded-sm border border-border bg-surface-1'>
-          <span className='absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-brand' />
-        </span>
-        {SOURCE_LABEL.captain} · 나머지는 {SOURCE_LABEL[r.source]}
-      </li>
+      {r.source === 'captain' ? (
+        <li>캡틴이 입력</li>
+      ) : (
+        <li className='flex items-center gap-1.5'>
+          <span className='relative h-5 w-5 rounded-sm border border-border bg-surface-1'>
+            <span className='absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-brand' />
+          </span>
+          {SOURCE_LABEL.captain} · 나머지는 {SOURCE_LABEL[r.source]}
+        </li>
+      )}
       {extra}
     </ul>
   );
@@ -232,7 +239,7 @@ function DayBoard({ room, days, onRoom, baseline, lead, nameExtra, showCounts, a
                     const v = s?.days[d];
                     const was = baseline?.states[m.id]?.days[d];
                     const changed = baseline !== undefined && was !== v;
-                    const captain = sourceOf(room, m.id, d) === 'captain' && v !== undefined;
+                    const captain = markEdited(room, m.id, d) && v !== undefined;
                     const text = v
                       ? r.metric === 'streak' && (v === 'present' || v === 'late')
                         ? String(currentStreak(s!, d))
@@ -406,7 +413,7 @@ function WeekBoard({ room, week, onRoom, baseline, lead, nameExtra, anno = {} }:
                   {days.map((d, di) => {
                     const v = s?.minutes[d];
                     const changed = baseline !== undefined && baseline.states[m.id]?.minutes[d] !== v;
-                    const captain = sourceOf(room, m.id, d) === 'captain' && v !== undefined;
+                    const captain = markEdited(room, m.id, d) && v !== undefined;
                     return (
                       <td
                         key={d}
