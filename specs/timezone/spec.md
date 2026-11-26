@@ -224,7 +224,7 @@ Playground `time-zone-rules` · POL §날짜·시간과 정합:
 |---|---|
 | 온보딩·`PATCH /api/me` | `timeZone` 검증 → §3.1 |
 | `GET/POST/PATCH` 스터디 admin·site | `recruitmentTimeZones` · `FormattedInstant` 필드. `timezone` enum 필터 폐기 → `recruitmentZone` Query |
-| 대시보드 stats | `timeZone` Query = 헤더 우선. `crew-timezones` 응답 → IANA Top4+기타 |
+| 대시보드 stats | `timeZone` Query = 헤더 우선. `crew-timezones` → §10 · [dashboard §4.5](../dashboard/spec.md) 5칸 규칙 |
 | 회차·행사·알림 등 | 응답에 `FormattedInstant` 적용 (후속 PR에서 필드 추가) |
 
 ---
@@ -349,7 +349,7 @@ Playground `time-zone-rules` · POL §날짜·시간과 정합:
 - 모집 OR 필터: `한국+LA` 스터디가 양쪽 필터에 노출
 - 마감: 동일 UTC 에서 한국·LA·토론토 `canApply` 동일, `dDay` 만 다를 수 있음
 - 헤더 PATCH 후 저장 UTC 동일 (마감 미수정 시)
-- `crew-timezones`: 차트 최대 5칸(미설정 포함). 5종 이하 전부; 6종 초과·미설정 있으면 **상위 3 + `other` + `unset`**
+- `crew-timezones` 5칸: 합계 = 지역 수 + (`unset` 있으면 1). **≤5** → 전부·`other` 없음 (지역 4 + `unset` = 5칸). **>5·unset 있음** → 상위 3 + `other` + `unset` (지역 5 + `unset` → `other`에 2지역). **>5·unset 없음** → 상위 4 + `other` (지역 6 → `other`에 2지역)
 
 ---
 

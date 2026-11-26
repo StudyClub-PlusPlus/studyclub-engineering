@@ -1,6 +1,6 @@
 # 운영 대시보드 화면·API Spec
 
-> **시간대 확장 (2026-11-24):** 조회자 시간대·분포·주간 경계는 [timezone/spec.md](../timezone/spec.md) §3.4 · §8 과 아래 §2.2 **개정안**이 정본이다. `GET /api/admin/stats/crew-timezones` 는 KST/ET/PT/UNKNOWN 네 칸 → **IANA Top4+`other`+`unset`** (PRD §7). 헤더 API: `GET/PATCH /api/admin/me/display-time-zone`.
+> **시간대 확장 (2026-11-24):** 조회자 시간대·분포·주간 경계는 [timezone/spec.md](../timezone/spec.md) §3.4 · §8 과 아래 §2.2 **개정안**이 정본이다. `GET /api/admin/stats/crew-timezones` 는 KST/ET/PT/UNKNOWN 네 칸 → **IANA 분포, 차트 최대 5칸** (§4.5 확장 개정안). 헤더 API: `GET/PATCH /api/admin/me/display-time-zone`.
 >
 > 시간대 확장 (2026-11-22, 구 beta 메모): 본문 §2.2·§4.5 는 프로필 우선 계약 — **아래 개정안으로 대체 예정**.
 
@@ -716,10 +716,12 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 > **beta (아래 JSON)** — 구현완료.
 >
 > **확장 개정안** ([timezone/spec.md](../timezone/spec.md) · PRD §7):
-> - 대상: 기존과 같이 **활성 크루**, `ACCOUNT.TIME_ZONE` IANA 별 1인 1표.
-> - 차트는 **미설정을 포함해 최대 5칸**. IANA 그룹이 5개 이하면 모두 표시(+ `unset` 있으면 한 칸).
-> - IANA **6개 초과**이고 `unset` 이 있으면 → **상위 3 IANA + `other` + `unset`** (5칸). `unset` 없으면 **상위 4 + `other`**.
-> - `other` 를 펼치면 지역별 **인원·비율**(분모 = 전체 활성 크루)을 내려준다 — `timeZoneGroups[].breakdown[]` (`code`, `count`, `percentage`).
+> - 대상: 기존과 같이 **활성 크루**, `ACCOUNT.TIME_ZONE` IANA 별 1인 1표. 미설정(`TIME_ZONE` null·무효)은 **`unset` 한 칸**.
+> - 차트 **최대 5칸** (각 지역·`other`·`unset` 이 차트 조각 하나). 묶기 **전** 항목 수 = **지역(서로 다른 IANA) 수 + (`unset` 이 있으면 1)**.
+> - **합계 ≤ 5** — 전부 그대로 표시. `other` 없음. (예: 지역 4 + `unset` → 5칸.)
+> - **합계 > 5** 이고 **`unset` 있음** — 인원 내림차순 **상위 3 지역** + **`other`**(나머지 지역 전부) + **`unset`** = 5칸. (예: 지역 **5** + `unset` → 합계 6 → 상위 3 + `other`에 나머지 **2** 지역 + `unset`.)
+> - **합계 > 5** 이고 **`unset` 없음** — 상위 **4** 지역 + **`other`**(나머지 전부) = 5칸. (예: 지역 **6** → 상위 4 + `other`에 나머지 **2** 지역.)
+> - `other` 펼침: 묶인 IANA 별 **인원·비율**(분모 = 전체 활성 크루) — `timeZoneGroups[].breakdown[]` (`code`, `count`, `percentage`).
 
 **200 응답 (beta)**
 
