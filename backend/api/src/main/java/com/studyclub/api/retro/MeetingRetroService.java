@@ -70,6 +70,68 @@ public class MeetingRetroService {
         this.studyCaptainGuard = studyCaptainGuard;
     }
 
+    // ── GET /api/me/studies/{studyId}/retros/status ─────────────────────────
+
+    @Transactional(readOnly = true)
+    public MeetingRetroResponses.RetroStatus retroStatus(
+            Long accountId, Long studyId, Long studyGroupId) {
+        // studyGroupId 없으면 내 반 감지
+        Long groupId = studyGroupId;
+        if (groupId == null) {
+            groupId =
+                    participantRepository
+                            .findFirstByStudyIdAndAccountIdAndStatusIn(
+                                    studyId, accountId, StudyCaptainGuard.ROSTER_STATUSES)
+                            .map(StudyParticipant::getStudyGroupId)
+                            .orElseThrow(
+                                    () ->
+                                            new BusinessException(
+                                                    ErrorCode.FORBIDDEN, RETRO_FORBIDDEN));
+        }
+
+        studyCaptainGuard.assertCaptainNavigatorOrMemberOfGroup(
+                accountId, studyId, groupId, RETRO_FORBIDDEN);
+
+        List<StudyMeeting> allMeetings =
+                meetingRepository.findByStudyGroupIdOrderByScheduledAt(groupId);
+
+        Long participantId =
+                participantRepository
+                        .findByStudyGroupIdAndAccountId(groupId, accountId)
+                        .map(StudyParticipant::getId)
+                        .orElse(null);
+
+        List<Long> nonKickoffIds =
+                allMeetings.stream().filter(m -> !m.isKickoff()).map(StudyMeeting::getId).toList();
+
+        Set<Long> writtenMeetingIds =
+                (participantId != null && !nonKickoffIds.isEmpty())
+                        ? retroRepository.findMeetingIdsByMeetingIdInAndParticipantId(
+                                nonKickoffIds, participantId)
+                        : Set.of();
+
+        Instant now = Instant.now();
+        List<MeetingRetroResponses.MeetingRetroStatus> statuses =
+                new ArrayList<>(allMeetings.size());
+        for (StudyMeeting meeting : allMeetings) {
+            if (meeting.isKickoff()) {
+                statuses.add(
+                        new MeetingRetroResponses.MeetingRetroStatus(
+                                meeting.getId(), null, null, null));
+            } else {
+                Instant dl = deadline(meeting, allMeetings);
+                boolean open = !now.isBefore(meetingEndAt(meeting)) && now.isBefore(dl);
+                Boolean retroMine =
+                        participantId != null ? writtenMeetingIds.contains(meeting.getId()) : null;
+                statuses.add(
+                        new MeetingRetroResponses.MeetingRetroStatus(
+                                meeting.getId(), dl, open, retroMine));
+            }
+        }
+
+        return new MeetingRetroResponses.RetroStatus(statuses);
+    }
+
     // ── GET /api/me/studies/{studyId}/meetings/{meetingId}/retros ────────────
 
     @Transactional(readOnly = true)
@@ -120,12 +182,11 @@ public class MeetingRetroService {
         List<StudyMeeting> allMeetings =
                 meetingRepository.findByStudyGroupIdOrderByScheduledAt(groupId);
         Instant deadline = deadline(meeting, allMeetings);
-        boolean open = !Instant.now().isAfter(deadline);
+        boolean open = Instant.now().isBefore(deadline);
 
         // 쓸 사람 목록
         List<StudyParticipant> roster = participantRepository.findByStudyGroupId(groupId);
         List<StudyParticipant> writables = writableParticipants(meeting, roster);
-        int targets = writables.size();
 
         // 회고 목록
         List<StudyMeetingRetro> retros =
@@ -166,10 +227,13 @@ public class MeetingRetroService {
                             likes));
         }
 
-        // missing — 네비게이터·캡틴에게만 (account 를 미리 로드해 isNavigatorOrCaptain 쿼리 절약)
+        // targets · missing — 네비게이터·캡틴에게만 (account 를 미리 로드해 isNavigatorOrCaptain 쿼리 절약)
         Account callerAccount = accountRepository.findById(accountId).orElse(null);
+        boolean leaderOrCaptain = isNavigatorOrCaptain(callerAccount, accountId, groupId);
+
+        Integer targets = leaderOrCaptain ? writables.size() : null;
         List<MeetingRetroResponses.MissingItem> missing = List.of();
-        if (isNavigatorOrCaptain(callerAccount, accountId, groupId)) {
+        if (leaderOrCaptain) {
             Set<Long> writtenParticipantIds =
                     retros.stream()
                             .map(StudyMeetingRetro::getParticipantId)

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "회고", description = "미팅 회고 작성·조회·공감 (specs/meeting-retro/spec.md)")
@@ -23,6 +24,19 @@ public class MeetingRetroController {
 
     public MeetingRetroController(MeetingRetroService meetingRetroService) {
         this.meetingRetroService = meetingRetroService;
+    }
+
+    @Operation(
+            summary = "반 회차별 회고 상태",
+            description = "deadline·open·mine. studyGroupId 없으면 내 반. 킥오프는 null.")
+    @SecurityRequirement(name = "bearerAuth")
+    @RequireOnboarding
+    @GetMapping("/api/me/studies/{studyId}/retros/status")
+    public MeetingRetroResponses.RetroStatus retroStatus(
+            @PathVariable Long studyId,
+            @RequestParam(required = false) Long studyGroupId,
+            Authentication authentication) {
+        return meetingRetroService.retroStatus(accountId(authentication), studyId, studyGroupId);
     }
 
     @Operation(
