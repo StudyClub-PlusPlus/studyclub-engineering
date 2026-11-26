@@ -35,7 +35,6 @@ mail:
 # 실제 SES 호출을 시도하지 않도록 기본은 꺼둔다. 스케줄러 테스트는 poll() 을 직접 호출해 시각 의존 없이 검증한다.
 notification:
   site-base-url: http://localhost:4700
-  back-office-base-url: http://localhost:4701
   polling:
     enabled: false
 

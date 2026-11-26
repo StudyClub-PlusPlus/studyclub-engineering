@@ -564,17 +564,6 @@ describe('알림 템플릿 화면', () => {
     expect(within(dialog).getByText(/문의에 첫 답변을 등록할 수 없습니다/)).toBeInTheDocument();
   });
 
-  it('스터디 신청 알림은 스터디명과 확인 링크를 안내하고 삭제해도 신청은 계속 접수된다고 알린다', async () => {
-    fakeServer([tpl({ eventType: 'STUDY_APPLICATION_RECEIVED', subject: '[StudyClub] 새 신청' })]);
-    renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: '스터디 신청 알림' }));
-    await screen.findByLabelText(/제목/);
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText(/applicationsUrl/)).toHaveTextContent('studyTitle');
-    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
-    expect(within(dialog).getByText(/스터디 신청은 계속 접수되며 운영 경고가 남습니다/)).toBeInTheDocument();
-  });
-
   it('스터디 공지 템플릿의 삭제 확인은 메일 포함 공지가 막히고 디스코드만 보내는 공지는 영향이 없다고 알린다', async () => {
     fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
     renderPage();
@@ -634,7 +623,7 @@ describe('알림 템플릿 화면', () => {
     const options = within(dialog)
       .getAllByRole('option')
       .map((o) => o.textContent);
-    expect(options).toEqual(['회원가입', '스터디 공지', '문의 회신', '스터디 신청 알림']);
+    expect(options).toEqual(['회원가입', '스터디 공지', '문의 회신']);
   });
 
   it('지운 스터디 공지 템플릿은 추가 팝업에서 조건을 골라 다시 만든다', async () => {

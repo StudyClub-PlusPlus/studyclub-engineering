@@ -23,9 +23,7 @@ public record NotificationListResponse(
 
         /** {@code existingAccountIds} 는 재발송 판정 재료다 — 재발송 접수와 같은 쿼리로 센 값을 넘긴다. */
         public static NotificationSummary from(
-                Notification notification,
-                Set<Long> existingAccountIds,
-                Set<Long> stateChangedIds) {
+                Notification notification, Set<Long> existingAccountIds) {
             return new NotificationSummary(
                     notification.getId(),
                     notification.getEventType().name(),
@@ -35,7 +33,7 @@ public record NotificationListResponse(
                     notification.getTemplateId(),
                     notification.getSentAt(),
                     notification.getCreatedAt(),
-                    notification.canResend(existingAccountIds, stateChangedIds));
+                    notification.canResend(existingAccountIds));
         }
 
         /** 메일은 주소를 가리고, 웹 푸시는 구독 번호를 「기기 #12」로 적는다 — 기기 정보는 주지 않는다. */

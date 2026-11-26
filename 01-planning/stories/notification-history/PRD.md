@@ -1,6 +1,5 @@
 # 캡틴은 알림 발송 이력을 조회할 수 있다.
 
-관련 결정: [11-26 스터디 신청을 담당 캡틴에게 메일로 알린다](../../../docs/share/2026-11-26-study-application-captain-email.md)
 > 시간대 공통 규칙: [확장 PRD](../timezone-expansion/PRD.md).
 
 기준 프로토타입: 운영 콘솔 › 알림 › 발송 이력 — https://playground.studyclub.life/proto/console/notifications

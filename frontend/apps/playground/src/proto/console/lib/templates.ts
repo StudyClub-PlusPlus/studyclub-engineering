@@ -18,7 +18,6 @@ export type NotificationTrigger =
   | 'USER_REGISTERED'
   | 'USER_WITHDRAWN'
   | 'FEEDBACK_REPLIED'
-  | 'STUDY_APPLICATION_RECEIVED'
   | 'EVENT_ANNOUNCEMENT'
   | 'EVENT_CANCELLATION'
   | 'EVENT_REGISTRATION_PENDING'
@@ -31,7 +30,6 @@ export const TRIGGERS: { value: NotificationTrigger; label: string }[] = [
   { value: 'USER_WITHDRAWN', label: '회원 탈퇴' },
   // 캡틴이 문의·오류 신고에 회신하면 제출자에게 — 회신 내용은 담지 않고 내 문의 링크만
   { value: 'FEEDBACK_REPLIED', label: '문의 회신' },
-  { value: 'STUDY_APPLICATION_RECEIVED', label: '스터디 신청 알림' },
   { value: 'EVENT_ANNOUNCEMENT', label: '행사 안내' },
   { value: 'EVENT_CANCELLATION', label: '행사 취소 안내' },
   { value: 'EVENT_REGISTRATION_CONFIRMED', label: '행사 참가 확정' },
@@ -60,15 +58,7 @@ export type NotificationTemplate = {
 export const TEMPLATE_CHANNEL_LABEL: Record<string, string> = { EMAIL: '메일' };
 
 /** 서버 페이지에서 회원가입·문의 회신 메일 시안 파일을 읽어 전달한다. */
-export const createTemplates = (welcomeBody: string, feedbackBody: string, eventNoticeBody: string, applicationBody: string): NotificationTemplate[] => [
-  {
-    id: 9,
-    trigger: 'STUDY_APPLICATION_RECEIVED',
-    channel: 'EMAIL',
-    subject: '[StudyClub] {{studyTitle}}에 새 신청이 도착했어요',
-    body: applicationBody,
-    updatedAt: '2026-11-26T00:00:00Z',
-  },
+export const createTemplates = (welcomeBody: string, feedbackBody: string, eventNoticeBody: string): NotificationTemplate[] => [
   { ...structuredClone(EVENT_NOTICE_TEMPLATE), body: eventNoticeBody },
   structuredClone(EVENT_CANCELLATION_TEMPLATE),
   ...structuredClone(EVENT_STATUS_TEMPLATES),

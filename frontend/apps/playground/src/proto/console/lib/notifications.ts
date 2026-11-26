@@ -17,13 +17,12 @@ export type NotificationStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED';
  *
  * 이름을 따로 두지 않는다 — 조건이 곧 그 알림이다.
  */
-export type NotificationEvent = 'USER_REGISTERED' | 'USER_WITHDRAWN' | 'FEEDBACK_REPLIED' | 'STUDY_APPLICATION_RECEIVED';
+export type NotificationEvent = 'USER_REGISTERED' | 'USER_WITHDRAWN' | 'FEEDBACK_REPLIED';
 
 export const EVENT_LABEL: Record<NotificationEvent, string> = {
   USER_REGISTERED: '회원가입',
   USER_WITHDRAWN: '회원 탈퇴',
   FEEDBACK_REPLIED: '문의 회신',
-  STUDY_APPLICATION_RECEIVED: '스터디 신청 알림',
 };
 
 export type NotificationRow = {
@@ -103,7 +102,7 @@ export const notifications: NotificationRow[] = Array.from({ length: 240 }, (_, 
     id: 2000 - i,
     createdAt: created.toISOString(),
     // 가입이 대부분이고 탈퇴가 가끔 섞인다 — 조건 필터가 무슨 일을 하는지 보이게
-    eventType: i === 2 ? 'STUDY_APPLICATION_RECEIVED' : seed % 9 === 0 ? 'USER_WITHDRAWN' : seed % 7 === 0 ? 'FEEDBACK_REPLIED' : 'USER_REGISTERED',
+    eventType: seed % 9 === 0 ? 'USER_WITHDRAWN' : seed % 7 === 0 ? 'FEEDBACK_REPLIED' : 'USER_REGISTERED',
     recipientType: 'EMAIL',
     recipientValue: address(seed),
     status,

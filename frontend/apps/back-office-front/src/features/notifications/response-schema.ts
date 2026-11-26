@@ -26,5 +26,5 @@ export const apiNotificationPageSchema = z.object({
 });
 export const apiNotificationResendSchema = z.object({
   accepted: z.array(z.number()),
-  skipped: z.array(z.object({ id: z.number(), reason: z.enum(['NOT_FAILED', 'RECIPIENT_GONE', 'STATE_CHANGED']) })),
+  skipped: z.array(z.object({ id: z.number(), reason: z.enum(['NOT_FAILED', 'RECIPIENT_GONE']) })),
 });

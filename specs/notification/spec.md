@@ -494,7 +494,7 @@ stateDiagram-v2
 | accepted | Long[] | N | `PENDING` 으로 되돌려 다시 보내기로 **접수한** 행의 ID. 비어 있을 수 있다. 끝(`SENT`·`FAILED`)을 쫓을 때 [`GET ?ids=`](#get-apiadminnotifications) 에 그대로 넘긴다 | NOTIFICATION.ID |
 | skipped | Object[] | N | 접수하지 않은 행. 비어 있을 수 있다 | |
 | skipped[].id | Long | N | 요청한 ID | NOTIFICATION.ID |
-| skipped[].reason | String | N | `NOT_FAILED` — 실패가 아니다(이미 다시 보냈거나 지금 진행 중이거나 이미 나갔거나 탈퇴로 취소됨). `RECIPIENT_GONE` — 수신 회원이 탈퇴해 주소가 지워졌다. `STATE_CHANGED` — 신청 알림의 현재 담당자·권한·연결 상태가 바뀌었다 | 계산: [재발송 가능 조건](#재발송-가능-조건) |
+| skipped[].reason | String | N | `NOT_FAILED` — 실패가 아니다(이미 다시 보냈거나 지금 진행 중이거나 이미 나갔거나 탈퇴로 취소됨). `RECIPIENT_GONE` — 수신 회원이 탈퇴해 주소가 지워졌다 | 계산: [재발송 가능 조건](#재발송-가능-조건) |
 
 전부 `skipped` 여도, `accepted` 가 비어도 **202** 다 — 호출은 정상이고 다시 보낼 대상이 없을 뿐이다. 화면은
 `accepted` 가 비었으면 추적하지 않고 `skipped` 를 안내한다.
@@ -763,13 +763,3 @@ API의 `application.yml`은 `spring.config.import: classpath:notification.yml`�
 - `from-address` 는 표시 이름을 붙일 수 있다 — `StudyClub <no_reply@notify.studyclub.life>`. stage 는 `StudyClub Stage` 로 받는 쪽에서 구분된다
 - 발신 도메인은 `notify.studyclub.life`(본문 링크·사이트와 같은 도메인). 애플 비공개 릴레이로 가려면 이 도메인과 봉투 도메인(`bounce.notify.studyclub.life`)이 Apple Developer Email Sources 에 등록돼 있어야 한다 — [auth-apple-login](../auth-apple-login/spec.md)
 - `reply-to-address` 가 있으면 SES `ReplyToAddresses` 로 싣는다. 비우면 싣지 않는다. 값은 받는 사람이 실제로 열어 보는 주소만
-
-## 스터디 신청 알림 (2026-11-26)
-
-- 조건 `STUDY_APPLICATION_RECEIVED`, 채널 EMAIL. 목록·템플릿 관리의 표시 이름은 **스터디 신청 알림**이다.
-- 현재 담당 캡틴의 새 신청 알림이다. 생성 시점의 `OWNER_CAPTAIN_ID` 와 이메일을 수신자로 저장한다. `REFERENCE_ID = STUDY_APPLICATION.ID`, payload는 `{studyTitle, applicationsUrl}` 이다. 신청자 개인정보는 넣지 않는다.
-- `StudyApplicationSubmitted` 의 BEFORE_COMMIT 구독자가 같은 트랜잭션에 예약한다. 예약 DB 오류는 신청도 롤백한다. 담당자·템플릿 누락은 신청 성공/예약 생략/커밋 후 WARN이다. 상세 조건·잠금은 [신청 스펙](../study-application/spec.md#담당-캡틴-신청-알림-2026-11-26)을 따른다.
-- 최초 템플릿은 V68로 한 건만 등록한다. 이미 같은 조건이 있으면 덮어쓰거나 더 만들지 않는다. 운영자가 여러 개를 등록하면 각각 발송한다. 삭제·조건 이동으로 마지막 템플릿이 없어져도 신청은 계속 접수되고 운영 경고가 남는다.
-- 백오피스 주소는 기존 로그인 설정 `auth.back-office-origins`(`BACK_OFFICE_ORIGINS`)의 단일 주소를 재사용한다. 여러 주소를 허용하거나 별도 대표 주소가 필요하면 `NOTIFICATION_BACK_OFFICE_BASE_URL`로 지정한다. 로컬 `http://localhost:4701`, stage `https://back-office-stage.studyclub.life`, 운영 `https://back-office.studyclub.life`. 링크는 `/studies/{studyId}?tab=crew` 이며 인증·인가를 우회하지 않는다.
-- 이 조건의 재발송은 연결 신청·스터디가 남아 있고 수신자가 **현재 담당 캡틴이며 ADMIN**이어야 한다. 그렇지 않으면 `canResend=false`, `skipped.reason=STATE_CHANGED`. 수신 계정 없음은 `RECIPIENT_GONE` 이 먼저다. 목록과 재발송은 `StudyApplicationNotificationStates.changedIds` 의 같은 일괄 조회 결과를 `Notification.resendSkipReason` 에 전달한다.
-- 재발송은 참조 ID만 먼저 읽고 연결 스터디를 ID 오름차순으로 잠근 후 알림 행을 잠근다. 엔티티를 선조회하지 않아 1차 캐시의 옛 상태를 읽지 않는다. READ COMMITTED 로 담당자 변경·탈퇴 뒤 최신 조건을 판정한다. 이미 예약된 메일의 수신자를 새 담당자로 바꾸지는 않는다.

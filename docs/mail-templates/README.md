@@ -9,7 +9,6 @@
 | `USER_REGISTERED` · `EMAIL` | 회원가입 직후 즉시 | `[StudyClub] 회원가입을 환영합니다` | `{{nickname}}` | [user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html) |
 | `STUDY_NOTICE` · `EMAIL` | 네비게이터가 반 공지를 보낼 때 | `[StudyClub] {{studyTitle}} 공지` | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | [study-notice-email.html](../../frontend/apps/playground/src/proto/mail/templates/study-notice-email.html) |
 | `FEEDBACK_REPLIED` · `EMAIL` | 문의에 첫 답변을 등록할 때 (수정은 제외) | `[StudyClub] 문의에 답변이 등록됐어요` | `{{nickname}}` `{{feedbackUrl}}` | [feedback-replied-email.html](../../frontend/apps/playground/src/proto/mail/templates/feedback-replied-email.html) |
-| `STUDY_APPLICATION_RECEIVED` · `EMAIL` | 새 스터디 신청 접수 시 담당 캡틴에게 (본인 신청 제외) | `[StudyClub] {{studyTitle}}에 새 신청이 도착했어요` | `{{studyTitle}}` `{{applicationsUrl}}` | [study-application-received-email.html](../../frontend/apps/playground/src/proto/mail/templates/study-application-received-email.html) |
 | `EVENT_ANNOUNCEMENT` · `EMAIL` (시안 전용) | 운영진이 행사 참가 확정자에게 안내할 때 | `[StudyClub] {{eventTitle}} 안내` | `{{nickname}}` `{{eventTitle}}` `{{eventSchedule}}` `{{participation}}` `{{notice}}` | [event-announcement-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-announcement-email.html) |
 
 - 시안 원본은 `{{nickname}}` 이 그대로 있는 **DB 에 들어갈 본문**이다. 제목·치환 변수는 위 표를 참고한다
@@ -89,11 +88,3 @@ HTML 본문은 아래 세 가지와 **같이** 나가야 깨지지 않는다 —
 - 이전 PR 버전의 V46·V47·V48을 **로컬 Flyway DB에 직접 적용했다면**, 새 번호로 실행하기 전에 해당 로컬 DB의 적용 이력을 확인한다. 기존 파일의 이름 변경만으로 그 DB의 이력이 바뀌지는 않는다. stage는 Flyway를 사용하지 않아 적용 이력 변경이 필요 없다.
 - Flyway 를 쓰는 환경은 V50·V51·V52를 적용한다. stage 는 Hibernate 가 문의 테이블을 만들고, `backend/notification/src/main/resources/db/migration/V52__feedback_replied_email.sql` 을 한 번 실행해 템플릿을 등록한다. 또는 백오피스 알림 템플릿에서 「문의 회신」 조건으로 같은 제목·HTML을 등록한다. 기존 문의 회신 템플릿이 있으면 중복 등록하거나 덮어쓰지 않는다.
 - HTML과 기존 메일 클라이언트의 일반 텍스트 대체본을 함께 보낸다. 과거 문의를 대상으로 알림을 생성하는 작업은 없다.
-
-### 스터디 신청 알림 적용
-
-- 새 조건은 `STUDY_APPLICATION_RECEIVED`다. 수신자는 현재 담당 캡틴이며 신청자 개인정보는 넣지 않는다. 가입메일의 카드·버튼 구조를 사용한다.
-- `{{applicationsUrl}}`은 기존 로그인용 `auth.back-office-origins`(`BACK_OFFICE_ORIGINS`)의 단일 주소 + `/studies/{studyId}?tab=crew`다. 주소가 여러 개이면 `NOTIFICATION_BACK_OFFICE_BASE_URL`로 메일 대표 주소를 지정한다. stage는 `https://back-office-stage.studyclub.life`, 운영은 `https://back-office.studyclub.life`다. 로컬 로그인 설정 기본값은 `http://localhost:4701`이다.
-- `V68__study_application_received_email.sql`이 시안과 같은 HTML을 등록한다. 기존 같은 조건이 있으면 덮어쓰거나 추가하지 않는다. 과거 신청은 발송하지 않는다.
-- stage는 Flyway off다. 배포 후 **스터디 신청 알림** 조건으로 제목과 시안 HTML을 백오피스에서 한 번 등록하거나 V68을 수동 적용한다. 기존 조건이 있으면 중복 등록하지 않는다.
-- 템플릿을 지워도 신청은 계속 접수된다. 개별 로그와 운영 WARN을 확인한다. 같은 조건에 여러 템플릿을 등록하면 모두 발송한다.

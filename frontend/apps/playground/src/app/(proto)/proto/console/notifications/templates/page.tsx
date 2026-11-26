@@ -20,13 +20,11 @@ export default function TemplatesAdmin() {
   );
   const eventNoticeBody = readFileSync(join(process.cwd(), 'src/proto/mail/templates/event-announcement-email.html'), 'utf8');
 
-  const applicationBody = readFileSync(join(process.cwd(), 'src/proto/mail/templates/study-application-received-email.html'), 'utf8');
-
   return (
     <div data-anno='template:1'>
       <ScreenSpecRegistrar spec={SPEC} />
       <PageHeader title='알림' />
-      <TemplatesTable initialTemplates={createTemplates(welcomeBody, feedbackBody, eventNoticeBody, applicationBody)} />
+      <TemplatesTable initialTemplates={createTemplates(welcomeBody, feedbackBody, eventNoticeBody)} />
     </div>
   );
 }

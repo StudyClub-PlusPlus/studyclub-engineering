@@ -40,17 +40,6 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 ## 공통 사항
 
-### 담당 캡틴 신청 알림 (2026-11-26)
-
-- 신청 성공 시 현재 `STUDY.OWNER_CAPTAIN_ID` 의 ADMIN 계정에게 `STUDY_APPLICATION_RECEIVED/EMAIL` 을 예약한다. 등록자·네비게이터·전체 운영진에게 보내지 않는다. 담당 캡틴 본인의 신청은 조용히 생략한다.
-- `StudyApplicationSubmitted` 를 BEFORE_COMMIT 에 구독한다. 신청서·명부·메일 예약은 함께 커밋한다. 예약 DB 오류는 모두 롤백하고 실제 메일 발송 실패는 신청을 취소하지 않는다. 같은 신청의 중복 요청은 기존 409 검사로 예약 전에 막는다.
-- 잠금은 신청 계정 → 스터디 → 모집 회차 순서다. 담당자 변경·탈퇴의 담당자 비우기도 같은 스터디 행을 잠근다. 메일 예약 중 수신 계정을 다시 잠그지 않는다(계정 → 스터디 순서 역전 방지).
-- 담당자 없음(`OWNER_MISSING`), 계정 없음(`OWNER_ACCOUNT_NOT_FOUND`), ADMIN 아님(`OWNER_NOT_ADMIN`), 템플릿 없음(`TEMPLATE_MISSING`)이면 신청은 성공하고 메일 예약만 생략한다. 커밋 후 각 건의 사유·스터디 ID·신청 ID를 서버 로그에 남긴다. 운영 WARN 알림은 같은 스터디·사유를 서버 인스턴스마다 10분 단위로 묶는다. 최초 1건은 바로 알리고 이후 건수는 주기적으로 모아 보낸다. 재시작 시 집계는 사라지지만 개별 로그는 남는다.
-- 본문에는 `{{studyTitle}}` 와 `{{applicationsUrl}}` 만 사용한다. 신청자 개인정보·답변은 넣지 않는다. 링크는 서버 설정 백오피스 주소 + `/studies/{studyId}?tab=crew` 이며 기존 로그인 후 복귀를 따른다.
-- 같은 조건의 템플릿이 여럿이면 각각 예약한다. 과거 신청이나 누락 건을 소급 발송하지 않는다. 누락은 NOTIFICATION 행이 없어 발송 이력 재발송 대상이 아니다.
-- 실패 행은 수신자가 현재 담당 캡틴(ADMIN)일 때만 재발송한다. 담당자·신청·스터디가 달라지거나 없어지면 `STATE_CHANGED` 로 제외한다. 목록의 `canResend` 도 같은 판정과 조회 재료를 사용한다.
-
-
 - **accountId**: JWT `authentication.getPrincipal()`. 바디로 받지 않는다.
 - **캡틴**: `ACCOUNT.SYSTEM_ROLE=ADMIN`. 스터디와 상관없는 계정 권한이다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)).
 - **담당 캡틴**: 처음엔 이 기수를 생성한 캡틴, 백오피스 신청자 탭에서 바꾼다. 판정은 `STUDY.OWNER_CAPTAIN_ID = accountId` (2026-11-16). 저절로 참여하지 않는다. 참여하려면 크루처럼 신청하고, 신청하면 명부·정원 모두 크루와 같다 (2026-10-14, [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)). `OWNER_CAPTAIN_ID` 가 NULL 인 기수는 담당 캡틴이 없으므로 캡틴 누구나 담당으로 본다.
@@ -350,7 +339,7 @@ GET 신청 폼 조회와 같은 shape.
 
    기본 반이 없는 옛 스터디는 이때 「기본반」을 만든다 (모집 회차 행을 잠근 뒤라 둘이 생기지 않는다). 이 스터디 명부에 `COMPLETED`·`DELETED` 로 남은 행이 있으면(1단계를 지났으니 이 기수 신청서는 없다. 모집 회차를 지우면 신청서도 같이 지워진다) 새 행 대신 그 행을 되살린다 — `ACTIVE`·`MEMBER`, 반은 그대로, `JOINED_AT = 지금`, `LEFT_AT = NULL` (같은 반에 새 행을 만들면 `UNIQUE(ACCOUNT_ID, STUDY_GROUP_ID)` 에 걸린다)
 5. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
-6. 도메인 이벤트 `study_application.submitted` 와 `study_participant.joined` 를 발행한다 — 4단계에서 들어온 명부 행(새 행·되살린 행 모두)으로 낸다. 신청 메일 예약 구독자는 커밋 전에 받고, 외부 알림 구독자는 커밋 뒤에 받는다 ([domain-events](../domain-events/spec.md)). 디스코드 스터디 role 부여(DSC-07)가 `joined` 를 듣는다
+6. 도메인 이벤트 `study_application.submitted` 와 `study_participant.joined` 를 발행한다 — 4단계에서 들어온 명부 행(새 행·되살린 행 모두)으로 낸다. 구독자는 커밋 뒤에 받는다 ([domain-events](../domain-events/spec.md)). 디스코드 스터디 role 부여(DSC-07)가 `joined` 를 듣는다
 7. 커밋. 이후 같은 기수 POST 는 `409`
 
 덮어쓰기 없음. 승인·거절 상태값 없음. 신청자는 분반을 선택하지 않는다. **신청 제출 = 기본 반 명부 편입**이다. 캡틴이 신청 결과를 보고 반을 더 나누면 참가자를 새 반으로 옮긴다.

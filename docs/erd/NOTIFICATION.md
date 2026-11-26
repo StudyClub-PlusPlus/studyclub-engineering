@@ -9,12 +9,12 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED`(웰컴메일) · `STUDY_NOTICE`(반 공지) · `FEEDBACK_REPLIED`(문의 회신) · `STUDY_APPLICATION_RECEIVED`(담당 캡틴의 새 신청 알림) |
+| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED`(웰컴메일) · `STUDY_NOTICE`(반 공지) · `FEEDBACK_REPLIED`(문의 회신) |
 | RECIPIENT_TYPE | VARCHAR(20) | N | 이번 구현에서 쓰는 값은 `EMAIL` 뿐. `DISCORD` 는 정의하지 않는다 |
 | RECIPIENT_VALUE | VARCHAR(255) | N | 발송 시점 이메일 스냅샷 (나중에 회원이 이메일을 바꿔도 이 값은 그대로) |
 | RECIPIENT_USER_ID | BIGINT | Y | ID 참조([ACCOUNT](./ACCOUNT.md), FK 없음) — 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
 | TEMPLATE_ID | BIGINT | N | ID 참조([NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md), FK 없음) |
-| REFERENCE_ID | BIGINT | Y | 이 알림을 만든 쪽의 ID 참조 — `STUDY_NOTICE` 면 [STUDY_NOTICE](./STUDY_NOTICE.md).ID (FK 없음). `FEEDBACK_REPLIED` 면 [FEEDBACK](./FEEDBACK.md).ID. `STUDY_APPLICATION_RECEIVED` 면 STUDY_APPLICATION.ID. 웰컴메일은 NULL. 인덱스 `(EVENT_TYPE, REFERENCE_ID)` |
+| REFERENCE_ID | BIGINT | Y | 이 알림을 만든 쪽의 ID 참조 — `STUDY_NOTICE` 면 [STUDY_NOTICE](./STUDY_NOTICE.md).ID (FK 없음). `FEEDBACK_REPLIED` 면 [FEEDBACK](./FEEDBACK.md).ID. 웰컴메일은 NULL. 인덱스 `(EVENT_TYPE, REFERENCE_ID)` |
 | SENDER_ACCOUNT_ID | BIGINT | Y | 이 알림을 보낸 사람의 [ACCOUNT](./ACCOUNT.md).ID 참조 (FK 없음). 공지 메일만 채우고 나머지는 NULL. 보낸 사람이 탈퇴하면 이 값으로 그가 보낸 메일 행을 찾아 보낸 사람 이름을 비식별화한다 — 공지는 스터디 삭제로 사라질 수 있어 `REFERENCE_ID` 로는 되짚지 못한다. 인덱스 `(SENDER_ACCOUNT_ID)` |
 | PAYLOAD | JSON | N | `USER_REGISTERED` 는 `{"nickname": "..."}`, `STUDY_NOTICE` 는 `{"studyTitle","groupName","senderName","title","body"}` — 보낸 사람이 탈퇴하면 `senderName` 을 「탈퇴한 회원」으로 치환한다([user-leave](../../specs/user-leave/spec.md#스터디-공지를-보낸-사람이-탈퇴하는-경우)). 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
 | STATUS | VARCHAR(20) | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED`/`CANCELLED` |
@@ -64,5 +64,3 @@ stateDiagram-v2
   ([database-guide.md 외래키 정책](../backend-development-guide/database-guide.md)). 엔티티 간에도 객체 연관 없이 ID 로만 참조한다.
 
 문의 회신 payload 는 `nickname` · `feedbackUrl` 뿐이다. 답변·첨부·캡틴 메모는 담지 않는다. 첫 회신마다 등록된 템플릿 수만큼 예약하고 수정은 추가 예약하지 않는다.
-
-스터디 신청 알림은 신청과 같은 트랜잭션에 예약한다. 수신자는 현재 담당 캡틴이며 PAYLOAD 는 `studyTitle` · `applicationsUrl` 만 둔다. 신청자 탈퇴로 지울 신청자 개인정보는 포함하지 않는다. 캡틴 탈퇴 시 기존 수신자 비식별화·대기 취소 규칙을 따른다.

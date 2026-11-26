@@ -11,7 +11,5 @@ public enum NotificationEventType {
      * 캡틴이 백오피스에서 직접 보낸 웹 푸시. 템플릿은 {@code {{title}}}·{@code {{body}}} 를 그대로 옮긴다
      * (specs/web-push/spec.md).
      */
-    ADMIN_PUSH,
-    /** 담당 캡틴에게 새 신청을 알린다. REFERENCE_ID 는 STUDY_APPLICATION.ID 다. */
-    STUDY_APPLICATION_RECEIVED
+    ADMIN_PUSH
 }

@@ -41,7 +41,6 @@ export const STATUS_OPTIONS = (['PENDING', 'PROCESSING', 'SENT', 'FAILED'] as co
 const EVENT_LABEL: Record<string, string> = {
   USER_REGISTERED: '회원가입',
   FEEDBACK_REPLIED: '문의 회신',
-  STUDY_APPLICATION_RECEIVED: '스터디 신청 알림',
   // 네비게이터가 반 팀원에게 보낸 공지 메일 (specs/study-notice). 템플릿은 시드로 두되, 지웠을 때 다시 만들 수 있도록 추가 팝업의 선택지에도 둔다
   STUDY_NOTICE: '스터디 공지',
   ADMIN_PUSH: '푸시 보내기',
