@@ -33,7 +33,7 @@
   - `AdminAuditAction.EVENT_CANCEL` (주석: BEFORE = 취소 직전 상태, AFTER = 함께 취소된 신청 수)
   - `AdminAuditLog`: `targetAccountId` 의 `nullable = false` 해제 · `clubEventId` 필드(`CLUB_EVENT_ID`) · 팩터리 `eventCancel(actorId, clubEventId, EventStatus before, int cancelledCount)` · `policyFor` 의 `switch` 에 `EVENT_CANCEL -> AUDIT_EVENT_CANCEL_V1`
   - `RetentionPolicy.AUDIT_EVENT_CANCEL_V1(3)`
-- [x] T009 마이그레이션 — `backend/domain/src/main/resources/db/migration/V66__admin_audit_log_event_cancel.sql` (`TARGET_ACCOUNT_ID` nullable, `CLUB_EVENT_ID BIGINT NULL` 추가). 올릴 때 `beta` 최신이 `V65` 라 `V66` 으로 정했다
+- [x] T009 마이그레이션 — `backend/domain/src/main/resources/db/migration/V67__admin_audit_log_event_cancel.sql` (`TARGET_ACCOUNT_ID` nullable, `CLUB_EVENT_ID BIGINT NULL` 추가). 올릴 때 `beta` 최신이 `V66` 이라 `V67` 로 정했다
 - [x] T010 단위 테스트 — `backend/domain/src/test/java/com/studyclub/domain/event/ClubEventTest.java`: 판정 4개의 경계(신청 마감 직전 · 직후, 시작 직전 · 직후, 종료 시각, 취소), `reopenBlockedReason` 의 시작 우선, `changeStatus` 처리 순서(같은 상태 + 낡은 버전 = 성공 · 버전 그대로, 취소 > 종료 > 같은 상태 > 버전 > 시작 > 마감), 수동 마감 뒤 마감 연장으로 자동 재개되지 않음
 - [x] T011 [P] 단위 테스트 — `backend/domain/src/test/java/com/studyclub/domain/audit/AdminAuditLogTest.java`: `eventCancel` 이 `TARGET_ACCOUNT_ID = null` · `CLUB_EVENT_ID` · BEFORE/AFTER 값 · 보관 규칙 `AUDIT_EVENT_CANCEL_V1`(발생일 + 3년)을 채운다. 접속 기록 2년 설정이어도 3년이다
 

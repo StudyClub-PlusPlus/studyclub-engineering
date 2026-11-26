@@ -13,13 +13,13 @@
 | ID | BIGINT PK | N | |
 | ACTOR_ACCOUNT_ID | BIGINT | N | 행위한 사람 — 캡틴, `WITHDRAW` 는 네비게이터도. [ACCOUNT](./ACCOUNT.md) ID. FK 없음 |
 | ACTION | VARCHAR(20) | N | 아래 |
-| TARGET_ACCOUNT_ID | BIGINT | Y | 대상 회원. [ACCOUNT](./ACCOUNT.md) ID. FK 없음. `EVENT_CANCEL` 은 대상이 회원이 아니라 NULL (V66). 그 밖의 행위는 언제나 값이 있다 |
+| TARGET_ACCOUNT_ID | BIGINT | Y | 대상 회원. [ACCOUNT](./ACCOUNT.md) ID. FK 없음. `EVENT_CANCEL` 은 대상이 회원이 아니라 NULL (V67). 그 밖의 행위는 언제나 값이 있다 |
 | BEFORE_VALUE | VARCHAR(20) | Y | `ROLE_CHANGE` 의 변경 전 `SYSTEM_ROLE` · `WITHDRAW` 의 중단 직전 상태 · `PARTICIPANT_ROLE` 의 변경 전 역할 · `EVENT_CANCEL` 의 취소 직전 행사 상태. 권한 말소는 이전 역할, 조회는 NULL |
 | AFTER_VALUE | VARCHAR(20) | Y | `ROLE_CHANGE` 의 변경 후 `SYSTEM_ROLE` · `WITHDRAW` · `PARTICIPANT_ROLE` 의 명부 행 ID · `EVENT_CANCEL` 의 함께 취소된 신청 수. 권한 말소는 NONE, 조회는 NULL |
 | ACTOR_IP | VARCHAR(45) | Y | 검증된 접속 주소. 과거 기록·요청 문맥 없는 내부 호출은 NULL. 신뢰 프록시 설정은 정리 스펙 참조 |
 | PARTICIPANT_ID | BIGINT | Y | 참여 관련 신규 로그의 대상 명부 행 ID. FK 없음 |
 | PARTICIPANT_ROLE | VARCHAR(20) | Y | 행위 직전 MEMBER/LEADER. 과거 행의 역할은 추정하지 않음 |
-| CLUB_EVENT_ID | BIGINT | Y | `EVENT_CANCEL` 의 대상 행사 [CLUB_EVENT](./CLUB_EVENT.md) ID (V66). FK 없음. 그 밖의 행위는 NULL |
+| CLUB_EVENT_ID | BIGINT | Y | `EVENT_CANCEL` 의 대상 행사 [CLUB_EVENT](./CLUB_EVENT.md) ID (V67). FK 없음. 그 밖의 행위는 NULL |
 | REASON | VARCHAR(30) | Y | 계정 탈퇴 권한 말소는 ACCOUNT_DELETION, 그 밖에는 NULL |
 | RETENTION_POLICY | VARCHAR(40) | Y | 적용한 종류·버전 코드. 초기화 전만 NULL, 코드 목록은 공통 스펙 참조 |
 | EXPIRES_AT | DATETIME(6) | Y | 저장한 만료 시각. 초기화 전·과거 역할 미상 보류는 NULL |
@@ -71,7 +71,7 @@
 
 ## 구현 반영 메모
 
-PR #479(행사 상태 전환 · 참가자 스펙) 리뷰에서 정한 스키마 변경은 event-status 구현 PR 의 `V66__admin_audit_log_event_cancel.sql` 로 반영했다 (`TARGET_ACCOUNT_ID` nullable · `CLUB_EVENT_ID` 추가 · `EVENT_CANCEL` · `AUDIT_EVENT_CANCEL_V1`). `ACTION` 은 `VARCHAR(20)` 그대로다 (`EVENT_CANCEL` 12자).
+PR #479(행사 상태 전환 · 참가자 스펙) 리뷰에서 정한 스키마 변경은 event-status 구현 PR 의 `V67__admin_audit_log_event_cancel.sql` 로 반영했다 (`TARGET_ACCOUNT_ID` nullable · `CLUB_EVENT_ID` 추가 · `EVENT_CANCEL` · `AUDIT_EVENT_CANCEL_V1`). `ACTION` 은 `VARCHAR(20)` 그대로다 (`EVENT_CANCEL` 12자).
 
 - `EMAIL_REVEAL` 의 행사 참가자 이메일 보기(P4)는 스키마 변경이 없다. 보관 규칙은 기존 조회 기록(`AUDIT_ACCESS_V1`, 2년 설정이면 `AUDIT_ACCESS_TWO_YEARS_V1`) 그대로
 - 행사 취소 기록 조회 화면 · 운영자 알림은 만들지 않는다

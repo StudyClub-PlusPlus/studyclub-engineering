@@ -2,7 +2,7 @@
 
 > ERD: [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md) (V59, PR #478) · [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) (행사 취소 감사 기록 `EVENT_CANCEL`, 아래 「행사 취소 감사 기록」). 신청 테이블은 [CLUB_EVENT_REGISTRATION](../../docs/erd/CLUB_EVENT_REGISTRATION.md) (`V62__create_club_event_registration.sql`, 공통 신청 PR #516)
 > 생성일: 2026-11-18 · 리뷰 반영: 2026-11-19 (PR #479 리뷰 S1~S5 · PR #509 행사 취소 행동 분석) · 확정: 2026-11-25 (PR #516 · #517 병합 뒤 `beta` 코드와 대조)
-> 상태: 구현중 — BE 구현 PR(`feat/event-status-be`, 마이그레이션 `V66__admin_audit_log_event_cancel.sql`). back-office-front 연결은 FE PR #528. 구현 계획 [plan](./plan.md) · [tasks](./tasks.md)
+> 상태: 구현중 — BE 구현 PR(`feat/event-status-be`, 마이그레이션 `V67__admin_audit_log_event_cancel.sql`). back-office-front 연결은 FE PR #528. 구현 계획 [plan](./plan.md) · [tasks](./tasks.md)
 >
 > Story PRD:
 > - [캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다](../../01-planning/stories/captain-manage-events/PRD.md) (ST-037) §1 「행사 관리」 S1~S5 · §3 「행사 취소 행동 분석」
@@ -180,7 +180,7 @@
 
 - 이메일 · 닉네임 · 신청서 답변 · 취소 안내 본문 · 신청 ID 목록은 넣지 않는다
 - **보관 기준**: 새 규칙 코드 `AUDIT_EVENT_CANCEL_V1` = 발생일 + 3년을 둔다. 행사 취소는 여러 크루의 신청을 한꺼번에 되돌릴 수 없게 바꾸는 운영 행위라, 권한 변경·말소 기록(`AUDIT_AUTHORITY_V1`, 3년, 「개인정보의 안전성 확보조치 기준」 제5조 제3항)과 같은 기간을 운영 기준으로 준용한다. 법이 이 행위에 기간을 직접 정한 것은 아니다. 권한 기록과 섞이지 않게 코드를 따로 둔다. 일일 정리 작업은 저장된 `EXPIRES_AT` 으로 지우므로 규칙만 더하면 된다
-- 스키마: `V66__admin_audit_log_event_cancel.sql` 이 `TARGET_ACCOUNT_ID` 를 nullable 로 바꾸고 `CLUB_EVENT_ID` 를 더한다 ([ADMIN_AUDIT_LOG ERD](../../docs/erd/ADMIN_AUDIT_LOG.md)). 규칙 코드 `AUDIT_EVENT_CANCEL_V1` 은 [data-retention](../data-retention/spec.md) 표에 있다. `ACTION` 은 `VARCHAR(20)` 이라 `EVENT_CANCEL`(12자)이 그대로 들어간다
+- 스키마: `V67__admin_audit_log_event_cancel.sql` 이 `TARGET_ACCOUNT_ID` 를 nullable 로 바꾸고 `CLUB_EVENT_ID` 를 더한다 ([ADMIN_AUDIT_LOG ERD](../../docs/erd/ADMIN_AUDIT_LOG.md)). 규칙 코드 `AUDIT_EVENT_CANCEL_V1` 은 [data-retention](../data-retention/spec.md) 표에 있다. `ACTION` 은 `VARCHAR(20)` 이라 `EVENT_CANCEL`(12자)이 그대로 들어간다
 - 디스코드 등 운영자 알림과 감사 기록 조회 화면은 이번 범위가 아니다
 
 ### 탈퇴와의 잠금 순서
