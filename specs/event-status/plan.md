@@ -36,7 +36,7 @@
 
 ## 마이그레이션
 
-`beta` 최신은 `V63__account_activation.sql` 이다. 이 PR 은 **`V64__admin_audit_log_event_cancel.sql`** 하나를 더한다 (PR 을 올릴 때 `beta` 최신을 다시 보고 번호를 정한다. event-participant 는 마이그레이션이 없고, event-mail 은 이 PR 뒤 번호를 쓴다).
+계획 당시 `beta` 최신은 `V63` 이었으나 구현 PR 을 올릴 때 `V64` · `V65` 가 이미 병합되어 있어 **`V66__admin_audit_log_event_cancel.sql`** 하나를 더한다 (event-participant 는 마이그레이션이 없고, event-mail 은 이 PR 뒤 번호를 쓴다).
 
 ```sql
 ALTER TABLE ADMIN_AUDIT_LOG MODIFY TARGET_ACCOUNT_ID BIGINT NULL;
@@ -62,7 +62,7 @@ ALTER TABLE ADMIN_AUDIT_LOG ADD COLUMN CLUB_EVENT_ID BIGINT NULL;
 1. common — `ErrorCode.EVENT_REOPEN_DEADLINE_PASSED`
 2. domain — `EventReopenBlockedReason`, `ClubEvent` 판정 4개 · `changeStatus`, 단위 테스트 `ClubEventTest`
 3. domain — 포트 메서드 2개, 저장소 조건부 갱신 · 안내 대상 COUNT, `ClubEventCancelledEvent`, `ClubEventRegistrationsCancelledEvent.Cause.EVENT_CANCELLED` 삭제
-4. domain — `AdminAuditAction.EVENT_CANCEL` · `AdminAuditLog.eventCancel` · `clubEventId` · `RetentionPolicy.AUDIT_EVENT_CANCEL_V1` + `V64` 마이그레이션
+4. domain — `AdminAuditAction.EVENT_CANCEL` · `AdminAuditLog.eventCancel` · `clubEventId` · `RetentionPolicy.AUDIT_EVENT_CANCEL_V1` + `V66` 마이그레이션
 5. api — 어댑터 구현, `AdminClubEventDetailResponse` 판정 필드, 요청 DTO, `AdminClubEventService.changeStatus`, `AdminClubEventStatusController`
 6. api — `AnalyticsEventListener.onClubEventCancelled`
 7. 테스트 — 통합 `AdminClubEventStatusIntegrationTest`, 어댑터 통합, 분석 리스너 단위

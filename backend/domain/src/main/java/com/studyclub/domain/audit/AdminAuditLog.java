@@ -1,6 +1,7 @@
 package com.studyclub.domain.audit;
 
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.event.EventStatus;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.retention.RetentionPolicy;
@@ -16,6 +17,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -47,7 +49,8 @@ public class AdminAuditLog extends BaseEntity {
     @Column(nullable = false, length = 20)
     private AdminAuditAction action;
 
-    @Column(name = "TARGET_ACCOUNT_ID", nullable = false)
+    /** 대상 회원. 행사 취소처럼 대상이 회원이 아닌 행위는 null. */
+    @Column(name = "TARGET_ACCOUNT_ID")
     private Long targetAccountId;
 
     @Column(name = "BEFORE_VALUE", length = 20)
@@ -68,6 +71,10 @@ public class AdminAuditLog extends BaseEntity {
 
     @Column(name = "REASON", length = 30)
     private String reason;
+
+    /** 행사 취소의 대상 행사. 외래키를 걸지 않는다 — {@code PARTICIPANT_ID} 와 같다. */
+    @Column(name = "CLUB_EVENT_ID")
+    private Long clubEventId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "RETENTION_POLICY", length = 40)
@@ -126,6 +133,7 @@ public class AdminAuditLog extends BaseEntity {
                     ACCOUNT_ROLE_REVOKE,
                     PARTICIPANT_REVOKE ->
                     RetentionPolicy.AUDIT_AUTHORITY_V1;
+            case EVENT_CANCEL -> RetentionPolicy.AUDIT_EVENT_CANCEL_V1;
         };
     }
 
@@ -170,6 +178,23 @@ public class AdminAuditLog extends BaseEntity {
         this.targetAccountId = targetAccountId;
         this.beforeValue = beforeValue;
         this.afterValue = afterValue;
+    }
+
+    /**
+     * 행사 취소. 실제로 {@code CANCELLED} 로 바뀐 취소만 남긴다 — 같은 상태 요청 · 실패는 호출자가 거른다. 함께 취소된 신청이 0건이어도 남긴다
+     * (S4).
+     */
+    public static AdminAuditLog eventCancel(
+            Long actorAccountId, Long clubEventId, EventStatus before, int cancelledCount) {
+        AdminAuditLog log =
+                new AdminAuditLog(
+                        actorAccountId,
+                        AdminAuditAction.EVENT_CANCEL,
+                        null,
+                        before.name(),
+                        String.valueOf(cancelledCount));
+        log.clubEventId = Objects.requireNonNull(clubEventId);
+        return log;
     }
 
     public static AdminAuditLog analyticsOptOut(Long actorId, Long targetId, Long feedbackId) {

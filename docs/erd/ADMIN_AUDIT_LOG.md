@@ -13,13 +13,13 @@
 | ID | BIGINT PK | N | |
 | ACTOR_ACCOUNT_ID | BIGINT | N | 행위한 사람 — 캡틴, `WITHDRAW` 는 네비게이터도. [ACCOUNT](./ACCOUNT.md) ID. FK 없음 |
 | ACTION | VARCHAR(20) | N | 아래 |
-| TARGET_ACCOUNT_ID | BIGINT | N | 대상 회원. [ACCOUNT](./ACCOUNT.md) ID. FK 없음. `EVENT_CANCEL` 은 대상 회원이 없어 NULL 이 필요하다 — 구현 때 nullable 로 바꾼다 (아래 「구현 반영 메모」) |
-| BEFORE_VALUE | VARCHAR(20) | Y | `ROLE_CHANGE` 의 변경 전 `SYSTEM_ROLE` · `WITHDRAW` 의 중단 직전 상태 · `PARTICIPANT_ROLE` 의 변경 전 역할. 권한 말소는 이전 역할, 조회는 NULL |
-| AFTER_VALUE | VARCHAR(20) | Y | `ROLE_CHANGE` 의 변경 후 `SYSTEM_ROLE` · `WITHDRAW` · `PARTICIPANT_ROLE` 의 명부 행 ID. 권한 말소는 NONE, 조회는 NULL |
+| TARGET_ACCOUNT_ID | BIGINT | Y | 대상 회원. [ACCOUNT](./ACCOUNT.md) ID. FK 없음. `EVENT_CANCEL` 은 대상이 회원이 아니라 NULL (V66). 그 밖의 행위는 언제나 값이 있다 |
+| BEFORE_VALUE | VARCHAR(20) | Y | `ROLE_CHANGE` 의 변경 전 `SYSTEM_ROLE` · `WITHDRAW` 의 중단 직전 상태 · `PARTICIPANT_ROLE` 의 변경 전 역할 · `EVENT_CANCEL` 의 취소 직전 행사 상태. 권한 말소는 이전 역할, 조회는 NULL |
+| AFTER_VALUE | VARCHAR(20) | Y | `ROLE_CHANGE` 의 변경 후 `SYSTEM_ROLE` · `WITHDRAW` · `PARTICIPANT_ROLE` 의 명부 행 ID · `EVENT_CANCEL` 의 함께 취소된 신청 수. 권한 말소는 NONE, 조회는 NULL |
 | ACTOR_IP | VARCHAR(45) | Y | 검증된 접속 주소. 과거 기록·요청 문맥 없는 내부 호출은 NULL. 신뢰 프록시 설정은 정리 스펙 참조 |
 | PARTICIPANT_ID | BIGINT | Y | 참여 관련 신규 로그의 대상 명부 행 ID. FK 없음 |
 | PARTICIPANT_ROLE | VARCHAR(20) | Y | 행위 직전 MEMBER/LEADER. 과거 행의 역할은 추정하지 않음 |
-| CLUB_EVENT_ID | BIGINT | Y | **(구현 때 추가)** `EVENT_CANCEL` 의 대상 행사 [CLUB_EVENT](./CLUB_EVENT.md) ID. FK 없음. 그 밖의 행위는 NULL |
+| CLUB_EVENT_ID | BIGINT | Y | `EVENT_CANCEL` 의 대상 행사 [CLUB_EVENT](./CLUB_EVENT.md) ID (V66). FK 없음. 그 밖의 행위는 NULL |
 | REASON | VARCHAR(30) | Y | 계정 탈퇴 권한 말소는 ACCOUNT_DELETION, 그 밖에는 NULL |
 | RETENTION_POLICY | VARCHAR(40) | Y | 적용한 종류·버전 코드. 초기화 전만 NULL, 코드 목록은 공통 스펙 참조 |
 | EXPIRES_AT | DATETIME(6) | Y | 저장한 만료 시각. 초기화 전·과거 역할 미상 보류는 NULL |
@@ -28,9 +28,10 @@
 ## 관계
 
 - N : 1 [ACCOUNT](./ACCOUNT.md) — 행위자 (`ACTOR_ACCOUNT_ID`)
-- N : 1 [ACCOUNT](./ACCOUNT.md) — 대상 (`TARGET_ACCOUNT_ID`)
+- N : 1 [ACCOUNT](./ACCOUNT.md) — 대상 (`TARGET_ACCOUNT_ID`, `EVENT_CANCEL` 은 NULL)
+- N : 1 [CLUB_EVENT](./CLUB_EVENT.md) — 취소한 행사 (`CLUB_EVENT_ID`, `EVENT_CANCEL` 만)
 
-둘 다 **FK 를 걸지 않는다** (애그리거트 사이 — [database-guide](../backend-development-guide/database-guide.md#외래키-정책)).
+셋 다 **FK 를 걸지 않는다** (애그리거트 사이 — [database-guide](../backend-development-guide/database-guide.md#외래키-정책)).
 계정 삭제 뒤에도 기록은 정해진 기한까지 남긴다. 계정 ID만 남았다고 완전한 익명 데이터로 간주하지 않는다.
 
 ## 상태 — ACTION
@@ -47,7 +48,7 @@
 | `OWNER_CAPTAIN` | 백오피스 신청자 탭에서 스터디의 담당 캡틴(`STUDY.OWNER_CAPTAIN_ID`)을 바꿨다 ([study-group](../../specs/study-group/spec.md#담당-캡틴-바꾸기)). 값이 실제로 바뀐 경우만. `TARGET_ACCOUNT_ID` = 새 담당 캡틴 (2026-11-16) | 옛 담당 캡틴 계정 ID(없었으면 NULL) / 스터디 ID |
 | `ACCOUNT_ROLE_REVOKE` | 캡틴 본인의 계정 탈퇴로 권한 말소 | ADMIN / NONE |
 | `PARTICIPANT_REVOKE` | ACTIVE/PAUSED 네비게이터의 계정 탈퇴로 권한 말소. 참여 행마다 1건 | LEADER / NONE |
-| `EVENT_CANCEL` | **(구현 때 추가)** 캡틴이 행사를 실제로 `CANCELLED` 로 바꿨다 — 함께 취소된 신청이 0건이어도 남긴다. 이미 취소된 행사 · 409 실패는 남기지 않는다 ([event-status](../../specs/event-status/spec.md#행사-취소-감사-기록-s4), PR #479 S4). `TARGET_ACCOUNT_ID` = NULL, `CLUB_EVENT_ID` = 행사. 이메일 · 답변 · 취소 안내 본문은 넣지 않는다 | 취소 직전 행사 상태(`PUBLISHED` · `CLOSED`) / 함께 취소된 신청 수(10진 문자열, `0` 포함) |
+| `EVENT_CANCEL` | 캡틴이 행사를 실제로 `CANCELLED` 로 바꿨다 — 함께 취소된 신청이 0건이어도 남긴다. 이미 취소된 행사 · 409 실패는 남기지 않는다 ([event-status](../../specs/event-status/spec.md#행사-취소-감사-기록-s4), PR #479 S4). `TARGET_ACCOUNT_ID` = NULL, `CLUB_EVENT_ID` = 행사. 이메일 · 답변 · 취소 안내 본문은 넣지 않는다 | 취소 직전 행사 상태(`PUBLISHED` · `CLOSED`) / 함께 취소된 신청 수(10진 문자열, `0` 포함) |
 
 ## 제약
 
@@ -62,7 +63,7 @@
 
 - 이메일·디스코드 조회와 MEMBER 참여 중단: 행위 시각부터 1년. 법정 2년 의무 대상은 신규 기록에 설정으로 2년을 적용한다. 기존 기한은 별도 검토 없이 바꾸지 않는다.
 - 역할 부여·변경·말소와 LEADER 참여 중단: 행위 시각부터 3년.
-- 행사 취소(`EVENT_CANCEL`, 구현 때 추가): 행위 시각부터 3년. 규칙 코드 `AUDIT_EVENT_CANCEL_V1`. 권한 기록(제5조 제3항 3년)을 운영 기준으로 준용한 것으로, 이 행위에 법이 기간을 정한 것은 아니다. 권한 기록과 섞이지 않게 코드를 따로 둔다
+- 행사 취소(`EVENT_CANCEL`): 행위 시각부터 3년. 규칙 코드 `AUDIT_EVENT_CANCEL_V1`. 권한 기록(제5조 제3항 3년)을 운영 기준으로 준용한 것으로, 이 행위에 법이 기간을 정한 것은 아니다. 권한 기록과 섞이지 않게 코드를 따로 둔다
 - 역할 스냅샷이 없는 과거 WITHDRAW: 자동 삭제 보류, 보류 수 관측. 현재 역할로 과거를 추정하지 않는다.
 - 하루 간격으로 저장한 `EXPIRES_AT`을 확인하고 만료 행을 물리 삭제한다. 실행 시점의 설정으로 다시 계산하지 않는다.
 - IP·당시 역할은 V53, 규칙·만료일은 V55로 추가한다. 현재 과거 기록은 테스트 데이터이므로 당시 V1으로 초기화한다. 조회 1년·권한 3년을 원래 생성일에 더하며, 역할 미상은 보류한다. 이미 채운 규칙·만료일은 재실행해도 유지한다.
@@ -70,14 +71,7 @@
 
 ## 구현 반영 메모
 
-PR #479(행사 상태 전환 · 참가자 스펙) 리뷰에서 정한 것 중 **아직 스키마에 없는 것**이다. 위 표의 「(구현 때 추가)」 항목은 이 메모대로 구현 PR 에서 마이그레이션과 함께 반영한다. 지금 테이블은 `TARGET_ACCOUNT_ID NOT NULL`, `ACTION VARCHAR(20)` 이다.
+PR #479(행사 상태 전환 · 참가자 스펙) 리뷰에서 정한 스키마 변경은 event-status 구현 PR 의 `V66__admin_audit_log_event_cancel.sql` 로 반영했다 (`TARGET_ACCOUNT_ID` nullable · `CLUB_EVENT_ID` 추가 · `EVENT_CANCEL` · `AUDIT_EVENT_CANCEL_V1`). `ACTION` 은 `VARCHAR(20)` 그대로다 (`EVENT_CANCEL` 12자).
 
-| 변경 | 이유 | 구현 PR 에서 할 일 |
-|---|---|---|
-| `TARGET_ACCOUNT_ID` → nullable | `EVENT_CANCEL` 은 대상이 회원이 아니라 행사다 | `V{n}` 에서 `MODIFY TARGET_ACCOUNT_ID BIGINT NULL`. 기존 행은 모두 값이 있어 데이터 변경 없음. 인덱스 `(TARGET_ACCOUNT_ID, CREATED_AT)` 는 그대로 |
-| `CLUB_EVENT_ID BIGINT NULL` 추가 | 행사 취소의 대상 행사 (기존 `PARTICIPANT_ID` 와 같은 방식, FK 없음) | 같은 `V{n}` 에서 추가 |
-| `ACTION` 값 `EVENT_CANCEL` | 행사 전체 취소 | `AdminAuditAction.EVENT_CANCEL`. 12자라 `VARCHAR(20)` 그대로 |
-| 보관 규칙 `AUDIT_EVENT_CANCEL_V1` (발생일 + 3년) | S4 「필요한 감사 기록 필드와 보관 기준」 | [data-retention](../../specs/data-retention/spec.md) 규칙 코드 표에 추가. 일일 정리는 저장된 `EXPIRES_AT` 으로 지우므로 정리 작업은 바꾸지 않는다 |
-| `EMAIL_REVEAL` 사용처 확대 | 행사 참가자 이메일 보기 (P4) | 스키마 변경 없음. 보관 규칙은 기존 조회 기록(`AUDIT_ACCESS_V1`, 2년 설정이면 `AUDIT_ACCESS_TWO_YEARS_V1`) 그대로 |
-
+- `EMAIL_REVEAL` 의 행사 참가자 이메일 보기(P4)는 스키마 변경이 없다. 보관 규칙은 기존 조회 기록(`AUDIT_ACCESS_V1`, 2년 설정이면 `AUDIT_ACCESS_TWO_YEARS_V1`) 그대로
 - 행사 취소 기록 조회 화면 · 운영자 알림은 만들지 않는다

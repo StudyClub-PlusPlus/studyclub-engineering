@@ -10,7 +10,8 @@ public enum RetentionPolicy {
     AUDIT_ACCESS_V1(1),
     AUDIT_ACCESS_TWO_YEARS_V1(2),
     AUDIT_AUTHORITY_V1(3),
-    AUDIT_WITHDRAW_UNCLASSIFIED_V1(0);
+    AUDIT_WITHDRAW_UNCLASSIFIED_V1(0),
+    AUDIT_EVENT_CANCEL_V1(3);
 
     private final int years;
 
