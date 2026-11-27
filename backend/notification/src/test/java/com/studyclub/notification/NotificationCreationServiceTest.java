@@ -14,6 +14,9 @@ import static org.mockito.Mockito.when;
 
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.event.ClubEventRepository;
+import com.studyclub.domain.event.mail.ClubEventMailRepository;
+import com.studyclub.domain.event.registration.ClubEventRegistrationRepository;
 import com.studyclub.domain.notice.StudyNotice;
 import com.studyclub.domain.notice.StudyNoticeRepository;
 import com.studyclub.domain.study.Study;
@@ -41,7 +44,15 @@ class NotificationCreationServiceTest {
     private final StudyGroupRepository groups = mock(StudyGroupRepository.class);
     private final NotificationCreationService service =
             new NotificationCreationService(
-                    accounts, templates, notifications, notices, studies, groups);
+                    accounts,
+                    templates,
+                    notifications,
+                    notices,
+                    studies,
+                    groups,
+                    mock(ClubEventRepository.class),
+                    mock(ClubEventRegistrationRepository.class),
+                    mock(ClubEventMailRepository.class));
 
     private final Study study = mock(Study.class);
     private final StudyGroup group = mock(StudyGroup.class);

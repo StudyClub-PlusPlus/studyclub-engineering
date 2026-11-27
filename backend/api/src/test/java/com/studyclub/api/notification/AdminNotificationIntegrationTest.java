@@ -6,7 +6,22 @@ import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.event.ChannelDraft;
+import com.studyclub.domain.event.ClubEvent;
+import com.studyclub.domain.event.ClubEventRepository;
+import com.studyclub.domain.event.EventChannel;
+import com.studyclub.domain.event.EventConfirmation;
+import com.studyclub.domain.event.EventDraft;
+import com.studyclub.domain.event.mail.ClubEventMail;
+import com.studyclub.domain.event.mail.ClubEventMailAudience;
+import com.studyclub.domain.event.mail.ClubEventMailFormat;
+import com.studyclub.domain.event.mail.ClubEventMailRepository;
+import com.studyclub.domain.event.mail.ClubEventMailType;
+import com.studyclub.domain.event.registration.ClubEventRegistration;
+import com.studyclub.domain.event.registration.ClubEventRegistrationRepository;
 import com.studyclub.notification.*;
+import com.studyclub.notification.NotificationStatus;
+import com.studyclub.notification.ResendSkipReason;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +49,11 @@ class AdminNotificationIntegrationTest {
     @Autowired AccountRepository accountRepository;
     @Autowired NotificationRepository notificationRepository;
     @Autowired NotificationTemplateRepository notificationTemplateRepository;
+    @Autowired ClubEventRepository clubEventRepository;
+    @Autowired ClubEventRegistrationRepository registrationRepository;
+
+    @Autowired ClubEventMailRepository mailRepository;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     private NotificationTemplate template;
 
     @BeforeEach
@@ -482,5 +502,206 @@ class AdminNotificationIntegrationTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
         }
+    }
+
+    // ───────────── 행사 메일 재발송 상태 (specs/event-mail 「재발송 가능 조건」) ─────────────
+
+    private ClubEvent clubEvent() {
+        Instant startsAt = Instant.now().plus(java.time.Duration.ofDays(5));
+        return clubEventRepository.saveAndFlush(
+                ClubEvent.publish(
+                        new EventDraft(
+                                "연말 네트워킹 밋업",
+                                "요약",
+                                "소개",
+                                "Asia/Seoul",
+                                startsAt,
+                                startsAt.plus(java.time.Duration.ofHours(3)),
+                                startsAt.minus(java.time.Duration.ofDays(1)),
+                                EventConfirmation.REVIEW,
+                                List.of(ChannelDraft.online(10, "https://meet.example.com/abc")),
+                                List.of()),
+                        1L,
+                        UUID.randomUUID().toString(),
+                        Instant.now()));
+    }
+
+    private ClubEventRegistration registration(
+            Long eventId, Long accountId, String status, String cancelReason) {
+        var saved =
+                registrationRepository.saveAndFlush(
+                        ClubEventRegistration.submit(
+                                eventId,
+                                accountId,
+                                EventChannel.ONLINE,
+                                EventConfirmation.REVIEW,
+                                "Asia/Seoul",
+                                List.of(),
+                                Map.of(),
+                                UUID.randomUUID().toString()));
+        jdbcTemplate.update(
+                "UPDATE CLUB_EVENT_REGISTRATION SET STATUS = ?, CANCEL_REASON = ? WHERE ID = ?",
+                status,
+                cancelReason,
+                saved.getId());
+        return saved;
+    }
+
+    private Notification failedEventMail(
+            NotificationEventType type, Long recipientUserId, Long referenceId) {
+        NotificationTemplate eventTemplate =
+                notificationTemplateRepository.save(
+                        new NotificationTemplate(
+                                type, NotificationChannel.EMAIL, "{{eventTitle}}", "{{nickname}}"));
+        Notification notification =
+                notificationRepository.save(
+                        Notification.pendingClubEventMail(
+                                type,
+                                "crew@example.com",
+                                recipientUserId,
+                                eventTemplate,
+                                Map.of("nickname", "수현"),
+                                referenceId,
+                                null));
+        Instant lockedAt = Instant.now();
+        notification.markProcessing(lockedAt);
+        notification.markFailed(NotificationErrorType.PROVIDER_ERROR, lockedAt);
+        return notificationRepository.save(notification);
+    }
+
+    private Map<Long, Boolean> canResendById() {
+        var response =
+                testRestTemplate.exchange(
+                        "/api/admin/notifications?limit=100",
+                        HttpMethod.GET,
+                        authenticated(SystemRole.ADMIN),
+                        NotificationListResponse.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return response.getBody().items().stream()
+                .collect(
+                        java.util.stream.Collectors.toMap(
+                                NotificationListResponse.NotificationSummary::id,
+                                NotificationListResponse.NotificationSummary::canResend));
+    }
+
+    @Test
+    @DisplayName(
+            "행사 자동 메일 — 지금 상태가 그 메일의 상태와 같아야 재발송한다. 바뀌었으면 목록 canResend false · 재발송 STATE_CHANGED")
+    void clubEventAutomaticMailResendFollowsState() {
+        Long crew = recipientAccount().getId();
+        var event = clubEvent();
+        var stillConfirmed = registration(event.getId(), crew, "CONFIRMED", null);
+        var cancelledAfter = registration(event.getId(), crew, "CANCELLED", "SELF_CANCELLED");
+        var declined = registration(event.getId(), crew, "DECLINED", null);
+        var pending = registration(event.getId(), crew, "PENDING", null);
+        var deletedCancel = registration(event.getId(), crew, "CANCELLED", "ACCOUNT_DELETED");
+        Notification ok =
+                failedEventMail(
+                        NotificationEventType.EVENT_REGISTRATION_CONFIRMED,
+                        crew,
+                        stillConfirmed.getId());
+        Notification changed =
+                failedEventMail(
+                        NotificationEventType.EVENT_REGISTRATION_CONFIRMED,
+                        crew,
+                        cancelledAfter.getId());
+        Notification declinedOk =
+                failedEventMail(
+                        NotificationEventType.EVENT_REGISTRATION_DECLINED, crew, declined.getId());
+        Notification pendingOk =
+                failedEventMail(
+                        NotificationEventType.EVENT_REGISTRATION_PENDING, crew, pending.getId());
+        Notification cancelledByDeletion =
+                failedEventMail(
+                        NotificationEventType.EVENT_REGISTRATION_CANCELLED,
+                        crew,
+                        deletedCancel.getId());
+
+        Map<Long, Boolean> canResend = canResendById();
+        assertThat(canResend.get(ok.getId())).isTrue();
+        assertThat(canResend.get(declinedOk.getId())).isTrue();
+        assertThat(canResend.get(pendingOk.getId())).isTrue();
+        assertThat(canResend.get(changed.getId())).isFalse();
+        assertThat(canResend.get(cancelledByDeletion.getId())).isFalse();
+
+        var response =
+                resend(
+                        SystemRole.ADMIN,
+                        List.of(ok.getId(), changed.getId()),
+                        NotificationResendResponse.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(response.getBody().accepted()).containsExactly(ok.getId());
+        assertThat(response.getBody().skipped())
+                .singleElement()
+                .satisfies(
+                        skipped -> {
+                            assertThat(skipped.id()).isEqualTo(changed.getId());
+                            assertThat(skipped.reason()).isEqualTo(ResendSkipReason.STATE_CHANGED);
+                        });
+        assertThat(notificationRepository.findById(changed.getId()).orElseThrow().getStatus())
+                .isEqualTo(NotificationStatus.FAILED);
+
+        jdbcTemplate.update(
+                "UPDATE CLUB_EVENT SET STATUS = 'CANCELLED' WHERE ID = ?", event.getId());
+        assertThat(canResendById().get(declinedOk.getId())).isFalse();
+    }
+
+    @Test
+    @DisplayName("운영자 안내 — 행사가 취소되지 않았고 그 수신자의 신청이 참가 확정이어야, 취소 안내는 행사 취소 ∧ 행사 취소로 취소된 신청이어야 재발송한다")
+    void clubEventOperatorMailResendFollowsState() {
+        Long crew = recipientAccount().getId();
+        var event = clubEvent();
+        var confirmed = registration(event.getId(), crew, "CONFIRMED", null);
+        var mail =
+                mailRepository.saveAndFlush(
+                        ClubEventMail.send(
+                                event.getId(),
+                                ClubEventMailType.ANNOUNCEMENT,
+                                ClubEventMailAudience.ALL,
+                                new ClubEventMail.Rendered(
+                                        template.getId(), "제목", "본문", ClubEventMailFormat.TEXT),
+                                "안내",
+                                "Asia/Seoul",
+                                List.of(
+                                        new ClubEventMail.Recipient(
+                                                crew, confirmed.getId(), EventChannel.ONLINE)),
+                                1L,
+                                UUID.randomUUID().toString()));
+        Notification announcement =
+                failedEventMail(NotificationEventType.EVENT_ANNOUNCEMENT, crew, mail.getId());
+        Notification orphan =
+                failedEventMail(NotificationEventType.EVENT_ANNOUNCEMENT, crew, 987_654_321L);
+
+        assertThat(canResendById().get(announcement.getId())).isTrue();
+        assertThat(canResendById().get(orphan.getId())).isFalse();
+
+        jdbcTemplate.update(
+                "UPDATE CLUB_EVENT_REGISTRATION SET STATUS = 'CANCELLED', CANCEL_REASON ="
+                        + " 'EVENT_CANCELLED' WHERE ID = ?",
+                confirmed.getId());
+        jdbcTemplate.update(
+                "UPDATE CLUB_EVENT SET STATUS = 'CANCELLED' WHERE ID = ?", event.getId());
+        var cancellationMail =
+                mailRepository.saveAndFlush(
+                        ClubEventMail.send(
+                                event.getId(),
+                                ClubEventMailType.CANCELLATION,
+                                ClubEventMailAudience.CANCELLED_ACTIVE,
+                                new ClubEventMail.Rendered(
+                                        template.getId(), "제목", "본문", ClubEventMailFormat.TEXT),
+                                "취소",
+                                "Asia/Seoul",
+                                List.of(
+                                        new ClubEventMail.Recipient(
+                                                crew, confirmed.getId(), EventChannel.ONLINE)),
+                                1L,
+                                UUID.randomUUID().toString()));
+        Notification cancellation =
+                failedEventMail(
+                        NotificationEventType.EVENT_CANCELLATION, crew, cancellationMail.getId());
+
+        Map<Long, Boolean> canResend = canResendById();
+        assertThat(canResend.get(announcement.getId())).isFalse();
+        assertThat(canResend.get(cancellation.getId())).isTrue();
     }
 }

@@ -6,8 +6,11 @@ import com.studyclub.domain.account.UserRegisteredEvent;
 import com.studyclub.domain.application.StudyApplicationSubmitted;
 import com.studyclub.domain.discord.StudyDiscordLink;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
+import com.studyclub.domain.event.mail.ClubEventMailTemplateMissing;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRepository;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -34,6 +37,8 @@ public class OpsAlertListener {
     private final AccountRepository accountRepository;
     private final StudyRepository studyRepository;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
+    private final OpsAlertBundle templateMissingBundle =
+            new OpsAlertBundle(Duration.ofMinutes(10), Clock.systemUTC());
 
     public OpsAlertListener(
             OpsAlertNotifier notifier,
@@ -103,6 +108,31 @@ public class OpsAlertListener {
             notifier.send(OpsAlertNotifier.Level.INFO, "회원 탈퇴", fields);
         } catch (RuntimeException e) {
             log.warn("ops-alert: 탈퇴 알림 실패 ({})", e.getClass().getSimpleName());
+        }
+    }
+
+    /**
+     * 행사 자동 메일 템플릿이 없어 메일을 건너뛰었다 (specs/event-mail M2). 종료 자동 전환처럼 한 번에 여러 건이 빠질 수 있어 같은 (조건, 행사)
+     * 경보는 10분에 한 번, 그동안 건너뛴 건수를 함께 적는다. 연락처는 싣지 않는다.
+     */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onClubEventMailTemplateMissing(ClubEventMailTemplateMissing event) {
+        try {
+            templateMissingBundle
+                    .record(event.eventType() + ":" + event.clubEventId())
+                    .ifPresent(
+                            count -> {
+                                Map<String, String> fields = new LinkedHashMap<>();
+                                fields.put("알림 조건", event.eventType());
+                                fields.put("행사 ID", String.valueOf(event.clubEventId()));
+                                fields.put("신청 ID", String.valueOf(event.registrationId()));
+                                fields.put("건너뛴 메일", count + "건 (10분 묶음)");
+                                notifier.send(
+                                        OpsAlertNotifier.Level.WARN, "행사 자동 메일 템플릿 없음", fields);
+                            });
+        } catch (RuntimeException e) {
+            log.warn("ops-alert: 행사 메일 템플릿 누락 알림 실패 ({})", e.getClass().getSimpleName());
         }
     }
 

@@ -476,4 +476,100 @@ class AdminNotificationTemplateWriteIntegrationTest {
             assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
         }
     }
+
+    // ───────────── 행사 조건 변수 검증 ─────────────
+
+    @Test
+    @DisplayName("행사 조건 — 허용 변수만 · 안내와 취소 안내는 {{notice}} 필수, 어기면 추가 · 수정이 400 이고 저장되지 않는다")
+    void eventTemplateVariablesAreValidated() {
+        var missingNotice =
+                testRestTemplate.exchange(
+                        PATH,
+                        HttpMethod.POST,
+                        asAdmin(
+                                new NotificationTemplateRequest(
+                                        NotificationEventType.EVENT_ANNOUNCEMENT,
+                                        "[StudyClub] {{eventTitle}} 안내",
+                                        "<p>{{nickname}}님</p>")),
+                        Map.class);
+        var leakedLink =
+                testRestTemplate.exchange(
+                        PATH,
+                        HttpMethod.POST,
+                        asAdmin(
+                                new NotificationTemplateRequest(
+                                        NotificationEventType.EVENT_CANCELLATION,
+                                        "[StudyClub] {{eventTitle}} 행사 취소 안내",
+                                        "<p>{{notice}} {{participation}}</p>")),
+                        Map.class);
+        var spaced =
+                testRestTemplate.exchange(
+                        PATH,
+                        HttpMethod.POST,
+                        asAdmin(
+                                new NotificationTemplateRequest(
+                                        NotificationEventType.EVENT_REGISTRATION_PENDING,
+                                        "{{ eventTitle }}",
+                                        "본문")),
+                        Map.class);
+
+        assertThat(missingNotice.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(missingNotice.getBody())
+                .containsEntry("errorCode", "INVALID_INPUT")
+                .containsEntry("errorMessage", "행사 안내 내용이 들어갈 {{notice}}를 본문에 넣어 주세요.");
+        assertThat(leakedLink.getBody())
+                .containsEntry("errorMessage", "지원하지 않는 변수입니다: {{participation}}");
+        assertThat(spaced.getBody())
+                .containsEntry("errorMessage", "지원하지 않는 변수입니다: {{ eventTitle }}");
+        assertThat(notificationTemplateRepository.findAll()).isEmpty();
+
+        var created = createTemplate();
+        var moved =
+                testRestTemplate.exchange(
+                        PATH + "/" + created.id(),
+                        HttpMethod.PUT,
+                        asAdmin(
+                                new NotificationTemplateRequest(
+                                        NotificationEventType.EVENT_REGISTRATION_CONFIRMED,
+                                        "[StudyClub] {{eventTitle}}",
+                                        "{{notice}}")),
+                        Map.class);
+        assertThat(moved.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(
+                        notificationTemplateRepository
+                                .findById(created.id())
+                                .orElseThrow()
+                                .getEventType())
+                .isEqualTo(NotificationEventType.USER_REGISTERED);
+
+        var valid =
+                testRestTemplate.exchange(
+                        PATH,
+                        HttpMethod.POST,
+                        asAdmin(
+                                new NotificationTemplateRequest(
+                                        NotificationEventType.EVENT_REGISTRATION_CONFIRMED,
+                                        "[StudyClub] {{eventTitle}} 참가가 확정되었습니다",
+                                        "{{nickname}} {{eventSchedule}} {{channel}} {{participation}}")),
+                        NotificationTemplateResponse.class);
+        assertThat(valid.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(valid.getBody().eventType()).isEqualTo("EVENT_REGISTRATION_CONFIRMED");
+    }
+
+    @Test
+    @DisplayName("기존 세 조건은 변수를 검사하지 않는다 — 모르는 변수 · 공백 변수도 201")
+    void legacyConditionsAreNotValidated() {
+        var response =
+                testRestTemplate.exchange(
+                        PATH,
+                        HttpMethod.POST,
+                        asAdmin(
+                                new NotificationTemplateRequest(
+                                        NotificationEventType.STUDY_NOTICE,
+                                        "{{ studyTitle }}",
+                                        "{{foo}}")),
+                        NotificationTemplateResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
 }

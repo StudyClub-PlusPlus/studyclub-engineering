@@ -15,6 +15,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     /** 테스트 전용 — 계정 하나가 받은 알림을 뒤져볼 때만 쓴다. 백오피스 조회는 볼륨이 계속 느는 아웃박스라 {@link #findPage} 를 쓴다. */
     List<Notification> findAllByOrderByCreatedAtDesc();
 
+    /** 한 발송(또는 한 신청)의 메일 행, 받는 계정 순. */
+    List<Notification> findByEventTypeAndReferenceIdOrderByRecipientUserIdAscIdAsc(
+            NotificationEventType eventType, Long referenceId);
+
     /**
      * 회원 탈퇴 — 이 계정이 수신자인 알림 이력을 잠그고 조회한다(비식별화 대상, specs/user-leave/spec.md).
      *

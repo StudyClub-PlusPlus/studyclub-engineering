@@ -80,4 +80,32 @@ class NotificationTemplateRendererTest {
 
         assertThat(result).isEqualTo("<p>첫 줄\n&lt;b&gt;둘째&lt;/b&gt;</p>");
     }
+
+    @Test
+    @DisplayName("줄바꿈 옵션 — HTML 템플릿이면 이스케이프 뒤 줄바꿈을 <br> 로, 옵션이 없으면 그대로")
+    void render_lineBreaks_onlyWhenEnabled() {
+        Map<String, Object> payload = Map.of("notice", "첫 줄 <b>\r\n둘째 줄");
+
+        assertThat(
+                        renderer.render(
+                                "<p>{{notice}}</p>",
+                                payload,
+                                NotificationTemplateRenderer.RenderOptions.LINE_BREAKS))
+                .isEqualTo("<p>첫 줄 &lt;b&gt;<br>둘째 줄</p>");
+        assertThat(renderer.render("<p>{{notice}}</p>", payload))
+                .isEqualTo("<p>첫 줄 &lt;b&gt;\r\n둘째 줄</p>");
+    }
+
+    @Test
+    @DisplayName("줄바꿈 옵션 — 텍스트 템플릿 · 제목은 값을 그대로 끼우고, 값 안의 변수는 다시 치환하지 않는다")
+    void render_lineBreaks_textAndSinglePass() {
+        Map<String, Object> payload = Map.of("notice", "{{nickname}}\n안내", "nickname", "수현");
+
+        assertThat(
+                        renderer.render(
+                                "{{nickname}}님, {{notice}}",
+                                payload,
+                                NotificationTemplateRenderer.RenderOptions.LINE_BREAKS))
+                .isEqualTo("수현님, {{nickname}}\n안내");
+    }
 }

@@ -23,6 +23,7 @@ public class NotificationResendService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationRecipientAccounts recipientAccounts;
+    private final ClubEventNotificationStates clubEventStates;
 
     @Transactional
     public NotificationResendResponse resend(List<Long> requestedIds) {
@@ -35,10 +36,12 @@ public class NotificationResendService {
         }
 
         Set<Long> existingAccountIds = recipientAccounts.existingIds(rows);
+        Set<Long> stateChangedIds = clubEventStates.stateChangedIds(rows);
         List<Long> accepted = new ArrayList<>();
         List<NotificationResendResponse.Skipped> skipped = new ArrayList<>();
         for (Notification row : rows) {
-            Optional<ResendSkipReason> reason = row.resendSkipReason(existingAccountIds);
+            Optional<ResendSkipReason> reason =
+                    row.resendSkipReason(existingAccountIds, stateChangedIds);
             if (reason.isPresent()) {
                 skipped.add(new NotificationResendResponse.Skipped(row.getId(), reason.get()));
             } else {

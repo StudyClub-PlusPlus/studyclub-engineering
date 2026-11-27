@@ -10,7 +10,7 @@ import java.util.List;
  * 어긴다. 행사 취소는 {@link ClubEventCancelledEvent} 다.
  *
  * <p>구독자: 분석(커밋 뒤 {@code Event Registration Cancelled}). 자동 메일 구독자(event-mail)가 {@code
- * BEFORE_COMMIT} 으로 취소 안내를 만든다 (아직 없음).
+ * BEFORE_COMMIT} 으로 신청 취소 안내를 만든다.
  */
 public record ClubEventRegistrationsCancelledEvent(
         EventMeta meta, Long clubEventId, List<Long> registrationIds, Cause cause)
