@@ -25,7 +25,15 @@ public class AdminDisplayTimeZoneService {
     @Transactional
     public AdminDisplayTimeZoneResponse change(
             Long accountId, AdminDisplayTimeZoneRequest request) {
-        Account account = find(accountId);
+        // 프로필 수정(AccountProfileService)과 같은 행 잠금으로 줄 세운다. 잠그지 않으면 두 수정이 서로의 칸(TIME_ZONE ·
+        // ADMIN_DISPLAY_TIME_ZONE)을 옛 값으로 덮는다
+        Account account =
+                accountRepository
+                        .findByIdForUpdate(accountId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
         account.changeAdminDisplayTimeZone(request.timeZone());
         return AdminDisplayTimeZoneResponse.from(account);
     }

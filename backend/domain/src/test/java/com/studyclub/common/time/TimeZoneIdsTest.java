@@ -2,6 +2,8 @@ package com.studyclub.common.time;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.ZoneId;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -53,6 +55,8 @@ class TimeZoneIdsTest {
                 "EST",
                 "MST",
                 "HST",
+                "CET",
+                "WET",
                 "KST",
                 "Mars/Olympus",
                 "asia/seoul"
@@ -98,5 +102,65 @@ class TimeZoneIdsTest {
         assertThat(TimeZoneIds.normalize("UTC")).contains("UTC");
         assertThat(TimeZoneIds.normalize("Etc/UTC")).contains("UTC");
         assertThat(TimeZoneIds.normalize("GMT")).contains("UTC");
+    }
+
+    @Test
+    @DisplayName("전수 검사: JDK 의 모든 ID 가 거부되거나, 링크 · 분류 이름이 아닌 정본 ID 로 저장된다")
+    void everyAvailableIdNormalizesToCanonical() {
+        Set<String> categoryLinks =
+                Set.of(
+                        "Australia/ACT",
+                        "Australia/Canberra",
+                        "Australia/Currie",
+                        "Australia/LHI",
+                        "Australia/NSW",
+                        "Australia/North",
+                        "Australia/Queensland",
+                        "Australia/South",
+                        "Australia/Tasmania",
+                        "Australia/Victoria",
+                        "Australia/West",
+                        "Australia/Yancowinna");
+        for (String id : ZoneId.getAvailableZoneIds()) {
+            TimeZoneIds.normalize(id)
+                    .ifPresent(
+                            stored -> {
+                                assertThat(TimeZoneIds.LINKS).as(id).doesNotContainKey(stored);
+                                assertThat(stored.contains("/") || stored.equals("UTC"))
+                                        .as("%s → %s: 한 단어 옛 이름이 남았다", id, stored)
+                                        .isTrue();
+                                assertThat(stored)
+                                        .as("%s → %s: 분류 이름이 남았다", id, stored)
+                                        .doesNotStartWith("US/")
+                                        .doesNotStartWith("Canada/")
+                                        .doesNotStartWith("Brazil/")
+                                        .doesNotStartWith("Chile/")
+                                        .doesNotStartWith("Mexico/")
+                                        .doesNotStartWith("Etc/")
+                                        .doesNotStartWith("SystemV/");
+                                assertThat(categoryLinks).as(id).doesNotContain(stored);
+                                assertThat(TimeZoneIds.normalize(stored)).as(id).contains(stored);
+                            });
+        }
+    }
+
+    @Test
+    @DisplayName("링크 표: 옛 이름 · 정본 모두 JDK 가 아는 ID 이고, 정본이 다시 링크가 아니다")
+    void linkTableIsConsistent() {
+        TimeZoneIds.LINKS.forEach(
+                (link, canonical) -> {
+                    assertThat(ZoneId.getAvailableZoneIds()).as(link).contains(link, canonical);
+                    assertThat(TimeZoneIds.LINKS).as(canonical).doesNotContainKey(canonical);
+                    assertThat(TimeZoneIds.normalize(link)).as(link).contains(canonical);
+                });
+        assertThat(TimeZoneIds.normalize("US/Aleutian")).contains("America/Adak");
+        assertThat(TimeZoneIds.normalize("Asia/Saigon")).contains("Asia/Ho_Chi_Minh");
+    }
+
+    @Test
+    @DisplayName("tzdata 가 다른 나라 존으로 합친 도시는 그대로 둔다 — 같은 오프셋의 다른 지역을 합치지 않는다")
+    void mergedCitiesStayDistinct() {
+        assertThat(TimeZoneIds.normalize("Europe/Amsterdam")).contains("Europe/Amsterdam");
+        assertThat(TimeZoneIds.normalize("Asia/Kuala_Lumpur")).contains("Asia/Kuala_Lumpur");
     }
 }

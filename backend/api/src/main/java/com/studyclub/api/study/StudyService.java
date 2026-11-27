@@ -306,20 +306,13 @@ public class StudyService {
         if (request.driveUrlPresent()) study.changeDriveUrl(request.driveUrl());
 
         if (request.capacityPresent() || recruitDeadline != null || recruitmentTimeZones != null) {
-            StudyRecruitment latest =
+            StudyRecruitment recruitment =
                     studyRecruitmentRepository
-                            .findFirstByStudyIdOrderByIdDesc(study.getId())
+                            .findFirstByStudyIdOrderByIdDescForUpdate(study.getId())
                             .orElseThrow(
                                     () ->
                                             new BusinessException(
                                                     ErrorCode.NOT_FOUND, "모집 회차를 찾을 수 없습니다."));
-            // 모집 시간대는 모드 행과 지역 자식 행에 나뉘어 있다. 동시 수정이 서로 다른 행만 건드려 둘 다 커밋되면 모드와 지역이 어긋나서 줄 세운다
-            StudyRecruitment recruitment =
-                    recruitmentTimeZones == null
-                            ? latest
-                            : studyRecruitmentRepository
-                                    .findByIdForUpdate(latest.getId())
-                                    .orElse(latest);
             if (request.capacityPresent()) recruitment.updateCapacity(request.capacity());
             if (recruitDeadline != null) recruitment.updateDeadline(recruitDeadline);
             if (recruitmentTimeZones != null) recruitment.changeTimeZones(recruitmentTimeZones);

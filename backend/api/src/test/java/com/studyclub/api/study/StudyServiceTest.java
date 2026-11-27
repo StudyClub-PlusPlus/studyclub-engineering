@@ -2,7 +2,10 @@ package com.studyclub.api.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.studyclub.common.error.BusinessException;
@@ -19,10 +22,12 @@ import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
+import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -231,6 +236,35 @@ class StudyServiceTest {
                         e ->
                                 assertThat(((BusinessException) e).errorCode())
                                         .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("성공(수정) - 모집 회차를 바꾸는 수정은 최신 모집 회차를 처음부터 잠가 읽는다 — 잠그지 않은 선조회가 1차 캐시에 남지 않게")
+    void updateLocksLatestRecruitmentOnFirstRead() {
+        when(accountRepository.existsById(1L)).thenReturn(true);
+        when(studyRepository.findById(10L))
+                .thenReturn(
+                        Optional.of(
+                                Study.builder()
+                                        .id(10L)
+                                        .programId(1L)
+                                        .status(StudyStatus.OPEN)
+                                        .build()));
+        StudyRecruitment recruitment = StudyRecruitment.builder().studyId(10L).build();
+        when(studyRecruitmentRepository.findFirstByStudyIdOrderByIdDescForUpdate(10L))
+                .thenReturn(Optional.of(recruitment));
+        StudyUpdateRequest request = new StudyUpdateRequest();
+        request.setRecruitmentTimeZones(
+                new RecruitmentTimeZonesRequest("selected", List.of("Asia/Seoul")));
+        request.setCapacity(10);
+
+        studyService.updateFromSite(1L, 10L, request, SEOUL);
+
+        verify(studyRecruitmentRepository).findFirstByStudyIdOrderByIdDescForUpdate(10L);
+        verify(studyRecruitmentRepository, never()).findFirstByStudyIdOrderByIdDesc(10L);
+        verify(studyRecruitmentRepository, never()).findByIdForUpdate(any());
+        assertThat(recruitment.timeZones().zones()).containsExactly("Asia/Seoul");
+        assertThat(recruitment.getRecruitmentCapacity()).isEqualTo(10);
     }
 
     @Test

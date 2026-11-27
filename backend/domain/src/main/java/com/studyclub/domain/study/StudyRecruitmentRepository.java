@@ -21,6 +21,17 @@ public interface StudyRecruitmentRepository extends JpaRepository<StudyRecruitme
 
     Optional<StudyRecruitment> findFirstByStudyIdOrderByIdDesc(Long studyId);
 
+    /**
+     * 수정 전용 — 최신 모집 회차를 처음 읽을 때부터 잠근다. 모집 시간대는 모드(이 행)와 지역(자식 행)으로 나뉘어 있어, 동시 수정 둘이 서로 다른 행만 건드리면 둘
+     * 다 커밋돼 모드와 지역이 어긋난다. 같은 트랜잭션에서 잠그지 않고 먼저 읽어 두면 1차 캐시의 옛 엔티티를 그대로 쓰게 되므로 이 조회 하나만 쓴다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            "SELECT recruitment FROM StudyRecruitment recruitment"
+                    + " WHERE recruitment.studyId = :studyId ORDER BY recruitment.id DESC LIMIT 1")
+    Optional<StudyRecruitment> findFirstByStudyIdOrderByIdDescForUpdate(
+            @Param("studyId") Long studyId);
+
     @Query(
             "SELECT recruitment FROM StudyRecruitment recruitment "
                     + "WHERE recruitment.studyId = :studyId "
