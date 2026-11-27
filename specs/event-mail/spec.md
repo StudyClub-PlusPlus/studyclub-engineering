@@ -301,20 +301,21 @@ PRD §7 은 메일을 **운영자 안내**와 **자동**으로 나눈다. 둘 �
 | # | 단계 | 실패 | 근거 |
 |---|---|---|---|
 | 1 | `CLUB_EVENT` 행을 쓰기 잠금으로 읽는다 (**트랜잭션의 첫 조회**). `ACCOUNT` 는 잠그지 않는다. 없으면 | 404 `NOT_FOUND` | 아래 「행사 행을 잠그는 이유」 · 「탈퇴와 메일 예약의 순서」 |
-| 2 | 같은 보낸 사람 · 같은 `Idempotency-Key` 의 `EVENT_MAIL` 이 있으면 그 발송을 그대로 돌려준다 | 201 (재응답) | event N1 과 같은 방식 |
+| 2 | 같은 보낸 사람 · 같은 `Idempotency-Key` 의 `EVENT_MAIL` 이 있으면 그 발송을 그대로 돌려준다. 그 발송이 **다른 행사**의 것이면 돌려주지 않고 거절한다 | 201 (재응답) · 다른 행사 키면 400 `INVALID_INPUT` 「Idempotency-Key: 다른 행사 메일에 쓴 키입니다. 새 UUID v4 를 보내 주세요.」 | event N1 과 같은 방식. 다른 행사 키 거절은 크루 신청 제출(event-registration 「다른 행사 신청에 쓴 키입니다」)과 같은 규칙 |
 | 3 | 안내(`ANNOUNCEMENT`)인데 `STATUS = CANCELLED` | 409 `EVENT_CANCELLED` | 프로토 「취소된 행사에는 안내 메일을 보낼 수 없습니다」 |
 | 4 | 취소 안내(`CANCELLATION`)인데 `STATUS ≠ CANCELLED` | 409 `EVENT_NOT_CANCELLED` | 프로토 「취소된 행사에만 취소 안내 메일을 보낼 수 있습니다」 |
 | 5 | `ONLINE` · `OFFLINE` 대상인데 행사에 그 방식이 없다 | 400 `INVALID_INPUT` (`audience`) | `EventMailComposer` 대상 선택지 |
 | 6 | 조건의 템플릿을 고른다 (가장 작은 ID). 없으면 | 409 `EVENT_MAIL_TEMPLATE_MISSING` | 프로토 「등록된 행사 (취소) 안내 템플릿이 없습니다」 |
 | 7 | 요청 `templateId` 가 있는데 6 과 다르다 | 409 `EVENT_MAIL_TEMPLATE_CHANGED` | 위 `templateId` 설명 |
 | 8 | 받는 사람을 읽는다 (잠금 뒤 일반 조회로 신청 · `ACCOUNT` 를 읽어 계정이 남은 사람만). 0명이면 | 409 `EVENT_MAIL_NO_RECIPIENTS` | 프로토 「선택한 대상에 참가 확정자가 없습니다」 · 「취소 안내 메일을 받을 신청자가 없습니다」 |
-| 9 | 공통 제목·본문을 렌더링한다 (`{{nickname}}` 원문, 일정은 공통 본문 시간대) | — | PRD §7-1 「이력 미리보기 제목·본문도 닉네임만 원문으로 두고 나머지를 발송 시점 값으로 저장」, 프로토 `createEventNoticeMail` |
+| 9 | 공통 제목·본문을 렌더링한다 (`{{nickname}}` 원문, 일정은 공통 본문 시간대). 렌더링한 공통 제목이 `EVENT_MAIL.SUBJECT`(255자)를 넘으면 | 400 `INVALID_INPUT` 「notice: 제목에 들어가는 안내 내용이 길어 제목이 255자를 넘습니다.」 — 제목에 `{{notice}}` 를 넣은 템플릿에 긴 안내 내용을 보낸 경우 | PRD §7-1 「이력 미리보기 제목·본문도 닉네임만 원문으로 두고 나머지를 발송 시점 값으로 저장」, 프로토 `createEventNoticeMail` |
 | 10 | `EVENT_MAIL` 1행(공통 제목·본문·형식·대상·수신자 수·템플릿 ID·보낸 사람·안내 내용·키)과 `EVENT_MAIL_RECIPIENT` 받는 사람 수만큼 저장 | — | PRD §7 「한 번의 발송을 이력 한 건으로」 |
 | 11 | `ClubEventMailSentEvent` (`club_event_mail.sent`) 를 트랜잭션 안에서 발행한다 | — | [domain-events](../domain-events/spec.md) |
 | 12 | 커밋 직전 `BEFORE_COMMIT` 구독자(`ClubEventMailEmailListener`, notification 모듈)가 받는 사람마다 `NOTIFICATION` 행 1개를 같은 트랜잭션에 저장한다. 템플릿 제목·본문 스냅샷을 함께 저장한다 (아래 「수신자별 메일 행」 · 「발송 내용 고정」). 행 생성이 실패하면 **예외를 삼키지 않고 전체 롤백** | — | domain-events 「아웃박스 행을 만드는 구독자는 `BEFORE_COMMIT`」, study-notice 처리 규칙 5 |
 | 13 | 커밋. 커밋 뒤 폴러가 SES 로 보낸다 | — | [notification 「처리 흐름」](../notification/spec.md#처리-흐름) |
 
 - 3·4 는 잠금 뒤의 상태로 판정한다. 행사 취소([event-status](../event-status/spec.md))와 안내 메일이 겹치면 먼저 잠금을 얻은 쪽이 이긴다: 취소가 먼저면 안내는 409, 안내가 먼저면 안내가 확정자에게 나가고 그 뒤 취소된다
+- 미리보기(`POST …/preview`)는 키를 받지 않고 저장하지 않으므로 처리 순서 2 · 9 의 두 400 이 없다. 제목이 255자를 넘어도 미리보기는 200 으로 그 제목을 보여 준다
 - 종료된 행사는 막지 않는다 (M4). 프로토 `EventAdminDetail` 도 취소되지 않았으면 종료 뒤에 `안내 메일 보내기` 를 보인다
 - 2 를 3~8 보다 먼저 두는 이유: 첫 요청이 성공한 뒤 상태가 바뀌었어도(예: 행사가 그 사이 취소됨) 같은 키의 재시도는 첫 결과를 받아야 한다
 
@@ -365,6 +366,8 @@ PRD §7-1 M6 「접수 시 템플릿과 개인별 결과를 고정하고 수정�
 | 상태 | errorCode | 조건 | 화면 안내 |
 |------|-----------|------|------|
 | 400 | INVALID_INPUT | `Idempotency-Key` 누락·형식 · `type`·`audience` 누락·조합 · 행사에 없는 방식 · `notice` 공백뿐·5,000자 초과 · `displayTimeZone` 허용 밖 | 입력 유지 |
+| 400 | INVALID_INPUT | `Idempotency-Key` 를 다른 행사 메일에 이미 썼다 (처리 순서 2, 메시지는 `Idempotency-Key:` 로 시작) | 새 키로 다시 보내기 |
+| 400 | INVALID_INPUT | 렌더링한 공통 제목이 255자를 넘는다 (처리 순서 9, 메시지는 `notice:` 로 시작) | 입력 유지, 안내 내용을 줄인다 |
 | 401 | UNAUTHORIZED | 토큰 없음 | |
 | 403 | FORBIDDEN | ADMIN 아님 | |
 | 404 | NOT_FOUND | `eventId` 없음 | |

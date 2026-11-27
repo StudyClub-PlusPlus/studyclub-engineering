@@ -20,5 +20,6 @@
 | EVENT-MAIL-07 | 참가 확정 메일이 실패한 뒤 그 크루가 본인 취소 → 발송 이력에서 재발송 | `canResend = false`, 재발송은 `skipped[].reason = STATE_CHANGED` |
 | EVENT-MAIL-08 | 참가 불가 템플릿을 모두 지우고 참가 불가 처리 | 처리는 성공, 메일은 없음, 운영 장애 채널에 「행사 자동 메일 템플릿 없음」 WARN (같은 행사는 10분에 한 번) |
 | EVENT-MAIL-09 | 수신자 1,000 · 5,000 · 20,000명 행사에 보내기 (M7) | 예약 저장 시간과 그동안 같은 행사 신청 · 취소의 대기 시간 · 오류를 재서 PR 에 남긴다 |
+| EVENT-MAIL-10 | 한 행사에 보낸 `Idempotency-Key` 를 다른 행사 보내기에 다시 쓰기 · 제목에 `{{notice}}` 가 있는 템플릿으로 긴 안내 내용 보내기 | 둘 다 400 `INVALID_INPUT` (`Idempotency-Key:` · `notice:` 로 시작하는 메시지). 메일 이력이 늘지 않는다. 미리보기는 200 |
 
 로컬 회귀 테스트는 `AdminClubEventRegistrationIntegrationTest` · `ClubEventEndSettlementIntegrationTest` · `AdminClubEventMailIntegrationTest` · `ClubEventRegistrationEmailIntegrationTest` · `AdminNotificationIntegrationTest` 에 있다.
