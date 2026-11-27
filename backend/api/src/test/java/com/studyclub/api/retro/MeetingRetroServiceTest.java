@@ -159,8 +159,9 @@ class MeetingRetroServiceTest {
         // 아직 끝나지 않은 회차 — scheduledAt + 120분이 미래
         StudyMeeting future = mockMeeting(Instant.now().plus(5, ChronoUnit.DAYS), false, null);
         givenMeetingInGroup(future);
+        when(accountRepository.findById(ACCOUNT_ID)).thenReturn(Optional.of(mock(Account.class)));
 
-        assertThatThrownBy(() -> service.list(ACCOUNT_ID, STUDY_ID, MEETING_ID))
+        assertThatThrownBy(() -> service.list(ACCOUNT_ID, STUDY_ID, MEETING_ID, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).errorCode())
                 .isEqualTo(ErrorCode.RETRO_NOT_OPEN);

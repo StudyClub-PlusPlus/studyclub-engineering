@@ -62,8 +62,9 @@ public class MeetingRetroController {
     public MeetingRetroResponses.RetroList list(
             @PathVariable Long studyId,
             @PathVariable Long meetingId,
+            @RequestParam(required = false) Long groupId,
             Authentication authentication) {
-        return meetingRetroService.list(accountId(authentication), studyId, meetingId);
+        return meetingRetroService.list(accountId(authentication), studyId, meetingId, groupId);
     }
 
     @Operation(

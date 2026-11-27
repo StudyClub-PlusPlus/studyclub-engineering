@@ -59,6 +59,7 @@ class MeetingRetroIntegrationTest {
     private static final Long MEMBER_A_ID = 7003L;
     private static final Long MEMBER_B_ID = 7004L;
     private static final Long OUTSIDER_ID = 7005L;
+    private static final Long MEMBER_C_ID = 7006L;
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwt;
@@ -86,6 +87,11 @@ class MeetingRetroIntegrationTest {
     private StudyParticipant memberA;
     private StudyParticipant memberB;
 
+    /** B반 — groupId 파라미터 테스트용. memberC 한 명만 있다. */
+    private StudyGroup groupB;
+
+    private StudyParticipant memberC;
+
     @BeforeEach
     void setUp() {
         likeRepo.deleteAll();
@@ -101,6 +107,7 @@ class MeetingRetroIntegrationTest {
         insertAccountIfAbsent(MEMBER_A_ID, "멤버A", "membera@retro-it.com", SystemRole.MEMBER);
         insertAccountIfAbsent(MEMBER_B_ID, "멤버B", "memberb@retro-it.com", SystemRole.MEMBER);
         insertAccountIfAbsent(OUTSIDER_ID, "외부인", "outsider@retro-it.com", SystemRole.MEMBER);
+        insertAccountIfAbsent(MEMBER_C_ID, "멤버C", "memberc@retro-it.com", SystemRole.MEMBER);
 
         var program =
                 programRepo.save(
@@ -172,6 +179,30 @@ class MeetingRetroIntegrationTest {
                         StudyParticipant.builder()
                                 .accountId(MEMBER_B_ID)
                                 .studyGroupId(group.getId())
+                                .studyId(study.getId())
+                                .status(ParticipantStatus.ACTIVE)
+                                .participantRole(ParticipantRole.MEMBER)
+                                .joinedAt(joinedEarly)
+                                .build());
+
+        // B반 — groupId 파라미터 테스트용
+        groupB =
+                groupRepo.save(
+                        new StudyGroup(
+                                study.getId(),
+                                "B반",
+                                Instant.now().minus(21, ChronoUnit.DAYS),
+                                "Asia/Seoul",
+                                10));
+        // groupB 의 다음 회차 (기한 계산에 필요)
+        meetingRepo.save(
+                StudyMeeting.schedule(
+                        groupB.getId(), Instant.now().plus(5, ChronoUnit.DAYS), null));
+        memberC =
+                participantRepo.save(
+                        StudyParticipant.builder()
+                                .accountId(MEMBER_C_ID)
+                                .studyGroupId(groupB.getId())
                                 .studyId(study.getId())
                                 .status(ParticipantStatus.ACTIVE)
                                 .participantRole(ParticipantRole.MEMBER)
@@ -387,6 +418,65 @@ class MeetingRetroIntegrationTest {
         assertThat(((Number) likes.get("GOOD")).intValue()).isEqualTo(2);
         assertThat(((Number) likes.get("IMPROVE")).intValue()).isEqualTo(0);
         assertThat(((Number) likes.get("FEELING")).intValue()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("회고_목록_캡틴_groupId없이_미팅반_기준_정상_반환")
+    @SuppressWarnings("unchecked")
+    void 회고_목록_캡틴_groupId없이_미팅반_기준() {
+        var response = getRetroList(study.getId(), endedMeeting.getId(), CAPTAIN_ID, null);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<?, ?> body = response.getBody();
+        // 캡틴은 targets·missing 을 본다 (group 의 쓸 사람 3명)
+        assertThat(((Number) body.get("targets")).intValue()).isEqualTo(3);
+        assertThat((List<?>) body.get("missing")).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("회고_목록_캡틴_groupId전달_해당반_targets_missing_반환")
+    @SuppressWarnings("unchecked")
+    void 회고_목록_캡틴_groupId전달_해당반_기준() {
+        // endedMeeting 은 group 소속이지만 캡틴이 groupB 를 명시 → groupB 의 roster 로 계산
+        var response =
+                getRetroList(study.getId(), endedMeeting.getId(), CAPTAIN_ID, groupB.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<?, ?> body = response.getBody();
+        // groupB 의 쓸 사람 = memberC 한 명
+        assertThat(((Number) body.get("targets")).intValue()).isEqualTo(1);
+        List<Map<?, ?>> missing = (List<Map<?, ?>>) body.get("missing");
+        assertThat(missing).hasSize(1);
+        assertThat(((Number) missing.get(0).get("participantId")).longValue())
+                .isEqualTo(memberC.getId());
+    }
+
+    @Test
+    @DisplayName("회고_목록_크루_groupId전달_무시_targets_null_missing_빈배열")
+    @SuppressWarnings("unchecked")
+    void 회고_목록_크루_groupId_무시() {
+        // 크루가 다른 반 ID 를 전달해도 무시 → 미팅의 반(group) 기준, 크루라 targets=null
+        var response =
+                getRetroList(study.getId(), endedMeeting.getId(), MEMBER_A_ID, groupB.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<?, ?> body = response.getBody();
+        assertThat(body.get("targets")).isNull();
+        assertThat((List<?>) body.get("missing")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("회고_목록_네비게이터_groupId전달_무시_미팅반_기준_반환")
+    @SuppressWarnings("unchecked")
+    void 회고_목록_네비게이터_groupId_무시() {
+        // 네비게이터가 다른 반 ID 를 전달해도 무시 → 미팅의 반(group) 기준으로 targets·missing 반환
+        var response =
+                getRetroList(study.getId(), endedMeeting.getId(), NAVIGATOR_ID, groupB.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<?, ?> body = response.getBody();
+        // 네비게이터는 targets 를 본다 (group 의 쓸 사람 3명)
+        assertThat(((Number) body.get("targets")).intValue()).isEqualTo(3);
     }
 
     // ── 뷰어 컨텍스트 ─────────────────────────────────────────────────────────
@@ -633,13 +723,19 @@ class MeetingRetroIntegrationTest {
     }
 
     private ResponseEntity<Map> getRetroList(Long studyId, Long meetingId, Long accountId) {
-        return rest.exchange(
-                "/api/studies/{studyId}/meetings/{meetingId}/retros",
-                HttpMethod.GET,
-                authenticatedRequest(null, accountId),
-                Map.class,
-                studyId,
-                meetingId);
+        return getRetroList(studyId, meetingId, accountId, null);
+    }
+
+    private ResponseEntity<Map> getRetroList(
+            Long studyId, Long meetingId, Long accountId, Long groupId) {
+        String url =
+                "/api/studies/"
+                        + studyId
+                        + "/meetings/"
+                        + meetingId
+                        + "/retros"
+                        + (groupId != null ? "?groupId=" + groupId : "");
+        return rest.exchange(url, HttpMethod.GET, authenticatedRequest(null, accountId), Map.class);
     }
 
     private ResponseEntity<Map> getRetroStatus(Long studyId, Long studyGroupId, Long accountId) {
