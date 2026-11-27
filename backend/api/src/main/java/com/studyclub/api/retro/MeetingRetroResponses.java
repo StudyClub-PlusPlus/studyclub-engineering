@@ -49,6 +49,11 @@ public final class MeetingRetroResponses {
     /** GET /api/me/studies/{studyId}/retros/status */
     public record RetroStatus(List<MeetingRetroStatus> meetings) {}
 
+    /** {@code meetingEndAt}: 미팅 종료 — 실제 종료 시각, 없으면 예정 시각 + 기본 진행 시간. 킥오프는 null. */
     public record MeetingRetroStatus(
-            Long meetingId, Instant retroDeadline, Boolean retroOpen, Boolean retroMine) {}
+            Long meetingId,
+            Instant meetingEndAt,
+            Instant retroDeadline,
+            Boolean retroOpen,
+            Boolean retroMine) {}
 }

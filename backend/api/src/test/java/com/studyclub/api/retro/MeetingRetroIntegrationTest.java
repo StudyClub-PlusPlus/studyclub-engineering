@@ -1,6 +1,7 @@
 package com.studyclub.api.retro;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
@@ -533,6 +534,9 @@ class MeetingRetroIntegrationTest {
         assertThat(ended.get("retroOpen")).isEqualTo(true);
         assertThat(ended.get("retroMine")).isEqualTo(false);
         assertThat(ended.get("retroDeadline")).isNotNull();
+        // 실제 종료 시각(END_AT)이 있으면 그것
+        assertThat(Instant.parse((String) ended.get("meetingEndAt")))
+                .isCloseTo(endedMeeting.getEndAt(), within(1, ChronoUnit.SECONDS));
 
         // 미래 회차(nextMeeting)는 retroOpen=false
         Map<?, ?> future =
@@ -544,6 +548,11 @@ class MeetingRetroIntegrationTest {
                         .findFirst()
                         .orElseThrow();
         assertThat(future.get("retroOpen")).isEqualTo(false);
+        // 실제 종료 시각이 없으면 예정 시각 + 기본 진행 시간 120분
+        assertThat(Instant.parse((String) future.get("meetingEndAt")))
+                .isCloseTo(
+                        nextMeeting.getScheduledAt().plus(120, ChronoUnit.MINUTES),
+                        within(1, ChronoUnit.SECONDS));
     }
 
     @Test
@@ -593,6 +602,7 @@ class MeetingRetroIntegrationTest {
                         .findFirst()
                         .orElseThrow();
 
+        assertThat(kickoffItem.get("meetingEndAt")).isNull();
         assertThat(kickoffItem.get("retroDeadline")).isNull();
         assertThat(kickoffItem.get("retroOpen")).isNull();
         assertThat(kickoffItem.get("retroMine")).isNull();
