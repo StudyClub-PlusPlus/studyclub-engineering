@@ -203,6 +203,66 @@ class ClubEventRegistrationAdapterIntegrationTest {
     }
 
     @Test
+    @DisplayName("종료 자동 전환 — 그 행사의 확인 대기만 참가 불가로 바꾸고 바꾼 ID 를 돌려준다. 바꾼 사람은 없고 시각 · UPDATED_AT 을 채운다")
+    void declinesPendingForEventEnd() {
+        Long pending1 = register(EVENT_A, EventChannel.ONLINE, ClubEventRegistrationStatus.PENDING);
+        Long pending2 =
+                register(EVENT_A, EventChannel.OFFLINE, ClubEventRegistrationStatus.PENDING);
+        Long confirmed =
+                register(EVENT_A, EventChannel.ONLINE, ClubEventRegistrationStatus.CONFIRMED);
+        Long otherEvent =
+                register(EVENT_B, EventChannel.ONLINE, ClubEventRegistrationStatus.PENDING);
+        Instant old = Instant.parse("2026-01-01T00:00:00Z");
+        jdbcTemplate.update(
+                "UPDATE CLUB_EVENT_REGISTRATION SET UPDATED_AT = ? WHERE CLUB_EVENT_ID IN (?, ?)",
+                Timestamp.from(old),
+                EVENT_A,
+                EVENT_B);
+
+        List<Long> changed =
+                transactionTemplate.execute(
+                        status -> port.declinePendingRegistrationsForEventEnd(EVENT_A));
+
+        assertThat(changed).containsExactly(pending1, pending2);
+        for (Long id : List.of(pending1, pending2)) {
+            ClubEventRegistration registration = repository.findById(id).orElseThrow();
+            assertThat(registration.getStatus()).isEqualTo(ClubEventRegistrationStatus.DECLINED);
+            assertThat(registration.getStatusChangedBy()).isNull();
+            assertThat(registration.getStatusChangedAt()).isNotNull();
+            assertThat(registration.getUpdatedAt()).isAfter(old);
+        }
+        ClubEventRegistration kept = repository.findById(confirmed).orElseThrow();
+        assertThat(kept.getStatus()).isEqualTo(ClubEventRegistrationStatus.CONFIRMED);
+        assertThat(kept.getUpdatedAt()).isEqualTo(old);
+        assertThat(repository.findById(otherEvent).orElseThrow().getStatus())
+                .isEqualTo(ClubEventRegistrationStatus.PENDING);
+        List<Long> again =
+                transactionTemplate.execute(
+                        status -> port.declinePendingRegistrationsForEventEnd(EVENT_A));
+        assertThat(again).isEmpty();
+    }
+
+    @Test
+    @DisplayName("참가자 목록 쿼리 — 최신 신청순 페이지 · 전체 수, 확인 대기가 있는 행사 ID")
+    void pageAndCandidates() {
+        Long first = register(EVENT_A, EventChannel.ONLINE, ClubEventRegistrationStatus.CANCELLED);
+        Long second = register(EVENT_A, EventChannel.ONLINE, ClubEventRegistrationStatus.PENDING);
+        Long third = register(EVENT_A, EventChannel.OFFLINE, ClubEventRegistrationStatus.CONFIRMED);
+        register(EVENT_B, EventChannel.ONLINE, ClubEventRegistrationStatus.CONFIRMED);
+
+        assertThat(repository.findPageByClubEventId(EVENT_A, 0, 2))
+                .extracting(ClubEventRegistration::getId)
+                .containsExactly(third, second);
+        assertThat(repository.findPageByClubEventId(EVENT_A, 1, 5))
+                .extracting(ClubEventRegistration::getId)
+                .containsExactly(second, first);
+        assertThat(repository.countByClubEventId(EVENT_A)).isEqualTo(3);
+        assertThat(repository.findDistinctClubEventIdsByStatus(ClubEventRegistrationStatus.PENDING))
+                .contains(EVENT_A)
+                .doesNotContain(EVENT_B);
+    }
+
+    @Test
     @DisplayName("질문 · 답 사본은 JSON 으로 저장돼 순서 · 선택지까지 그대로 읽힌다")
     void snapshotsRoundTrip() {
         List<RegistrationQuestion> questions =

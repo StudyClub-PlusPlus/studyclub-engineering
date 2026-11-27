@@ -2,7 +2,7 @@
 
 크루 한 명의 행사 신청 한 건. 운영진 처리(참가 확정 · 참가 불가 · 개별 취소 · 종료 자동 전환)와 크루 신청 · 본인 취소가 **함께 쓰는 공통 테이블**이다. 취소한 크루가 다시 신청하면 이전 행을 남기고 새 행이 생긴다.
 
-> 스펙: [event-registration](../../specs/event-registration/spec.md) (크루 쪽) · event-participant (운영진 쪽, PR #479) · 마이그레이션 `V62__create_club_event_registration.sql` · 엔티티 `com.studyclub.domain.event.registration.ClubEventRegistration` (애그리거트 루트)
+> 스펙: [event-registration](../../specs/event-registration/spec.md) (크루 쪽) · [event-participant](../../specs/event-participant/spec.md) (운영진 쪽) · 마이그레이션 `V62__create_club_event_registration.sql` · 엔티티 `com.studyclub.domain.event.registration.ClubEventRegistration` (애그리거트 루트)
 
 ## 컬럼
 

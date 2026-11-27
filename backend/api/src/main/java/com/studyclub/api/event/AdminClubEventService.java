@@ -166,9 +166,7 @@ public class AdminClubEventService {
         if (switchedToAuto) {
             List<Long> confirmed = registrationPort.confirmPendingRegistrations(eventId, accountId);
             if (!confirmed.isEmpty()) {
-                // TODO(event-mail): 15 — 신청·메일 스펙이 확정되면 BEFORE_COMMIT 구독자가 신청마다 확정 안내 NOTIFICATION
-                // 행을
-                //  같은 트랜잭션에 저장한다. 행 생성 실패는 삼키지 않고 이 수정 전체를 롤백한다. 지금은 구독자가 없다.
+                // 15 — 확정 안내 메일 행은 이 트랜잭션의 BEFORE_COMMIT 구독자가 만든다. 실패하면 수정 전체가 롤백된다
                 eventPublisher.publishEvent(
                         ClubEventRegistrationsConfirmedEvent.of(eventId, confirmed, accountId));
             }

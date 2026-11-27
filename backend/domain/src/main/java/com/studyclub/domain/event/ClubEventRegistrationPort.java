@@ -42,4 +42,10 @@ public interface ClubEventRegistrationPort {
      * 없어, 취소 전이면 「지금 취소하면 받을 사람」, 취소 뒤면 「받을 사람」이 된다 (specs/event-status 「운영 상세에 더하는 판정 필드」).
      */
     int countCancellationRecipients(Long eventId);
+
+    /**
+     * 행사 종료 자동 전환 — 그 행사의 {@code PENDING} 신청을 전부 {@code DECLINED} 로 바꾸고, 실제로 바꾼 신청 ID 를 돌려준다 (없으면 빈
+     * 목록). 시스템 처리라 바꾼 사람은 null 이다. 행사 행 잠금을 잡은 트랜잭션 안에서만 부른다.
+     */
+    List<Long> declinePendingRegistrationsForEventEnd(Long eventId);
 }

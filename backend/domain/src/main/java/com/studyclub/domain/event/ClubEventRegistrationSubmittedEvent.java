@@ -10,7 +10,7 @@ import com.studyclub.domain.event.registration.ClubEventRegistrationStatus;
  *
  * <p>구독자: 분석(커밋 뒤 {@code Event Registration Completed}). 자동 메일 구독자(event-mail)가 {@code
  * BEFORE_COMMIT} 으로 {@code PENDING} → 접수 안내, {@code CONFIRMED} → 확정 안내 {@code NOTIFICATION} 행을 같은
- * 트랜잭션에 만든다 (아직 없음).
+ * 트랜잭션에 만든다.
  *
  * @param status {@code PENDING} 또는 {@code CONFIRMED}
  */

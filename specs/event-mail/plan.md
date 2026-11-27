@@ -23,7 +23,7 @@
 | 애그리거트 | `ClubEventMail`(루트, 테이블 `EVENT_MAIL`) + `ClubEventMailRecipient`(`@OneToMany` cascade, 테이블 `EVENT_MAIL_RECIPIENT`, FK 는 애그리거트 안에만). 팩터리 `ClubEventMail.send(event, type, audience, notice, template, recipients, displayTimeZone, sender, idempotencyKey, renderedSubject, renderedBody)` | 스펙 「데이터 모델」. 받는 사람 스냅샷은 발송과 함께 고정된다 |
 | 보낼 수 있나 | `ClubEventMail.sendBlock(EventStatus, MailType, boolean templateExists, int recipientCount, String notice)` → `MailBlockedReason`(null 이면 가능). 미리보기와 보내기가 같은 메서드 | 스펙 `blockedReason` 표 순서. 판정은 한 메서드 |
 | 렌더링 값 | 순수 도메인 값 객체 `EventMailValues` (`com.studyclub.domain.event.mail`) — `schedule(event, zone)` · `channelName(...)` · `participation(event, channel, audience)` · `forPreview(...)` · `forRecipient(...)` 가 `Map<String, Object>` PAYLOAD 를 만든다 | 미리보기(api) · 보내기(api) · 자동 메일(notification) 세 곳이 같은 값을 써야 한다. 프로토 `eventNoticeValues` 와 같은 결과를 단위 테스트로 고정 |
-| 일정 문자열 | `ko-KR` `M월 d일 (E) HH:mm`, 종료가 있으면 `{시작} ~ {종료} {약어}`. 약어는 서울 `KST`, 그 밖은 그 시각의 서머타임 여부로 `EST`·`EDT`·`PST`·`PDT` (`ZoneId.getRules().isDaylightSavings`) | 스펙 「일정 문자열」. JDK 의 짧은 이름(`TextStyle.SHORT`)은 로케일 · JDK 에 따라 `GMT-05:00` 처럼 나올 수 있어 표로 고정한다 |
+| 일정 문자열 | `ko-KR` `M월 d일 (E) HH:mm`, 종료가 있으면 `{시작} {약어} ~ {종료} {약어}` (각 시각의 약어, 프로토 `formatDate` 와 같다). 약어는 서울 `KST`, 그 밖은 그 시각의 서머타임 여부로 `EST`·`EDT`·`PST`·`PDT` (`ZoneId.getRules().isDaylightSavings`) | 스펙 「일정 문자열」. JDK 의 짧은 이름(`TextStyle.SHORT`)은 로케일 · JDK 에 따라 `GMT-05:00` 처럼 나올 수 있어 표로 고정한다 |
 | 렌더러 `<br>` | `NotificationTemplateRenderer.render(template, payload, RenderOptions options)` 오버로드. `RenderOptions.lineBreaks()` 면 HTML 템플릿에서 이스케이프 뒤 `\n` → `<br>`. 기존 `render(template, payload)` 는 그대로(옵션 끔) | 스펙 「치환 방식」. 행사 조건에만 켜서 `STUDY_NOTICE` · 웰컴 메일 모양을 바꾸지 않는다 |
 | 쓰는 템플릿 | `NotificationTemplateRepository.findFirstByEventTypeAndChannelOrderByIdAsc(type, EMAIL)` | M1 — 행사 조건만 가장 작은 ID 한 건. 기존 조건은 지금처럼 `findAllByEventTypeAndChannelOrderByIdAsc` |
 | 발송 내용 고정 | `Notification` 에 `subjectTemplate` · `bodyTemplate` (nullable) 와 팩터리 `pendingEventMail(...)`. 발송은 `WelcomeEmailDispatcher.dispatch` 가 스냅샷이 있으면 스냅샷 + PAYLOAD 로 렌더링하고(행사 조건은 `<br>` 옵션), 없으면 지금처럼 `TEMPLATE_ID` 로 읽는다 | M6. 폴러 · 재발송 모두 같은 디스패처를 지나므로 한 곳만 바꾼다 |
@@ -42,15 +42,15 @@
 
 ## 마이그레이션
 
-`beta` 최신은 V63 이다. event-status 가 `V64`(감사 로그)를 쓰고 event-participant 는 마이그레이션이 없으므로, 이 PR 은 **V65 부터** 쓴다. 테이블을 가진 모듈마다 파일을 나눈다 (기존 규칙: 알림 테이블 · 템플릿 시드는 `backend/notification/src/main/resources/db/migration`, 그 밖은 `backend/domain/...`). PR 을 올릴 때 `beta` 최신을 다시 보고 번호를 정한다.
+`beta` 최신은 V67(event-status 의 `V67__admin_audit_log_event_cancel.sql`)이다. V64 ~ V66 은 다른 PR(문의 이미지 · 반 이동 · 미팅 회고)이 썼고 event-participant 는 마이그레이션이 없으므로, 이 PR 은 **V68 부터** 쓴다. 테이블을 가진 모듈마다 파일을 나눈다 (기존 규칙: 알림 테이블 · 템플릿 시드는 `backend/notification/src/main/resources/db/migration`, 그 밖은 `backend/domain/...`). PR 을 올릴 때 `beta` 최신을 다시 보고 번호를 정한다.
 
 | 파일 | 모듈 | 내용 |
 |---|---|---|
-| `V65__create_event_mail.sql` | domain | `EVENT_MAIL` (`INDEX(CLUB_EVENT_ID, CREATED_AT, ID)` · `UNIQUE(SENDER_ACCOUNT_ID, IDEMPOTENCY_KEY)`, `BODY MEDIUMTEXT`, `NOTICE TEXT`) · `EVENT_MAIL_RECIPIENT` (`EVENT_MAIL_ID` FK · `UNIQUE(EVENT_MAIL_ID, ACCOUNT_ID)`, `ACCOUNT_ID` · `REGISTRATION_ID` 는 FK 없음) |
-| `V66__notification_template_snapshot.sql` | notification | `NOTIFICATION.SUBJECT_TEMPLATE VARCHAR(255) NULL` · `BODY_TEMPLATE TEXT NULL` 추가. 기존 행은 NULL |
-| `V67__event_mail_templates.sql` | notification | 행사 알림 템플릿 6종 시드 (`EMAIL`, 제목은 스펙 「시드」 표, 본문은 `proto/mail/templates/` 의 HTML 시안). 이미 같은 조건 템플릿이 있으면 넣지 않는다(`INSERT … SELECT … WHERE NOT EXISTS`) |
+| `V68__create_event_mail.sql` | domain | `EVENT_MAIL` (`INDEX(CLUB_EVENT_ID, CREATED_AT, ID)` · `UNIQUE(SENDER_ACCOUNT_ID, IDEMPOTENCY_KEY)`, `BODY MEDIUMTEXT`, `NOTICE TEXT`) · `EVENT_MAIL_RECIPIENT` (`EVENT_MAIL_ID` FK · `UNIQUE(EVENT_MAIL_ID, ACCOUNT_ID)`, `ACCOUNT_ID` · `REGISTRATION_ID` 는 FK 없음) |
+| `V69__notification_template_snapshot.sql` | notification | `NOTIFICATION.SUBJECT_TEMPLATE VARCHAR(255) NULL` · `BODY_TEMPLATE TEXT NULL` 추가. 기존 행은 NULL |
+| `V70__event_mail_templates.sql` | notification | 행사 알림 템플릿 6종 시드 (`EMAIL`, 제목은 스펙 「시드」 표, 본문은 `proto/mail/templates/` 의 HTML 시안). 이미 같은 조건 템플릿이 있으면 넣지 않는다(`INSERT … SELECT … WHERE NOT EXISTS`) |
 
-- 스키마(V65 · V66)와 데이터(V67)를 나누는 이유: 시드 문구는 오너 승인 뒤 바뀔 수 있고, stage 는 Flyway 가 꺼져 있어 시드만 손으로 한 번 넣는다 (메일 템플릿 README 「적용」). 문의 회신의 V50(스키마) · V52(시드)와 같은 나눔이다
+- 스키마(V68 · V69)와 데이터(V70)를 나누는 이유: 시드 문구는 오너 승인 뒤 바뀔 수 있고, stage 는 Flyway 가 꺼져 있어 시드만 손으로 한 번 넣는다 (메일 템플릿 README 「적용」). 문의 회신의 V50(스키마) · V52(시드)와 같은 나눔이다
 - 엔티티 `@Table` 에 유일 제약 · 인덱스를 같은 이름으로 선언한다 (테스트 H2 · stage Hibernate 가 엔티티로 스키마를 만든다)
 
 ## 애그리거트 매핑
@@ -67,8 +67,8 @@
 ## 구현 순서
 
 1. common — `ErrorCode` 4개
-2. domain — `ClubEventMail` · `ClubEventMailRecipient` · 저장소 · `ClubEventMailSentEvent` · `EventMailValues` · `MailBlockedReason`, 신청 저장소의 받는 사람 쿼리, 단위 테스트, `V65`
-3. notification — `NotificationEventType` 6값, `Notification` 스냅샷 · 재발송 인자, `ResendSkipReason.STATE_CHANGED`, 렌더러 옵션, 디스패처, `NotificationCreationService` 두 메서드, 두 구독자, `EventTemplateVariables`, `V66` · `V67`
+2. domain — `ClubEventMail` · `ClubEventMailRecipient` · 저장소 · `ClubEventMailSentEvent` · `EventMailValues` · `MailBlockedReason`, 신청 저장소의 받는 사람 쿼리, 단위 테스트, `V68`
+3. notification — `NotificationEventType` 6값, `Notification` 스냅샷 · 재발송 인자, `ResendSkipReason.STATE_CHANGED`, 렌더러 옵션, 디스패처, `NotificationCreationService` 두 메서드, 두 구독자, `EventTemplateVariables`, `V69` · `V70`
 4. api — DTO · `AdminClubEventMailService` · `AdminClubEventMailController`, `NotificationTemplateCommandService` 검증, `ClubEventNotificationStates` · 목록 · 재발송 연결, `AdminClubEventService` 의 `TODO(event-mail)` 정리
 5. 메일 시안 — `frontend/apps/playground/src/proto/mail/templates/` 에 다섯 HTML 시안 · README 시안 표 (playground 빌드 확인)
 6. 테스트 — 단위 · 통합 · 스테이지 측정(M7)

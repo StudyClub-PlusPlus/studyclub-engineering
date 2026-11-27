@@ -2,21 +2,25 @@
 
 알림 수신처·닉네임 스냅샷과 발송 상태를 저장한다. 웰컴메일은 온보딩 커밋 이후 별도 트랜잭션으로, 반 공지·문의 회신 메일은 공지·회신을 저장하는 트랜잭션 안(`BEFORE_COMMIT`)에서 생성한다.
 
-> 스펙: [notification](../../specs/notification/spec.md)
+행사 메일은 운영자 안내(안내 · 취소 안내)가 발송 트랜잭션 안에서, 자동 메일(확인 대기 · 참가 확정 · 참가 불가 · 신청 취소)이 신청 상태를 바꾸는 트랜잭션 안에서(둘 다 `BEFORE_COMMIT`) 받는 사람마다 한 행을 만든다.
+
+> 스펙: [notification](../../specs/notification/spec.md) · [event-mail](../../specs/event-mail/spec.md)
 
 ## 컬럼
 
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED`(웰컴메일) · `STUDY_NOTICE`(반 공지) · `FEEDBACK_REPLIED`(문의 회신) |
+| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED`(웰컴메일) · `STUDY_NOTICE`(반 공지) · `FEEDBACK_REPLIED`(문의 회신) · 행사 메일 여섯: `EVENT_ANNOUNCEMENT`(행사 안내) · `EVENT_CANCELLATION`(행사 취소 안내) · `EVENT_REGISTRATION_PENDING`(확인 대기) · `EVENT_REGISTRATION_CONFIRMED`(참가 확정) · `EVENT_REGISTRATION_DECLINED`(참가 불가) · `EVENT_REGISTRATION_CANCELLED`(신청 취소) |
 | RECIPIENT_TYPE | VARCHAR(20) | N | 이번 구현에서 쓰는 값은 `EMAIL` 뿐. `DISCORD` 는 정의하지 않는다 |
 | RECIPIENT_VALUE | VARCHAR(255) | N | 발송 시점 이메일 스냅샷 (나중에 회원이 이메일을 바꿔도 이 값은 그대로) |
 | RECIPIENT_USER_ID | BIGINT | Y | ID 참조([ACCOUNT](./ACCOUNT.md), FK 없음) — 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
 | TEMPLATE_ID | BIGINT | N | ID 참조([NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md), FK 없음) |
-| REFERENCE_ID | BIGINT | Y | 이 알림을 만든 쪽의 ID 참조 — `STUDY_NOTICE` 면 [STUDY_NOTICE](./STUDY_NOTICE.md).ID (FK 없음). `FEEDBACK_REPLIED` 면 [FEEDBACK](./FEEDBACK.md).ID. 웰컴메일은 NULL. 인덱스 `(EVENT_TYPE, REFERENCE_ID)` |
-| SENDER_ACCOUNT_ID | BIGINT | Y | 이 알림을 보낸 사람의 [ACCOUNT](./ACCOUNT.md).ID 참조 (FK 없음). 공지 메일만 채우고 나머지는 NULL. 보낸 사람이 탈퇴하면 이 값으로 그가 보낸 메일 행을 찾아 보낸 사람 이름을 비식별화한다 — 공지는 스터디 삭제로 사라질 수 있어 `REFERENCE_ID` 로는 되짚지 못한다. 인덱스 `(SENDER_ACCOUNT_ID)` |
-| PAYLOAD | JSON | N | `USER_REGISTERED` 는 `{"nickname": "..."}`, `STUDY_NOTICE` 는 `{"studyTitle","groupName","senderName","title","body"}` — 보낸 사람이 탈퇴하면 `senderName` 을 「탈퇴한 회원」으로 치환한다([user-leave](../../specs/user-leave/spec.md#스터디-공지를-보낸-사람이-탈퇴하는-경우)). 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
+| REFERENCE_ID | BIGINT | Y | 이 알림을 만든 쪽의 ID 참조 — `STUDY_NOTICE` 면 [STUDY_NOTICE](./STUDY_NOTICE.md).ID (FK 없음). `FEEDBACK_REPLIED` 면 [FEEDBACK](./FEEDBACK.md).ID. `EVENT_ANNOUNCEMENT` · `EVENT_CANCELLATION` 이면 [EVENT_MAIL](./EVENT_MAIL.md).ID, `EVENT_REGISTRATION_*` 네 조건이면 [CLUB_EVENT_REGISTRATION](./CLUB_EVENT_REGISTRATION.md).ID. 웰컴메일은 NULL. 인덱스 `(EVENT_TYPE, REFERENCE_ID)` |
+| SENDER_ACCOUNT_ID | BIGINT | Y | 이 알림을 보낸 사람의 [ACCOUNT](./ACCOUNT.md).ID 참조 (FK 없음). 공지 메일과 행사 운영자 메일(`EVENT_ANNOUNCEMENT` · `EVENT_CANCELLATION`, 보낸 캡틴)만 채우고 나머지는 NULL (행사 자동 메일도 NULL). 보낸 사람이 탈퇴하면 이 값으로 그가 보낸 메일 행을 찾아 보낸 사람 이름을 비식별화한다 — 공지는 스터디 삭제로 사라질 수 있어 `REFERENCE_ID` 로는 되짚지 못한다. 인덱스 `(SENDER_ACCOUNT_ID)` |
+| PAYLOAD | JSON | N | `USER_REGISTERED` 는 `{"nickname": "..."}`, `STUDY_NOTICE` 는 `{"studyTitle","groupName","senderName","title","body"}` — 보낸 사람이 탈퇴하면 `senderName` 을 「탈퇴한 회원」으로 치환한다([user-leave](../../specs/user-leave/spec.md#스터디-공지를-보낸-사람이-탈퇴하는-경우)). 행사 안내는 `{nickname, eventTitle, channel, eventSchedule, participation, notice}`, 취소 안내는 `{nickname, eventTitle, notice}`, 자동 네 조건은 `{nickname, eventTitle, eventSchedule, channel, participation}`(`participation` 은 참가 확정만 채우고 나머지는 빈 문자열). 일정 문자열은 예약 때 수신자 시간대로 만들어 고정한다. 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
+| SUBJECT_TEMPLATE | VARCHAR(255) | Y | 예약 때 템플릿 제목 원문 스냅샷. 행사 여섯 조건만 채운다. 기존 조건 · 기존 행은 NULL 이고 발송 때 `TEMPLATE_ID` 로 템플릿을 읽는다 |
+| BODY_TEMPLATE | TEXT | Y | 예약 때 템플릿 본문 원문 스냅샷. `SUBJECT_TEMPLATE` 과 함께 채운다. 스냅샷이 있으면 폴러 · 재발송이 이 원문에 `PAYLOAD` 를 치환해 보내므로, 예약 뒤 템플릿을 고치거나 지워도 내용이 그대로이고 `TEMPLATE_MISSING` 으로 실패하지 않는다. 템플릿 원문뿐이라 개인정보가 없다 |
 | STATUS | VARCHAR(20) | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED`/`CANCELLED` |
 | LOCKED_AT | DATETIME(6) | Y | PROCESSING 전환 시각. 재수거 판단 기준이자 클레임 토큰(재수거로 값이 달라지면 이전 클레임의 완료 처리를 무시한다) |
 | ERROR_TYPE | VARCHAR(30) | Y | FAILED 일 때만. `TEMPLATE_MISSING`/`INVALID_RECIPIENT`/`PROVIDER_ERROR`/`UNKNOWN`. 자동 재시도 판단에는 안 쓴다(이번 구현엔 자동 재시도가 없음) — 실패 원인을 나중에 사람이 보기 위한 값 |
@@ -28,7 +32,8 @@
 
 - N : 1 [ACCOUNT](./ACCOUNT.md), ID 참조뿐 FK 는 없다(애그리거트 간 참조 — database-guide.md 외래키 정책). 계정이 삭제돼도 RECIPIENT_USER_ID 는 DB 가 자동으로 지워주지 않는다.
 - N : 1 [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md), 마찬가지로 ID 참조뿐이라 사용 중인 템플릿도 삭제될 수 있다 — 백오피스에서 템플릿을 지워도 이미 만든 발송 이력은 남고, 지운 템플릿을 가리키는 `PENDING` 행은 발송 때 `TEMPLATE_MISSING` 으로 실패한다.
-- **같은 조건에 템플릿이 N개면 알림 한 건(가입 한 번, 공지 수신자 한 명)마다 이 테이블에 N행이 생긴다** — 행마다 `TEMPLATE_ID` 가 다르다. 재발송·탈퇴 비식별화·`CANCELLED` 전이는 행 단위라 그대로다. `STUDY_NOTICE` 의 공지별 메일 건수는 행 수가 아니라 받는 사람(`RECIPIENT_USER_ID`) 수 기준으로 센다([study-notice 스펙](../../specs/study-notice/spec.md)).
+- N : 1 [EVENT_MAIL](./EVENT_MAIL.md) (`EVENT_ANNOUNCEMENT` · `EVENT_CANCELLATION`) · [CLUB_EVENT_REGISTRATION](./CLUB_EVENT_REGISTRATION.md) (`EVENT_REGISTRATION_*`) — `REFERENCE_ID` 로만 잇는다. FK 없음
+- **같은 조건에 템플릿이 N개면 알림 한 건(가입 한 번, 공지 수신자 한 명)마다 이 테이블에 N행이 생긴다** — 행마다 `TEMPLATE_ID` 가 다르다. 재발송·탈퇴 비식별화·`CANCELLED` 전이는 행 단위라 그대로다. `STUDY_NOTICE` 의 공지별 메일 건수는 행 수가 아니라 받는 사람(`RECIPIENT_USER_ID`) 수 기준으로 센다([study-notice 스펙](../../specs/study-notice/spec.md)). **행사 여섯 조건은 예외로** ID 가 가장 작은 템플릿 한 건만 쓰므로 받는 사람 한 명에 한 행이다.
 
 ## 상태 — STATUS
 
@@ -53,7 +58,7 @@ stateDiagram-v2
 
 재발송은 운영자가 고른 `FAILED` 행을 **그 행 그대로** `PENDING` 으로 되돌린다 — 새 행을 만들지 않는다(알림 하나에 줄
 하나, 시도 이력 없음). `ERROR_TYPE`·`LOCKED_AT` 은 비워진다. **스키마 변경은 없다.**
-조건과 API 는 [spec](../../specs/notification/spec.md#재발송-가능-조건).
+조건과 API 는 [spec](../../specs/notification/spec.md#재발송-가능-조건). 행사 여섯 조건은 현재 행사 · 신청 상태도 본다 ([event-mail 「재발송 가능 조건」](../../specs/event-mail/spec.md#재발송-가능-조건-행사-메일)).
 
 ## 제약
 
@@ -64,3 +69,7 @@ stateDiagram-v2
   ([database-guide.md 외래키 정책](../backend-development-guide/database-guide.md)). 엔티티 간에도 객체 연관 없이 ID 로만 참조한다.
 
 문의 회신 payload 는 `nickname` · `feedbackUrl` 뿐이다. 답변·첨부·캡틴 메모는 담지 않는다. 첫 회신마다 등록된 템플릿 수만큼 예약하고 수정은 추가 예약하지 않는다.
+
+## 마이그레이션
+
+`V14__notification_schema.sql` (notification) 에서 만들었다. `SUBJECT_TEMPLATE` · `BODY_TEMPLATE` 은 `V69__notification_template_snapshot.sql` 에서 더했다.

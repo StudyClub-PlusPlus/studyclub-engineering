@@ -24,6 +24,14 @@ public class NotificationTemplateRenderer {
      * 사람이 쓴 글이 값으로 들어오면 순서대로 바꾸는 방식은 본문이 다른 자리를 덮어쓸 수 있다.
      */
     public String render(String template, Map<String, Object> payload) {
+        return render(template, payload, RenderOptions.NONE);
+    }
+
+    /**
+     * {@link RenderOptions#lineBreaks()} 면 HTML 템플릿에 끼우는 값의 줄바꿈을 이스케이프 뒤 {@code <br>} 로 바꾼다 — 행사
+     * 메일의 안내 내용 · 참여 안내는 여러 줄이다. 텍스트 템플릿 · 제목은 값을 그대로 끼운다.
+     */
+    public String render(String template, Map<String, Object> payload, RenderOptions options) {
         boolean html = MailBody.isHtml(template);
         return PLACEHOLDER
                 .matcher(template)
@@ -34,7 +42,14 @@ public class NotificationTemplateRenderer {
                                 return Matcher.quoteReplacement(match.group());
                             }
                             String value = String.valueOf(payload.get(key));
-                            return Matcher.quoteReplacement(html ? escape(value) : value);
+                            if (!html) {
+                                return Matcher.quoteReplacement(value);
+                            }
+                            String escaped = escape(value);
+                            if (options.lineBreaks()) {
+                                escaped = escaped.replace("\r\n", "\n").replace("\n", "<br>");
+                            }
+                            return Matcher.quoteReplacement(escaped);
                         });
     }
 
@@ -44,5 +59,11 @@ public class NotificationTemplateRenderer {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    /** 치환 방식 옵션. 기존 조건은 {@link #NONE}. */
+    public record RenderOptions(boolean lineBreaks) {
+        public static final RenderOptions NONE = new RenderOptions(false);
+        public static final RenderOptions LINE_BREAKS = new RenderOptions(true);
     }
 }

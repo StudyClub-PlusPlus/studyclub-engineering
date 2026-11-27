@@ -223,6 +223,24 @@ public class ClubEventRegistration extends BaseEntity {
                 && event.getStatus() != EventStatus.CANCELLED;
     }
 
+    /**
+     * 참가 확정 버튼 — 확인 대기 ∧ 행사에서 참가자를 처리할 수 있다. {@code manageable} 은 {@link
+     * ClubEvent#canManageRegistrations} 한 값을 한 응답의 모든 행에 넘긴다.
+     */
+    public boolean canConfirm(boolean manageable) {
+        return manageable && status == ClubEventRegistrationStatus.PENDING;
+    }
+
+    /** 참가 불가 버튼 — 조건은 {@link #canConfirm} 과 같다. */
+    public boolean canDecline(boolean manageable) {
+        return manageable && status == ClubEventRegistrationStatus.PENDING;
+    }
+
+    /** 운영진 개별 취소 버튼 — 자리를 차지하는 신청 ∧ 행사에서 참가자를 처리할 수 있다. */
+    public boolean canCancelByAdmin(boolean manageable) {
+        return manageable && isActive();
+    }
+
     /** 자리를 차지하는 신청인가 ({@code PENDING} · {@code CONFIRMED}). */
     public boolean isActive() {
         return status.occupiesSeat();

@@ -219,7 +219,7 @@ class NotificationTest {
         notification.markFailed(NotificationErrorType.INVALID_RECIPIENT, lockedAt);
 
         assertThat(notification.getErrorType()).isEqualTo(NotificationErrorType.INVALID_RECIPIENT);
-        assertThat(notification.canResend(Set.of(1L))).isTrue();
+        assertThat(notification.canResend(Set.of(1L), Set.of())).isTrue();
     }
 
     @ParameterizedTest
@@ -230,8 +230,9 @@ class NotificationTest {
     void resend_notFailed_isRejected(NotificationStatus status) {
         Notification notification = withStatus(status);
 
-        assertThat(notification.resendSkipReason(Set.of(1L))).contains(ResendSkipReason.NOT_FAILED);
-        assertThat(notification.canResend(Set.of(1L))).isFalse();
+        assertThat(notification.resendSkipReason(Set.of(1L), Set.of()))
+                .contains(ResendSkipReason.NOT_FAILED);
+        assertThat(notification.canResend(Set.of(1L), Set.of())).isFalse();
         assertThatThrownBy(notification::resend).isInstanceOf(IllegalStateException.class);
     }
 
@@ -240,9 +241,9 @@ class NotificationTest {
     void resend_recipientGone_isRejected() {
         Notification notification = failed(1L);
 
-        assertThat(notification.resendSkipReason(Set.of(2L)))
+        assertThat(notification.resendSkipReason(Set.of(2L), Set.of()))
                 .contains(ResendSkipReason.RECIPIENT_GONE);
-        assertThat(notification.canResend(Set.of())).isFalse();
+        assertThat(notification.canResend(Set.of(), Set.of())).isFalse();
     }
 
     @Test
@@ -250,8 +251,8 @@ class NotificationTest {
     void resend_recipientExists_isAllowed() {
         Notification notification = failed(1L);
 
-        assertThat(notification.resendSkipReason(Set.of(1L))).isEmpty();
-        assertThat(notification.canResend(Set.of(1L))).isTrue();
+        assertThat(notification.resendSkipReason(Set.of(1L), Set.of())).isEmpty();
+        assertThat(notification.canResend(Set.of(1L), Set.of())).isTrue();
     }
 
     @Test
@@ -259,7 +260,7 @@ class NotificationTest {
     void resend_withoutRecipientUser_skipsAccountCheck() {
         Notification notification = failed(null);
 
-        assertThat(notification.canResend(Set.of())).isTrue();
+        assertThat(notification.canResend(Set.of(), Set.of())).isTrue();
     }
 
     private Notification withStatus(NotificationStatus status) {
@@ -276,5 +277,58 @@ class NotificationTest {
             default -> throw new IllegalArgumentException(status.name());
         }
         return notification;
+    }
+
+    @Test
+    @DisplayName("행사 메일 행 — 템플릿 원문을 함께 저장하고, 행사 조건이 아니면 만들지 않는다")
+    void pendingClubEventMail() {
+        NotificationTemplate template =
+                new NotificationTemplate(
+                        NotificationEventType.EVENT_ANNOUNCEMENT,
+                        NotificationChannel.EMAIL,
+                        "[StudyClub] {{eventTitle}} 안내",
+                        "<p>{{notice}}</p>");
+
+        Notification row =
+                Notification.pendingClubEventMail(
+                        NotificationEventType.EVENT_ANNOUNCEMENT,
+                        "crew@example.com",
+                        1L,
+                        template,
+                        Map.of("notice", "안내"),
+                        21L,
+                        7L);
+
+        assertThat(row.hasTemplateSnapshot()).isTrue();
+        assertThat(row.getSubjectTemplate()).isEqualTo("[StudyClub] {{eventTitle}} 안내");
+        assertThat(row.getBodyTemplate()).isEqualTo("<p>{{notice}}</p>");
+        assertThat(row.getReferenceId()).isEqualTo(21L);
+        assertThat(row.getSenderAccountId()).isEqualTo(7L);
+        assertThatThrownBy(
+                        () ->
+                                Notification.pendingClubEventMail(
+                                        NotificationEventType.STUDY_NOTICE,
+                                        "crew@example.com",
+                                        1L,
+                                        template,
+                                        Map.of(),
+                                        1L,
+                                        null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("행사 상태가 바뀐 실패 건은 STATE_CHANGED — 수신 계정이 없으면 RECIPIENT_GONE 이 먼저")
+    void resend_stateChanged() throws ReflectiveOperationException {
+        Notification notification = failed(1L);
+        java.lang.reflect.Field id = Notification.class.getDeclaredField("id");
+        id.setAccessible(true);
+        id.set(notification, 55L);
+
+        assertThat(notification.resendSkipReason(Set.of(1L), Set.of(55L)))
+                .contains(ResendSkipReason.STATE_CHANGED);
+        assertThat(notification.resendSkipReason(Set.of(), Set.of(55L)))
+                .contains(ResendSkipReason.RECIPIENT_GONE);
+        assertThat(notification.canResend(Set.of(1L), Set.of(56L))).isTrue();
     }
 }

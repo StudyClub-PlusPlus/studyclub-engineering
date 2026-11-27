@@ -238,6 +238,14 @@ public class ClubEvent extends BaseEntity {
         return null;
     }
 
+    /**
+     * 운영진이 참가자를 처리(확정 · 참가 불가 · 개별 취소)할 수 있나 — 취소 아님 ∧ 종료 전. 시작 · 신청 마감 뒤에도 종료 전이면 된다. 식은 {@link
+     * #canEdit} 과 같지만 근거 규칙(PRD §6 참가자)이 다르다. 회원 탈퇴가 정리할 신청을 고를 때도 이 판정을 쓴다.
+     */
+    public boolean canManageRegistrations(Instant now) {
+        return status != EventStatus.CANCELLED && now.isBefore(effectiveEndsAt());
+    }
+
     /** 행사를 취소할 수 있나 — 취소 아님 ∧ 종료 전. */
     public boolean canCancel(Instant now) {
         return status != EventStatus.CANCELLED && now.isBefore(effectiveEndsAt());

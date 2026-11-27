@@ -1,6 +1,7 @@
 package com.studyclub.notification;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface NotificationTemplateRepository extends JpaRepository<NotificationTemplate, Long> {
@@ -10,4 +11,8 @@ public interface NotificationTemplateRepository extends JpaRepository<Notificati
             NotificationEventType eventType, NotificationChannel channel);
 
     List<NotificationTemplate> findAllByOrderByIdAsc();
+
+    /** 행사 여섯 조건은 가장 작은 ID 한 건만 쓴다 (specs/event-mail M1). */
+    Optional<NotificationTemplate> findFirstByEventTypeAndChannelOrderByIdAsc(
+            NotificationEventType eventType, NotificationChannel channel);
 }

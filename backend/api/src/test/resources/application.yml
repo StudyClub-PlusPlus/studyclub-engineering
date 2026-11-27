@@ -50,6 +50,12 @@ upload:
 analytics:
   deletion:
     enabled: false
+
+# 행사 종료 자동 전환도 같은 이유로 끈다. 테스트는 ClubEventEndSettlementService 를 직접 부른다.
+event:
+  end-settlement:
+    enabled: false
+
 cleanup:
   enabled: false
 

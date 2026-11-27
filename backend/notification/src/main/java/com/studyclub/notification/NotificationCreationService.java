@@ -2,6 +2,15 @@ package com.studyclub.notification;
 
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.event.ClubEvent;
+import com.studyclub.domain.event.ClubEventRepository;
+import com.studyclub.domain.event.mail.ClubEventMail;
+import com.studyclub.domain.event.mail.ClubEventMailRecipient;
+import com.studyclub.domain.event.mail.ClubEventMailRepository;
+import com.studyclub.domain.event.mail.ClubEventMailType;
+import com.studyclub.domain.event.mail.EventMailValues;
+import com.studyclub.domain.event.registration.ClubEventRegistration;
+import com.studyclub.domain.event.registration.ClubEventRegistrationRepository;
 import com.studyclub.domain.notice.StudyNotice;
 import com.studyclub.domain.notice.StudyNoticeRecipient;
 import com.studyclub.domain.notice.StudyNoticeRepository;
@@ -9,6 +18,7 @@ import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyGroup;
 import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyRepository;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -22,8 +32,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 메일 {@code NOTIFICATION} 행을 만든다 — 웰컴메일({@code UserRegisteredEvent})과 스터디 반 공지({@code
- * StudyNoticeSent}). 실제 발송은 폴러가 한다 (specs/notification/spec.md, specs/study-notice/spec.md).
+ * 메일 {@code NOTIFICATION} 행을 만든다 — 웰컴메일({@code UserRegisteredEvent}) · 스터디 반 공지({@code
+ * StudyNoticeSent}) · 행사 메일(운영자 안내 · 신청 상태 자동 메일). 실제 발송은 폴러가 한다 (specs/notification/spec.md,
+ * specs/study-notice/spec.md).
  */
 @Service
 @Slf4j
@@ -36,6 +47,9 @@ public class NotificationCreationService {
     private final StudyNoticeRepository studyNoticeRepository;
     private final StudyRepository studyRepository;
     private final StudyGroupRepository studyGroupRepository;
+    private final ClubEventRepository clubEventRepository;
+    private final ClubEventRegistrationRepository clubEventRegistrationRepository;
+    private final ClubEventMailRepository clubEventMailRepository;
 
     /** 메일 제목은 「[StudyClub] {스터디 이름} 공지」 — 접두 12자와 「 공지」 3자를 빼고 40자 안에 들도록 스터디 이름을 자른다. */
     static final int SUBJECT_STUDY_TITLE_MAX = 25;
@@ -175,6 +189,164 @@ public class NotificationCreationService {
         }
         notificationRepository.saveAll(rows);
         return rows.size();
+    }
+
+    /**
+     * 운영자 행사 메일의 받는 사람마다 메일 행 하나 — 발송에 쓴 템플릿 한 건의 원문을 함께 저장한다 (specs/event-mail 「수신자별 메일 행」).
+     * {@code PAYLOAD} 는 그 사람 기준이다: 일정은 그 사람 시간대, 방식 · 참여 안내는 그 사람의 방식 하나.
+     *
+     * <p>{@link Propagation#REQUIRED}: 보내기 트랜잭션에 참여한다. 계정은 잠그지 않고 읽어(행사 행 잠금이 탈퇴와 줄을 세운다) 이미 없으면 그
+     * 사람 몫을 건너뛴다. 행 저장이 실패하면 예외가 보내기 전체를 되돌린다.
+     *
+     * @return 만든 메일 행 수
+     */
+    @Transactional(propagation = Propagation.REQUIRED)
+    public int createClubEventMailEmails(Long mailId) {
+        ClubEventMail mail =
+                clubEventMailRepository
+                        .findById(mailId)
+                        .orElseThrow(
+                                () -> new IllegalStateException("행사 메일이 없습니다. mailId=" + mailId));
+        ClubEvent event = requireEvent(mail.getClubEventId());
+        NotificationTemplate template =
+                notificationTemplateRepository
+                        .findById(mail.getTemplateId())
+                        .orElseThrow(
+                                () ->
+                                        new IllegalStateException(
+                                                "행사 메일 템플릿이 없습니다. mailId=" + mailId));
+        NotificationEventType eventType =
+                mail.getType() == ClubEventMailType.ANNOUNCEMENT
+                        ? NotificationEventType.EVENT_ANNOUNCEMENT
+                        : NotificationEventType.EVENT_CANCELLATION;
+        List<ClubEventMailRecipient> recipients = mail.getRecipients();
+        Map<Long, Account> accounts =
+                accountRepository
+                        .findAllById(
+                                recipients.stream()
+                                        .map(ClubEventMailRecipient::getAccountId)
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(Account::getId, Function.identity()));
+        Map<Long, ClubEventRegistration> registrations =
+                clubEventRegistrationRepository
+                        .findAllById(
+                                recipients.stream()
+                                        .map(ClubEventMailRecipient::getRegistrationId)
+                                        .toList())
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        ClubEventRegistration::getId, Function.identity()));
+        List<Notification> rows = new ArrayList<>();
+        for (ClubEventMailRecipient recipient : recipients) {
+            Account account = accounts.get(recipient.getAccountId());
+            if (account == null) {
+                continue;
+            }
+            Map<String, Object> payload =
+                    mail.getType() == ClubEventMailType.ANNOUNCEMENT
+                            ? EventMailValues.announcementFor(
+                                    event,
+                                    recipient.getChannel(),
+                                    zoneOf(
+                                            account,
+                                            registrations.get(recipient.getRegistrationId()),
+                                            event),
+                                    mail.getNotice(),
+                                    account.getNickname())
+                            : EventMailValues.cancellationFor(
+                                    event, mail.getNotice(), account.getNickname());
+            rows.add(
+                    Notification.pendingClubEventMail(
+                            eventType,
+                            account.getEmail(),
+                            account.getId(),
+                            template,
+                            payload,
+                            mailId,
+                            mail.getSenderAccountId()));
+        }
+        notificationRepository.saveAll(rows);
+        log.info(
+                "행사 메일 예약 mailId={} clubEventId={} rows={}",
+                mailId,
+                mail.getClubEventId(),
+                rows.size());
+        return rows.size();
+    }
+
+    /**
+     * 신청 상태 자동 메일 — 바뀐 신청마다 메일 행 하나 (specs/event-mail 「자동 메일」). 그 조건의 가장 작은 ID 템플릿 한 건만 쓰고 원문을 함께
+     * 저장한다. 계정이 없으면 그 신청 몫을 건너뛴다.
+     *
+     * <p>{@link Propagation#REQUIRED}: 처리 트랜잭션에 참여한다. 행 저장이 실패하면 예외가 처리 전체를 되돌린다.
+     *
+     * @return 템플릿이 없어 아무것도 만들지 않았으면 false — 처리는 그대로 두고 부르는 쪽이 누락 경보를 남긴다 (M2)
+     */
+    @Transactional(propagation = Propagation.REQUIRED)
+    public boolean createClubEventRegistrationEmails(
+            NotificationEventType eventType, Long clubEventId, List<Long> registrationIds) {
+        if (!eventType.isClubEvent()) {
+            throw new IllegalArgumentException("행사 자동 메일 조건이 아니다: " + eventType);
+        }
+        Optional<NotificationTemplate> template =
+                notificationTemplateRepository.findFirstByEventTypeAndChannelOrderByIdAsc(
+                        eventType, NotificationChannel.EMAIL);
+        if (template.isEmpty()) {
+            return false;
+        }
+        ClubEvent event = requireEvent(clubEventId);
+        List<ClubEventRegistration> registrations =
+                clubEventRegistrationRepository.findAllById(registrationIds);
+        Map<Long, Account> accounts =
+                accountRepository
+                        .findAllById(
+                                registrations.stream()
+                                        .map(ClubEventRegistration::getAccountId)
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(Account::getId, Function.identity()));
+        List<Notification> rows = new ArrayList<>();
+        for (ClubEventRegistration registration : registrations) {
+            Account account = accounts.get(registration.getAccountId());
+            if (account == null) {
+                continue;
+            }
+            Map<String, Object> payload =
+                    EventMailValues.automatic(
+                            event,
+                            registration.getChannel(),
+                            zoneOf(account, registration, event),
+                            account.getNickname(),
+                            eventType == NotificationEventType.EVENT_REGISTRATION_CONFIRMED);
+            rows.add(
+                    Notification.pendingClubEventMail(
+                            eventType,
+                            account.getEmail(),
+                            account.getId(),
+                            template.get(),
+                            payload,
+                            registration.getId(),
+                            null));
+        }
+        notificationRepository.saveAll(rows);
+        return true;
+    }
+
+    private ClubEvent requireEvent(Long clubEventId) {
+        return clubEventRepository
+                .findById(clubEventId)
+                .orElseThrow(
+                        () -> new IllegalStateException("행사가 없습니다. clubEventId=" + clubEventId));
+    }
+
+    private static ZoneId zoneOf(
+            Account account, ClubEventRegistration registration, ClubEvent event) {
+        return EventMailValues.recipientZone(
+                account.getTimeZone(),
+                registration == null ? null : registration.getApplicantTimeZone(),
+                event.getTimeZone());
     }
 
     /** 코드 포인트가 아니라 UTF-16 길이로 자른다 — 스터디 이름에 이모지가 있어도 제목이 40자를 넘지 않는 쪽으로 틀린다. */

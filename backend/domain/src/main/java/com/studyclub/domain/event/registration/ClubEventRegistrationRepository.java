@@ -1,5 +1,6 @@
 package com.studyclub.domain.event.registration;
 
+import com.studyclub.domain.event.EventChannel;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -18,7 +19,17 @@ import org.springframework.data.repository.query.Param;
  * 를 거치지 않아 {@code UPDATED_AT} 을 직접 채운다.
  */
 public interface ClubEventRegistrationRepository
-        extends JpaRepository<ClubEventRegistration, Long> {
+        extends JpaRepository<ClubEventRegistration, Long>, ClubEventRegistrationPageQuery {
+
+    /** 참가자 목록의 전체 행 수 — 취소 · 재신청 이력까지 모두. */
+    long countByClubEventId(Long clubEventId);
+
+    /** 행사 종료 자동 전환의 후보 — 그 상태의 신청이 하나라도 있는 행사 ID. */
+    @Query(
+            "select distinct r.clubEventId from ClubEventRegistration r"
+                    + " where r.status = :status order by r.clubEventId")
+    List<Long> findDistinctClubEventIdsByStatus(
+            @Param("status") ClubEventRegistrationStatus status);
 
     /** 행사 묶음의 방식 · 상태별 수 — GROUP BY 한 번. 신청이 없는 행사는 결과에 없다. */
     @Query(
@@ -102,6 +113,38 @@ public interface ClubEventRegistrationRepository
         return countCancellationRecipients(
                 eventId,
                 List.of(ClubEventRegistrationStatus.PENDING, ClubEventRegistrationStatus.CONFIRMED),
+                ClubEventRegistrationCancelReason.EVENT_CANCELLED);
+    }
+
+    /** 행사 안내 메일 받는 사람 — 참가 확정 신청, 방식이 null 이면 전부. 계정 확인은 호출자가 한다. */
+    @Query(
+            "select r from ClubEventRegistration r"
+                    + " where r.clubEventId = :eventId and r.status = :status"
+                    + " and (:channel is null or r.channel = :channel) order by r.accountId, r.id")
+    List<ClubEventRegistration> findByEventStatusAndChannel(
+            @Param("eventId") Long eventId,
+            @Param("status") ClubEventRegistrationStatus status,
+            @Param("channel") EventChannel channel);
+
+    default List<ClubEventRegistration> findAnnouncementRecipients(
+            Long eventId, EventChannel channel) {
+        return findByEventStatusAndChannel(eventId, ClubEventRegistrationStatus.CONFIRMED, channel);
+    }
+
+    /** 행사 취소 안내 메일 받는 사람 — 행사 취소로 함께 취소된 신청. 계정 확인은 호출자가 한다. */
+    @Query(
+            "select r from ClubEventRegistration r"
+                    + " where r.clubEventId = :eventId and r.status = :status"
+                    + " and r.cancelReason = :reason order by r.accountId, r.id")
+    List<ClubEventRegistration> findByEventStatusAndCancelReason(
+            @Param("eventId") Long eventId,
+            @Param("status") ClubEventRegistrationStatus status,
+            @Param("reason") ClubEventRegistrationCancelReason reason);
+
+    default List<ClubEventRegistration> findCancellationRecipients(Long eventId) {
+        return findByEventStatusAndCancelReason(
+                eventId,
+                ClubEventRegistrationStatus.CANCELLED,
                 ClubEventRegistrationCancelReason.EVENT_CANCELLED);
     }
 

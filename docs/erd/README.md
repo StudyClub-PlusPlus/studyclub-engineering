@@ -59,6 +59,14 @@ erDiagram
   CLUB_EVENT ||--o{ CLUB_EVENT_QUESTION : "신청 질문"
   CLUB_EVENT |o..o{ CLUB_EVENT_REGISTRATION : "신청 (FK 없음)"
   ACCOUNT |o..o{ CLUB_EVENT_REGISTRATION : "신청한 크루 (FK 없음)"
+  CLUB_EVENT |o..o{ EVENT_MAIL : "운영자 메일 (FK 없음)"
+  EVENT_MAIL ||--o{ EVENT_MAIL_RECIPIENT : "받는 사람"
+  ACCOUNT |o..o{ EVENT_MAIL : "보낸 캡틴 (FK 없음)"
+  ACCOUNT |o..o{ EVENT_MAIL_RECIPIENT : "받는 크루 (FK 없음)"
+  CLUB_EVENT_REGISTRATION |o..o{ EVENT_MAIL_RECIPIENT : "받게 된 신청 (FK 없음)"
+  NOTIFICATION_TEMPLATE |o..o{ EVENT_MAIL : "쓴 템플릿 (FK 없음)"
+  EVENT_MAIL |o..o{ NOTIFICATION : "메일 (REFERENCE_ID, FK 없음)"
+  CLUB_EVENT_REGISTRATION |o..o{ NOTIFICATION : "자동 메일 (REFERENCE_ID, FK 없음)"
   STUDY_PROGRAM ||--o{ STUDY : "기수"
   STUDY ||--o{ STUDY_GROUP : "분반"
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
@@ -103,6 +111,14 @@ erDiagram
   CLUB_EVENT ||--o{ CLUB_EVENT_QUESTION : "신청 질문"
   CLUB_EVENT |o..o{ CLUB_EVENT_REGISTRATION : "신청 (FK 없음)"
   ACCOUNT |o..o{ CLUB_EVENT_REGISTRATION : "신청한 크루 (FK 없음)"
+  CLUB_EVENT |o..o{ EVENT_MAIL : "운영자 메일 (FK 없음)"
+  EVENT_MAIL ||--o{ EVENT_MAIL_RECIPIENT : "받는 사람"
+  ACCOUNT |o..o{ EVENT_MAIL : "보낸 캡틴 (FK 없음)"
+  ACCOUNT |o..o{ EVENT_MAIL_RECIPIENT : "받는 크루 (FK 없음)"
+  CLUB_EVENT_REGISTRATION |o..o{ EVENT_MAIL_RECIPIENT : "받게 된 신청 (FK 없음)"
+  NOTIFICATION_TEMPLATE |o..o{ EVENT_MAIL : "쓴 템플릿 (FK 없음)"
+  EVENT_MAIL |o..o{ NOTIFICATION : "메일 (REFERENCE_ID, FK 없음)"
+  CLUB_EVENT_REGISTRATION |o..o{ NOTIFICATION : "자동 메일 (REFERENCE_ID, FK 없음)"
   NOTIFICATION {
     bigint ID PK
     varchar EVENT_TYPE
@@ -110,9 +126,11 @@ erDiagram
     varchar RECIPIENT_VALUE
     bigint RECIPIENT_USER_ID
     bigint TEMPLATE_ID
-    bigint REFERENCE_ID "STUDY_NOTICE.ID 등 (FK 없음)"
+    bigint REFERENCE_ID "STUDY_NOTICE.ID · EVENT_MAIL.ID · CLUB_EVENT_REGISTRATION.ID 등 (FK 없음)"
     bigint SENDER_ACCOUNT_ID "보낸 사람 ACCOUNT.ID (FK 없음)"
     json PAYLOAD
+    varchar SUBJECT_TEMPLATE "템플릿 제목 원문 스냅샷 (행사 메일)"
+    text BODY_TEMPLATE "템플릿 본문 원문 스냅샷 (행사 메일)"
     varchar STATUS
     datetime LOCKED_AT
     varchar ERROR_TYPE
@@ -328,6 +346,34 @@ erDiagram
     json     QUESTIONS_SNAPSHOT       "신청 당시 질문 사본"
     json     ANSWERS_SNAPSHOT
     varchar  SUBMIT_IDEMPOTENCY_KEY   "UK (ACCOUNT_ID, KEY)"
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  EVENT_MAIL {
+    bigint     ID                 PK
+    bigint     CLUB_EVENT_ID        "행사 (FK 없음)"
+    varchar    TYPE                 "ANNOUNCEMENT / CANCELLATION"
+    varchar    AUDIENCE             "ALL / ONLINE / OFFLINE / CANCELLED_ACTIVE"
+    bigint     TEMPLATE_ID          "쓴 템플릿 (FK 없음)"
+    varchar    SUBJECT              "공통 제목"
+    mediumtext BODY                 "공통 본문 (nickname 은 원문)"
+    varchar    FORMAT               "HTML / TEXT"
+    text       NOTICE               "운영진 안내 내용"
+    varchar    DISPLAY_TIME_ZONE
+    int        RECIPIENT_COUNT
+    bigint     SENDER_ACCOUNT_ID    "보낸 캡틴 (FK 없음)"
+    varchar    IDEMPOTENCY_KEY      "UK (SENDER_ACCOUNT_ID, KEY)"
+    datetime   CREATED_AT
+    datetime   UPDATED_AT
+  }
+
+  EVENT_MAIL_RECIPIENT {
+    bigint   ID                PK
+    bigint   EVENT_MAIL_ID     FK
+    bigint   ACCOUNT_ID          "받는 크루 (FK 없음)"
+    bigint   REGISTRATION_ID     "받게 된 신청 (FK 없음)"
+    varchar  CHANNEL             "ONLINE / OFFLINE"
     datetime CREATED_AT
     datetime UPDATED_AT
   }
@@ -556,6 +602,8 @@ erDiagram
 | 행사 | [CLUB_EVENT_CHANNEL](./CLUB_EVENT_CHANNEL.md) | 행사 참여 방식(온라인·오프라인)별 정원·장소·링크 | — |
 | 행사 | [CLUB_EVENT_QUESTION](./CLUB_EVENT_QUESTION.md) | 행사 신청 질문 (현재 질문, 신청은 사본을 따로 둔다) | — |
 | 행사 | [CLUB_EVENT_REGISTRATION](./CLUB_EVENT_REGISTRATION.md) | 행사 신청 — 크루 신청 · 본인 취소 · 운영진 처리가 함께 쓴다 (재신청은 새 행) | `STATUS`, `CANCEL_REASON` |
+| 행사 | [EVENT_MAIL](./EVENT_MAIL.md) | 행사 운영자 메일(안내 · 취소 안내) 발송 기록 — 메일 이력 탭 (메일 결과는 NOTIFICATION) | — |
+| 행사 | [EVENT_MAIL_RECIPIENT](./EVENT_MAIL_RECIPIENT.md) | 행사 메일을 받는 사람 (메일 한 건에 한 사람 한 행) | — |
 
 
 ## ERD 추가·변경 절차

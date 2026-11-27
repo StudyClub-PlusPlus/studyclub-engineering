@@ -2,6 +2,7 @@ package com.studyclub.api.notification;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.notification.EventTemplateVariables;
 import com.studyclub.notification.NotificationTemplate;
 import com.studyclub.notification.NotificationTemplateRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class NotificationTemplateCommandService {
 
     @Transactional
     public NotificationTemplateResponse create(Long adminId, NotificationTemplateRequest request) {
+        validateVariables(request);
         NotificationTemplate template =
                 NotificationTemplate.create(
                         request.eventType(), request.subject(), request.body(), adminId);
@@ -30,6 +32,7 @@ public class NotificationTemplateCommandService {
     @Transactional
     public NotificationTemplateResponse update(
             Long adminId, Long id, NotificationTemplateRequest request) {
+        validateVariables(request);
         NotificationTemplate template = find(id);
         template.edit(request.eventType(), request.subject(), request.body(), adminId);
         return NotificationTemplateResponse.from(
@@ -39,6 +42,15 @@ public class NotificationTemplateCommandService {
     @Transactional
     public void delete(Long id) {
         notificationTemplateRepository.delete(find(id));
+    }
+
+    /** 행사 여섯 조건만 치환 변수를 검사한다 (specs/event-mail 「템플릿 검증」). 기존 조건은 지금처럼 통과. */
+    private static void validateVariables(NotificationTemplateRequest request) {
+        EventTemplateVariables.problem(request.eventType(), request.subject(), request.body())
+                .ifPresent(
+                        message -> {
+                            throw new BusinessException(ErrorCode.INVALID_INPUT, message);
+                        });
     }
 
     private NotificationTemplate find(Long id) {

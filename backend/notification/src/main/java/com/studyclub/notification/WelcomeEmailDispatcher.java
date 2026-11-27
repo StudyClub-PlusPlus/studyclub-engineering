@@ -1,5 +1,6 @@
 package com.studyclub.notification;
 
+import com.studyclub.notification.NotificationTemplateRenderer.RenderOptions;
 import com.studyclub.notification.mail.MailCategory;
 import com.studyclub.notification.mail.MailClient;
 import com.studyclub.notification.mail.MailSendException;
@@ -19,24 +20,41 @@ public class WelcomeEmailDispatcher {
     private final NotificationTemplateRenderer notificationTemplateRenderer;
     private final MailClient mailClient;
 
-    /** 실패하면 {@link MailSendException} 이 그대로 전파된다 — 호출자(스케줄러)가 {@code errorType()} 을 꺼내 처리한다. */
+    /**
+     * 템플릿 원문 스냅샷이 있는 행(행사 메일)은 그 원문으로, 없으면 지금처럼 {@code TEMPLATE_ID} 로 템플릿을 읽어 보낸다. 실패하면 {@link
+     * MailSendException} 이 그대로 전파된다 — 호출자(스케줄러)가 {@code errorType()} 을 꺼내 처리한다.
+     */
     public void dispatch(Notification notification) {
-        NotificationTemplate template =
-                notificationTemplateRepository
-                        .findById(notification.getTemplateId())
-                        .orElseThrow(
-                                () ->
-                                        new MailSendException(
-                                                NotificationErrorType.TEMPLATE_MISSING,
-                                                "템플릿을 찾을 수 없습니다. templateId="
-                                                        + notification.getTemplateId(),
-                                                null));
+        String subjectTemplate;
+        String bodyTemplate;
+        if (notification.hasTemplateSnapshot()) {
+            subjectTemplate = notification.getSubjectTemplate();
+            bodyTemplate = notification.getBodyTemplate();
+        } else {
+            NotificationTemplate template =
+                    notificationTemplateRepository
+                            .findById(notification.getTemplateId())
+                            .orElseThrow(
+                                    () ->
+                                            new MailSendException(
+                                                    NotificationErrorType.TEMPLATE_MISSING,
+                                                    "템플릿을 찾을 수 없습니다. templateId="
+                                                            + notification.getTemplateId(),
+                                                    null));
+            subjectTemplate = template.getSubject();
+            bodyTemplate = template.getBody();
+        }
+        RenderOptions options =
+                notification.getEventType().isClubEvent()
+                        ? RenderOptions.LINE_BREAKS
+                        : RenderOptions.NONE;
 
         String subject =
                 notificationTemplateRenderer.render(
-                        template.getSubject(), notification.getPayload());
+                        subjectTemplate, notification.getPayload(), options);
         String body =
-                notificationTemplateRenderer.render(template.getBody(), notification.getPayload());
+                notificationTemplateRenderer.render(
+                        bodyTemplate, notification.getPayload(), options);
 
         mailClient.send(MailCategory.NOTIFY, notification.getRecipientValue(), subject, body);
     }

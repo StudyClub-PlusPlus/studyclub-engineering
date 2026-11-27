@@ -63,6 +63,16 @@ public class Notification extends BaseEntity {
     private Long templateId;
 
     /**
+     * 예약 때 저장한 템플릿 제목 · 본문 원문 — 행사 여섯 조건만 채운다 (specs/event-mail M6). 있으면 폴러 · 재발송이 템플릿을 다시 읽지 않고 이
+     * 원문으로 보내 예약 뒤 템플릿을 고치거나 지워도 내용이 그대로다. 개인정보는 없다(템플릿 원문뿐).
+     */
+    @Column(name = "SUBJECT_TEMPLATE", length = 255)
+    private String subjectTemplate;
+
+    @Column(name = "BODY_TEMPLATE", columnDefinition = "TEXT")
+    private String bodyTemplate;
+
+    /**
      * 이 알림을 만든 쪽의 ID 참조 — {@code STUDY_NOTICE} 면 {@code STUDY_NOTICE.ID}. 공지별 메일 결과를 세는 키다. 웰컴메일은
      * null. 다른 애그리거트라 FK 는 없다.
      */
@@ -183,6 +193,43 @@ public class Notification extends BaseEntity {
                 senderAccountId);
     }
 
+    /**
+     * 행사 메일 — 받는 사람 한 명 · 템플릿 한 건에 한 행, 템플릿 원문을 함께 저장한다. {@code PAYLOAD} 는 그 사람 기준 값이다(일정은 그 사람
+     * 시간대).
+     *
+     * @param senderAccountId 운영자 메일이면 보낸 캡틴, 자동 메일이면 null
+     */
+    public static Notification pendingClubEventMail(
+            NotificationEventType eventType,
+            String recipientEmail,
+            Long recipientUserId,
+            NotificationTemplate template,
+            Map<String, Object> payload,
+            Long referenceId,
+            Long senderAccountId) {
+        if (!eventType.isClubEvent()) {
+            throw new IllegalArgumentException("행사 메일 조건이 아니다: " + eventType);
+        }
+        Notification notification =
+                new Notification(
+                        eventType,
+                        NotificationChannel.EMAIL,
+                        recipientEmail,
+                        recipientUserId,
+                        template.getId(),
+                        payload,
+                        referenceId,
+                        senderAccountId);
+        notification.subjectTemplate = template.getSubject();
+        notification.bodyTemplate = template.getBody();
+        return notification;
+    }
+
+    /** 템플릿 원문을 저장한 행인가 — 있으면 템플릿을 다시 읽지 않는다. */
+    public boolean hasTemplateSnapshot() {
+        return subjectTemplate != null && bodyTemplate != null;
+    }
+
     /** 폴링 스케줄러가 클레임(SELECT ... FOR UPDATE SKIP LOCKED + UPDATE)한 직후 반영하는 상태. */
     public void markProcessing(Instant lockedAt) {
         requireStatus(NotificationStatus.PENDING, "PROCESSING");
@@ -259,30 +306,35 @@ public class Notification extends BaseEntity {
 
     /**
      * 이 건을 지금 재발송할 수 없는 이유. 없으면(비어 있으면) 재발송할 수 있다 — 목록의 {@code canResend} 와 재발송 접수가 <b>같은 메서드</b>를
-     * 쓴다. 판정 재료인 {@code existingAccountIds} 는 호출자가 같은 쿼리로 센 "지금 남아 있는 계정 ID" 다.
+     * 쓴다. 판정 재료는 호출자가 같은 쿼리로 읽은 값이다: {@code existingAccountIds} 는 지금 남아 있는 계정 ID, {@code
+     * stateChangedIds} 는 행사 · 신청 상태가 바뀌어 다시 보낼 수 없는 행사 메일 행의 ID.
      *
-     * <p>{@code RECIPIENT_USER_ID} 가 없는 건(운영 공용 발송 등)은 계정과 무관하므로 계정 검사를 건너뛴다.
+     * <p>{@code RECIPIENT_USER_ID} 가 없는 건(운영 공용 발송 등)은 계정과 무관하므로 계정 검사를 건너뛴다. 계정 검사가 상태 검사보다 먼저다.
      */
-    public Optional<ResendSkipReason> resendSkipReason(Set<Long> existingAccountIds) {
+    public Optional<ResendSkipReason> resendSkipReason(
+            Set<Long> existingAccountIds, Set<Long> stateChangedIds) {
         if (status != NotificationStatus.FAILED) {
             return Optional.of(ResendSkipReason.NOT_FAILED);
         }
         if (recipientUserId != null && !existingAccountIds.contains(recipientUserId)) {
             return Optional.of(ResendSkipReason.RECIPIENT_GONE);
         }
+        if (id != null && stateChangedIds.contains(id)) {
+            return Optional.of(ResendSkipReason.STATE_CHANGED);
+        }
         return Optional.empty();
     }
 
-    public boolean canResend(Set<Long> existingAccountIds) {
-        return resendSkipReason(existingAccountIds).isEmpty();
+    public boolean canResend(Set<Long> existingAccountIds, Set<Long> stateChangedIds) {
+        return resendSkipReason(existingAccountIds, stateChangedIds).isEmpty();
     }
 
     /**
      * 운영자 재발송 — 실패한 건을 <b>그 행 그대로</b> 다시 {@code PENDING} 으로 되돌려 폴링이 집어가게 한다. 새 행을 만들지 않는다(알림 하나에 줄
      * 하나, 시도 이력을 남기지 않는다 — POL-0009). 이전 실패 원인({@code ERROR_TYPE})은 지워지고, 다시 실패하면 새 원인이 남는다.
      *
-     * <p>{@code RECIPIENT_*}·{@code TEMPLATE_ID}·{@code PAYLOAD} 는 건드리지 않는다 — 발송 시점의 스냅샷을 그대로 다시
-     * 쓴다. 호출자는 {@link #resendSkipReason} 로 먼저 확인한다.
+     * <p>{@code RECIPIENT_*}·{@code TEMPLATE_ID}·{@code PAYLOAD}·템플릿 원문 스냅샷은 건드리지 않는다 — 발송 시점의 스냅샷을
+     * 그대로 다시 쓴다. 호출자는 {@link #resendSkipReason} 로 먼저 확인한다.
      */
     public void resend() {
         requireStatus(NotificationStatus.FAILED, "PENDING(재발송)");
