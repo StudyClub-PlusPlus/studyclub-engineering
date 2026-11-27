@@ -308,7 +308,8 @@ public class StudyService {
         if (request.capacityPresent() || recruitDeadline != null || recruitmentTimeZones != null) {
             StudyRecruitment recruitment =
                     studyRecruitmentRepository
-                            .findFirstByStudyIdOrderByIdDescForUpdate(study.getId())
+                            .findLatestIdByStudyId(study.getId())
+                            .flatMap(studyRecruitmentRepository::findByIdWithZonesForUpdate)
                             .orElseThrow(
                                     () ->
                                             new BusinessException(

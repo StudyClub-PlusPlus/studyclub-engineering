@@ -239,7 +239,8 @@ class StudyServiceTest {
     }
 
     @Test
-    @DisplayName("성공(수정) - 모집 회차를 바꾸는 수정은 최신 모집 회차를 처음부터 잠가 읽는다 — 잠그지 않은 선조회가 1차 캐시에 남지 않게")
+    @DisplayName(
+            "성공(수정) - 모집 회차를 바꾸는 수정은 ID 만 먼저 찾고, 회차와 지역을 한 번의 잠금 조회로 읽는다 — 잠그지 않은 엔티티 · 지역 지연 로딩이 없게")
     void updateLocksLatestRecruitmentOnFirstRead() {
         when(accountRepository.existsById(1L)).thenReturn(true);
         when(studyRepository.findById(10L))
@@ -251,7 +252,8 @@ class StudyServiceTest {
                                         .status(StudyStatus.OPEN)
                                         .build()));
         StudyRecruitment recruitment = StudyRecruitment.builder().studyId(10L).build();
-        when(studyRecruitmentRepository.findFirstByStudyIdOrderByIdDescForUpdate(10L))
+        when(studyRecruitmentRepository.findLatestIdByStudyId(10L)).thenReturn(Optional.of(77L));
+        when(studyRecruitmentRepository.findByIdWithZonesForUpdate(77L))
                 .thenReturn(Optional.of(recruitment));
         StudyUpdateRequest request = new StudyUpdateRequest();
         request.setRecruitmentTimeZones(
@@ -260,7 +262,7 @@ class StudyServiceTest {
 
         studyService.updateFromSite(1L, 10L, request, SEOUL);
 
-        verify(studyRecruitmentRepository).findFirstByStudyIdOrderByIdDescForUpdate(10L);
+        verify(studyRecruitmentRepository).findByIdWithZonesForUpdate(77L);
         verify(studyRecruitmentRepository, never()).findFirstByStudyIdOrderByIdDesc(10L);
         verify(studyRecruitmentRepository, never()).findByIdForUpdate(any());
         assertThat(recruitment.timeZones().zones()).containsExactly("Asia/Seoul");
