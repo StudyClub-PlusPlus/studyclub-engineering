@@ -67,6 +67,7 @@
 | `Onboarding Started` · `Onboarding Nickname Submitted` · `Onboarding Nickname Conflict` · `Onboarding Consents Agreed` · `Onboarding Completed` | 온보딩 |
 | `Onboarding Discord Skipped{after_not_in_guild}` | 온보딩 디스코드 단계의 「건너뛰기」. `after_not_in_guild` = 서버 미가입 안내를 본 뒤에 건너뛰었나 |
 | `Study Filter Tab Changed` · `Study Category Filtered` · `Study Searched` · `Study Card Clicked` · `Hero CTA Clicked` · `Event Card Clicked` | 탐색 |
+| `Event Apply Form Opened` (`event_id`) | 행사 상세 — 신청 폼 모달을 열었을 때 |
 | `Study Bookmarked` · `Study Unbookmarked` (`study_id`, `source`) | 하트 버튼 · 찜한 스터디(`source=saved_page`, 해제만) |
 | `Study Apply CTA Clicked` · `Study Apply External Opened` · `Study Apply Dialog Opened` · `Study Apply Slots Selected` · `Study Apply Submitted` · `Study Apply Completed` · `Study Apply Failed` · `Study Apply Dialog Dismissed` | 신청 |
 | `My Discord Connected` (`source`=`onboarding`·`apply_gate`·`my_page`) | 온보딩 디스코드 단계 · 신청 전 디스코드 연동 창 · 마이페이지 디스코드 줄 — OAuth 팝업으로 받은 코드가 연동 API 에서 204 일 때 (개발 서버는 목 연동). 연동 함수 `linkDiscord` 안에서만 보낸다 — 연동 화면이 늘어도 빠지지 않는다 |

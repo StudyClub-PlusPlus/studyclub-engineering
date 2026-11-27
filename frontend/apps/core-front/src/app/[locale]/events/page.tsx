@@ -4,10 +4,11 @@ import type { Locale } from '@studyclub/types';
 import type { Metadata } from 'next';
 
 import { FollowStrip } from '@/components/SocialLinks';
-import { EventBrowser } from '@/features/events/EventBrowser';
-import { getEvents } from '@/features/events/server';
+import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@/features/events/content';
+import { EventListView } from '@/features/events/EventListView';
+import { fetchEventListServer, getArchiveEvents } from '@/features/events/server';
 import { FEATURES } from '@/lib/features';
-import { m } from '@/lib/i18n';
+import { m, t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
@@ -22,24 +23,46 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 
 export default async function EventsPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: Locale }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   if (!FEATURES.EVENTS) notFound();
   const { locale } = await params;
-  // 목록 조건을 URL(`?q=…`)로 받는다 — searchParams 를 읽어 요청마다 렌더한다. 정적으로 두면 클라이언트의
-  // useSearchParams 때문에 페이지 전체가 브라우저 렌더로 넘어가 HTML 에 목록·제목이 빠진다(SEO).
-  await searchParams;
-  const events = await getEvents();
-
-  // 최신순 (newest-first)
-  const byDateDesc = [...events].sort((a, b) => b.date.localeCompare(a.date));
+  const initial = await fetchEventListServer();
+  const archiveEvents = getArchiveEvents();
+  const today = new Date().toISOString().slice(0, 10);
+  const pastArchive = archiveEvents.filter((event) => event.date < today);
+  const archiveDetailIds = Object.keys(EVENT_DETAILS);
 
   return (
     <div className='mx-auto max-w-6xl px-6 pb-14 pt-6'>
-      <EventBrowser events={byDateDesc} locale={locale} />
+      <EventListView
+        locale={locale}
+        initial={initial}
+        archiveEvents={pastArchive}
+        archiveDetailIds={archiveDetailIds}
+      />
+      <section className='mt-12 rounded-2xl bg-brand-subtle p-6 sm:p-8'>
+        <h2 className='type-title-md'>
+          {t({ ko: '스터디클럽 행사는 이렇게 열려요', en: 'How StudyClub events work' }, locale)}
+        </h2>
+        <ul className='mt-4 grid gap-3 sm:grid-cols-2'>
+          {EVENT_KINDS.map((kind) => (
+            <li key={kind.title.ko} className='rounded-xl bg-bg p-4 type-body-sm'>
+              <span className='font-semibold'>{t(kind.title, locale)}</span>
+              <span className='text-fg-muted'> {t(kind.body, locale)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className='mt-6 grid gap-3 md:grid-cols-3'>
+          {EVENT_VOICES.map((voice) => (
+            <blockquote key={voice.from.ko} className='rounded-xl bg-bg p-4 type-body-sm text-fg'>
+              “{t(voice.quote, locale)}”
+              <footer className='mt-2 type-label-sm text-fg-muted'>{t(voice.from, locale)}</footer>
+            </blockquote>
+          ))}
+        </div>
+      </section>
       <FollowStrip locale={locale} />
     </div>
   );
