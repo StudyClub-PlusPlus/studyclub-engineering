@@ -169,13 +169,14 @@ WHERE status = 'PROCESSING'
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED`(웰컴메일) · `STUDY_NOTICE`(반 공지) · `FEEDBACK_REPLIED`(첫 문의 회신) |
+| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED`(웰컴메일) · `STUDY_NOTICE`(반 공지) · `FEEDBACK_REPLIED`(첫 문의 회신) · 행사 여섯 조건 `EVENT_ANNOUNCEMENT` · `EVENT_CANCELLATION` · `EVENT_REGISTRATION_PENDING` · `EVENT_REGISTRATION_CONFIRMED` · `EVENT_REGISTRATION_DECLINED` · `EVENT_REGISTRATION_CANCELLED` ([event-mail](../event-mail/spec.md)) |
 | RECIPIENT_TYPE | VARCHAR(20) | N | 이번 구현에서 쓰는 값은 `EMAIL` 뿐. `DISCORD` 는 정의하지 않는다 |
 | RECIPIENT_VALUE | VARCHAR(255) | N | 발송 시점 이메일 스냅샷 (나중에 회원이 이메일을 바꿔도 이 값은 그대로) |
 | RECIPIENT_USER_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음 — 애그리거트 간 참조는 ID+인덱스만) — 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
 | TEMPLATE_ID | BIGINT | N | ID 참조(NOTIFICATION_TEMPLATE, FK 없음) |
-| REFERENCE_ID | BIGINT | Y | 이 알림을 만든 쪽의 ID 참조 — `STUDY_NOTICE` 면 STUDY_NOTICE.ID, `FEEDBACK_REPLIED` 면 FEEDBACK.ID (FK 없음). 웰컴메일은 NULL |
-| SENDER_ACCOUNT_ID | BIGINT | Y | 보낸 사람의 ACCOUNT.ID 참조 (FK 없음). 공지 메일만 채운다 — 보낸 사람이 탈퇴하면 이 값으로 그가 보낸 메일 행을 찾아 보낸 사람 이름을 비식별화한다 |
+| SUBJECT_TEMPLATE · BODY_TEMPLATE | VARCHAR(255) · TEXT | Y | 예약 때 저장한 템플릿 제목 · 본문 원문 (V69). **행사 여섯 조건만** 채운다 — 있으면 폴러 · 재발송이 템플릿을 다시 읽지 않고 이 원문으로 보낸다. 기존 조건 · 기존 행은 NULL ([event-mail M6](../event-mail/spec.md#발송-내용-고정-m6)) |
+| REFERENCE_ID | BIGINT | Y | 이 알림을 만든 쪽의 ID 참조 — `STUDY_NOTICE` 면 STUDY_NOTICE.ID, `FEEDBACK_REPLIED` 면 FEEDBACK.ID, `EVENT_ANNOUNCEMENT` · `EVENT_CANCELLATION` 이면 EVENT_MAIL.ID, `EVENT_REGISTRATION_*` 이면 CLUB_EVENT_REGISTRATION.ID (FK 없음). 웰컴메일은 NULL |
+| SENDER_ACCOUNT_ID | BIGINT | Y | 보낸 사람의 ACCOUNT.ID 참조 (FK 없음). 공지 메일 · 행사 운영자 메일만 채운다 — 보낸 사람이 탈퇴하면 이 값으로 그가 보낸 메일 행을 찾아 보낸 사람 이름을 비식별화한다 |
 | PAYLOAD | JSON | N | `USER_REGISTERED` 는 `{"nickname": "..."}`, `STUDY_NOTICE` 는 `{"studyTitle","groupName","senderName","title","body"}`, `FEEDBACK_REPLIED` 는 `{"nickname","feedbackUrl"}`. 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
 | STATUS | VARCHAR(20) | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED`/`CANCELLED` |
 | LOCKED_AT | DATETIME(6) | Y | PROCESSING 전환 시각. 재수거 판단 기준이자 클레임 토큰 — 재수거로 값이 바뀌면 이전 클레임의 완료 처리를 무시한다 |
@@ -195,14 +196,14 @@ WHERE status = 'PROCESSING'
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` · `STUDY_NOTICE` · `FEEDBACK_REPLIED` |
+| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` · `STUDY_NOTICE` · `FEEDBACK_REPLIED` · 행사 여섯 조건 (위 NOTIFICATION 과 같다) |
 | CHANNEL | VARCHAR(20) | N | `EMAIL` |
 | SUBJECT | VARCHAR(255) | N | |
 | BODY | TEXT | N | 치환 변수는 조건마다 다르다 — `USER_REGISTERED` 는 `{{nickname}}`, `STUDY_NOTICE` 는 `{{studyTitle}}`·`{{groupName}}`·`{{senderName}}`·`{{title}}`·`{{body}}`, `FEEDBACK_REPLIED` 는 `{{nickname}}`·`{{feedbackUrl}}`. 태그(`<`)로 시작하면 HTML 본문 — 아래 [본문 형식](#본문-형식--html--텍스트-대체본) |
 | UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 | UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음) — 추가·수정한 캡틴. 마이그레이션이 만든 행은 NULL |
 
-- **같은 조건에 템플릿을 여럿 둘 수 있다.** 그 조건이 생기면 모두 발송한다(웰컴메일은 가입 한 번에 템플릿 수만큼, 스터디 공지는 받는 사람마다 템플릿 수만큼 `NOTIFICATION` 행이 생긴다). 인덱스 `idx_notification_template_event_channel (EVENT_TYPE, CHANNEL)` — 유일 제약이 아니다
+- **같은 조건에 템플릿을 여럿 둘 수 있다.** 그 조건이 생기면 모두 발송한다(웰컴메일은 가입 한 번에 템플릿 수만큼, 스터디 공지는 받는 사람마다 템플릿 수만큼 `NOTIFICATION` 행이 생긴다). **행사 여섯 조건만 다르다** — ID 가 가장 작은 템플릿 한 건만 쓰고 받는 사람 한 명에 행 하나다 ([event-mail M1](../event-mail/spec.md#쓰는-템플릿)). 인덱스 `idx_notification_template_event_channel (EVENT_TYPE, CHANNEL)` — 유일 제약이 아니다
 - 같은 조건·같은 제목도 막지 않는다. 추가·수정은 캡틴만 하고 목록에 조건과 제목이 보이므로 중복은 운영자가 알아보고 지운다 — 같은 문구를 둘 두면 같은 메일이 두 통 나간다
 - RECIPIENT_USER_ID·TEMPLATE_ID·UPDATED_BY_ADMIN_ID 는 애그리거트 사이 참조라 FK 를 걸지 않는다 — ID + 인덱스만
   ([database-guide.md 외래키 정책](../../docs/backend-development-guide/database-guide.md)).
@@ -354,7 +355,7 @@ stateDiagram-v2
 | 401 / 403 | UNAUTHORIZED / FORBIDDEN | 인증 없음 / 캡틴이 아님 |
 | 404 | NOT_FOUND | 없는 ID |
 
-- 지운 뒤의 동작: 그 템플릿을 가리키는 `PENDING` 알림은 발송 때 `TEMPLATE_MISSING` 으로 실패한다(재발송해도 같다).
+- 지운 뒤의 동작: 그 템플릿을 가리키는 `PENDING` 알림은 발송 때 `TEMPLATE_MISSING` 으로 실패한다(재발송해도 같다). 행사 여섯 조건의 행은 템플릿 원문을 함께 저장해 영향이 없다 (M6).
   **같은 조건에 다른 템플릿이 남아 있으면** 그 템플릿의 메일만 더 이상 나가지 않고, 남은 템플릿은 그대로 나간다.
   그 조건의 **마지막** 템플릿(목록에서 그 조건의 템플릿이 하나뿐인 경우)을 지우면 이후 이벤트에 어떤 일이 생기는지는 조건마다 다르다 — 아래 표
 
@@ -362,10 +363,12 @@ stateDiagram-v2
 |---|---|---|
 | `USER_REGISTERED` (회원가입) | `{{nickname}}` | 알림 행을 만들지 못하고 에러 로그만 남긴다. 가입은 영향이 없다(`AFTER_COMMIT`) |
 | `STUDY_NOTICE` (스터디 공지) | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | **메일을 포함한 공지는 저장 자체가 롤백된다**(메일 행 생성이 공지와 같은 트랜잭션 `BEFORE_COMMIT` — `IllegalStateException`). 메일과 디스코드를 함께 보내는 공지는 커밋이 없어 디스코드 글도 올라가지 않는다. 디스코드만 보내는 공지는 템플릿을 조회하지 않아 영향이 없다 ([study-notice 스펙](../study-notice/spec.md)) |
+| `EVENT_ANNOUNCEMENT` · `EVENT_CANCELLATION` (행사 안내 · 취소 안내) | 안내: `{{nickname}}` `{{eventTitle}}` `{{channel}}` `{{eventSchedule}}` `{{participation}}` `{{notice}}` · 취소 안내: `{{nickname}}` `{{eventTitle}}` `{{notice}}` | 보내기가 409 `EVENT_MAIL_TEMPLATE_MISSING`, 작성 창은 템플릿 없음 안내 (`blockedReason = TEMPLATE_MISSING`). 다음으로 작은 ID 의 템플릿이 있으면 그 템플릿을 쓴다 |
+| `EVENT_REGISTRATION_*` (행사 자동 메일 넷) | `{{nickname}}` `{{eventTitle}}` `{{eventSchedule}}` `{{channel}}` (+ `CONFIRMED` 만 `{{participation}}`) | 신청 · 참가 처리 · 취소 · 종료 전환은 그대로 커밋하고 메일만 건너뛰며 누락 경보(WARN, 10분 묶음). 복구해도 소급 발송 없음 (event-mail M2) |
 | `FEEDBACK_REPLIED` (문의 회신) | `{{nickname}}` `{{feedbackUrl}}` | **첫 회신·완료 저장이 롤백된다**. 예약을 회신과 같은 트랜잭션에서 만들기 때문이다. 이미 있는 답변 수정에는 영향이 없다 ([feedback](../feedback/spec.md#회신-알림)) |
 
 - 서버는 마지막 템플릿의 삭제·조건 변경을 막지 않는다. 대신 백오피스가 영향을 알린다. **삭제 확인**: 마지막이 아니면 「이 템플릿의 메일만 멈춘다」, 마지막이면 위 표의 조건별 영향. **수정 팝업에서 조건을 바꿀 때**: 원래 조건에서 이 템플릿이 마지막이면 저장 전에 같은 조건별 영향(「조건을 바꿔 저장하면 …」)을 알린다. 다른 템플릿이 남아 있으면 알리지 않는다. 저장은 막지 않는다. 마지막인지는 화면이 이미 받은 목록(페이지네이션 없이 전체)에서 같은 조건의 템플릿 수로 센다 — 안내 문구만 가르는 판정이고 서버는 삭제를 막지 않으므로 응답 필드를 따로 두지 않는다. 목록이 페이지네이션이나 조건 필터를 갖게 되면 서버 필드로 올린다. 본문 칸 아래 안내도 그 조건의 치환 변수를 알린다. (→ [share 10-29](../../docs/share/2026-10-29-notification-template-ops-rules.md))
-  서버가 조건에 없는 치환 변수를 막지는 않는다 — 렌더러는 모르는 `{{x}}` 를 그대로 남기므로, 조건을 바꾸면 변수가 맞지 않는 문구가 저장될 수 있다 (후속)
+  기존 세 조건은 서버가 조건에 없는 치환 변수를 막지 않는다 — 렌더러는 모르는 `{{x}}` 를 그대로 남기므로, 조건을 바꾸면 변수가 맞지 않는 문구가 저장될 수 있다 (후속). **행사 여섯 조건은 추가 · 수정 때 검사한다**: 조건별 허용 변수만, 괄호 안 공백 변수(`{{ notice }}`)는 지원하지 않는 변수, 안내 · 취소 안내는 본문에 `{{notice}}` 필수. 어기면 400 `INVALID_INPUT` 「지원하지 않는 변수입니다: {{…}}」 · 「행사 안내 내용이 들어갈 {{notice}}를 본문에 넣어 주세요.」 ([event-mail 「템플릿 검증」](../event-mail/spec.md#템플릿-검증-notification-스펙에-더한다))
 
 ### `GET /api/admin/notifications`
 
@@ -412,7 +415,7 @@ stateDiagram-v2
 | templateId | Long | N | | NOTIFICATION.TEMPLATE_ID |
 | sentAt | String | Y | ISO-8601 UTC | NOTIFICATION.SENT_AT |
 | createdAt | String | N | ISO-8601 UTC | NOTIFICATION.CREATED_AT |
-| canResend | Boolean | N | **지금 재발송할 수 있는 건인가** — 서버가 판정한다(화면이 `status` 로 다시 계산하지 않는다). 조건은 [재발송 가능 조건](#재발송-가능-조건) | 계산: `Notification.canResend(existingAccountIds)` |
+| canResend | Boolean | N | **지금 재발송할 수 있는 건인가** — 서버가 판정한다(화면이 `status` 로 다시 계산하지 않는다). 조건은 [재발송 가능 조건](#재발송-가능-조건) | 계산: `Notification.canResend(existingAccountIds, stateChangedIds)` |
 
 **Error Responses**:
 
@@ -494,7 +497,7 @@ stateDiagram-v2
 | accepted | Long[] | N | `PENDING` 으로 되돌려 다시 보내기로 **접수한** 행의 ID. 비어 있을 수 있다. 끝(`SENT`·`FAILED`)을 쫓을 때 [`GET ?ids=`](#get-apiadminnotifications) 에 그대로 넘긴다 | NOTIFICATION.ID |
 | skipped | Object[] | N | 접수하지 않은 행. 비어 있을 수 있다 | |
 | skipped[].id | Long | N | 요청한 ID | NOTIFICATION.ID |
-| skipped[].reason | String | N | `NOT_FAILED` — 실패가 아니다(이미 다시 보냈거나 지금 진행 중이거나 이미 나갔거나 탈퇴로 취소됨). `RECIPIENT_GONE` — 수신 회원이 탈퇴해 주소가 지워졌다 | 계산: [재발송 가능 조건](#재발송-가능-조건) |
+| skipped[].reason | String | N | `NOT_FAILED` — 실패가 아니다(이미 다시 보냈거나 지금 진행 중이거나 이미 나갔거나 탈퇴로 취소됨). `RECIPIENT_GONE` — 수신 회원이 탈퇴해 주소가 지워졌다. `STATE_CHANGED` — 행사 메일인데 행사 · 신청 상태가 바뀌어 그 안내를 다시 보낼 수 없다 | 계산: [재발송 가능 조건](#재발송-가능-조건) |
 
 전부 `skipped` 여도, `accepted` 가 비어도 **202** 다 — 호출은 정상이고 다시 보낼 대상이 없을 뿐이다. 화면은
 `accepted` 가 비었으면 추적하지 않고 `skipped` 를 안내한다.
@@ -531,6 +534,7 @@ stateDiagram-v2
 |---|---|---|
 | `STATUS = FAILED` | 행 자신 | 시도했다가 실패한 건만. `PENDING`·`PROCESSING`·`SENT` 는 같은 메일이 두 번 가고, `CANCELLED`(탈퇴로 취소)는 보낼 이유가 없다. 아니면 `skipped.reason = NOT_FAILED` |
 | 수신 계정이 **남아 있다** | `RECIPIENT_USER_ID` 가 `null` 이거나 `ACCOUNT` 에 그 ID 가 있다 | 탈퇴한 회원의 `RECIPIENT_VALUE` 는 이미 비식별(마스킹)돼 있어 보낼 주소가 없다. 아니면 `skipped.reason = RECIPIENT_GONE` |
+| 행사 메일이면 그 메일을 만든 **상태가 지금도 그대로**다 | 신청(`REFERENCE_ID` 또는 `EVENT_MAIL_RECIPIENT.REGISTRATION_ID`) · 행사 상태 — `ClubEventNotificationStates` 가 한 페이지의 행사 조건 행만 ID 묶음으로 읽는다 | 참가 확정 메일이 실패한 뒤 취소한 크루에게 확정 안내 · 링크가 다시 가지 않게. 조건별 표는 [event-mail 「재발송 가능 조건」](../event-mail/spec.md#재발송-가능-조건-행사-메일). 아니면 `skipped.reason = STATE_CHANGED` (계정 검사가 먼저) |
 
 - `ERROR_TYPE` 으로는 거르지 않는다. `INVALID_RECIPIENT`·`TEMPLATE_MISSING` 이면 다시 보내도 실패할 수 있지만,
   그 판단은 운영자 몫이고 서버가 막지 않는다 — 막으면 「왜 못 누르는지」를 화면이 설명해야 한다

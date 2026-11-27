@@ -41,7 +41,7 @@
 
 - [x] T018 신청 테이블을 읽는 `ClubEventRegistrationPort` 실제 어댑터, `EmptyClubEventRegistrationAdapter` 삭제 — PR #516 (`com.studyclub.api.event.ClubEventRegistrationAdapter`, `V62__create_club_event_registration.sql`)
 - [x] T019 크루 신청 제출이 행사 행 `findByIdForUpdate` 로 잠근 뒤 `displayStatus` / `seatsOf` 로 판정 — PR #517 (`ClubEventSiteService`, 잠금 순서는 `ACCOUNT` → `CLUB_EVENT`)
-- [ ] T020 (event-mail 로 이관) `ClubEventRegistrationsConfirmedEvent` `BEFORE_COMMIT` 구독자. [event-mail tasks](../event-mail/tasks.md) 의 자동 메일 구독자 태스크가 이 이벤트와 신청 접수 · 참가 불가 · 개별 취소 이벤트를 함께 받는다. `AdminClubEventService.update` 의 `TODO(event-mail)` 주석도 그 PR 에서 지운다
+- [x] T020 (event-mail 로 이관) `ClubEventRegistrationsConfirmedEvent` `BEFORE_COMMIT` 구독자. [event-mail tasks](../event-mail/tasks.md) 의 자동 메일 구독자 태스크가 이 이벤트와 신청 접수 · 참가 불가 · 개별 취소 이벤트를 함께 받는다. `AdminClubEventService.update` 의 `TODO(event-mail)` 주석도 그 PR 에서 지운다
 
 ## Phase 5: FE 연동 (후속 FE PR)
 

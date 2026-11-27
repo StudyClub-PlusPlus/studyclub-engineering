@@ -42,15 +42,15 @@
 
 ## 마이그레이션
 
-`beta` 최신은 V63 이다. event-status 가 `V64`(감사 로그)를 쓰고 event-participant 는 마이그레이션이 없으므로, 이 PR 은 **V65 부터** 쓴다. 테이블을 가진 모듈마다 파일을 나눈다 (기존 규칙: 알림 테이블 · 템플릿 시드는 `backend/notification/src/main/resources/db/migration`, 그 밖은 `backend/domain/...`). PR 을 올릴 때 `beta` 최신을 다시 보고 번호를 정한다.
+`beta` 최신은 V67(event-status 의 `V67__admin_audit_log_event_cancel.sql`)이다. V64 ~ V66 은 다른 PR(문의 이미지 · 반 이동 · 미팅 회고)이 썼고 event-participant 는 마이그레이션이 없으므로, 이 PR 은 **V68 부터** 쓴다. 테이블을 가진 모듈마다 파일을 나눈다 (기존 규칙: 알림 테이블 · 템플릿 시드는 `backend/notification/src/main/resources/db/migration`, 그 밖은 `backend/domain/...`). PR 을 올릴 때 `beta` 최신을 다시 보고 번호를 정한다.
 
 | 파일 | 모듈 | 내용 |
 |---|---|---|
-| `V65__create_event_mail.sql` | domain | `EVENT_MAIL` (`INDEX(CLUB_EVENT_ID, CREATED_AT, ID)` · `UNIQUE(SENDER_ACCOUNT_ID, IDEMPOTENCY_KEY)`, `BODY MEDIUMTEXT`, `NOTICE TEXT`) · `EVENT_MAIL_RECIPIENT` (`EVENT_MAIL_ID` FK · `UNIQUE(EVENT_MAIL_ID, ACCOUNT_ID)`, `ACCOUNT_ID` · `REGISTRATION_ID` 는 FK 없음) |
-| `V66__notification_template_snapshot.sql` | notification | `NOTIFICATION.SUBJECT_TEMPLATE VARCHAR(255) NULL` · `BODY_TEMPLATE TEXT NULL` 추가. 기존 행은 NULL |
-| `V67__event_mail_templates.sql` | notification | 행사 알림 템플릿 6종 시드 (`EMAIL`, 제목은 스펙 「시드」 표, 본문은 `proto/mail/templates/` 의 HTML 시안). 이미 같은 조건 템플릿이 있으면 넣지 않는다(`INSERT … SELECT … WHERE NOT EXISTS`) |
+| `V68__create_event_mail.sql` | domain | `EVENT_MAIL` (`INDEX(CLUB_EVENT_ID, CREATED_AT, ID)` · `UNIQUE(SENDER_ACCOUNT_ID, IDEMPOTENCY_KEY)`, `BODY MEDIUMTEXT`, `NOTICE TEXT`) · `EVENT_MAIL_RECIPIENT` (`EVENT_MAIL_ID` FK · `UNIQUE(EVENT_MAIL_ID, ACCOUNT_ID)`, `ACCOUNT_ID` · `REGISTRATION_ID` 는 FK 없음) |
+| `V69__notification_template_snapshot.sql` | notification | `NOTIFICATION.SUBJECT_TEMPLATE VARCHAR(255) NULL` · `BODY_TEMPLATE TEXT NULL` 추가. 기존 행은 NULL |
+| `V70__event_mail_templates.sql` | notification | 행사 알림 템플릿 6종 시드 (`EMAIL`, 제목은 스펙 「시드」 표, 본문은 `proto/mail/templates/` 의 HTML 시안). 이미 같은 조건 템플릿이 있으면 넣지 않는다(`INSERT … SELECT … WHERE NOT EXISTS`) |
 
-- 스키마(V65 · V66)와 데이터(V67)를 나누는 이유: 시드 문구는 오너 승인 뒤 바뀔 수 있고, stage 는 Flyway 가 꺼져 있어 시드만 손으로 한 번 넣는다 (메일 템플릿 README 「적용」). 문의 회신의 V50(스키마) · V52(시드)와 같은 나눔이다
+- 스키마(V68 · V69)와 데이터(V70)를 나누는 이유: 시드 문구는 오너 승인 뒤 바뀔 수 있고, stage 는 Flyway 가 꺼져 있어 시드만 손으로 한 번 넣는다 (메일 템플릿 README 「적용」). 문의 회신의 V50(스키마) · V52(시드)와 같은 나눔이다
 - 엔티티 `@Table` 에 유일 제약 · 인덱스를 같은 이름으로 선언한다 (테스트 H2 · stage Hibernate 가 엔티티로 스키마를 만든다)
 
 ## 애그리거트 매핑
@@ -67,8 +67,8 @@
 ## 구현 순서
 
 1. common — `ErrorCode` 4개
-2. domain — `ClubEventMail` · `ClubEventMailRecipient` · 저장소 · `ClubEventMailSentEvent` · `EventMailValues` · `MailBlockedReason`, 신청 저장소의 받는 사람 쿼리, 단위 테스트, `V65`
-3. notification — `NotificationEventType` 6값, `Notification` 스냅샷 · 재발송 인자, `ResendSkipReason.STATE_CHANGED`, 렌더러 옵션, 디스패처, `NotificationCreationService` 두 메서드, 두 구독자, `EventTemplateVariables`, `V66` · `V67`
+2. domain — `ClubEventMail` · `ClubEventMailRecipient` · 저장소 · `ClubEventMailSentEvent` · `EventMailValues` · `MailBlockedReason`, 신청 저장소의 받는 사람 쿼리, 단위 테스트, `V68`
+3. notification — `NotificationEventType` 6값, `Notification` 스냅샷 · 재발송 인자, `ResendSkipReason.STATE_CHANGED`, 렌더러 옵션, 디스패처, `NotificationCreationService` 두 메서드, 두 구독자, `EventTemplateVariables`, `V69` · `V70`
 4. api — DTO · `AdminClubEventMailService` · `AdminClubEventMailController`, `NotificationTemplateCommandService` 검증, `ClubEventNotificationStates` · 목록 · 재발송 연결, `AdminClubEventService` 의 `TODO(event-mail)` 정리
 5. 메일 시안 — `frontend/apps/playground/src/proto/mail/templates/` 에 다섯 HTML 시안 · README 시안 표 (playground 빌드 확인)
 6. 테스트 — 단위 · 통합 · 스테이지 측정(M7)

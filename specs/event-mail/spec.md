@@ -2,7 +2,7 @@
 
 > ERD: 새 테이블 `EVENT_MAIL` · `EVENT_MAIL_RECIPIENT` 는 아래 「데이터 모델」이 정의하고, ERD 문서는 구현 PR 이 만든다. 기존: [NOTIFICATION](../../docs/erd/NOTIFICATION.md), [NOTIFICATION_TEMPLATE](../../docs/erd/NOTIFICATION_TEMPLATE.md), [ACCOUNT](../../docs/erd/ACCOUNT.md). 행사·신청은 [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md) (V59) · [CLUB_EVENT_REGISTRATION](../../docs/erd/CLUB_EVENT_REGISTRATION.md) (V62, 공통 신청 PR #516) · [event-participant 「데이터 모델」](../event-participant/spec.md#데이터-모델-club_event_registration)
 > 생성일: 2026-11-18 · 리뷰 반영: 2026-11-19 (PR #479 리뷰 M1~M7 · 재발송 상태 검증 · 탈퇴·메일 예약 동시성) · 확정: 2026-11-25 (PR #516 · #517 병합 뒤 `beta` 코드와 대조)
-> 상태: 스펙확정 — 구현 계획 [plan](./plan.md) · [tasks](./tasks.md). [event tasks](../event/tasks.md) 의 T020(확정 안내 메일 구독자)도 이 스펙의 구현 PR 이 맡는다
+> 상태: 구현중 (BE 구현 PR, event-participant 와 한 PR. FE PR #528 연결 · stage M7 측정 뒤 구현완료) — 구현 계획 [plan](./plan.md) · [tasks](./tasks.md). [event tasks](../event/tasks.md) 의 T020(확정 안내 메일 구독자)도 이 스펙의 구현 PR 이 맡는다
 >
 > Story PRD:
 > - [캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다](../../01-planning/stories/captain-manage-events/PRD.md) (ST-037) §1 · §6 · §7 「메일 이력」 M2 · M4 · §7-1 「안내 메일 작성·미리보기」 M1 · M3 · M5 · M6 · 「후속 구현 합의」 M7
@@ -18,10 +18,10 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| POST | /api/admin/events/{eventId}/mails/preview | 작성 창의 공통 미리보기: 템플릿을 적용한 제목·본문(닉네임만 원문) · 받는 사람 수 · 보낼 수 있는지. 저장하지 않는다 | O (ADMIN) | 스펙확정 |
-| POST | /api/admin/events/{eventId}/mails | 안내 메일 · 취소 안내 메일 보내기: 발송 작업 1건 + 수신자 스냅샷 + 수신자별 `NOTIFICATION` 행 | O (ADMIN) | 스펙확정 |
-| GET | /api/admin/events/{eventId}/mails | 메일 이력 탭: 운영자가 보낸 메일만, 최신순 | O (ADMIN) | 스펙확정 |
-| GET | /api/admin/events/{eventId}/mails/{mailId} | 메일 이력 상세: 발송 당시 제목·본문 · 대상 · 마스킹된 받는 사람 | O (ADMIN) | 스펙확정 |
+| POST | /api/admin/events/{eventId}/mails/preview | 작성 창의 공통 미리보기: 템플릿을 적용한 제목·본문(닉네임만 원문) · 받는 사람 수 · 보낼 수 있는지. 저장하지 않는다 | O (ADMIN) | 구현중 |
+| POST | /api/admin/events/{eventId}/mails | 안내 메일 · 취소 안내 메일 보내기: 발송 작업 1건 + 수신자 스냅샷 + 수신자별 `NOTIFICATION` 행 | O (ADMIN) | 구현중 |
+| GET | /api/admin/events/{eventId}/mails | 메일 이력 탭: 운영자가 보낸 메일만, 최신순 | O (ADMIN) | 구현중 |
+| GET | /api/admin/events/{eventId}/mails/{mailId} | 메일 이력 상세: 발송 당시 제목·본문 · 대상 · 마스킹된 받는 사람 | O (ADMIN) | 구현중 |
 
 자동 메일(신청 상태 알림 4종)은 엔드포인트가 없다. 다른 스펙의 처리가 발행하는 도메인 이벤트를 이 스펙의 구독자가 받아 `NOTIFICATION` 행을 만든다 (아래 「자동 메일: 신청 상태 알림」). 템플릿 관리는 기존 `/api/admin/notification-templates` 를 그대로 쓴다.
 
@@ -560,18 +560,18 @@ PRD §7-1 M6 「접수 시 템플릿과 개인별 결과를 고정하고 수정�
 
 ### 시드
 
-여섯 조건의 첫 템플릿을 `V{n}` 마이그레이션으로 넣는다 ([메일 템플릿 README 「적용」](../../docs/mail-templates/README.md#적용-2026-10-16--v38) 순서). 문구는 플레이그라운드 기본값을 쓴다.
+여섯 조건의 첫 템플릿을 `V70__event_mail_templates.sql` (notification) 마이그레이션으로 넣는다 ([메일 템플릿 README 「행사 메일 적용」](../../docs/mail-templates/README.md#행사-메일-적용-v70)). 스키마는 `V68__create_event_mail.sql` (domain) · `V69__notification_template_snapshot.sql` (notification) 이 맡는다. 문구는 플레이그라운드 기본값을 쓴다.
 
 | 조건 | 제목 | 본문 시안 |
 |---|---|---|
 | `EVENT_ANNOUNCEMENT` | `[StudyClub] {{eventTitle}} 안내` | [event-announcement-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-announcement-email.html) |
-| `EVENT_CANCELLATION` | `[StudyClub] {{eventTitle}} 행사 취소 안내` | `event-preview.ts` `EVENT_CANCELLATION_TEMPLATE` (HTML 파일 없음) |
-| `EVENT_REGISTRATION_CONFIRMED` | `[StudyClub] {{eventTitle}} 참가가 확정되었습니다` | `EVENT_STATUS_TEMPLATES` (HTML 파일 없음) |
-| `EVENT_REGISTRATION_PENDING` | `[StudyClub] {{eventTitle}} 신청이 확인 대기 중입니다` | 같음 |
-| `EVENT_REGISTRATION_DECLINED` | `[StudyClub] {{eventTitle}} 참가 결과를 안내드립니다` | 같음 |
-| `EVENT_REGISTRATION_CANCELLED` | `[StudyClub] {{eventTitle}} 신청이 취소되었습니다` | 같음 |
+| `EVENT_CANCELLATION` | `[StudyClub] {{eventTitle}} 행사 취소 안내` | [event-cancellation-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-cancellation-email.html) |
+| `EVENT_REGISTRATION_CONFIRMED` | `[StudyClub] {{eventTitle}} 참가가 확정되었습니다` | [event-registration-confirmed-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-registration-confirmed-email.html) |
+| `EVENT_REGISTRATION_PENDING` | `[StudyClub] {{eventTitle}} 신청이 확인 대기 중입니다` | [event-registration-pending-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-registration-pending-email.html) |
+| `EVENT_REGISTRATION_DECLINED` | `[StudyClub] {{eventTitle}} 참가 결과를 안내드립니다` | [event-registration-declined-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-registration-declined-email.html) |
+| `EVENT_REGISTRATION_CANCELLED` | `[StudyClub] {{eventTitle}} 신청이 취소되었습니다` | [event-registration-cancelled-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-registration-cancelled-email.html) |
 
-- README 규칙상 본문 시안은 `proto/mail/templates/` 에 HTML 파일로 둔다. 다섯 조건은 지금 TS 문자열로만 있어 구현 PR 에서 HTML 파일로 옮기고 README 시안 표에 줄을 더한다 (이 스펙 PR 은 시안을 만들지 않는다). 다섯 시안은 preheader(받은편지함 미리보기 문구)가 비어 있어 그때 채운다
+- README 규칙상 본문 시안은 `proto/mail/templates/` 에 HTML 파일로 둔다. 다섯 조건의 문구는 `event-preview.ts` 의 `EVENT_CANCELLATION_TEMPLATE` · `EVENT_STATUS_TEMPLATES` 에서 옮겼고, 틀은 가입 메일 시안을 따르며 preheader(받은편지함 미리보기 문구)를 채웠다. 시안마다 위 「템플릿 검증」의 허용 변수만 쓴다
 - stage 는 Flyway 가 꺼져 있어 같은 본문을 손으로 한 번 넣는다 (README)
 
 ### 기존 백오피스 API 와 맞물리는 곳

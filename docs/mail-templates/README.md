@@ -9,15 +9,21 @@
 | `USER_REGISTERED` · `EMAIL` | 회원가입 직후 즉시 | `[StudyClub] 회원가입을 환영합니다` | `{{nickname}}` | [user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html) |
 | `STUDY_NOTICE` · `EMAIL` | 네비게이터가 반 공지를 보낼 때 | `[StudyClub] {{studyTitle}} 공지` | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | [study-notice-email.html](../../frontend/apps/playground/src/proto/mail/templates/study-notice-email.html) |
 | `FEEDBACK_REPLIED` · `EMAIL` | 문의에 첫 답변을 등록할 때 (수정은 제외) | `[StudyClub] 문의에 답변이 등록됐어요` | `{{nickname}}` `{{feedbackUrl}}` | [feedback-replied-email.html](../../frontend/apps/playground/src/proto/mail/templates/feedback-replied-email.html) |
-| `EVENT_ANNOUNCEMENT` · `EMAIL` (시안 전용) | 운영진이 행사 참가 확정자에게 안내할 때 | `[StudyClub] {{eventTitle}} 안내` | `{{nickname}}` `{{eventTitle}}` `{{eventSchedule}}` `{{participation}}` `{{notice}}` | [event-announcement-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-announcement-email.html) |
+| `EVENT_ANNOUNCEMENT` · `EMAIL` | 운영진이 행사 참가 확정자에게 안내 메일을 보낼 때 | `[StudyClub] {{eventTitle}} 안내` | `{{nickname}}` `{{eventTitle}}` `{{channel}}` `{{eventSchedule}}` `{{participation}}` `{{notice}}` (`{{notice}}` 필수) | [event-announcement-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-announcement-email.html) |
+| `EVENT_CANCELLATION` · `EMAIL` | 운영진이 행사 취소 뒤 취소 안내 메일을 보낼 때 | `[StudyClub] {{eventTitle}} 행사 취소 안내` | `{{nickname}}` `{{eventTitle}}` `{{notice}}` (`{{notice}}` 필수) | [event-cancellation-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-cancellation-email.html) |
+| `EVENT_REGISTRATION_CONFIRMED` · `EMAIL` | 행사 참가가 확정될 때 (자동 확정 접수 · 운영진 확정 · 확정 방식 전환) | `[StudyClub] {{eventTitle}} 참가가 확정되었습니다` | `{{nickname}}` `{{eventTitle}}` `{{eventSchedule}}` `{{channel}}` `{{participation}}` | [event-registration-confirmed-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-registration-confirmed-email.html) |
+| `EVENT_REGISTRATION_PENDING` · `EMAIL` | 운영진 확인 방식 행사에 신청이 접수될 때 | `[StudyClub] {{eventTitle}} 신청이 확인 대기 중입니다` | `{{nickname}}` `{{eventTitle}}` `{{eventSchedule}}` `{{channel}}` | [event-registration-pending-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-registration-pending-email.html) |
+| `EVENT_REGISTRATION_DECLINED` · `EMAIL` | 운영진 참가 불가 · 행사 종료 자동 전환 | `[StudyClub] {{eventTitle}} 참가 결과를 안내드립니다` | `{{nickname}}` `{{eventTitle}}` `{{eventSchedule}}` `{{channel}}` | [event-registration-declined-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-registration-declined-email.html) |
+| `EVENT_REGISTRATION_CANCELLED` · `EMAIL` | 운영진 개별 취소 · 크루 본인 취소 (행사 전체 취소는 제외) | `[StudyClub] {{eventTitle}} 신청이 취소되었습니다` | `{{nickname}}` `{{eventTitle}}` `{{eventSchedule}}` `{{channel}}` | [event-registration-cancelled-email.html](../../frontend/apps/playground/src/proto/mail/templates/event-registration-cancelled-email.html) |
 
 - 시안 원본은 `{{nickname}}` 이 그대로 있는 **DB 에 들어갈 본문**이다. 제목·치환 변수는 위 표를 참고한다
+- 행사 여섯 조건은 표의 변수만 쓸 수 있다. 서버가 템플릿을 저장할 때 다른 변수 · 괄호 안 공백(`{{ notice }}`) · 빠진 `{{notice}}` 를 거절한다 ([event-mail 「템플릿 검증」](../../specs/event-mail/spec.md#템플릿-검증-notification-스펙에-더한다))
 - 추가·수정 팝업의 **본문 편집 → 미리보기**로 HTML 을 확인한다. 치환 변수는 예시 값으로 바꾸지 않고 원문 그대로 표시한다. 회원가입·문의 회신 시안은 기본 예시로 불러오며, 다른 시안은 본문 편집 칸에 붙여 넣어 확인할 수 있다
 - 프로토에서 추가·저장한 템플릿은 브라우저에 보존된다. 실제 서비스에 반영할 HTML은 본문 편집 칸에서 복사해 시안 파일에 옮긴다. 브라우저 저장은 DB 반영이 아니다
 - 삭제한 기본 템플릿도 삭제 상태를 보존하며, 새로고침 때 자동으로 복구하지 않는다. 같은 조건의 템플릿을 직접 추가하면 다시 사용할 수 있다
 - playground 는 DB 를 읽지 않는다. DB 에 지금 무엇이 있는지는 백오피스 「알림 템플릿」에서 본다
 
-행사 안내는 알림 템플릿에 공통 HTML 프레임 하나를 등록하고, 행사 상세의 **안내 메일 보내기**에서 운영진이 내용만 입력한다. `{{notice}}`에 그 내용이 들어가며 참여 안내보다 먼저 표시한다. 행사 작성창은 등록된 첫 행사 안내 템플릿을 자동 사용한다. 작성창·이력의 미리보기에는 행사명·작성 내용·일정·대상별 참여 안내를 채우고 `{{nickname}}`만 원문으로 표시하며 참가자를 선택하지 않는다. 알림 템플릿 관리 자체의 미리보기는 모든 변수를 원문으로 유지한다. 워드마크·인사말·푸터는 공통 틀에 두고, 보내기를 누를 때 행사명·일정·참여 안내·닉네임을 채운 이력을 생성한다. 이 조건은 현재 Playground 전용이며 실제 API·DB 등록·발송은 구현하지 않았다.
+행사 안내는 알림 템플릿에 공통 HTML 프레임 하나를 등록하고, 행사 상세의 **안내 메일 보내기**에서 운영진이 내용만 입력한다. `{{notice}}`에 그 내용이 들어가며 참여 안내보다 먼저 표시한다. 행사 작성창은 등록된 첫 행사 안내 템플릿을 자동 사용한다. 작성창·이력의 미리보기에는 행사명·작성 내용·일정·대상별 참여 안내를 채우고 `{{nickname}}`만 원문으로 표시하며 참가자를 선택하지 않는다. 알림 템플릿 관리 자체의 미리보기는 모든 변수를 원문으로 유지한다. 워드마크·인사말·푸터는 공통 틀에 두고, 보내기를 누를 때 행사명·일정·참여 안내·닉네임을 채운 이력을 생성한다. 서버 구현과 여섯 조건의 기본 템플릿은 [event-mail 스펙](../../specs/event-mail/spec.md)과 `V70__event_mail_templates.sql` 이 맡는다 (아래 「행사 메일 적용」). 행사 여섯 조건은 같은 조건의 템플릿이 여럿이어도 ID 가 가장 작은 한 건만 쓴다.
 
 문의 회신 시안은 가입메일의 카드·버튼 디자인을 사용한다. 답변 본문·첨부 이미지·캡틴 메모는 메일에 넣지 않고, 로그인 후 해당 문의의 답변을 확인하도록 안내한다. `{{feedbackUrl}}` 은 `NOTIFICATION_SITE_BASE_URL` 과 `/ko/my/feedbacks/{id}` 로 만든 전체 URL 이다. `V52__feedback_replied_email.sql` 이 같은 HTML을 등록하고, 첫 회신 트랜잭션에서 알림을 예약한다.
 
@@ -80,6 +86,14 @@ HTML 본문은 아래 세 가지와 **같이** 나가야 깨지지 않는다 —
 - **stage 는 Flyway 가 꺼져 있다**(Hibernate `update`). V38 이 돌지 않으므로 같은 본문을 손으로 한 번 넣는다 — stage 에는 V14 시딩도 안 돌아
   행 자체가 없으므로 "없으면 INSERT, 있으면 UPDATE" 로 쓴다
 - 새 템플릿을 HTML 로 만들 때도 같은 순서다: playground `templates/` 에 시안 → 알림 템플릿 팝업의 미리보기로 확인 → `V{n}` 마이그레이션(작은따옴표는 두 번)
+
+## 행사 메일 적용 (V70)
+
+- 행사 메일 여섯 조건(`EVENT_ANNOUNCEMENT` · `EVENT_CANCELLATION` · `EVENT_REGISTRATION_PENDING` · `_CONFIRMED` · `_DECLINED` · `_CANCELLED`)의 첫 템플릿은 `backend/notification/src/main/resources/db/migration/V70__event_mail_templates.sql` 이 넣는다. 제목은 위 표, 본문은 표의 시안 HTML 과 같다
+- 스키마는 앞 번호가 맡는다: `V68__create_event_mail.sql`(domain, `EVENT_MAIL` · `EVENT_MAIL_RECIPIENT`) · `V69__notification_template_snapshot.sql`(notification, `NOTIFICATION.SUBJECT_TEMPLATE` · `BODY_TEMPLATE`)
+- 각 조건은 같은 조건의 `EMAIL` 템플릿이 이미 있으면 넣지 않는다(`INSERT … SELECT … WHERE NOT EXISTS`). 운영에서 고친 문구를 덮어쓰지 않는다
+- **stage 는 Flyway 가 꺼져 있다.** 테이블 · 컬럼은 Hibernate(`update`)가 만들고, 템플릿은 코드를 배포한 뒤 V70 SQL 을 손으로 한 번 실행한다. 같은 조건 템플릿이 있으면 건너뛰므로 두 번 실행해도 중복되지 않는다
+- 시안을 고치면 시안 파일 → 알림 템플릿 팝업 미리보기 → 새 `V{n}` 마이그레이션 순서다. 이미 적용한 V70 파일은 고치지 않는다
 
 ## 문의 회신 배포
 

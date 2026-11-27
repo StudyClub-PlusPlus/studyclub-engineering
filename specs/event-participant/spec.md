@@ -2,7 +2,7 @@
 
 > ERD: [CLUB_EVENT_REGISTRATION](../../docs/erd/CLUB_EVENT_REGISTRATION.md) (`V62__create_club_event_registration.sql`, 공통 신청 PR #516. 아래 「데이터 모델: CLUB_EVENT_REGISTRATION」), [ACCOUNT](../../docs/erd/ACCOUNT.md), [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md), 행사 테이블은 [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md) (V59)
 > 생성일: 2026-11-18 · 리뷰 반영: 2026-11-19 (PR #479 리뷰 P1~P6 · 탈퇴·메일 예약 동시성 · PR #509 행사 취소 행동 분석) · 확정: 2026-11-25 (PR #516 · #517 병합 뒤 `beta` 코드와 대조)
-> 상태: 스펙확정 — 구현 계획 [plan](./plan.md) · [tasks](./tasks.md)
+> 상태: 구현중 — 구현 계획 [plan](./plan.md) · [tasks](./tasks.md). BE 구현 PR(event-mail 과 한 PR). back-office-front 연결(FE PR #528)과 stage 확인 뒤 구현완료
 >
 > Story PRD:
 > - [캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다](../../01-planning/stories/captain-manage-events/PRD.md) (ST-037) §6 「참가자」 P1~P6 · §3 데이터와 처리 규칙 · 「행사 취소 행동 분석」 · 「후속 구현 합의」
@@ -18,10 +18,10 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/admin/events/{eventId}/registrations | 참가자 탭: 전체 신청 이력(재신청 전 취소 이력 포함), 최신 신청순. 이메일은 마스킹, 행별 처리 가능 여부 | O (ADMIN) | 스펙확정 |
-| GET | /api/admin/events/{eventId}/registrations/{registrationId} | 신청서: 신청 당시 질문 사본과 답변 | O (ADMIN) | 스펙확정 |
-| POST | /api/admin/events/{eventId}/registrations/{registrationId}/email-reveals | 신청자 한 명의 이메일 원본 보기. 볼 때마다 감사 로그 | O (ADMIN) | 스펙확정 |
-| PATCH | /api/admin/events/{eventId}/registrations/{registrationId} | 참가 확정 · 참가 불가 · 운영진 개별 취소 | O (ADMIN) | 스펙확정 |
+| GET | /api/admin/events/{eventId}/registrations | 참가자 탭: 전체 신청 이력(재신청 전 취소 이력 포함), 최신 신청순. 이메일은 마스킹, 행별 처리 가능 여부 | O (ADMIN) | 구현중 |
+| GET | /api/admin/events/{eventId}/registrations/{registrationId} | 신청서: 신청 당시 질문 사본과 답변 | O (ADMIN) | 구현중 |
+| POST | /api/admin/events/{eventId}/registrations/{registrationId}/email-reveals | 신청자 한 명의 이메일 원본 보기. 볼 때마다 감사 로그 | O (ADMIN) | 구현중 |
+| PATCH | /api/admin/events/{eventId}/registrations/{registrationId} | 참가 확정 · 참가 불가 · 운영진 개별 취소 | O (ADMIN) | 구현중 |
 
 행사 종료 때 남은 확인 대기 신청을 참가 불가로 바꾸는 일은 엔드포인트가 아니라 스케줄러다 (아래 「행사 종료 시 확인 대기 자동 전환」).
 
@@ -607,7 +607,7 @@ PR #516 · #517 이 `beta` 에 넣은 코드를 기준으로 나눈다. 이 스�
 | `declinePendingRegistrationsForEventEnd(eventId)` | 신규 (이 스펙) | `confirmPendingRegistrations` 와 같은 모양으로 `PENDING → DECLINED`, `STATUS_CHANGED_BY = NULL` → 바꾼 ID | 종료 자동 전환 |
 
 - 운영진 개별 처리(이 스펙의 PATCH)와 크루 제출·본인 취소(ST-038)는 포트가 아니라 신청 저장소·엔티티 메서드를 api 서비스가 직접 부른다. 포트는 「행사가 신청에게 묻고 시키는 것」만 담는다 (포트 주석과 같다)
-- `ClubEventRegistrationsConfirmedEvent` · `…CancelledEvent` 의 자동 메일 구독자는 아직 없다. [event-mail](../event-mail/spec.md#자동-메일-신청-상태-알림) 의 구독자가 이 두 이벤트와 이 스펙의 `…DeclinedEvent`, ST-038 의 `ClubEventRegistrationSubmittedEvent` 를 함께 받는다
+- [event-mail](../event-mail/spec.md#자동-메일-신청-상태-알림) 의 자동 메일 구독자(`ClubEventRegistrationEmailListener`)가 `ClubEventRegistrationsConfirmedEvent` · `…CancelledEvent` · 이 스펙의 `…DeclinedEvent` · ST-038 의 `ClubEventRegistrationSubmittedEvent` 를 함께 받는다
 
 ### 공통 신청 테이블 PR (P5) — 완료
 

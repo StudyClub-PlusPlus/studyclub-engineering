@@ -2,9 +2,14 @@ package com.studyclub.api.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyIterable;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 
 import com.studyclub.api.auth.JwtService;
+import com.studyclub.api.ops.OpsAlertNotifier;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.event.EventChannel;
@@ -76,6 +81,7 @@ class ClubEventRegistrationEmailIntegrationTest {
     @Autowired MissingRecorder recorder;
 
     @MockitoSpyBean NotificationRepository notificationRepository;
+    @MockitoSpyBean OpsAlertNotifier opsAlertNotifier;
 
     private Instant now;
 
@@ -276,6 +282,15 @@ class ClubEventRegistrationEmailIntegrationTest {
                             assertThat(event.clubEventId()).isEqualTo(eventId);
                             assertThat(event.registrationId()).isEqualTo(registrationId);
                         });
+        verify(opsAlertNotifier, timeout(5_000))
+                .send(
+                        eq(OpsAlertNotifier.Level.WARN),
+                        eq("행사 자동 메일 템플릿 없음"),
+                        argThat(
+                                fields ->
+                                        "EVENT_REGISTRATION_DECLINED".equals(fields.get("알림 조건"))
+                                                && String.valueOf(eventId)
+                                                        .equals(fields.get("행사 ID"))));
     }
 
     @Test
