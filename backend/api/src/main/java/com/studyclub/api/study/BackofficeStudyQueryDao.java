@@ -159,7 +159,9 @@ class BackofficeStudyQueryDao implements BackofficeStudyDao {
                                     RECRUIT_END_ASC,
                                     RECRUIT_END_DESC,
                                     APPLICANTS_ASC,
-                                    APPLICANTS_DESC ->
+                                    APPLICANTS_DESC,
+                                    TIMEZONE_ASC,
+                                    TIMEZONE_DESC ->
                                     true;
                             default -> false;
                         };
@@ -217,8 +219,10 @@ class BackofficeStudyQueryDao implements BackofficeStudyDao {
                                     + " WHEN 'BOOK_CLUB' THEN '북클럽' WHEN 'LANGUAGE' THEN '어학'"
                                     + " WHEN 'LIFESTYLE' THEN '라이프스타일' WHEN 'PRODUCT' THEN '기획 · PM'"
                                     + " WHEN 'BUSINESS' THEN '비즈니스' WHEN 'OTHER' THEN '기타' END";
+                    // 모집 시간대 방식 — 지역을 고름 → 전 지역 → 미정(모집 회차 없음 포함)
                     case "TIMEZONE" ->
-                            "CASE s.TIMEZONE WHEN 'KST' THEN 0 WHEN 'PST' THEN 1 WHEN 'BOTH' THEN 2 END";
+                            "CASE r.RECRUITMENT_TZ_MODE WHEN 'selected' THEN 0 WHEN 'all' THEN 1"
+                                    + " ELSE 2 END";
                     case "RECRUIT_START" -> "r.START_AT";
                     case "RECRUIT_END" -> "r.RECRUIT_DEADLINE_AT";
                     case "RECRUIT" -> RECRUIT_ORDER;

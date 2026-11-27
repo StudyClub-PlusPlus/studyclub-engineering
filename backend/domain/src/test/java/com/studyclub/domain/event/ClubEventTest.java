@@ -451,13 +451,35 @@ class ClubEventTest {
         }
 
         @Test
-        @DisplayName("허용한 네 시간대 밖은 400 timeZone (밴쿠버 포함)")
-        void timeZones() {
-            for (String zone : EventLimits.TIME_ZONES) {
+        @DisplayName("지역 이름이 있는 IANA 는 모두 받는다 (밴쿠버 · 런던 · 도쿄 포함)")
+        void timeZones_anyIana() {
+            for (String zone :
+                    List.of(
+                            "Asia/Seoul",
+                            "America/Vancouver",
+                            "Europe/London",
+                            "Asia/Tokyo",
+                            "Australia/Sydney")) {
                 assertThat(draft().timeZone(zone).build().timeZone()).isEqualTo(zone);
             }
-            assertInvalid(() -> draft().timeZone("America/Vancouver").build(), "timeZone");
-            assertInvalid(() -> draft().timeZone("UTC").build(), "timeZone");
+        }
+
+        @Test
+        @DisplayName("deprecated 링크는 정본 ID 로 저장한다")
+        void timeZones_normalized() {
+            assertThat(draft().timeZone("US/Pacific").build().timeZone())
+                    .isEqualTo("America/Los_Angeles");
+            assertThat(draft().timeZone("Asia/Calcutta").build().timeZone())
+                    .isEqualTo("Asia/Kolkata");
+        }
+
+        @Test
+        @DisplayName("오프셋만 있는 ID · 모르는 ID · 빈 값은 400 timeZone")
+        void timeZones_rejected() {
+            for (String zone :
+                    List.of("+09:00", "UTC+09:00", "GMT+9", "Etc/GMT-9", "Mars/Olympus", "")) {
+                assertInvalid(() -> draft().timeZone(zone).build(), "timeZone");
+            }
         }
 
         @Test

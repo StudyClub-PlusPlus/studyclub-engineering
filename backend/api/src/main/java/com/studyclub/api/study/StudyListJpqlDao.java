@@ -1,5 +1,6 @@
 package com.studyclub.api.study;
 
+import com.studyclub.domain.study.RecruitmentTimeZoneMode;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyPhase;
 import jakarta.persistence.EntityManager;
@@ -16,10 +17,10 @@ import org.springframework.stereotype.Repository;
 /**
  * {@link StudyListDao} 의 JPQL 구현 — <b>조건을 받아 쿼리를 조립</b>한다. 걸리지 않은 필터는 절 자체가 만들어지지 않는다.
  *
- * <p>판정(무엇이 모집 중인가·어느 시간대인가)은 도메인이 한다 — {@link Study#phase} · {@link Study#timezone} · {@link
- * Study#recruitStatus}. 여기 {@link #PHASE_RANK} 는 <b>같은 규칙을 DB 에서 한 번 더</b> 쓴 것이다. 페이지네이션 때문에 거르고
- * 정렬하는 일이 DB 에서 일어나야 해서 생긴 복제라, 한쪽을 고치면 다른 쪽도 고친다 — {@code StudyListIntegrationTest} 가 {@code
- * status} 필터 결과와 응답 {@code phase} 를 함께 본다.
+ * <p>판정(무엇이 모집 중인가·어느 모집 시간대에 맞는가)은 도메인이 한다 — {@link Study#phase} · {@code
+ * RecruitmentTimeZones#matches} · {@link Study#recruitStatus}. 여기 {@link #PHASE_RANK} 는 <b>같은 규칙을
+ * DB 에서 한 번 더</b> 쓴 것이다. 페이지네이션 때문에 거르고 정렬하는 일이 DB 에서 일어나야 해서 생긴 복제라, 한쪽을 고치면 다른 쪽도 고친다 — {@code
+ * StudyListIntegrationTest} 가 {@code status} 필터 결과와 응답 {@code phase} 를 함께 본다.
  */
 @Repository
 class StudyListJpqlDao implements StudyListDao {
@@ -66,13 +67,17 @@ class StudyListJpqlDao implements StudyListDao {
                     + ") THEN 0"
                     + " ELSE 2 END";
 
-    /** 고른 값이 없는 스터디만 일정 문구로 판정한다 — {@code Study#timezone()} 과 같은 순서. */
-    private static final String SCHEDULE_TIMEZONE =
-            "CASE"
-                    + " WHEN UPPER(s.schedule) LIKE '%PST%' OR UPPER(s.schedule) LIKE '%PDT%'"
-                    + "   THEN 'PST'"
-                    + " WHEN UPPER(s.schedule) LIKE '%KST%' THEN 'KST'"
-                    + " ELSE 'BOTH' END";
+    /**
+     * 모집 시간대 필터 — {@code RecruitmentTimeZones#matches} 와 같은 규칙. 모집 회차가 없거나 최신 회차가 {@code selected}
+     * 가 아니면(= {@code all} · {@code unset}) 통과, {@code selected} 면 그 지역이 있어야 통과.
+     */
+    private static final String RECRUITMENT_ZONE_MATCH =
+            "(NOT EXISTS (SELECT r0.id FROM StudyRecruitment r0 WHERE r0.studyId = s.id)"
+                    + " OR EXISTS (SELECT r.id FROM StudyRecruitment r WHERE r.id ="
+                    + " (SELECT MAX(r2.id) FROM StudyRecruitment r2 WHERE r2.studyId = s.id)"
+                    + " AND (r.timeZoneMode <> :selectedMode OR EXISTS (SELECT z.id FROM"
+                    + " StudyRecruitment r3 JOIN r3.zones z WHERE r3.id = r.id AND z.timeZone ="
+                    + " :recruitmentZone))))";
 
     /**
      * 공개 대상 — 숨김·작성 중(DRAFT)은 뺀다. 필터와 무관하게 항상 걸린다.
@@ -105,6 +110,21 @@ class StudyListJpqlDao implements StudyListDao {
         return bind(em.createQuery(jpql, Long.class), jpql, where).getSingleResult();
     }
 
+    @Override
+    public List<String> recruitmentZones() {
+        return em.createQuery(
+                        "SELECT DISTINCT z.timeZone FROM StudyRecruitment r JOIN r.zones z"
+                                + " JOIN Study s ON s.id = r.studyId"
+                                + " WHERE "
+                                + VISIBLE
+                                + " AND r.timeZoneMode = :selectedMode"
+                                + " AND r.id = (SELECT MAX(r2.id) FROM StudyRecruitment r2"
+                                + " WHERE r2.studyId = r.studyId)",
+                        String.class)
+                .setParameter("selectedMode", RecruitmentTimeZoneMode.SELECTED)
+                .getResultList();
+    }
+
     /** 조립 결과 — WHERE 절과 그 절이 쓰는 값. */
     private record Assembled(String jpql, Map<String, Object> params) {}
 
@@ -124,13 +144,10 @@ class StudyListJpqlDao implements StudyListDao {
                     "(LOWER(s.title) LIKE :keyword OR LOWER(s.oneLineSummary) LIKE :keyword)");
             params.put("keyword", keyword);
         }
-        if (filter.timezone() != null) {
-            conditions.add(
-                    "(s.timezone = :timezone OR (s.timezone IS NULL AND "
-                            + SCHEDULE_TIMEZONE
-                            + " = :scheduleTimezone))");
-            params.put("timezone", filter.timezone());
-            params.put("scheduleTimezone", filter.timezone().name());
+        if (filter.recruitmentZone() != null) {
+            conditions.add(RECRUITMENT_ZONE_MATCH);
+            params.put("selectedMode", RecruitmentTimeZoneMode.SELECTED);
+            params.put("recruitmentZone", filter.recruitmentZone());
         }
         if (filter.phase() != null) {
             conditions.add(PHASE_RANK + " = :phaseRank");

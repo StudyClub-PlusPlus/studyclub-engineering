@@ -246,13 +246,26 @@ class StudyTest {
     }
 
     @Test
-    @DisplayName("시간대: PDT·PST → PST, KST → KST, 표기 없음 → BOTH")
-    void timezone_fromSchedule() {
-        assertThat(scheduled("Thu 6:00 PM PDT").timezone()).isEqualTo(StudyTimezone.PST);
-        assertThat(scheduled("매주 목 20:00 pst").timezone()).isEqualTo(StudyTimezone.PST);
-        assertThat(scheduled("매주 화 21:00 KST").timezone()).isEqualTo(StudyTimezone.KST);
-        assertThat(scheduled("매주 화 21:00").timezone()).isEqualTo(StudyTimezone.BOTH);
-        assertThat(scheduled(null).timezone()).isEqualTo(StudyTimezone.BOTH);
+    @DisplayName("신청 가능: 마감 1ms 전까지만, 같은 순간부터는 불가 — 조회 시간대와 무관하게 UTC 순간 하나로 판정")
+    void canApply_deadlineInstant() {
+        var study = getStudy(StudyStatus.OPEN);
+        Instant deadline = Instant.parse("2026-09-16T14:59:59Z");
+
+        assertThat(study.canApply(0, deadline, null, deadline.minusMillis(1))).isTrue();
+        assertThat(study.canApply(0, deadline, null, deadline)).isFalse();
+        assertThat(study.canApply(0, deadline, null, deadline.plusMillis(1))).isFalse();
+    }
+
+    @Test
+    @DisplayName("신청 가능: 정원이 차거나 OPEN 이 아니면 불가, 마감 없음은 가능")
+    void canApply_capacityAndStatus() {
+        Instant now = Instant.parse("2026-09-01T00:00:00Z");
+        Instant deadline = now.plusSeconds(3600);
+
+        assertThat(getStudy(StudyStatus.OPEN).canApply(2, deadline, 2, now)).isFalse();
+        assertThat(getStudy(StudyStatus.OPEN).canApply(1, deadline, 2, now)).isTrue();
+        assertThat(getStudy(StudyStatus.OPEN).canApply(0, null, null, now)).isTrue();
+        assertThat(getStudy(StudyStatus.DRAFT).canApply(0, deadline, null, now)).isFalse();
     }
 
     @Test
@@ -310,10 +323,6 @@ class StudyTest {
 
     private Study phased(StudyStatus status, Instant startAt, Instant endAt) {
         return Study.builder().programId(1L).status(status).startAt(startAt).endAt(endAt).build();
-    }
-
-    private Study scheduled(String schedule) {
-        return Study.builder().programId(1L).status(StudyStatus.OPEN).schedule(schedule).build();
     }
 
     private Study getStudy(StudyStatus status) {

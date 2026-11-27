@@ -4,6 +4,7 @@ import static com.studyclub.domain.event.EventInputs.invalid;
 import static com.studyclub.domain.event.EventInputs.requireText;
 import static com.studyclub.domain.event.EventInputs.trim;
 
+import com.studyclub.common.time.TimeZoneIds;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
@@ -32,7 +33,7 @@ public record EventDraft(
         title = trim(title);
         summary = trim(summary);
         description = trim(description);
-        timeZone = trim(timeZone);
+        timeZone = TimeZoneIds.normalize(timeZone).orElse(trim(timeZone));
         startsAt = toMinute(startsAt);
         endsAt = toMinute(endsAt);
         deadlineAt = toMinute(deadlineAt);
@@ -82,8 +83,8 @@ public record EventDraft(
         requireText("title", title, EventLimits.TITLE_MAX);
         requireText("summary", summary, EventLimits.SUMMARY_MAX);
         requireText("description", description, EventLimits.DESCRIPTION_MAX);
-        if (timeZone == null || !EventLimits.TIME_ZONES.contains(timeZone)) {
-            throw invalid("timeZone", String.join(" · ", EventLimits.TIME_ZONES) + " 중 하나여야 합니다.");
+        if (!TimeZoneIds.isValid(timeZone)) {
+            throw invalid("timeZone", "지역 이름이 있는 IANA 시간대여야 합니다. 예: Asia/Seoul");
         }
         if (startsAt == null) {
             throw invalid("startsAt", "시작 시각을 입력해 주세요.");

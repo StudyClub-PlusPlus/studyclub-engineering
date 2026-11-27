@@ -2,11 +2,9 @@ package com.studyclub.api.study;
 
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
-import com.studyclub.domain.study.StudyTimezone;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.time.Instant;
 
 /**
  * 스터디 등록 요청.
@@ -25,7 +23,9 @@ import java.time.Instant;
  * <p>썸네일은 주소가 아니라 {@code POST /api/uploads/images} 가 준 번호({@code thumbnailFileId})로 받는다
  * (docs/flows/image-upload.md). 비우면 썸네일 없음.
  *
- * <p>{@code timezone} 은 KST·PST·BOTH 중 하나이고 비우면 미정이다. 그 밖의 값은 역직렬화에서 400.
+ * <p>{@code recruitmentTimeZones} 를 비우면 모집 시간대 미정({@code unset})이다. {@code recruitDeadline} ·
+ * {@code startAt} 은 순간 또는 날짜({@link StudyDateInput}) — 날짜면 요청의 {@code displayTimeZone} 으로 해석한다
+ * (specs/timezone/spec.md §7).
  */
 public record StudyCreateRequest(
         Long studyProgramId,
@@ -35,10 +35,10 @@ public record StudyCreateRequest(
         String description,
         @NotNull StudyCategory category,
         Long thumbnailFileId,
-        Instant recruitDeadline,
+        StudyDateInput recruitDeadline,
         String schedule,
-        StudyTimezone timezone,
+        RecruitmentTimeZonesRequest recruitmentTimeZones,
         Integer capacity,
-        Instant startAt,
+        StudyDateInput startAt,
         @Size(max = 2048) String discordChannelUrl,
         @Size(max = 2048) String driveUrl) {}

@@ -67,6 +67,7 @@ erDiagram
   STUDY ||--o| STUDY_DISCORD_LINK : "디스코드 연결 (없을 수 있음)"
   STUDY ||--o{ STUDY_RECRUITMENT : "모집"
   STUDY_RECRUITMENT ||--o{ STUDY_APPLICATION : "신청서"
+  STUDY_RECRUITMENT ||--o{ STUDY_RECRUITMENT_ZONE : "모집 지역"
   ACCOUNT ||--o{ STUDY_APPLICATION : ""
   STUDY_GROUP ||--o{ STUDY_PARTICIPANT : "명부"
   ACCOUNT ||--o{ STUDY_PARTICIPANT : ""
@@ -168,6 +169,7 @@ erDiagram
     varchar  REGION_GROUP         "KR / NA / ETC"
     varchar  SYSTEM_ROLE          "MEMBER / ADMIN"
     varchar  TIME_ZONE            "IANA"
+    varchar  ADMIN_DISPLAY_TIME_ZONE "백오피스 헤더 IANA"
     varchar  DISCORD_ID        UK "snowflake"
     varchar  DISCORD_HANDLE
     varchar  DISCORD_NICKNAME     "스터디클럽 서버 별명. 없으면 신청 시 필수 입력"
@@ -387,6 +389,13 @@ erDiagram
     datetime START_AT
     datetime RECRUIT_DEADLINE_AT     "계획된 모집 마감"
     int      RECRUITMENT_CAPACITY    "NULL 이면 제한 없음"
+    varchar  RECRUITMENT_TZ_MODE     "unset · all · selected"
+  }
+
+  STUDY_RECRUITMENT_ZONE {
+    bigint   ID                   PK
+    bigint   STUDY_RECRUITMENT_ID    "→ STUDY_RECRUITMENT (논리 FK)"
+    varchar  TIME_ZONE               "정본 IANA"
   }
 
   STUDY_APPLICATION {
@@ -533,6 +542,7 @@ erDiagram
 | 스터디 | [STUDY_GROUP](./STUDY_GROUP.md)                         | 분반 (요일·시간대별)           | —                                    |
 | 스터디 | [STUDY_MEETING](./STUDY_MEETING.md)                     | 회차 (분반의 N번째 모임)        | —                                    |
 | 모집  | [STUDY_RECRUITMENT](./STUDY_RECRUITMENT.md)             | 모집 회차 — 기수의 모집 기간/조건   | —                                    |
+| 모집  | [STUDY_RECRUITMENT_ZONE](./STUDY_RECRUITMENT_ZONE.md)   | 모집 회차가 고른 모집 지역(IANA)    | —                                    |
 | 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
 | 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 분반에 소속된 사람        | `STATUS`, `PARTICIPANT_ROLE`         |
 | 모집  | [STUDY_PARTICIPANT_GROUP_MOVE](./STUDY_PARTICIPANT_GROUP_MOVE.md) | 반 이동 기록 — 옛 반 · 새 반 이름과 시각 | —                                    |

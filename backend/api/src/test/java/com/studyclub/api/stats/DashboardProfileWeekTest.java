@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.studyclub.api.timezone.DisplayTimeZoneResolver;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
@@ -17,7 +18,8 @@ import org.junit.jupiter.api.Test;
 
 class DashboardProfileWeekTest {
     private final AccountRepository accounts = mock(AccountRepository.class);
-    private final DashboardTimeZoneResolver zones = new DashboardTimeZoneResolver(accounts);
+    private final DashboardTimeZoneResolver zones =
+            new DashboardTimeZoneResolver(new DisplayTimeZoneResolver(accounts));
     private final DashboardAttendanceAggregator attendance =
             mock(DashboardAttendanceAggregator.class);
     private final DashboardSummaryAggregateService summary =
@@ -60,17 +62,26 @@ class DashboardProfileWeekTest {
     }
 
     @Test
-    void sundayInBrowserBelongsToMondayInSeoulProfile() {
+    void headerQueryDecidesWeekEvenWhenProfileDiffers() {
         records(new Mark("2026-10-26T16:00:00Z", 0), new Mark("2026-11-01T16:00:00Z", 1));
         Instant now = Instant.parse("2026-11-02T02:00:00Z");
         profile("Asia/Seoul");
-        var seoul = summary.attendance(now, zones.resolve("America/New_York", 1L));
+        var header = summary.attendance(now, zones.resolve("America/New_York", 1L));
+        assertThat(header.attendanceComparison().currentWeekStart()).isEqualTo("2026-10-26");
+    }
+
+    @Test
+    void sundayInNewYorkBelongsToMondayInSeoulProfile() {
+        records(new Mark("2026-10-26T16:00:00Z", 0), new Mark("2026-11-01T16:00:00Z", 1));
+        Instant now = Instant.parse("2026-11-02T02:00:00Z");
+        profile("Asia/Seoul");
+        var seoul = summary.attendance(now, zones.resolve(null, 1L));
         assertThat(seoul.attendanceComparison().currentWeekStart()).isEqualTo("2026-11-02");
         assertThat(seoul.attendanceComparison().currentRate()).isEqualTo(100);
         assertThat(seoul.attendanceComparison().previousRate()).isZero();
 
         profile("America/New_York");
-        var newYork = summary.attendance(now, zones.resolve("America/New_York", 1L));
+        var newYork = summary.attendance(now, zones.resolve(null, 1L));
         assertThat(newYork.attendanceComparison().currentWeekStart()).isEqualTo("2026-10-26");
         assertThat(newYork.attendanceComparison().currentRate()).isEqualTo(50);
         assertThat(newYork.attendanceComparison().previousRate()).isNull();
@@ -86,8 +97,7 @@ class DashboardProfileWeekTest {
                 new Mark("2026-11-02T07:30:00Z", 1), // 직전 주 일요일 23:30 PST
                 new Mark("2026-11-02T08:00:00Z", 0)); // 이번 주 월요일 00:00 PST
         var result =
-                summary.attendance(
-                        Instant.parse("2026-11-02T09:00:00Z"), zones.resolve("Asia/Seoul", 1L));
+                summary.attendance(Instant.parse("2026-11-02T09:00:00Z"), zones.resolve(null, 1L));
         assertThat(result.attendanceComparison().previousRate()).isEqualTo(50);
         assertThat(result.attendanceComparison().currentRate()).isZero();
     }

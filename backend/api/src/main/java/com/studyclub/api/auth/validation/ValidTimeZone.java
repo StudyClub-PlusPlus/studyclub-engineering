@@ -7,12 +7,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** 시간대 정책이 고를 수 있다고 정한 IANA 타임존 ID 목록 중 하나인지 검사한다. 목록은 {@link TimeZoneValidator} 에 있다. */
+/** 지역 이름이 있는 IANA 시간대 ID 인지 검사한다. 오프셋만 있는 ID(+09:00 · GMT+9)는 거부한다 — specs/timezone/spec.md §3.1 */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = TimeZoneValidator.class)
 public @interface ValidTimeZone {
-    String message() default "고를 수 있는 타임존이 아닙니다";
+    String message() default "지역 이름이 있는 IANA 시간대여야 합니다";
 
     Class<?>[] groups() default {};
 

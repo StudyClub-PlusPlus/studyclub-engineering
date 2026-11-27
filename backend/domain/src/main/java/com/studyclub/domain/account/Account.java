@@ -2,6 +2,7 @@ package com.studyclub.domain.account;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.common.time.TimeZoneIds;
 import com.studyclub.domain.participant.ParticipationPeriod;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
@@ -68,6 +69,10 @@ public class Account extends BaseEntity {
 
     @Column(name = "TIME_ZONE", length = 64)
     private String timeZone;
+
+    /** 운영자 백오피스 헤더 표시 시간대. {@code null} 이면 프로필 → 서울 (specs/timezone §3.4). 프로필과 따로 바뀐다. */
+    @Column(name = "ADMIN_DISPLAY_TIME_ZONE", length = 64)
+    private String adminDisplayTimeZone;
 
     @Column(name = "DISCORD_ID", length = 64)
     private String discordId;
@@ -137,6 +142,20 @@ public class Account extends BaseEntity {
 
     public String getTimeZone() {
         return timeZone;
+    }
+
+    public String getAdminDisplayTimeZone() {
+        return adminDisplayTimeZone;
+    }
+
+    /** 헤더 표시 시간대 저장. 검증은 호출자(DTO)가 끝낸 값을 넘긴다. 프로필 {@code TIME_ZONE} 은 바꾸지 않는다. */
+    public void changeAdminDisplayTimeZone(String timeZone) {
+        this.adminDisplayTimeZone = canonicalTimeZone(timeZone);
+    }
+
+    // deprecated 링크(US/Pacific 등)는 정본으로 저장한다. 같은 지역이 두 이름으로 집계되지 않게
+    private static String canonicalTimeZone(String timeZone) {
+        return TimeZoneIds.normalize(timeZone).orElse(timeZone);
     }
 
     public String getDiscordId() {
@@ -234,7 +253,7 @@ public class Account extends BaseEntity {
             return false;
         }
         this.nickname = nickname;
-        this.timeZone = timeZone;
+        this.timeZone = canonicalTimeZone(timeZone);
         this.onboardingCompletedAt = now;
         return true;
     }
@@ -245,7 +264,7 @@ public class Account extends BaseEntity {
      */
     public void updateProfile(String nickname, String timeZone) {
         this.nickname = nickname;
-        this.timeZone = timeZone;
+        this.timeZone = canonicalTimeZone(timeZone);
     }
 
     /**

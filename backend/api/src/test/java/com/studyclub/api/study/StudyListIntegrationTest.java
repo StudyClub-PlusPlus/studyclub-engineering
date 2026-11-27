@@ -6,6 +6,7 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.RecruitmentTimeZones;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
@@ -15,7 +16,6 @@ import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
-import com.studyclub.domain.study.StudyTimezone;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -34,11 +34,12 @@ import org.springframework.http.HttpStatus;
  * 픽스처 — 공개 목록에 나오는 4건 + 나오지 않는 DRAFT 1건.
  *
  * <ul>
- *   <li>데일리 리트코드: ALGORITHM · 모집 중 · 마감 2일 후(종료 임박) · KST · 참여 2
- *   <li>Spring 딥다이브: SOFTWARE · 진행 중 · PDT · 참여 5
- *   <li>지난 알고리즘: ALGORITHM · 종료 · 시간대 표기 없음
- *   <li>북클럽: BOOK_CLUB · 모집 중 · 상시 모집(마감 없음) · 소개에 "독서"
- *   <li>준비 중 스터디: DRAFT — 목록 제외
+ *   <li>데일리 리트코드: ALGORITHM · 모집 중 · 마감 2일 후(종료 임박) · 모집 한국 + LA · 참여 2
+ *   <li>Spring 딥다이브: SOFTWARE · 진행 중 · 모집 토론토 · 참여 5
+ *   <li>지난 알고리즘: ALGORITHM · 종료 · 모집 전 지역(all)
+ *   <li>북클럽: BOOK_CLUB · 모집 중 · 상시 모집(마감 없음) · 소개에 "독서" · 모집 미정(unset)
+ *   <li>준비 중 스터디: DRAFT — 목록 제외 · 모집 런던 (필터 후보에도 없어야 한다)
+ *   <li>영어 회화 3기 · 4기: 같은 프로그램. 3기 모집 한국, 4기 미정
  * </ul>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -67,7 +68,10 @@ class StudyListIntegrationTest {
                         .schedule("매주 화 21:00 KST")
                         .startAt(now.plus(10, ChronoUnit.DAYS))
                         .build();
-        save(leetcode, now.plus(2, ChronoUnit.DAYS));
+        save(
+                leetcode,
+                now.plus(2, ChronoUnit.DAYS),
+                RecruitmentTimeZones.of("selected", List.of("Asia/Seoul", "America/Los_Angeles")));
         participants(leetcode, ParticipantStatus.ACTIVE, 2);
 
         var spring =
@@ -76,7 +80,10 @@ class StudyListIntegrationTest {
                         .startAt(now.minus(5, ChronoUnit.DAYS))
                         .endAt(now.plus(30, ChronoUnit.DAYS))
                         .build();
-        save(spring, now.minus(6, ChronoUnit.DAYS));
+        save(
+                spring,
+                now.minus(6, ChronoUnit.DAYS),
+                RecruitmentTimeZones.of("selected", List.of("America/Toronto")));
         participants(spring, ParticipantStatus.ACTIVE, 5);
 
         var closed =
@@ -84,7 +91,7 @@ class StudyListIntegrationTest {
                         .startAt(now.minus(60, ChronoUnit.DAYS))
                         .endAt(now.minus(10, ChronoUnit.DAYS))
                         .build();
-        save(closed, now.minus(70, ChronoUnit.DAYS));
+        save(closed, now.minus(70, ChronoUnit.DAYS), RecruitmentTimeZones.of("all", null));
         participants(closed, ParticipantStatus.COMPLETED, 3);
 
         var bookClub =
@@ -92,7 +99,10 @@ class StudyListIntegrationTest {
         save(bookClub, null);
 
         var draft = study("준비 중 스터디", "아직 비공개", StudyCategory.ALGORITHM, StudyStatus.DRAFT).build();
-        save(draft, now.plus(5, ChronoUnit.DAYS));
+        save(
+                draft,
+                now.plus(5, ChronoUnit.DAYS),
+                RecruitmentTimeZones.of("selected", List.of("Europe/London")));
 
         // 같은 프로그램의 두 기수 — 3기는 진행 중, 4기는 모집 중. 둘 다 목록에 나와야 한다
         var program =
@@ -103,7 +113,10 @@ class StudyListIntegrationTest {
                         .startAt(now.minus(3, ChronoUnit.DAYS))
                         .endAt(now.plus(30, ChronoUnit.DAYS))
                         .build();
-        save(season3, now.minus(10, ChronoUnit.DAYS));
+        save(
+                season3,
+                now.minus(10, ChronoUnit.DAYS),
+                RecruitmentTimeZones.of("selected", List.of("Asia/Seoul")));
         var season4 =
                 seasonOf(program.getId(), "영어 회화 4기", StudyCategory.LANGUAGE)
                         .startAt(now.plus(40, ChronoUnit.DAYS))
@@ -135,15 +148,21 @@ class StudyListIntegrationTest {
     }
 
     private void save(Study study, Instant deadline) {
+        save(study, deadline, RecruitmentTimeZones.UNSET);
+    }
+
+    private void save(Study study, Instant deadline, RecruitmentTimeZones timeZones) {
         studyRepo.save(study);
-        recruitmentRepo.save(
+        var recruitment =
                 StudyRecruitment.builder()
                         .studyId(study.getId())
                         .title("모집")
                         .description("모집 설명")
                         .startAt(Instant.now().minus(80, ChronoUnit.DAYS))
                         .recruitDeadlineAt(deadline)
-                        .build());
+                        .build();
+        recruitment.changeTimeZones(timeZones);
+        recruitmentRepo.save(recruitment);
     }
 
     private void participants(Study study, ParticipantStatus status, int count) {
@@ -212,30 +231,60 @@ class StudyListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 시간대 필터는 일정 문구의 KST · PST(PDT) 표기로 판정하고, 표기가 없으면 동시 모집이다")
-    void filterByTimezone() {
-        assertThat(titles(get("?timezone=KST"))).containsExactly("데일리 리트코드");
-        assertThat(titles(get("?timezone=PST"))).containsExactly("Spring 딥다이브");
-        assertThat(titles(get("?timezone=BOTH")))
-                .containsExactlyInAnyOrder("지난 알고리즘", "북클럽", "영어 회화 3기", "영어 회화 4기");
+    @DisplayName("성공 - 모집 시간대 필터: 한국 + LA 스터디는 한국 · LA 양쪽에 나오고, all · unset 은 어느 지역에도 나온다")
+    void filterByRecruitmentZone() {
+        assertThat(titles(get("?recruitmentZone=Asia/Seoul")))
+                .containsExactlyInAnyOrder("데일리 리트코드", "지난 알고리즘", "북클럽", "영어 회화 3기", "영어 회화 4기");
+        assertThat(titles(get("?recruitmentZone=America/Los_Angeles")))
+                .containsExactlyInAnyOrder("데일리 리트코드", "지난 알고리즘", "북클럽", "영어 회화 4기");
+        assertThat(titles(get("?recruitmentZone=America/Toronto")))
+                .containsExactlyInAnyOrder("Spring 딥다이브", "지난 알고리즘", "북클럽", "영어 회화 4기");
+        assertThat(titles(get("?recruitmentZone=Asia/Tokyo")))
+                .containsExactlyInAnyOrder("지난 알고리즘", "북클럽", "영어 회화 4기");
     }
 
     @Test
-    @DisplayName("성공 - 운영자가 고른 시간대(TIMEZONE)가 있으면 일정 문구보다 앞선다 — 필터와 응답이 같은 값을 쓴다")
-    void selectedTimezoneOverridesSchedule() {
-        // 일정 문구는 KST 지만 운영자가 PST 로 골랐다
-        var leetcode =
-                studyRepo.findAll().stream()
-                        .filter(s -> s.getTitle().equals("데일리 리트코드"))
-                        .findFirst()
-                        .orElseThrow();
-        leetcode.changeTimezone(StudyTimezone.PST);
-        studyRepo.save(leetcode);
+    @DisplayName("성공 - 모집 시간대 필터: deprecated 링크는 정본으로 읽고, 모집 회차가 없는 스터디는 미정처럼 나온다")
+    void filterByRecruitmentZone_aliasAndNoRecruitment() {
+        studyRepo.save(
+                study("모집 회차 없음", "회차 없이 공개", StudyCategory.OTHER, StudyStatus.OPEN).build());
 
-        assertThat(titles(get("?timezone=KST"))).isEmpty();
-        assertThat(titles(get("?timezone=PST")))
-                .containsExactlyInAnyOrder("데일리 리트코드", "Spring 딥다이브");
-        assertThat(items(get("?keyword=리트코드")).getFirst()).containsEntry("timezone", "PST");
+        assertThat(titles(get("?recruitmentZone=US/Pacific")))
+                .containsExactlyInAnyOrder("데일리 리트코드", "지난 알고리즘", "북클럽", "영어 회화 4기", "모집 회차 없음");
+        assertThat(get("?recruitmentZone=US/Pacific")).containsEntry("total", 5);
+    }
+
+    @Test
+    @DisplayName("실패 - 모집 시간대 필터가 오프셋 · 모르는 값이면 400")
+    void filterByRecruitmentZone_invalid() {
+        for (String zone : List.of("%2B09:00", "KST", "Mars/Olympus")) {
+            var response = rest.getForEntity("/api/studies?recruitmentZone=" + zone, Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        }
+    }
+
+    @Test
+    @DisplayName("성공 - 필터 후보: 공개 스터디의 selected 지역만 표시 순서로, 조합 · DRAFT · all · unset 은 후보를 만들지 않는다")
+    @SuppressWarnings("unchecked")
+    void recruitmentZoneCandidates() {
+        var response = rest.getForEntity("/api/studies/recruitment-zones", Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        var items = (List<Map<String, Object>>) response.getBody().get("items");
+        assertThat(items)
+                .containsExactly(
+                        Map.of("timeZone", "Asia/Seoul", "recruitmentZoneShortLabel", "한국"),
+                        Map.of(
+                                "timeZone",
+                                "America/Los_Angeles",
+                                "recruitmentZoneShortLabel",
+                                "미국 · LA"),
+                        Map.of(
+                                "timeZone",
+                                "America/Toronto",
+                                "recruitmentZoneShortLabel",
+                                "캐나다 · 토론토"));
     }
 
     @Test
@@ -266,8 +315,45 @@ class StudyListIntegrationTest {
                 .containsEntry("category", "ALGORITHM")
                 .containsEntry("studyKind", "STUDY")
                 .containsEntry("phase", "CLOSED")
-                .containsEntry("timezone", "BOTH")
-                .containsKeys("thumbnailUrl", "schedule", "endAt", "closingSoon");
+                .containsEntry("recruitmentTimeZones", Map.of("mode", "all", "zones", List.of()))
+                .containsEntry("recruitmentTimeZoneLabel", "모든 시간대에서 모집")
+                .containsEntry("canApply", false)
+                .containsKeys(
+                        "thumbnailUrl",
+                        "schedule",
+                        "endAt",
+                        "closingSoon",
+                        "recruitDeadlineFormatted",
+                        "startAtFormatted")
+                .doesNotContainKey("timezone");
+        var leetcode = items(get("?keyword=리트코드")).getFirst();
+        assertThat(leetcode)
+                .containsEntry(
+                        "recruitmentTimeZones",
+                        Map.of(
+                                "mode",
+                                "selected",
+                                "zones",
+                                List.of("Asia/Seoul", "America/Los_Angeles")))
+                .containsEntry("recruitmentTimeZoneLabel", "한국 / 미국 · LA")
+                .containsEntry("canApply", true);
+    }
+
+    @Test
+    @DisplayName("성공 - 시각 표시: 비로그인은 timeZone Query, 없으면 서울. 마감은 dDay 와 약칭을 함께 준다")
+    @SuppressWarnings("unchecked")
+    void formattedDeadline() {
+        assertThat(get("?keyword=리트코드")).containsEntry("displayTimeZone", "Asia/Seoul");
+
+        var body = get("?keyword=리트코드&timeZone=America/Toronto");
+        assertThat(body).containsEntry("displayTimeZone", "America/Toronto");
+        var deadline = (Map<String, Object>) items(body).getFirst().get("recruitDeadlineFormatted");
+        assertThat(deadline)
+                .containsEntry("displayTimeZone", "America/Toronto")
+                .containsEntry("clock24", true)
+                .containsKeys("instant", "localDate", "localTime", "abbreviation", "offsetLabel")
+                .containsKey("dDay");
+        assertThat((Integer) deadline.get("dDay")).isBetween(1, 3);
     }
 
     @Test

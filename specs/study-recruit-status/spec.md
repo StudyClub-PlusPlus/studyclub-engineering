@@ -5,6 +5,7 @@
 > 생성일: 2026-09-15
 > 상태: 구현완료 (`UPCOMING` 은 없다 — 예약 공개가 없어 모집 예정 판정이 필요 없다)
 > 이슈: Notion 51 「[기능] 모집 마감 (정원 도달 or 기한 만료 시 자동)」
+> 시간대 확장 (2026-11-27 BE 반영): 판정은 그대로 **저장된 UTC 순간 하나**(`now >= RECRUIT_DEADLINE_AT`)로 한다 — 조회자 시간대를 보지 않는다. 목록 · 상세에 같은 판정의 `canApply`(= `recruitStatus == RECRUITING`, `Study.canApply`)와 조회 시간대로 포맷한 `recruitDeadlineFormatted`(`FormattedInstant` + `dDay`)를 더했다. `dDay` 는 표시용이라 판정에 쓰지 않고 마감 뒤에는 null 이다. 레거시 마감 UTC 는 이관하지 않는다 ([timezone §3.3 · §4.5](../timezone/spec.md)).
 
 ## WHAT
 

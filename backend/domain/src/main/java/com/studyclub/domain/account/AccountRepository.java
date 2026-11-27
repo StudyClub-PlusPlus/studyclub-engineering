@@ -40,6 +40,16 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     /** 온보딩 완료 회원 수 — 대시보드 커뮤니티 멤버 (specs/dashboard/spec.md 2-4). */
     long countByOnboardingCompletedAtIsNotNull();
 
+    /**
+     * 온보딩을 마친 계정의 {@code TIME_ZONE} 별 인원 — {@code [timeZone, count]}. 탈퇴한 계정은 행이 지워져 들어오지 않는다
+     * (specs/timezone/spec.md §6). 값 검증 · 정규화는 호출자가 한다.
+     */
+    @Query(
+            "SELECT a.timeZone, COUNT(a) FROM Account a"
+                    + " WHERE a.onboardingCompletedAt IS NOT NULL AND a.timeZone IS NOT NULL"
+                    + " GROUP BY a.timeZone")
+    List<Object[]> countOnboardedByTimeZone();
+
     /** 웹 기준 captain 의 디스코드 ID — 디스코드를 연동한 ADMIN (specs/discord-role-sync/spec.md). */
     @Query(
             "select a.discordId from Account a where a.systemRole ="

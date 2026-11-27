@@ -298,12 +298,17 @@ class AdminStudyQueryIntegrationTest {
                     Timestamp.from(AS_OF));
             jdbc.update("UPDATE STUDY SET CREATED_BY=? WHERE ID=?", 990_000 + i, i);
         }
-        jdbc.update("UPDATE STUDY SET TIMEZONE='BOTH' WHERE ID=1");
-        jdbc.update("UPDATE STUDY SET TIMEZONE='KST' WHERE ID=2");
-        jdbc.update("UPDATE STUDY SET TIMEZONE='PST' WHERE ID=3");
         recruitment(1, 1, AS_OF.plusSeconds(200), null);
         recruitment(2, 2, null, null);
         recruitment(3, 3, AS_OF.plusSeconds(100), null);
+        // 모집 시간대 정렬 — selected(2) → all(3) → unset(1)
+        jdbc.update("UPDATE STUDY_RECRUITMENT SET RECRUITMENT_TZ_MODE='selected' WHERE STUDY_ID=2");
+        jdbc.update(
+                "INSERT INTO STUDY_RECRUITMENT_ZONE (STUDY_RECRUITMENT_ID,TIME_ZONE,CREATED_AT,UPDATED_AT)"
+                        + " VALUES (2,'Asia/Seoul',?,?)",
+                Timestamp.from(AS_OF),
+                Timestamp.from(AS_OF));
+        jdbc.update("UPDATE STUDY_RECRUITMENT SET RECRUITMENT_TZ_MODE='all' WHERE STUDY_ID=3");
         // APPLICANTS 정렬은 명부 기준 (결정 D4-A) — 스터디 1: 2명, 스터디 2: 0명, 스터디 3: 1명
         group(1, 1);
         group(3, 3);

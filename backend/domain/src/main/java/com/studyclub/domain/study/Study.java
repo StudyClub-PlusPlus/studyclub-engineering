@@ -14,7 +14,6 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.regex.Pattern;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -86,11 +85,6 @@ public class Study extends BaseEntity {
     @Column(length = 255)
     private String schedule;
 
-    /** 운영자가 고른 기준 시간대. {@code null} = 미정 — 판정은 {@link #timezone()}. */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "TIMEZONE", length = 10)
-    private StudyTimezone timezone;
-
     @Column(name = "PUBLISH_AT")
     private Instant publishAt;
 
@@ -103,8 +97,6 @@ public class Study extends BaseEntity {
     private Long ownerCaptainId;
 
     private static final long CLOSING_SOON_DAYS = 3;
-    private static final Pattern PST_PATTERN = Pattern.compile("PST|PDT", Pattern.CASE_INSENSITIVE);
-    private static final Pattern KST_PATTERN = Pattern.compile("KST", Pattern.CASE_INSENSITIVE);
 
     public void update(
             String title,
@@ -117,11 +109,6 @@ public class Study extends BaseEntity {
         if (description != null) this.description = description;
         if (category != null) this.category = category;
         if (schedule != null) this.schedule = schedule;
-    }
-
-    /** 기준 시간대. {@code null} 이면 미정으로 되돌린다. */
-    public void changeTimezone(StudyTimezone timezone) {
-        this.timezone = timezone;
     }
 
     /** 진행 시작일. {@code null} 이면 미정. */
@@ -196,6 +183,15 @@ public class Study extends BaseEntity {
     }
 
     /**
+     * 지금 신청할 수 있는가 — 마감 UTC 순간 · 정원 · 공개 상태만 본다. 조회자 시간대는 보지 않아 서울 · LA · 토론토에서 같은 값이다 (PRD §6).
+     */
+    public boolean canApply(
+            long crewCount, Instant recruitDeadlineAt, Integer recruitmentCapacity, Instant asOf) {
+        return recruitStatus(crewCount, recruitDeadlineAt, recruitmentCapacity, asOf)
+                == RecruitStatus.RECRUITING;
+    }
+
+    /**
      * 목록 탭 단계를 계산한다. {@code DRAFT} 는 공개 목록에 나오지 않아 {@code null} 이다.
      *
      * <p>판정 순서: 종료(운영자 종료 또는 {@code END_AT} 경과) → 진행 중({@code START_AT} 경과) → 모집 중(모집 상태가 {@code
@@ -217,28 +213,6 @@ public class Study extends BaseEntity {
                         == RecruitStatus.RECRUITING
                 ? StudyPhase.RECRUITING
                 : StudyPhase.CLOSED;
-    }
-
-    /**
-     * 목록·필터가 쓰는 진행 시간대. 운영자가 고른 값({@code TIMEZONE})이 있으면 그대로 쓴다. 없으면(컬럼 전 데이터) 일정 문구({@code
-     * SCHEDULE})의 표기로 판정한다 — PST·PDT 가 있으면 PST, KST 가 있으면 KST, 둘 다 없으면 두 지역 동시 모집이다.
-     *
-     * <p>목록 필터({@code StudyListJpqlDao.TIMEZONE})가 같은 순서로 판정한다 — 한쪽만 고치면 필터와 표시가 어긋난다.
-     */
-    public StudyTimezone timezone() {
-        if (timezone != null) {
-            return timezone;
-        }
-        if (schedule == null) {
-            return StudyTimezone.BOTH;
-        }
-        if (PST_PATTERN.matcher(schedule).find()) {
-            return StudyTimezone.PST;
-        }
-        if (KST_PATTERN.matcher(schedule).find()) {
-            return StudyTimezone.KST;
-        }
-        return StudyTimezone.BOTH;
     }
 
     /** 담당 캡틴인가 — {@code STUDY.OWNER_CAPTAIN_ID} 하나로 판정한다 (POL-0001). 비어 있으면 아무도 아니다. */

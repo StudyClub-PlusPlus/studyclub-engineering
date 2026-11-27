@@ -4,6 +4,7 @@ import com.studyclub.api.auth.dto.AccountDtos.MarketingConsentView;
 import com.studyclub.api.auth.dto.AccountDtos.UpdateProfileRequest;
 import com.studyclub.api.auth.dto.AuthDtos.AccountSelfView;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
+import com.studyclub.api.timezone.MemberTimeZonesChanged;
 import com.studyclub.api.upload.UploadService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
@@ -16,7 +17,9 @@ import com.studyclub.domain.storage.StorageObject;
 import com.studyclub.domain.storage.StoragePurpose;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 import java.util.Optional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,14 +31,17 @@ public class AccountProfileService {
     private final AccountRepository accountRepository;
     private final AccountConsentRepository accountConsentRepository;
     private final UploadService uploadService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public AccountProfileService(
             AccountRepository accountRepository,
             AccountConsentRepository accountConsentRepository,
-            UploadService uploadService) {
+            UploadService uploadService,
+            ApplicationEventPublisher applicationEventPublisher) {
         this.accountRepository = accountRepository;
         this.accountConsentRepository = accountConsentRepository;
         this.uploadService = uploadService;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -60,12 +66,17 @@ public class AccountProfileService {
             throw new BusinessException(ErrorCode.CONFLICT, "이미 사용 중인 닉네임입니다.");
         }
 
+        String previousTimeZone = account.getTimeZone();
         account.updateProfile(nickname, request.timeZone());
         try {
             accountRepository.saveAndFlush(account);
         } catch (DataIntegrityViolationException e) {
             // 검사와 flush 사이에 다른 계정이 같은 닉네임을 먼저 가져간 경우의 마지막 방어선.
             throw new BusinessException(ErrorCode.CONFLICT, "이미 사용 중인 닉네임입니다.");
+        }
+        if (account.getOnboardingCompletedAt() != null
+                && !Objects.equals(previousTimeZone, account.getTimeZone())) {
+            applicationEventPublisher.publishEvent(new MemberTimeZonesChanged(accountId));
         }
         return AccountSelfView.from(account);
     }

@@ -2,8 +2,10 @@ package com.studyclub.api.study;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.common.time.TimeZoneLabels;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.RecruitmentTimeZones;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
@@ -41,11 +43,16 @@ public class StudyListService {
         this.studyProgramRepository = studyProgramRepository;
     }
 
-    public StudyListResponse list(StudyListFilter filter, int offset, int limit) {
+    /**
+     * @param displayTimeZone {@code *Formatted} 를 만들 시간대 — 컨트롤러가 정한다
+     */
+    public StudyListResponse list(
+            StudyListFilter filter, int offset, int limit, String displayTimeZone) {
+        Instant now = Instant.now();
         List<Study> studies = studyListDao.search(filter, offset, limit);
         long total = studyListDao.count(filter);
         if (studies.isEmpty()) {
-            return new StudyListResponse(List.of(), total, offset, limit);
+            return new StudyListResponse(List.of(), total, offset, limit, displayTimeZone);
         }
 
         List<Long> studyIds = studies.stream().map(Study::getId).toList();
@@ -76,6 +83,13 @@ public class StudyListService {
                                         StudyRecruitment::getStudyId,
                                         StudyRecruitment::getRecruitmentCapacity));
 
+        // 모집 회차 지역은 @BatchSize 로 한 번에 읽힌다
+        Map<Long, RecruitmentTimeZones> timeZones =
+                latestRecruitments.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        StudyRecruitment::getStudyId, StudyRecruitment::timeZones));
+
         Map<Long, StudyProgram> programs =
                 studyProgramRepository
                         .findAllByIdIn(
@@ -101,9 +115,24 @@ public class StudyListService {
                                                         .getStudyKind(),
                                                 crewCounts.getOrDefault(study.getId(), 0L),
                                                 deadlines.get(study.getId()),
-                                                capacities.get(study.getId())))
+                                                capacities.get(study.getId()),
+                                                timeZones.getOrDefault(
+                                                        study.getId(), RecruitmentTimeZones.UNSET),
+                                                displayTimeZone,
+                                                now))
                         .toList();
 
-        return new StudyListResponse(items, total, offset, limit);
+        return new StudyListResponse(items, total, offset, limit, displayTimeZone);
+    }
+
+    /**
+     * 사이트 목록의 모집 시간대 필터 후보 — 공개 스터디 전체(종료 포함)의 {@code selected} 지역. 다른 필터 · 페이지와 무관하다
+     * (specs/timezone/spec.md §3.2).
+     */
+    public RecruitmentZoneCandidatesResponse recruitmentZoneCandidates() {
+        return new RecruitmentZoneCandidatesResponse(
+                TimeZoneLabels.sorted(studyListDao.recruitmentZones()).stream()
+                        .map(RecruitmentZoneCandidatesResponse.Item::of)
+                        .toList());
     }
 }

@@ -319,13 +319,30 @@ class AdminClubEventIntegrationTest {
     }
 
     @Test
+    @DisplayName("등록 — 행사 기준 시간대는 네 개 제한 없이 전 IANA 를 받고, deprecated 링크는 정본 ID 로 저장한다")
+    void createAcceptsAnyIanaTimeZone() {
+        Map<String, Object> vancouver = body();
+        vancouver.put("timeZone", "America/Vancouver");
+        Map<String, Object> pacific = body();
+        pacific.put("timeZone", "US/Pacific");
+
+        ResponseEntity<Map> first = send(HttpMethod.POST, PATH, ADMIN_ID, vancouver, newKey());
+        ResponseEntity<Map> second = send(HttpMethod.POST, PATH, ADMIN_ID, pacific, newKey());
+
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(first.getBody()).containsEntry("timeZone", "America/Vancouver");
+        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(second.getBody()).containsEntry("timeZone", "America/Los_Angeles");
+    }
+
+    @Test
     @DisplayName("등록 — 필드 검증 400 은 실패한 필드 이름을 errorMessage 앞에 담고 아무것도 만들지 않는다")
     void createValidation() {
         Map<String, Consumer<Map<String, Object>>> cases = new LinkedHashMap<>();
         cases.put("title", b -> b.put("title", "가".repeat(61)));
         cases.put("summary", b -> b.put("summary", "   "));
         cases.put("description", b -> b.put("description", "가".repeat(5_001)));
-        cases.put("timeZone", b -> b.put("timeZone", "America/Vancouver"));
+        cases.put("timeZone", b -> b.put("timeZone", "UTC+09:00"));
         cases.put("startsAt", b -> b.put("startsAt", "2026-12-05 10:00"));
         cases.put("endsAt", b -> b.put("endsAt", b.get("startsAt")));
         cases.put("deadlineAt", b -> b.put("deadlineAt", iso(now.minus(Duration.ofMinutes(1)))));

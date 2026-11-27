@@ -259,7 +259,7 @@ class AdminStatsIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - crew-timezones 는 KST·ET 인원을 나눈다")
+    @DisplayName("성공 - crew-timezones 는 IANA 별로 나누고 5칸을 넘지 않는다. 합계는 totalCrew")
     void crewTimezones() {
         var response =
                 rest.exchange(
@@ -273,9 +273,12 @@ class AdminStatsIntegrationTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> groups =
                 (List<Map<String, Object>>) response.getBody().get("timeZoneGroups");
-        assertThat(groups).hasSize(4);
-        assertThat(groupCount(groups, "KST")).isGreaterThanOrEqualTo(1);
-        assertThat(groupCount(groups, "ET")).isGreaterThanOrEqualTo(1);
+        assertThat(groups).hasSizeLessThanOrEqualTo(5);
+        assertThat(groupCount(groups, "Asia/Seoul")).isGreaterThanOrEqualTo(1);
+        assertThat(groupCount(groups, "America/New_York")).isGreaterThanOrEqualTo(1);
+        assertThat(groups.stream().mapToLong(g -> ((Number) g.get("count")).longValue()).sum())
+                .isEqualTo(((Number) response.getBody().get("totalCrew")).longValue());
+        assertThat(groups).extracting(g -> g.get("code")).doesNotContain("KST", "ET", "UNKNOWN");
     }
 
     @Test
@@ -300,7 +303,7 @@ class AdminStatsIntegrationTest {
         @SuppressWarnings("unchecked")
         List<?> points = (List<?>) trend.getBody().get("points");
         assertThat(points).hasSize(12);
-        assertThat(trend.getBody()).containsEntry("timeZone", "Asia/Seoul");
+        assertThat(trend.getBody()).containsEntry("timeZone", "UTC");
     }
 
     @ParameterizedTest
@@ -311,8 +314,8 @@ class AdminStatsIntegrationTest {
                 "/study-board?view=RECRUITMENT&timeZone=America/Toronto",
                 "/attendance-trend?weeks=12&timeZone=America/Toronto"
             })
-    @DisplayName("현재 프로필 우선 — 프로필 변경·누락·무효 값은 다음 요청에서 반영한다")
-    void endpointsUseCurrentProfileThenBrowser(String path) {
+    @DisplayName("헤더 우선 — 유효한 timeZone Query 는 프로필로 덮어쓰지 않고, 없으면 저장된 헤더 → 프로필 → 서울")
+    void endpointsUseHeaderThenStoredHeaderThenProfile(String path) {
         for (String profile :
                 new String[] {"Asia/Seoul", "America/Los_Angeles", null, "Not/AZone"}) {
             jdbcTemplate.update("UPDATE ACCOUNT SET TIME_ZONE = ? WHERE ID = ?", profile, ADMIN_ID);
@@ -320,17 +323,22 @@ class AdminStatsIntegrationTest {
                     rest.exchange(
                             "/api/admin/stats" + path, HttpMethod.GET, auth(ADMIN_ID), Map.class);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            String expected =
-                    profile == null || profile.equals("Not/AZone") ? "America/Toronto" : profile;
-            assertThat(response.getBody()).containsEntry("timeZone", expected);
+            assertThat(response.getBody()).containsEntry("timeZone", "America/Toronto");
         }
+        String withoutQuery = "/api/admin/stats" + path.replace("timeZone=America/Toronto", "");
+        jdbcTemplate.update(
+                "UPDATE ACCOUNT SET TIME_ZONE = ?, ADMIN_DISPLAY_TIME_ZONE = ? WHERE ID = ?",
+                "America/Los_Angeles",
+                "Europe/London",
+                ADMIN_ID);
+        assertThat(rest.exchange(withoutQuery, HttpMethod.GET, auth(ADMIN_ID), Map.class).getBody())
+                .containsEntry("timeZone", "Europe/London");
+        jdbcTemplate.update(
+                "UPDATE ACCOUNT SET ADMIN_DISPLAY_TIME_ZONE = NULL WHERE ID = ?", ADMIN_ID);
+        assertThat(rest.exchange(withoutQuery, HttpMethod.GET, auth(ADMIN_ID), Map.class).getBody())
+                .containsEntry("timeZone", "America/Los_Angeles");
         jdbcTemplate.update("UPDATE ACCOUNT SET TIME_ZONE = NULL WHERE ID = ?", ADMIN_ID);
-        var response =
-                rest.exchange(
-                        "/api/admin/stats" + path.replace("timeZone=America/Toronto", ""),
-                        HttpMethod.GET,
-                        auth(ADMIN_ID),
-                        Map.class);
+        var response = rest.exchange(withoutQuery, HttpMethod.GET, auth(ADMIN_ID), Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("timeZone", "Asia/Seoul");
     }

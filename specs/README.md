@@ -37,7 +37,7 @@ API 도메인이 아닌 것(인프라·운영). 구조는 같되 엔드포인트
 
 | 스펙 | 폴더 | 상태 | 설명 |
 |------|------|------|------|
-| 시간대 확장 (공통) | [timezone/](./timezone/) | 스펙작성중 | IANA·모집 시간대·운영자 표시·`FormattedInstant`·`GET /api/admin/member-time-zones`. 기획: [확장 PRD](../01-planning/stories/timezone-expansion/PRD.md) · PR #527 |
+| 시간대 확장 (공통) | [timezone/](./timezone/) | 구현중 | IANA·모집 시간대·운영자 표시·`FormattedInstant`·`GET /api/admin/member-time-zones`·`GET /api/studies/recruitment-zones`. BE 구현 PR, FE 연결 별도. 기획: [확장 PRD](../01-planning/stories/timezone-expansion/PRD.md) · PR #527 |
 | 데이터 보관·정리 | [data-retention/](./data-retention/) | 구현완료 | 문의·파일·감사 기록의 일일 정리, IP·권한 말소 기록 |
 | 관측 스택 | [observability-stack/](./observability-stack/) | 1단계 구현 | 로그(Grafana+Loki+Alloy) → 메트릭·알림은 후속 |
 | 도메인 이벤트 | [domain-events/](./domain-events/) | 1단계 구현 | 사실 → 이벤트 발행, 부수효과는 `AFTER_COMMIT` 구독자 (`@Async` 실행기 상한) |

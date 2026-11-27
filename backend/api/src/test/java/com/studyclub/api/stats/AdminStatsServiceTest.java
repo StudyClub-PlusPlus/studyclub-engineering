@@ -12,23 +12,6 @@ import org.junit.jupiter.api.Test;
 class AdminStatsServiceTest {
 
     @Test
-    @DisplayName("시간대 분류 — KST·ET·PT·그 외 UNKNOWN")
-    void classifyTimeZone() {
-        assertThat(AdminStatsService.classifyTimeZone("Asia/Seoul"))
-                .isEqualTo(CrewTimeZoneGroupCode.KST);
-        assertThat(AdminStatsService.classifyTimeZone("America/Toronto"))
-                .isEqualTo(CrewTimeZoneGroupCode.ET);
-        assertThat(AdminStatsService.classifyTimeZone("America/Los_Angeles"))
-                .isEqualTo(CrewTimeZoneGroupCode.PT);
-        assertThat(AdminStatsService.classifyTimeZone("Europe/London"))
-                .isEqualTo(CrewTimeZoneGroupCode.UNKNOWN);
-        assertThat(AdminStatsService.classifyTimeZone(null))
-                .isEqualTo(CrewTimeZoneGroupCode.UNKNOWN);
-        assertThat(AdminStatsService.classifyTimeZone("bogus"))
-                .isEqualTo(CrewTimeZoneGroupCode.UNKNOWN);
-    }
-
-    @Test
     @DisplayName("deadlineBadge 우선순위 — 마감 경과 > 정원 > 미등록 > 임박 > 일반")
     void deadlineBadgePriority() {
         Instant asOf = Instant.parse("2026-09-16T03:00:00Z");

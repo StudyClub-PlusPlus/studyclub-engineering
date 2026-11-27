@@ -332,11 +332,41 @@ class AccountOnboardingIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 존재하는 IANA ID 라도 시간대 목록에 없으면 400 — 반 편성이 이 값으로 갈린다")
-    void rejectsTimeZoneOutsideList() {
+    @DisplayName("성공 - 네 개 목록 밖의 IANA(도쿄)도 받는다. deprecated 링크는 정본 ID 로 저장한다")
+    void acceptsAnyIanaAndNormalizes() {
+        Account tokyo = seedUnonboardedAccount();
+        Map<String, Object> tokyoBody = new HashMap<>(validRequest(uniqueNickname()));
+        tokyoBody.put("timeZone", "Asia/Tokyo");
+        Account pacific = seedUnonboardedAccount();
+        Map<String, Object> pacificBody = new HashMap<>(validRequest(uniqueNickname()));
+        pacificBody.put("timeZone", "US/Pacific");
+
+        var tokyoResponse =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(tokyo, tokyoBody),
+                        Map.class);
+        var pacificResponse =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(pacific, pacificBody),
+                        Map.class);
+
+        assertThat(tokyoResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(tokyoResponse.getBody()).containsEntry("timeZone", "Asia/Tokyo");
+        assertThat(pacificResponse.getBody()).containsEntry("timeZone", "America/Los_Angeles");
+        assertThat(accountRepository.findById(pacific.getId()).orElseThrow().getTimeZone())
+                .isEqualTo("America/Los_Angeles");
+    }
+
+    @Test
+    @DisplayName("실패 - 오프셋만 있는 시간대(+09:00)는 400 — 서울과 도쿄를 가를 수 없다")
+    void rejectsOffsetOnlyTimeZone() {
         Account account = seedUnonboardedAccount();
         Map<String, Object> body = new HashMap<>(validRequest(uniqueNickname()));
-        body.put("timeZone", "Asia/Tokyo");
+        body.put("timeZone", "+09:00");
 
         var response =
                 rest.exchange(

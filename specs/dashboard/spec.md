@@ -1,8 +1,8 @@
 # 운영 대시보드 화면·API Spec
 
-> **시간대 확장 (2026-11-24):** 조회자 시간대·분포·주간 경계는 [timezone/spec.md](../timezone/spec.md) §3.4 · §8 과 아래 §2.2 **개정안**이 정본이다. `GET /api/admin/stats/crew-timezones` 는 KST/ET/PT/UNKNOWN 네 칸 → **IANA 분포, 차트 최대 5칸** (§4.5 확장 개정안). 헤더 API: `GET/PATCH /api/admin/me/display-time-zone`.
+> **시간대 확장 (2026-11-27 BE 반영):** 조회자 시간대·분포·주간 경계는 [timezone/spec.md](../timezone/spec.md) §3.4 · §8 과 아래 §2.2.1 **개정안**이 정본이다 — 구현했다. 유효한 `timeZone` Query(헤더)는 프로필로 덮어쓰지 않고, Query 가 없으면 `ADMIN_DISPLAY_TIME_ZONE` → `TIME_ZONE` → 서울. `GET /api/admin/stats/crew-timezones` 는 KST/ET/PT/UNKNOWN 네 칸을 지우고 **IANA 분포, 차트 최대 5칸**(§4.5 확장 개정안)으로 바꿨다. `study-board` 항목에 `recruitDeadlineFormatted` 를 더했다. 헤더 API: `GET/PATCH /api/admin/me/display-time-zone`.
 >
-> 시간대 확장 (2026-11-22, 구 beta 메모): 본문 §2.2·§4.5 는 프로필 우선 계약 — **아래 개정안으로 대체 예정**.
+> 본문 §2.2 3~5번 · §4.5 beta JSON 은 옛 계약이다 — §2.2.1 · §4.5 확장 개정안이 대신한다.
 
 > Playground: [운영 콘솔 대시보드](https://playground.studyclub.life/proto/console)
 > Story PRD: [캡틴은 운영 현황을 한 화면에서 볼 수 있다](../../01-planning/stories/console-dashboard/PRD.md) (ST-002) — 화면이 무엇을 하는지·완료 기준은 PRD 가 정본
@@ -402,8 +402,8 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 - Path Parameter·Request Body는 없다. Query는 각 API 표를 따른다.
 - 성공 응답에는 `success`·`data` 래퍼를 추가하지 않는다. enum은 대문자를 사용한다.
 - `asOf`·`recruitDeadlineAt` 등 시각은 UTC ISO 8601로 전달한다.
-- 요약·현황 보드·추세 API는 브라우저 대체값인 선택 Query `timeZone`을 받는다. 응답의 `timeZone`은 프로필을 우선해 선택한 최종 값이므로 Query와 다를 수 있다.
-- `timeZone`에는 유효한 IANA 시간대 ID 또는 `UTC`를 허용한다. 온보딩 선택지로 제한하지 않는다. 생략·오류 처리는 2.2절을 따른다.
+- 요약·현황 보드·추세 API는 헤더 값인 선택 Query `timeZone`을 받는다. 유효한 Query 는 그대로 응답 `timeZone` 이 된다. 없을 때만 저장된 헤더 → 프로필 → 서울 (§2.2.1).
+- `timeZone`에는 지역 이름이 있는 IANA 시간대 ID 또는 `UTC`를 허용한다(timezone §3.1). 오프셋만 있는 ID(`+09:00` · `GMT+9`)는 400. 생략·오류 처리는 2.2절을 따른다.
 - 서버가 시간대별 집계 결과를 캐시하면 최종 적용 시간대를 캐시 키에 포함한다. 프론트 요청 캐시는 브라우저 대체값을 구분한다. 세션 변경 시 캐시를 비우고, 대시보드 진입마다 재조회하여 최신 프로필을 반영한다.
 - 프론트 주소의 `view`는 목록 필터를 선택하는 값이다. `/api/admin/studies`에 그대로 전달하지 않는다.
 
@@ -569,6 +569,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | items[].title | String | N | 등록된 기수 제목 STUDY.TITLE |
 | items[].recruitStatus | Enum | Y | 화면 3-2의 모집 판정: `RECRUITING / RECRUIT_CLOSED`. ONGOING이면 null |
 | items[].recruitDeadlineAt | Datetime | Y | ID가 가장 큰 모집 회차의 RECRUIT_DEADLINE_AT. 미등록 또는 ONGOING이면 null |
+| items[].recruitDeadlineFormatted | Object | Y | 응답 `timeZone` 으로 포맷한 마감 — `FormattedInstant` + `dDay`(timezone §3.3). 마감 없음 · ONGOING 이면 null. 짧은 날짜 · D-N 표시에 쓴다 |
 | items[].deadlineBadge | Enum | Y | 아래 표의 기본 표시 코드. ONGOING이면 null |
 
 서버는 아래 우선순위로 `deadlineBadge`를 선택한다. `TODAY` 코드는 반환하지 않는다.
@@ -713,7 +714,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 
 화면 4의 인원·비율을 반환한다. Query는 없다. 조회자의 시간대는 분류에 영향을 주지 않는다.
 
-> **beta (아래 JSON)** — 구현완료.
+> **beta (아래 JSON)** — 2026-11-27 에 아래 확장 개정안으로 바꿨다. 활성 크루가 0명이면 `timeZoneGroups: []`. 출력 순서는 지역(인원 내림차순 · 동률 IANA) → `other` → `unset`. `breakdown` 은 `other` 에만 있고 다른 칸에서는 키가 없다.
 >
 > **확장 개정안** ([timezone/spec.md](../timezone/spec.md) · PRD §7):
 > - 대상: 기존과 같이 **활성 크루**, `ACCOUNT.TIME_ZONE` IANA 별 1인 1표. 미설정(`TIME_ZONE` null·무효)은 **`unset` 한 칸**.

@@ -136,6 +136,8 @@ public enum ErrorCode {
     TOO_MANY_REQUESTS(429, "잠시 후 다시 시도해 주세요."),
     /** 외부 연동 실패 (구글 OAuth 미설정 등) */
     EXTERNAL_SERVICE_ERROR(503, "외부 서비스와 통신하지 못했습니다."),
+    /** 회원 시간대 후보 집계 실패 — 빈 집계와 다르다. 화면은 이전 후보를 두고 재시도를 보인다 (specs/timezone §6) */
+    TIME_ZONE_CANDIDATES_UNAVAILABLE(503, "회원 시간대 후보를 불러오지 못했습니다."),
     /** 예상하지 못한 서버 오류. 내부 사정은 절대 메시지에 담지 않는다 */
     INTERNAL_ERROR(500, "서버 오류가 발생했습니다.");
 
