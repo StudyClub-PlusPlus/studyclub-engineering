@@ -21,9 +21,7 @@ import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.audit.AdminAuditLog;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
-import com.studyclub.domain.event.ClubEvent;
 import com.studyclub.domain.event.ClubEventRepository;
-import com.studyclub.domain.event.EventStatus;
 import com.studyclub.domain.event.registration.ClubEventRegistrationRepository;
 import com.studyclub.domain.feedback.FeedbackImageRepository;
 import com.studyclub.domain.notice.StudyNoticeRepository;
@@ -212,18 +210,13 @@ public class AccountDeletionService {
         for (Long eventId : eventIds) {
             clubEventRepository
                     .findByIdForUpdate(eventId)
-                    .filter(event -> isOpen(event, now))
+                    .filter(event -> event.canManageRegistrations(now))
                     .ifPresent(event -> openEventIds.add(event.getId()));
         }
         if (!openEventIds.isEmpty()) {
             clubEventRegistrationRepository.cancelActiveForAccountDeletion(
                     accountId, openEventIds, now);
         }
-    }
-
-    // 취소되지 않았고 종료 전 — 종료 · 취소된 행사의 신청 이력은 그대로 둔다
-    private static boolean isOpen(ClubEvent event, Instant now) {
-        return event.getStatus() != EventStatus.CANCELLED && now.isBefore(event.effectiveEndsAt());
     }
 
     // 참여 중단 · 발표 신청과 같은 분반 잠금을 먼저 쥔다 — 그 사이에 커밋된 참여 중단의 상태 · LEFT_AT 을 덮어쓰지 않는다 (share 10-18 D7).

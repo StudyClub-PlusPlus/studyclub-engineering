@@ -90,6 +90,24 @@ class ClubEventRegistrationAdapter implements ClubEventRegistrationPort {
     }
 
     @Override
+    public List<Long> declinePendingRegistrationsForEventEnd(Long eventId) {
+        List<Long> pendingIds =
+                registrationRepository.findIdsByClubEventIdAndStatus(
+                        eventId, ClubEventRegistrationStatus.PENDING);
+        if (pendingIds.isEmpty()) {
+            return List.of();
+        }
+        // confirmPendingRegistrations 와 같은 안전망
+        registrationRepository.changeStatusWhere(
+                pendingIds,
+                ClubEventRegistrationStatus.PENDING,
+                ClubEventRegistrationStatus.DECLINED,
+                null,
+                Instant.now().truncatedTo(ChronoUnit.MICROS));
+        return pendingIds;
+    }
+
+    @Override
     public int countCancellationRecipients(Long eventId) {
         return Math.toIntExact(registrationRepository.countCancellationRecipients(eventId));
     }

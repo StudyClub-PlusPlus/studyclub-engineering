@@ -336,6 +336,31 @@ class ClubEventTest {
     }
 
     @Test
+    @DisplayName("canManageRegistrations — 시작 뒤 · 신청 마감 뒤라도 종료 전이면 true, 종료 시각 정각부터 · 취소면 false")
+    void canManageRegistrations() {
+        ClubEvent event = draft().publish();
+
+        assertThat(event.canManageRegistrations(BEFORE_DEADLINE)).isTrue();
+        assertThat(event.canManageRegistrations(DEADLINE.plusSeconds(1))).isTrue();
+        assertThat(event.canManageRegistrations(START.plusSeconds(1))).isTrue();
+        assertThat(event.canManageRegistrations(END.minusSeconds(1))).isTrue();
+        assertThat(event.canManageRegistrations(END)).isFalse();
+        assertThat(withStatus(event, EventStatus.CLOSED).canManageRegistrations(START)).isTrue();
+        assertThat(withStatus(event, EventStatus.CANCELLED).canManageRegistrations(BEFORE_DEADLINE))
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("canManageRegistrations — 종료 시각이 없으면 행사 시간대의 시작일 다음 날 00:00 부터 false")
+    void canManageRegistrationsWithoutEnd() {
+        ClubEvent event = draft().endsAt(null).publish();
+        Instant midnight = Instant.parse("2026-12-05T15:00:00Z");
+
+        assertThat(event.canManageRegistrations(midnight.minusSeconds(1))).isTrue();
+        assertThat(event.canManageRegistrations(midnight)).isFalse();
+    }
+
+    @Test
     @DisplayName("canChangeConfirmation · canSetFutureStart — 시작 시각 정각부터 false, 취소·종료면 false")
     void beforeStartOnly() {
         ClubEvent event = draft().publish();

@@ -18,7 +18,17 @@ import org.springframework.data.repository.query.Param;
  * 를 거치지 않아 {@code UPDATED_AT} 을 직접 채운다.
  */
 public interface ClubEventRegistrationRepository
-        extends JpaRepository<ClubEventRegistration, Long> {
+        extends JpaRepository<ClubEventRegistration, Long>, ClubEventRegistrationPageQuery {
+
+    /** 참가자 목록의 전체 행 수 — 취소 · 재신청 이력까지 모두. */
+    long countByClubEventId(Long clubEventId);
+
+    /** 행사 종료 자동 전환의 후보 — 그 상태의 신청이 하나라도 있는 행사 ID. */
+    @Query(
+            "select distinct r.clubEventId from ClubEventRegistration r"
+                    + " where r.status = :status order by r.clubEventId")
+    List<Long> findDistinctClubEventIdsByStatus(
+            @Param("status") ClubEventRegistrationStatus status);
 
     /** 행사 묶음의 방식 · 상태별 수 — GROUP BY 한 번. 신청이 없는 행사는 결과에 없다. */
     @Query(

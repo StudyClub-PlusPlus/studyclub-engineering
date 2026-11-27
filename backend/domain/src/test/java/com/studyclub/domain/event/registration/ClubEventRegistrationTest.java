@@ -154,4 +154,46 @@ class ClubEventRegistrationTest {
                     .isEqualTo(ErrorCode.EVENT_REGISTRATION_STATUS_NOT_ALLOWED);
         }
     }
+
+    @Nested
+    @DisplayName("행별 판정 — 처리할 수 있는 행사면 상태가, 처리할 수 없는 행사면 모두 false")
+    class RowJudgment {
+
+        @Test
+        @DisplayName("확인 대기는 확정 · 참가 불가 · 취소 셋 다, 참가 확정은 취소만, 참가 불가 · 취소는 아무것도")
+        void byStatus() {
+            ClubEventRegistration pending = submit(EventConfirmation.REVIEW);
+            ClubEventRegistration confirmed = submit(EventConfirmation.AUTO);
+            ClubEventRegistration declined = submit(EventConfirmation.REVIEW);
+            declined.decline(CAPTAIN, NOW);
+            ClubEventRegistration cancelled = submit(EventConfirmation.AUTO);
+            cancelled.cancelBySelf(NOW);
+
+            assertJudgment(pending, true, true, true, true);
+            assertJudgment(confirmed, true, false, false, true);
+            assertJudgment(declined, true, false, false, false);
+            assertJudgment(cancelled, true, false, false, false);
+        }
+
+        @Test
+        @DisplayName("종료 · 취소 행사(manageable = false)면 어느 상태든 모두 false")
+        void notManageable() {
+            ClubEventRegistration pending = submit(EventConfirmation.REVIEW);
+            ClubEventRegistration confirmed = submit(EventConfirmation.AUTO);
+
+            assertJudgment(pending, false, false, false, false);
+            assertJudgment(confirmed, false, false, false, false);
+        }
+
+        private void assertJudgment(
+                ClubEventRegistration registration,
+                boolean manageable,
+                boolean confirm,
+                boolean decline,
+                boolean cancel) {
+            assertThat(registration.canConfirm(manageable)).isEqualTo(confirm);
+            assertThat(registration.canDecline(manageable)).isEqualTo(decline);
+            assertThat(registration.canCancelByAdmin(manageable)).isEqualTo(cancel);
+        }
+    }
 }
