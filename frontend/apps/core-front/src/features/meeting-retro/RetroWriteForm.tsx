@@ -138,7 +138,7 @@ function RetroForm({
   }
 
   return (
-    <div className='mx-auto max-w-3xl'>
+    <div>
       <h2 className='type-headline-md'>
         {meeting.label} 회고 {editing ? '수정' : '작성'}
       </h2>
