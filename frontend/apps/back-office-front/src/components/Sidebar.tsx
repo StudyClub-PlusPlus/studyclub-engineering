@@ -5,7 +5,17 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { IconButton } from '@studyclub/ui';
-import { BookOpen, CalendarDays, LayoutDashboard, LogOut, Mail, Megaphone, MessageSquare, Users } from 'lucide-react';
+import {
+  BookOpen,
+  CalendarDays,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  Megaphone,
+  MessageSquare,
+  NotebookPen,
+  Users,
+} from 'lucide-react';
 
 import { getUser, logout, type SessionUser } from '@/features/auth/auth';
 import { FEATURES } from '@/lib/features';
@@ -24,6 +34,8 @@ const NAV: Array<{
   { href: '/events', label: '행사', icon: CalendarDays, feature: 'EVENTS' },
   // 스터디원 + 운영진을 "유저" 하나로 통합 (실제 DB 유저 표시)
   { href: '/users', label: '유저', icon: Users },
+  // 진행 중인 스터디의 미팅 회고를 스터디를 건너 모아 본다. 한 반의 회고는 스터디 상세 회고 탭
+  { href: '/retros', label: '회고', icon: NotebookPen },
   // 크루가 보낸 문의 · 개선 의견 · 오류 신고.
   { href: '/feedbacks', label: '문의·오류 신고', icon: MessageSquare },
   // 알림 템플릿과 발송 이력은 한 메뉴의 두 탭이다 — 어느 쪽 화면에 있어도 「알림」이 활성이다

@@ -70,6 +70,8 @@ flowchart LR
   - 사용자 사이트 스터디 일정의 탭(일정 · 출석 · 회고)은 백오피스 스터디 상세에도 둔다 — 네비게이터가 보는 화면은 캡틴도 본다
   - 사이드바 「회고 모아보기」 메뉴는 그대로 둔다 (여러 스터디를 한 번에 보는 곳)
   - 반이 여럿이면 탭 위 반 칩(일정 · 출석 탭과 같은 줄 · 같은 값)으로 한 반씩 본다 — 작성 현황 · 작성 수 · 답이 그 반 크루로 바뀐다. 반이 하나면 칩을 그리지 않는다
+  - 작성 버튼이 없고 👍 는 수만 보인다 — 캡틴은 쓸 사람도 반 참여자도 아니다
+  - 회차 칩 · 마감 시각은 고른 반의 회차다 — 반을 바꾸면 그 반의 가장 최근에 끝난 회차부터 연다
   - 프로토 가정: 반마다 회차가 다르지만 회고 가정 데이터는 스터디 회차를 같이 쓴다 — 회차 칩 · 마감 시각은 반을 바꿔도 같다
 
 <!-- spec:end retro-lead -->
@@ -95,6 +97,7 @@ flowchart LR
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
+| FE | back-office-front 스터디 상세 「회고」 탭 · 반 칩 | 있음 (2026-11-27) — 반은 상태 조회의 `studyGroupId`, 목록은 회차가 정한다. 작성 버튼 없음 · 👍 수만 (`features/meeting-retro/RetroTab.tsx`) | — |
 | FE | core-front 회고 탭 작성 현황 | 있음 (2026-11-27) — 「n명 중 m명 작성」 · 작성 현황 목록(`retros[].author` 뒤에 `missing[]`). 응답의 `targets` 가 null(크루)이면 그리지 않는다 (`features/meeting-retro`) | — |
 | BE | `GET /api/studies/{studyId}/meetings/{meetingId}/retros` 응답의 `targets` · `missing` | 구현완료 | - |
 | BE | `GET /api/me/studies/{studyId}/retros/status` (회차별 deadline·open·mine) | 구현완료 | - |
