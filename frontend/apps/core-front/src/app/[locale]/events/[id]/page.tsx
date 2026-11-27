@@ -5,7 +5,7 @@ import type { Locale } from '@studyclub/types';
 import { ArrowLeft, CalendarDays, MapPin, Tag, ArrowUpRight } from 'lucide-react';
 import type { Metadata } from 'next';
 
-import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@/features/events/content';
+import { EVENT_DETAILS } from '@/features/events/content';
 import { EventDetailView } from '@/features/events/EventDetailView';
 import { fetchEventDetailServer, getEvent } from '@/features/events/server';
 import { FEATURES } from '@/lib/features';

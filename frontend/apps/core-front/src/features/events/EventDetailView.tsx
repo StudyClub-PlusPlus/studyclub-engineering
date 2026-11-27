@@ -206,6 +206,7 @@ export function EventDetailView({
         code === 'EVENT_REGISTRATION_STATUS_NOT_ALLOWED' ||
         code === 'NOT_FOUND' ||
         code === 'EVENT_REGISTRATION_CLOSED' ||
+        code === 'EVENT_SELF_CANCEL_CLOSED' ||
         code === 'EVENT_CANCELLED' ||
         code === 'EVENT_ENDED';
       if (terminal) {
