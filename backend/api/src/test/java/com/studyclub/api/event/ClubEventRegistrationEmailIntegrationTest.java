@@ -280,7 +280,7 @@ class ClubEventRegistrationEmailIntegrationTest {
                         event -> {
                             assertThat(event.eventType()).isEqualTo("EVENT_REGISTRATION_DECLINED");
                             assertThat(event.clubEventId()).isEqualTo(eventId);
-                            assertThat(event.registrationId()).isEqualTo(registrationId);
+                            assertThat(event.registrationIds()).containsExactly(registrationId);
                         });
         verify(opsAlertNotifier, timeout(5_000))
                 .send(
@@ -289,6 +289,7 @@ class ClubEventRegistrationEmailIntegrationTest {
                         argThat(
                                 fields ->
                                         "EVENT_REGISTRATION_DECLINED".equals(fields.get("알림 조건"))
+                                                && "1건 (10분 묶음)".equals(fields.get("건너뛴 메일"))
                                                 && String.valueOf(eventId)
                                                         .equals(fields.get("행사 ID"))));
     }

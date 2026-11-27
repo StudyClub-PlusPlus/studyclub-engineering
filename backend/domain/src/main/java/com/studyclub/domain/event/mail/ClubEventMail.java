@@ -48,6 +48,9 @@ public class ClubEventMail extends BaseEntity {
     /** 운영진이 쓰는 안내 내용의 최대 글자 수. */
     public static final int NOTICE_MAX_LENGTH = 5_000;
 
+    /** 렌더링한 공통 제목의 최대 글자 수 ({@code SUBJECT VARCHAR(255)}). */
+    public static final int SUBJECT_MAX_LENGTH = 255;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -66,7 +69,7 @@ public class ClubEventMail extends BaseEntity {
     @Column(name = "TEMPLATE_ID", nullable = false, updatable = false)
     private Long templateId;
 
-    @Column(name = "SUBJECT", nullable = false, length = 255, updatable = false)
+    @Column(name = "SUBJECT", nullable = false, length = SUBJECT_MAX_LENGTH, updatable = false)
     private String subject;
 
     @Column(name = "BODY", nullable = false, columnDefinition = "mediumtext", updatable = false)

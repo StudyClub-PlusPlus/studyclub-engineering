@@ -179,6 +179,11 @@ public class AdminClubEventMailService {
                 mailRepository.findBySenderAccountIdAndIdempotencyKey(
                         senderAccountId, idempotencyKey);
         if (existing.isPresent()) {
+            if (!existing.get().getClubEventId().equals(eventId)) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT,
+                        IdempotencyKeys.HEADER + ": 다른 행사 메일에 쓴 키입니다. 새 UUID v4 를 보내 주세요.");
+            }
             return existing.get().getId();
         }
         // 3 · 4
@@ -208,6 +213,13 @@ public class AdminClubEventMailService {
         // 9
         String zone = displayZone(draft, senderAccountId, event);
         ClubEventMail.Rendered rendered = render(template, event, draft, ZoneId.of(zone));
+        if (rendered.subject().length() > ClubEventMail.SUBJECT_MAX_LENGTH) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT,
+                    "notice: 제목에 들어가는 안내 내용이 길어 제목이 "
+                            + ClubEventMail.SUBJECT_MAX_LENGTH
+                            + "자를 넘습니다.");
+        }
         // 10
         ClubEventMail mail =
                 mailRepository.saveAndFlush(

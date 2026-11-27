@@ -24,18 +24,18 @@ final class OpsAlertBundle {
         this.clock = clock;
     }
 
-    /** 지금 보내야 하면 이 경보가 대신하는 건수(자기 포함), 창 안이라 묶였으면 비어 있다. */
-    OptionalInt record(String key) {
+    /** {@code count} 건을 더한다. 지금 보내야 하면 이 경보가 대신하는 건수(이번 건 포함), 창 안이라 묶였으면 비어 있다. */
+    OptionalInt record(String key, int count) {
         Instant now = clock.instant();
         int[] send = {0};
         windows.compute(
                 key,
                 (k, current) -> {
                     if (current == null || !now.isBefore(current.openedAt().plus(window))) {
-                        send[0] = 1 + (current == null ? 0 : current.bundled());
+                        send[0] = count + (current == null ? 0 : current.bundled());
                         return new Window(now, 0);
                     }
-                    return new Window(current.openedAt(), current.bundled() + 1);
+                    return new Window(current.openedAt(), current.bundled() + count);
                 });
         return send[0] == 0 ? OptionalInt.empty() : OptionalInt.of(send[0]);
     }

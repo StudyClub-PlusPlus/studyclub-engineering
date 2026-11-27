@@ -18,8 +18,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * 신청 상태가 바뀌면 신청자에게 보낼 자동 메일 행을 처리 트랜잭션 안에서 만든다 (specs/event-mail 「자동 메일: 신청 상태 알림」). {@code
  * BEFORE_COMMIT} 이라 행 저장이 실패하면 처리 전체가 롤백된다.
  *
- * <p>그 조건의 템플릿이 없을 때만 예외로 처리는 커밋하고 메일을 건너뛴다(M2). 신청마다 누락 사실을 발행해 운영 채널 경보로 넘긴다. 행사 전체 취소 · 탈퇴 취소는 이
- * 이벤트들을 내지 않아 메일이 없다.
+ * <p>그 조건의 템플릿이 없을 때만 예외로 처리는 커밋하고 메일을 건너뛴다(M2). 건너뛴 신청을 한 사실로 묶어 운영 채널 경보로 넘긴다. 행사 전체 취소 · 탈퇴 취소는
+ * 이 이벤트들을 내지 않아 메일이 없다.
  */
 @Slf4j
 @Component
@@ -70,14 +70,12 @@ public class ClubEventRegistrationEmailListener {
                 type, clubEventId, registrationIds)) {
             return;
         }
-        for (Long registrationId : registrationIds) {
-            log.error(
-                    "행사 자동 메일 템플릿 없음, 메일을 건너뜀 eventType={} clubEventId={} registrationId={}",
-                    type,
-                    clubEventId,
-                    registrationId);
-            eventPublisher.publishEvent(
-                    ClubEventMailTemplateMissing.of(type.name(), clubEventId, registrationId));
-        }
+        log.error(
+                "행사 자동 메일 템플릿 없음, 메일을 건너뜀 eventType={} clubEventId={} registrationIds={}",
+                type,
+                clubEventId,
+                registrationIds);
+        eventPublisher.publishEvent(
+                ClubEventMailTemplateMissing.of(type.name(), clubEventId, registrationIds));
     }
 }

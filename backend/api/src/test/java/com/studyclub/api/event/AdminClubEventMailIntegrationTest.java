@@ -447,6 +447,41 @@ class AdminClubEventMailIntegrationTest {
         }
     }
 
+    @Test
+    @DisplayName("400 — 같은 키를 다른 행사 메일에 다시 쓰면 막는다, 렌더링한 제목이 255자를 넘으면 막는다. 아무것도 늘지 않는다")
+    void keyReuseAndLongSubject() {
+        long eventId = createEvent("HYBRID");
+        long otherEventId = createEvent("HYBRID");
+        givenTemplates();
+        givenRecipients(eventId);
+        givenRecipients(otherEventId);
+        String key = key();
+        assertThat(
+                        send(
+                                        HttpMethod.POST,
+                                        mailsPath(eventId),
+                                        ADMIN_ID,
+                                        announcement("ALL", "안내"),
+                                        key)
+                                .getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
+
+        assertInvalid(
+                send(
+                        HttpMethod.POST,
+                        mailsPath(otherEventId),
+                        ADMIN_ID,
+                        announcement("ALL", "안내"),
+                        key),
+                "Idempotency-Key");
+
+        jdbcTemplate.update(
+                "UPDATE NOTIFICATION_TEMPLATE SET SUBJECT = '[StudyClub] {{notice}}'"
+                        + " WHERE EVENT_TYPE = 'EVENT_ANNOUNCEMENT'");
+        assertInvalid(post(mailsPath(eventId), announcement("ALL", "가".repeat(300))), "notice");
+        assertThat(count("EVENT_MAIL")).isEqualTo(1);
+    }
+
     // ── 이력 ───────────────────────────────────────────────────────────────
 
     @Test

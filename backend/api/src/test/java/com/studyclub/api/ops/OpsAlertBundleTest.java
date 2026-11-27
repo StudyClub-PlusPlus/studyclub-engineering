@@ -37,13 +37,22 @@ class OpsAlertBundleTest {
         MutableClock clock = new MutableClock();
         OpsAlertBundle bundle = new OpsAlertBundle(Duration.ofMinutes(10), clock);
 
-        assertThat(bundle.record("DECLINED:1")).isEqualTo(OptionalInt.of(1));
-        assertThat(bundle.record("DECLINED:1")).isEmpty();
-        assertThat(bundle.record("DECLINED:1")).isEmpty();
-        assertThat(bundle.record("DECLINED:2")).isEqualTo(OptionalInt.of(1));
+        assertThat(bundle.record("DECLINED:1", 1)).isEqualTo(OptionalInt.of(1));
+        assertThat(bundle.record("DECLINED:1", 1)).isEmpty();
+        assertThat(bundle.record("DECLINED:1", 1)).isEmpty();
+        assertThat(bundle.record("DECLINED:2", 1)).isEqualTo(OptionalInt.of(1));
 
         clock.now = clock.now.plus(Duration.ofMinutes(10));
-        assertThat(bundle.record("DECLINED:1")).isEqualTo(OptionalInt.of(3));
-        assertThat(bundle.record("DECLINED:1")).isEmpty();
+        assertThat(bundle.record("DECLINED:1", 1)).isEqualTo(OptionalInt.of(3));
+        assertThat(bundle.record("DECLINED:1", 1)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("한 번에 여러 건을 건너뛰면 첫 경보가 그 건수를 그대로 싣는다 — 종료 자동 전환 30건")
+    void bulkCount() {
+        OpsAlertBundle bundle = new OpsAlertBundle(Duration.ofMinutes(10), new MutableClock());
+
+        assertThat(bundle.record("DECLINED:1", 30)).isEqualTo(OptionalInt.of(30));
+        assertThat(bundle.record("DECLINED:1", 2)).isEmpty();
     }
 }

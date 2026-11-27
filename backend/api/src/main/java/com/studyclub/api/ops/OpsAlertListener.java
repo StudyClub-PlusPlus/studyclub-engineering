@@ -120,13 +120,19 @@ public class OpsAlertListener {
     public void onClubEventMailTemplateMissing(ClubEventMailTemplateMissing event) {
         try {
             templateMissingBundle
-                    .record(event.eventType() + ":" + event.clubEventId())
+                    .record(
+                            event.eventType() + ":" + event.clubEventId(),
+                            event.registrationIds().size())
                     .ifPresent(
                             count -> {
                                 Map<String, String> fields = new LinkedHashMap<>();
                                 fields.put("알림 조건", event.eventType());
                                 fields.put("행사 ID", String.valueOf(event.clubEventId()));
-                                fields.put("신청 ID", String.valueOf(event.registrationId()));
+                                fields.put(
+                                        "신청 ID",
+                                        event.registrationIds().stream()
+                                                .map(String::valueOf)
+                                                .collect(Collectors.joining(", ")));
                                 fields.put("건너뛴 메일", count + "건 (10분 묶음)");
                                 notifier.send(
                                         OpsAlertNotifier.Level.WARN, "행사 자동 메일 템플릿 없음", fields);
