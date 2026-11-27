@@ -1,9 +1,16 @@
 package com.studyclub.api.analytics;
 
+import com.studyclub.common.event.EventMeta;
+import com.studyclub.domain.account.AccountActivatedEvent;
 import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.UserRegisteredEvent;
-import com.studyclub.domain.application.StudyApplicationRepository;
-import com.studyclub.domain.application.StudyApplicationSubmitted;
+import com.studyclub.domain.event.ClubEventCancelledEvent;
+import com.studyclub.domain.event.ClubEventRegistrationSubmittedEvent;
+import com.studyclub.domain.event.ClubEventRegistrationsCancelledEvent;
+import com.studyclub.domain.event.registration.ClubEventRegistration;
+import com.studyclub.domain.event.registration.ClubEventRegistrationRepository;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -19,8 +26,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *
  * <ul>
  *   <li>{@code user.registered} → {@code User Signed Up}
- *   <li>계정의 첫 {@code study_application.submitted} → {@code
- *       Activated{activation_action=study_applied}}
+ *   <li>{@code account.activated} (첫 스터디 신청 또는 첫 행사 신청) → {@code
+ *       Activated{activation_action=study_applied|event_applied}}
+ *   <li>{@code club_event.registration_submitted} → {@code Event Registration Completed}
+ *   <li>{@code club_event.registrations_cancelled} → {@code Event Registration Cancelled}
+ *   <li>{@code club_event.cancelled} → 함께 취소된 신청마다 {@code Event Registration
+ *       Cancelled{cancel_type=event_cancelled}}
  * </ul>
  *
  * <p>커밋 뒤·별도 스레드에서 돈다. 실패는 삼킨다 — 이미 커밋된 사실을 되돌릴 수 없다.
@@ -33,19 +44,19 @@ public class AnalyticsEventListener {
     private final AnalyticsPrivacyService privacy;
     private final AmplitudeClient amplitude;
     private final Ga4Client ga4;
-    private final StudyApplicationRepository applicationRepository;
+    private final ClubEventRegistrationRepository registrationRepository;
     private final AccountIdentityRepository identityRepository;
 
     public AnalyticsEventListener(
             AmplitudeClient amplitude,
             Ga4Client ga4,
-            StudyApplicationRepository applicationRepository,
+            ClubEventRegistrationRepository registrationRepository,
             AccountIdentityRepository identityRepository,
             AnalyticsPrivacyService privacy) {
         this.privacy = privacy;
         this.amplitude = amplitude;
         this.ga4 = ga4;
-        this.applicationRepository = applicationRepository;
+        this.registrationRepository = registrationRepository;
         this.identityRepository = identityRepository;
     }
 
@@ -86,16 +97,25 @@ public class AnalyticsEventListener {
                 .orElse("google");
     }
 
+    /**
+     * 첫 활성화 — 신청 트랜잭션이 {@code ACCOUNT.ACTIVATED_AT} 을 채웠을 때만 난다. insert_id 가 계정 기준이라 재전송돼도 중복이
+     * 지워진다.
+     */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    public void onStudyApplicationSubmitted(StudyApplicationSubmitted event) {
+    public void onAccountActivated(AccountActivatedEvent event) {
         if (!amplitude.enabled() && !ga4.enabled()) {
             return;
         }
         try {
-            // 활성화는 계정당 한 번 — 첫 신청일 때만. insert_id 도 계정 기준이라 재전송돼도 중복이 지워진다
-            if (applicationRepository.findByAccountId(event.accountId()).size() != 1) {
-                return;
+            String action = event.action().name().toLowerCase(Locale.ROOT);
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.put("activation_action", action);
+            if (event.studyId() != null) {
+                properties.put("study_id", String.valueOf(event.studyId()));
+            }
+            if (event.clubEventId() != null) {
+                properties.put("event_id", String.valueOf(event.clubEventId()));
             }
             privacy.whenAllowed(
                     event.accountId(),
@@ -106,16 +126,12 @@ public class AnalyticsEventListener {
                                 analyticsId,
                                 "activated_" + analyticsId,
                                 event.meta().occurredAt(),
-                                Map.of(
-                                        "activation_action",
-                                        "study_applied",
-                                        "study_id",
-                                        String.valueOf(event.studyId())));
+                                properties);
                         ga4.send(
                                 "activated",
                                 analyticsId,
                                 null,
-                                Map.of("activation_action", "study_applied"));
+                                Map.of("activation_action", action));
                     });
         } catch (RuntimeException e) {
             log.warn(
@@ -123,5 +139,106 @@ public class AnalyticsEventListener {
                     event.meta().eventId(),
                     e.getClass().getSimpleName());
         }
+    }
+
+    /** 행사 신청 완료 — 접수 상태(확인 대기 · 참가 확정)와 함께. 같은 키의 재시도는 새 신청을 만들지 않아 이 이벤트도 다시 나지 않는다. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onEventRegistrationSubmitted(ClubEventRegistrationSubmittedEvent event) {
+        if (!amplitude.enabled()) {
+            return;
+        }
+        try {
+            registrationRepository
+                    .findById(event.registrationId())
+                    .ifPresent(
+                            registration ->
+                                    privacy.whenAllowed(
+                                            registration.getAccountId(),
+                                            null,
+                                            analyticsId ->
+                                                    amplitude.send(
+                                                            "Event Registration Completed",
+                                                            analyticsId,
+                                                            "event_registration_completed_"
+                                                                    + registration.getId(),
+                                                            event.meta().occurredAt(),
+                                                            Map.of(
+                                                                    "event_id",
+                                                                    String.valueOf(
+                                                                            event.clubEventId()),
+                                                                    "registration_id",
+                                                                    String.valueOf(
+                                                                            registration.getId()),
+                                                                    "channel",
+                                                                    lower(
+                                                                            registration
+                                                                                    .getChannel()),
+                                                                    "status",
+                                                                    lower(event.status())))));
+        } catch (RuntimeException e) {
+            log.warn(
+                    "amplitude: 행사 신청 이벤트 실패 eventId={} ({})",
+                    event.meta().eventId(),
+                    e.getClass().getSimpleName());
+        }
+    }
+
+    /** 행사 신청 취소 완료 (본인 · 운영진 개별) — 바꾼 신청마다 한 건. 탈퇴 취소는 이 도메인 이벤트가 나지 않아 보내지 않는다. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onEventRegistrationsCancelled(ClubEventRegistrationsCancelledEvent event) {
+        sendRegistrationsCancelled(
+                event.registrationIds(), event.clubEventId(), lower(event.cause()), event.meta());
+    }
+
+    /** 행사 전체 취소 — 함께 취소된 신청마다 신청자 기준으로 한 건. 바뀐 신청이 없으면 보내지 않는다. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onClubEventCancelled(ClubEventCancelledEvent event) {
+        sendRegistrationsCancelled(
+                event.cancelledRegistrationIds(),
+                event.clubEventId(),
+                "event_cancelled",
+                event.meta());
+    }
+
+    private void sendRegistrationsCancelled(
+            List<Long> registrationIds, Long clubEventId, String cancelType, EventMeta meta) {
+        if (!amplitude.enabled() || registrationIds.isEmpty()) {
+            return;
+        }
+        for (ClubEventRegistration registration :
+                registrationRepository.findAllById(registrationIds)) {
+            try {
+                privacy.whenAllowed(
+                        registration.getAccountId(),
+                        null,
+                        analyticsId ->
+                                amplitude.send(
+                                        "Event Registration Cancelled",
+                                        analyticsId,
+                                        "event_registration_cancelled_" + registration.getId(),
+                                        meta.occurredAt(),
+                                        Map.of(
+                                                "event_id",
+                                                String.valueOf(clubEventId),
+                                                "registration_id",
+                                                String.valueOf(registration.getId()),
+                                                "channel",
+                                                lower(registration.getChannel()),
+                                                "cancel_type",
+                                                cancelType)));
+            } catch (RuntimeException e) {
+                log.warn(
+                        "amplitude: 행사 취소 이벤트 실패 eventId={} ({})",
+                        meta.eventId(),
+                        e.getClass().getSimpleName());
+            }
+        }
+    }
+
+    private static String lower(Enum<?> value) {
+        return value.name().toLowerCase(Locale.ROOT);
     }
 }

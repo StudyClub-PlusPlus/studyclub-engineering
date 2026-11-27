@@ -64,6 +64,8 @@ export async function http<T>(path: string, schema: z.ZodType<T>, init?: Request
   if (res.status === 401) {
     const refreshed = await fetch('/api/auth/refresh', { method: 'POST', signal: init?.signal });
     if (refreshed.ok) res = await fetch(`${API_BASE}${path}`, request);
+    // 갱신 장애를 원래의 401로 숨기면 QueryCache가 로그아웃까지 실행한다.
+    else if (refreshed.status !== 401) res = refreshed;
   }
   const text = await res.text();
   let body: unknown = null;

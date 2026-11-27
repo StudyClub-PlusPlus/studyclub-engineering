@@ -48,11 +48,7 @@ function currentClientNickname(): string | null {
   }
 }
 
-export async function http<T>(
-  path: string,
-  schema: z.ZodType<T>,
-  init?: RequestInit,
-): Promise<T> {
+export async function http<T>(path: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   const nickname = currentClientNickname();
   if (nickname) {
@@ -68,6 +64,8 @@ export async function http<T>(
   if (res.status === 401) {
     const refreshed = await fetch('/api/auth/refresh', { method: 'POST', signal: init?.signal });
     if (refreshed.ok) res = await fetch(`${API_BASE}${path}`, request);
+    // 갱신 장애를 원래의 401로 숨기면 QueryCache가 유효한 로그인 상태까지 지운다.
+    else if (refreshed.status !== 401) res = refreshed;
   }
   const raw = await res.text();
   let body: unknown = null;

@@ -55,8 +55,8 @@ Content-Type: application/json
 ## JWT 토큰
 
 - 알고리즘: HS256
-- Claim: `sub` = userId, `email`, `role`
-- 만료: `application.yml` 의 `jwt.expiration-ms` (기본 86400000 = 24시간)
+- Claim: `sub` = accountId, `email`, `type`(`access` 또는 `refresh`), `jti`, 발급·만료 시각. 역할은 토큰이 아니라 서버에서 판정한다.
+- 만료: `JwtService`의 상수로 access 15분, refresh 30일. 환경변수로 수명을 변경하지 않는다.
 - 시크릿: `jwt.secret` (환경변수로 주입, 레포에 평문 금지)
 
 ### JwtAuthFilter
@@ -85,6 +85,5 @@ Content-Type: application/json
 | `GOOGLE_CLIENT_ID` | Google OAuth 클라이언트 ID | |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth 시크릿 | 레포 커밋 금지 |
 | `JWT_SECRET` | JWT 서명 시크릿 | 레포 커밋 금지 |
-| `JWT_EXPIRATION_MS` | 토큰 만료 시간(ms) | 기본 86400000 |
 
 `application.yml` 에서 `${ENV_VAR:기본값}` 으로 참조.

@@ -141,6 +141,14 @@ export type AnalyticsEvent =
   | { name: 'Study Presenter Registered'; props: { study_id: string; meeting_id: string; slot: 1 | 2 } }
   | { name: 'Study Presenter Unregistered'; props: { study_id: string; meeting_id: string; slot: 1 | 2 } }
   | { name: 'Study Discord Opened'; props: { study_id: string } }
+  | {
+      name: 'Meeting Retro Submitted';
+      props: { study_id: string; meeting_id: string; is_edit: boolean; has_feeling: boolean };
+    }
+  | {
+      name: 'Meeting Retro Liked';
+      props: { study_id: string; meeting_id: string; section: 'good' | 'improve' | 'feeling' };
+    }
 
   // ── My page ──────────────────────────────────────────────────────────────────
   | { name: 'My Discord Connected'; props: { source: DiscordLinkSource } }

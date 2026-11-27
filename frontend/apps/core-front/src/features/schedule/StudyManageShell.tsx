@@ -10,6 +10,8 @@ import { Button, Modal, cx } from '@studyclub/ui';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 
 import { getUser } from '@/features/auth/auth';
+import { pendingRetroCount } from '@/features/meeting-retro/model';
+import { useRetroStatus } from '@/features/meeting-retro/queries';
 import { useJoinedStudyMemberships } from '@/features/my-studies/queries';
 import { type NavigatorGroup, type ScheduleRole } from '@/features/schedule/meetings';
 import { useStudyGroupInfo } from '@/features/schedule/queries';
@@ -89,6 +91,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const { data: groupInfo, isPending: groupPending, isError: groupError } = useStudyGroupInfo(Number(id));
   // 캡틴 여부는 내 스터디 명부(GET /api/me/studies 의 `captain`)가 정한다 — 회차 응답의 me 에는 캡틴 표시가 없다
   const { data: myStudies } = useJoinedStudyMemberships();
+  const { data: retroStatus } = useRetroStatus(Number(id), groupInfo?.studyGroup.id);
 
   if (!ready || isPending || groupPending) {
     return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
@@ -126,8 +129,11 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
     { href: base, label: '일정' },
     { href: `${base}/attendance`, label: '출석' },
     // 공지는 보내는 사람(캡틴·네비게이터)만 쓴다. 반 멤버가 읽는 공지 목록은 없다 (POL-0010)
+    { href: `${base}/retro`, label: '회고' },
     ...(canEdit ? [{ href: `${base}/notice`, label: '공지' }] : []),
   ];
+  // 쓸 수 있는데 안 쓴 회고가 있으면 회고 탭 옆 점. 캡틴은 retroMine 이 null 이라 늘 0
+  const pendingRetros = pendingRetroCount(retroStatus);
 
   return (
     <Ctx.Provider value={{ study, group, groupId, locale, role, captain, canEdit, setDirty }}>
@@ -168,7 +174,8 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
         </div>
         <nav className='mt-6 flex gap-1 border-b border-border'>
           {tabs.map((tb) => {
-            const on = pathname === tb.href;
+            // 회고 작성 페이지(…/retro/write)에서도 회고 탭이 선택된 채로 보인다
+            const on = pathname === tb.href || (tb.label === '회고' && pathname.startsWith(`${tb.href}/`));
             return (
               <Link
                 key={tb.href}
@@ -180,6 +187,12 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
                 )}
               >
                 {tb.label}
+                {tb.label === '회고' && pendingRetros > 0 && (
+                  <>
+                    <span aria-hidden className='ml-1.5 inline-block size-1.5 -translate-y-2 rounded-full bg-brand' />
+                    <span className='sr-only'>, 쓸 수 있는 회고 {pendingRetros}개</span>
+                  </>
+                )}
               </Link>
             );
           })}

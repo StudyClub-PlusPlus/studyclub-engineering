@@ -11,6 +11,7 @@ import { studyNoticesHandlers } from "./notices";
 import { notificationTemplatesHandlers } from "./notification-templates";
 import { notificationsHandlers } from "./notifications";
 import { adminParticipantsHandlers } from "./participants";
+import { meetingRetroHandlers, meetingRetroMeHandlers } from "./retros";
 import { rolePermissionsHandlers } from "./role-permissions";
 import {
   studiesHandlers,
@@ -46,6 +47,7 @@ export {
 } from "./notification-templates";
 export { notificationsHandlers, resetMockNotifications } from "./notifications";
 export { studyNoticesHandlers, resetMockNotices } from "./notices";
+export { meetingRetroHandlers, meetingRetroMeHandlers } from "./retros";
 
 export const mockHandlerGroups: MockHandlerGroup[] = [
   analyticsHandlers,
@@ -59,6 +61,8 @@ export const mockHandlerGroups: MockHandlerGroup[] = [
   meStudiesHandlers,
   studyMeetingsHandlers,
   studyNoticesHandlers,
+  meetingRetroMeHandlers,
+  meetingRetroHandlers,
   attendanceHandlers,
   adminAttendanceSummaryHandlers,
   adminParticipantsHandlers,

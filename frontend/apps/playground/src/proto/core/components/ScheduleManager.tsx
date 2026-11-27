@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { TimeZoneField } from '@core/components/TimeZoneField';
 import {
@@ -39,7 +39,19 @@ import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { localDateTime, relativeTimeChanges } from '@core/lib/time-zone-preview';
 import { useDisplayTimeZone, useIsConsoleTimeZone, useTimeZoneChangeLock } from '@core/lib/use-display-timezone';
 import type { Study } from '@studyclub/types';
-import { Button, Checkbox, Input, Modal, Select, SelectionCount, TableActionBar, cx, FilterChip, TimePicker, DatePicker } from '@studyclub/ui';
+import {
+  Button,
+  Checkbox,
+  Input,
+  Modal,
+  Select,
+  SelectionCount,
+  TableActionBar,
+  cx,
+  FilterChip,
+  TimePicker,
+  DatePicker,
+} from '@studyclub/ui';
 import { Plus, X } from 'lucide-react';
 
 /**
@@ -64,7 +76,6 @@ export function ScheduleManager({
   startAdding = false,
   compact = false,
   onStartedAdding,
-  retroCell,
 }: {
   study: Study;
   group: NavigatorGroup;
@@ -76,8 +87,6 @@ export function ScheduleManager({
   onStartedAdding?: () => void;
   /** 제목 · 발표자 열을 좁힌다 — 백오피스는 옆에 메뉴가 있어 본문이 좁다. 가로 스크롤 없이 들어가게. */
   compact?: boolean;
-  /** 회고 열 — 사용자 사이트만 넘긴다. 킥오프 줄에는 그리지 않는다. */
-  retroCell?: (m: ProtoMeeting) => ReactNode;
 }) {
   const src = source ?? studySource(study, group.timeZone);
   const [adding, setAdding] = useState(canEdit && startAdding);
@@ -293,8 +302,13 @@ export function ScheduleManager({
               <div className='w-48 max-w-full'>
                 <TimeZoneField
                   prioritizeCountries
-                  locale='ko' label='시간대' hideLabel size='sm' annotation={false}
-                  value={zone} disabled={Object.keys(incompleteWalls).length > 0}
+                  locale='ko'
+                  label='시간대'
+                  hideLabel
+                  size='sm'
+                  annotation={false}
+                  value={zone}
+                  disabled={Object.keys(incompleteWalls).length > 0}
                   onChange={setInputZone}
                 />
               </div>
@@ -442,11 +456,6 @@ export function ScheduleManager({
                     발표자1
                   </th>
                   <th className={cx('px-2 py-3 text-center', compact ? 'w-32' : 'w-36')}>발표자2</th>
-                  {retroCell && (
-                    <th data-anno='retro:1' className='w-40 px-2 py-3 text-center'>
-                      회고
-                    </th>
-                  )}
                 </tr>
               </thead>
               <tbody>
@@ -637,11 +646,6 @@ export function ScheduleManager({
                         {presenterCell('presenter2')}
                         {errors.presenter2 && <p className='mt-1 type-label-sm text-error-700'>{errors.presenter2}</p>}
                       </td>
-                      {retroCell && (
-                        <td className={cn(cell, 'text-center')}>
-                          {kickoff ? <span className='inline-block py-1.5 text-fg-muted'>-</span> : retroCell(m)}
-                        </td>
-                      )}
                     </tr>
                   );
                   return [row];
@@ -865,13 +869,7 @@ function KickoffForm({
           규칙·일정·발표자를 정하는 첫 모임입니다. 네비게이터는 이 날을 고칠 수 없습니다.
         </p>
         <div className='grid gap-3 sm:grid-cols-2'>
-          <DatePicker
-            label='일자'
-            required
-            value={date}
-            error={shown.date}
-            onChange={(value) => setDate(value)}
-          />
+          <DatePicker label='일자' required value={date} error={shown.date} onChange={(value) => setDate(value)} />
           <TimePicker
             label={`시작 시각 (${zoneLabel(group.timeZone)})`}
             required
@@ -1091,7 +1089,8 @@ function AddForm({
           <div className='type-label-sm text-warning-700' role='status'>
             {timeChanges.map((change) => (
               <p key={change.at}>
-                {dateWithDow(wallParts(new Date(change.at), viewerZone).date)} 회차부터 {scheduleZoneTitle(viewerZone)} 기준 {change.before} → {change.after} · 서머타임
+                {dateWithDow(wallParts(new Date(change.at), viewerZone).date)} 회차부터 {scheduleZoneTitle(viewerZone)}{' '}
+                기준 {change.before} → {change.after} · 서머타임
               </p>
             ))}
           </div>

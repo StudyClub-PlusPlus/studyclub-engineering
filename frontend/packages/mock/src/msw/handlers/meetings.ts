@@ -95,10 +95,10 @@ export function meetingsWithKickoff(
 export function getStudyMeetingIds(
   studyId: number,
   study: (typeof studies)[number],
-): Array<{ id: number; scheduledAt: string }> {
+): Array<{ id: number; scheduledAt: string; type: string }> {
   const stored = meetingState.get(studyId);
   if (stored)
-    return stored.map((m) => ({ id: m.id, scheduledAt: m.scheduledAt }));
+    return stored.map((m) => ({ id: m.id, scheduledAt: m.scheduledAt, type: m.type }));
   const crew = getStudyCrew(study);
   const time =
     study.schedule?.ko
@@ -108,6 +108,7 @@ export function getStudyMeetingIds(
   return meetingsWithKickoff(study, crew.meetings).map((m) => ({
     id: numericId(m.id),
     scheduledAt: `${m.date}T${time}:00+09:00`,
+    type: m.no === 0 ? "KICKOFF" : "REGULAR",
   }));
 }
 

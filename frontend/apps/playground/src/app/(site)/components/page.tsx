@@ -39,7 +39,9 @@ import {
   DatePicker,
   TimePicker,
   TimeZonePicker,
+  HeatGrid,
 } from '@studyclub/ui';
+import type { HeatGridCell } from '@studyclub/ui';
 import type { BadgeTone, ButtonSize, ButtonVariant } from '@studyclub/ui';
 import { BookOpen, CalendarClock, CalendarDays, Globe, LayoutDashboard, Rocket, Search, Users } from 'lucide-react';
 
@@ -273,7 +275,9 @@ export default function ComponentsCatalog() {
               <Button leadingIcon={<Search />}>스터디 검색</Button>
               <div className='flex items-center gap-2'>
                 <Button loading>저장</Button>
-                <span role='status' className='type-body-sm text-fg-muted'>저장 중…</span>
+                <span role='status' className='type-body-sm text-fg-muted'>
+                  저장 중…
+                </span>
               </div>
             </div>
             <p id='catalog-save-error' role='alert' className='type-body-sm text-danger-fg'>
@@ -293,7 +297,9 @@ export default function ComponentsCatalog() {
         </Case>
 
         <Case title='모바일 CTA' note='375px에서도 한 줄 레이블을 유지하고, 작은 화면에서 전체 너비로 표시합니다.'>
-          <Button size='lg' className='w-full sm:w-auto'>스터디 참여 신청 내용을 저장하기</Button>
+          <Button size='lg' className='w-full sm:w-auto'>
+            스터디 참여 신청 내용을 저장하기
+          </Button>
         </Case>
 
         <Case
@@ -452,7 +458,12 @@ export default function ComponentsCatalog() {
               rows={3}
               placeholder='어떤 스터디인지 적어주세요'
             />
-            <Textarea label='활동 목표' error='목표를 최소 10자 이상 작성해 주세요.' rows={2} defaultValue='짧은 목표' />
+            <Textarea
+              label='활동 목표'
+              error='목표를 최소 10자 이상 작성해 주세요.'
+              rows={2}
+              defaultValue='짧은 목표'
+            />
             <Textarea
               label='스터디 규칙'
               helper='showCount · maxLength 조합'
@@ -537,7 +548,13 @@ export default function ComponentsCatalog() {
             <Switch label='알림 받기' checked={alerts} onCheckedChange={setAlerts} />
             <Switch label='사이트 공개' tone='success' checked={published} onCheckedChange={setPublished} />
             <div className='flex flex-col items-start gap-1'>
-              <Switch label='사이트 공개' tone='success' checked={false} aria-disabled aria-describedby='catalog-switch-reason' />
+              <Switch
+                label='사이트 공개'
+                tone='success'
+                checked={false}
+                aria-disabled
+                aria-describedby='catalog-switch-reason'
+              />
               <p id='catalog-switch-reason' className='type-label-sm text-[var(--color-fg-muted)]'>
                 신청 폼을 먼저 연결하세요.
               </p>
@@ -684,7 +701,10 @@ export default function ComponentsCatalog() {
           </Modal>
         </Case>
 
-        <Case title='TableActionBar · SelectionCount' note='표 위·아래 작업 바. 왼쪽은 고른 것에 하는 일, 오른쪽은 저장.'>
+        <Case
+          title='TableActionBar · SelectionCount'
+          note='표 위·아래 작업 바. 왼쪽은 고른 것에 하는 일, 오른쪽은 저장.'
+        >
           <TableActionBar
             selection={
               <>
@@ -698,7 +718,10 @@ export default function ComponentsCatalog() {
           />
         </Case>
 
-        <Case title='StudyCard · StudyThumb' note='스터디 목록 카드. 이미지가 없으면 StudyThumb 가 카테고리 그라디언트를 그린다.'>
+        <Case
+          title='StudyCard · StudyThumb'
+          note='스터디 목록 카드. 이미지가 없으면 StudyThumb 가 카테고리 그라디언트를 그린다.'
+        >
           <div className='grid gap-4 sm:grid-cols-2'>
             <StudyCard
               href='#'
@@ -744,7 +767,11 @@ export default function ComponentsCatalog() {
         </Case>
 
         <Case title='MarkdownLite' note='공지 · 스터디 규칙 본문. 제목 · 굵게 · 목록 · 코드만 그린다.'>
-          <MarkdownLite text={'### 스터디 규칙\n- **매주 목요일** 20시 시작\n- 결석은 하루 전까지 알려 주세요\n\n`지각 3회` = 결석 1회'} />
+          <MarkdownLite
+            text={
+              '### 스터디 규칙\n- **매주 목요일** 20시 시작\n- 결석은 하루 전까지 알려 주세요\n\n`지각 3회` = 결석 1회'
+            }
+          />
         </Case>
 
         <Case
@@ -758,7 +785,13 @@ export default function ComponentsCatalog() {
             <ButtonLink href='#' variant='secondary'>
               공지 목록
             </ButtonLink>
-            <ButtonLink href='https://drive.google.com' external variant='secondary' size='sm' leadingIcon={<BookOpen />}>
+            <ButtonLink
+              href='https://drive.google.com'
+              external
+              variant='secondary'
+              size='sm'
+              leadingIcon={<BookOpen />}
+            >
               자료실
             </ButtonLink>
           </div>
@@ -803,14 +836,83 @@ export default function ComponentsCatalog() {
           note='시간대 고르기. 목록이 7개 이상이면 검색 칸이 붙고, 같은 국가는 머리글 아래 묶는다. 지역 이름 · UTC 차이는 앱이 options 로 넘긴다.'
         >
           <div className='grid max-w-3xl gap-4 sm:grid-cols-3'>
-            <TimeZonePicker label='짧은 목록' required value={zone} onChange={setZone} options={ZONE_OPTIONS.slice(0, 4)} />
+            <TimeZonePicker
+              label='짧은 목록'
+              required
+              value={zone}
+              onChange={setZone}
+              options={ZONE_OPTIONS.slice(0, 4)}
+            />
             <TimeZonePicker label='검색 · 묶음' size='md' value={zone} onChange={setZone} options={ZONE_OPTIONS} />
-            <TimeZonePicker label='오류' value='' error='시간대를 선택해 주세요.' onChange={() => {}} options={ZONE_OPTIONS} />
+            <TimeZonePicker
+              label='오류'
+              value=''
+              error='시간대를 선택해 주세요.'
+              onChange={() => {}}
+              options={ZONE_OPTIONS}
+            />
           </div>
+        </Case>
+
+        <Case
+          title='HeatGrid'
+          note='행 × 열 칸(요일 × 시각)의 많고 적음을 히트 단계로 칠한다. 칸을 누르면 고르고, 다시 누르면 풀린다.'
+        >
+          <HeatGridDemo />
         </Case>
 
         {/* new-component: pnpm --filter @studyclub/ui new-component 이 새 부품 칸을 이 줄 위에 넣는다 */}
       </div>
+    </div>
+  );
+}
+
+const HEAT_DAYS = ['월', '화', '수', '목', '금', '토', '일'];
+const HEAT_NAMES = ['지우', '민준', '서연', '하준', '도윤', '수아', '예준'];
+
+function heatSample(row: number, col: number): number {
+  const evening = col >= 19 && col <= 22 ? 4 : col >= 9 && col <= 18 ? 2 : col >= 7 ? 1 : 0;
+  return Math.max(0, evening + (row >= 5 ? 3 : 0) - (col < 7 ? 2 : 0));
+}
+
+function HeatGridDemo() {
+  const [cell, setCell] = useState<HeatGridCell | null>(null);
+  return (
+    <div className='flex w-full flex-col gap-6'>
+      <HeatGrid
+        aria-label='참여 가능 인원 · 요일 × 시각'
+        rows={HEAT_DAYS.map((d) => ({ key: d, label: d }))}
+        columns={Array.from({ length: 24 }, (_, h) => ({ key: String(h), label: h % 3 === 0 ? String(h) : undefined }))}
+        value={heatSample}
+        max={7}
+        unit='명'
+        describe={(r, c) => `${HEAT_DAYS[r]} ${c}시 · ${heatSample(r, c)}명`}
+        hint='칸에 올리면 인원이 보입니다'
+        selected={cell}
+        onSelect={setCell}
+      />
+      <HeatGrid
+        aria-label='참여 가능 인원 · 시각 × 요일 (말풍선)'
+        rows={Array.from({ length: 24 }, (_, h) => ({ key: String(h), label: String(h) }))}
+        columns={HEAT_DAYS.map((d) => ({ key: d, label: d }))}
+        value={(h, d) => heatSample(d, h)}
+        max={7}
+        unit='명'
+        describe={(h, d) => `${HEAT_DAYS[d]} ${h}시 · ${heatSample(d, h)}명`}
+        tooltip={(h, d) => HEAT_NAMES.slice(0, heatSample(d, h)).join(', ') || '없음'}
+        showValues
+        hint='칸에 올리면 이름이 보입니다'
+      />
+      <HeatGrid
+        aria-label='빈 격자'
+        rows={HEAT_DAYS.map((d) => ({ key: d, label: d }))}
+        columns={Array.from({ length: 24 }, (_, h) => ({ key: String(h), label: h % 6 === 0 ? String(h) : undefined }))}
+        value={() => 0}
+        max={0}
+        unit='명'
+        describe={(r, c) => `${HEAT_DAYS[r]} ${c}시 · 0명`}
+        hint='값이 없으면 모든 칸이 빈 칸 색이다'
+      />
     </div>
   );
 }

@@ -19,6 +19,7 @@ const detail = {
 const participant = (id: number, nickname: string, status: Participant['status']): Participant => ({
   participantId: id,
   accountId: id,
+  availableDays: [],
   nickname,
   discordNickname: null,
   email: `${id}@example.com`,

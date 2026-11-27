@@ -18,6 +18,7 @@ import {
 } from './feedback';
 import { FeedbackStatusBadge, FeedbackTypeBadge } from './FeedbackBadges';
 import { useMyFeedback, type MyFeedbackDetail as Detail } from './queries';
+import { RetryableImage } from './RetryableImage';
 import { useOnboardedAccount } from './useOnboardedAccount';
 import { PAGE, READ } from '@/lib/layout';
 
@@ -109,13 +110,7 @@ function FeedbackArticle({ feedback: f }: { feedback: Detail }) {
                   aria-label={`첨부 이미지 ${i + 1} 크게 보기`}
                   className='overflow-hidden rounded-control border border-border transition-opacity hover:opacity-90'
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- 쿠키 인증이 필요한 API 경로라 next/image 최적화를 거치지 않는다 */}
-                  <img
-                    src={feedbackImageSrc(img.url)}
-                    crossOrigin='use-credentials'
-                    alt={`첨부 이미지 ${i + 1}`}
-                    className='h-24 w-36 object-cover'
-                  />
+                  <RetryableImage src={feedbackImageSrc(img.url)} alt={`첨부 이미지 ${i + 1}`} className='h-24 w-36 object-cover' />
                 </button>
               ))}
             </div>
@@ -148,13 +143,7 @@ function FeedbackArticle({ feedback: f }: { feedback: Detail }) {
         size='lg'
       >
         {zoomed !== null && f.images[zoomed] && (
-          // eslint-disable-next-line @next/next/no-img-element -- 쿠키 인증이 필요한 API 경로라 next/image 최적화를 거치지 않는다
-          <img
-            src={feedbackImageSrc(f.images[zoomed].url)}
-            crossOrigin='use-credentials'
-            alt={`첨부 이미지 ${zoomed + 1}`}
-            className='mx-auto max-h-[70vh] w-auto max-w-full object-contain'
-          />
+          <RetryableImage key={f.images[zoomed].id} src={feedbackImageSrc(f.images[zoomed].url)} alt={`첨부 이미지 ${zoomed + 1}`} className='mx-auto max-h-[70vh] w-auto max-w-full object-contain' />
         )}
       </Modal>
     </>

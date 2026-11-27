@@ -194,9 +194,9 @@ flowchart LR
 | 기획 | 행사 운영 흐름 | 플레이그라운드와 화면 설명 | 시안 검토 |
 | FE | back-office-front 행사 운영 | 목록·등록·상세(행사 정보·상태 전환·참가자·메일 이력·안내/취소 안내 메일)를 `/api/admin/events` 스펙에 맞춰 구현. BE 구현 전이라 실제 연결은 BE 머지 뒤 확인. dev mock(MSW) 핸들러는 없음 | BE 배포 뒤 stage 에서 연결 확인 |
 | BE | 행사 등록·수정·운영 목록·상세 API ([event 스펙](../../../specs/event/spec.md)) | 구현중. 엔드포인트 4개 · `CLUB_EVENT` 테이블(V59) BE PR. 신청 수·일괄 확정은 임시 포트 어댑터(0건) | 신청 스펙 어댑터 연결, back-office-front 연결(후속 FE PR) |
-| BE | 모집 마감·재모집·행사 취소 API ([event-status 스펙](../../../specs/event-status/spec.md)) | 스펙작성중. PR #479 리뷰 결정(S1~S5) 반영 완료 | 스펙 확정 후 구현 |
-| BE | 참가자 목록·신청서·이메일 보기·참가 처리·종료 자동 전환 API ([event-participant 스펙](../../../specs/event-participant/spec.md)) | 스펙작성중. PR #479 리뷰 결정(P1~P6) 반영 완료. 신청 테이블 `CLUB_EVENT_REGISTRATION` 은 ST-038 과 공동 PR 로 먼저 만든다 | 공통 신청 테이블 PR 머지 후 구현 |
-| BE | 안내·취소 안내 메일·메일 이력·행사 알림 템플릿 ([event-mail 스펙](../../../specs/event-mail/spec.md)) | 스펙작성중. PR #479 리뷰 결정(M1~M7·재발송 검증·탈퇴 동시성) 반영 완료 | 스펙 확정 후 구현 |
+| BE | 모집 마감·재모집·행사 취소 API ([event-status 스펙](../../../specs/event-status/spec.md)) | 구현중. `PATCH …/status` · 운영 상세 판정 필드 6개 · 행사 취소 감사 기록(`ADMIN_AUDIT_LOG` 스키마 변경 V67) BE PR | back-office-front 연결(FE PR #528), stage 확인 뒤 구현완료 |
+| BE | 참가자 목록·신청서·이메일 보기·참가 처리·종료 자동 전환 API ([event-participant 스펙](../../../specs/event-participant/spec.md)) | 스펙확정. PR #479 리뷰 결정(P1~P6) 반영, plan·tasks 작성. 신청 테이블 `CLUB_EVENT_REGISTRATION`(V62)과 탈퇴 처리는 공통 신청 PR #516 에서 완료 | 구현 (event-status 다음) |
+| BE | 안내·취소 안내 메일·메일 이력·행사 알림 템플릿 ([event-mail 스펙](../../../specs/event-mail/spec.md)) | 스펙확정. PR #479 리뷰 결정(M1~M7·재발송 검증·탈퇴 동시성) 반영, plan·tasks 작성 | 구현 (event-participant 다음) |
 | BE | 크루 행사 조회·신청·본인 취소 API (ST-038 [크루 행사 신청](../crew-apply-event/PRD.md) 담당) | 스펙 없음 | ST-038 에서 계약 작성·구현. 이 스토리는 신청 테이블과 자동 메일 이벤트만 맞춘다 |
 
 ### 데이터와 처리 규칙

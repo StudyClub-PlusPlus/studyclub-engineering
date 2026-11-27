@@ -39,9 +39,9 @@
 
 ## Phase 4: 신청 연동 (팀원 PR)
 
-- [ ] T018 신청 테이블을 읽는 `ClubEventRegistrationPort` 실제 어댑터, `EmptyClubEventRegistrationAdapter` 삭제
-- [ ] T019 크루 신청 제출이 `findByIdForUpdate` 를 첫 조회로 · `displayStatus` / `seatsOf` 로 판정
-- [ ] T020 `ClubEventRegistrationsConfirmedEvent` `BEFORE_COMMIT` 구독자 — 신청마다 확정 안내 `NOTIFICATION` 행 (메일 스펙)
+- [x] T018 신청 테이블을 읽는 `ClubEventRegistrationPort` 실제 어댑터, `EmptyClubEventRegistrationAdapter` 삭제 — PR #516 (`com.studyclub.api.event.ClubEventRegistrationAdapter`, `V62__create_club_event_registration.sql`)
+- [x] T019 크루 신청 제출이 행사 행 `findByIdForUpdate` 로 잠근 뒤 `displayStatus` / `seatsOf` 로 판정 — PR #517 (`ClubEventSiteService`, 잠금 순서는 `ACCOUNT` → `CLUB_EVENT`)
+- [ ] T020 (event-mail 로 이관) `ClubEventRegistrationsConfirmedEvent` `BEFORE_COMMIT` 구독자. [event-mail tasks](../event-mail/tasks.md) 의 자동 메일 구독자 태스크가 이 이벤트와 신청 접수 · 참가 불가 · 개별 취소 이벤트를 함께 받는다. `AdminClubEventService.update` 의 `TODO(event-mail)` 주석도 그 PR 에서 지운다
 
 ## Phase 5: FE 연동 (후속 FE PR)
 
@@ -56,5 +56,6 @@
 
 - [x] Phase 1~3 완료 · `./gradlew check` 통과
 - [ ] `backend-migration-check` CI(빈 MySQL + `validate`) 통과
-- [ ] Phase 4·5 머지 후 spec.md 상태를 `구현완료` 로 변경
+- [x] Phase 4 의 이 스펙 몫(T018 · T019) 머지 — T020 은 event-mail 체크포인트에서 본다
+- [ ] Phase 5 머지 후 spec.md 상태를 `구현완료` 로 변경
 - [ ] `/spec review event` 검증 통과

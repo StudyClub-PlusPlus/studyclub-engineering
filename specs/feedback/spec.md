@@ -724,13 +724,13 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | X-Content-Type-Options | `nosniff` |
 | Cross-Origin-Resource-Policy | `same-site` |
 
-**화면** — `<img src="{API 주소}{images[].url}" crossorigin="use-credentials">`. `use-credentials` 가 없으면 `Origin` 헤더가 없어 백엔드가 두 앱의 쿠키 중 사이트 쿠키를 먼저 고른다 — 백오피스에서는 이 속성이 있어야 `bo_` 쿠키로 인증된다(`JwtAuthFilter`). 기존 CORS 설정(`allowCredentials`)을 그대로 쓴다.
+**화면** — `<img src="{API 주소}{images[].url}" crossorigin="use-credentials">`. `use-credentials` 가 없으면 `Origin` 헤더가 없어 백엔드가 두 앱의 쿠키 중 사이트 쿠키를 먼저 고른다 — 백오피스에서는 이 속성이 있어야 `bo_` 쿠키로 인증된다(`JwtAuthFilter`). 기존 CORS 설정(`allowCredentials`)을 그대로 쓴다. 이미지 요청이 실패하면 앱의 `/api/auth/refresh` 를 한 번 부르고 같은 주소를 `?retry=1` 로 다시 요청하며(`http()` 의 401 처리와 같은 규칙), 그래도 실패하면 「이미지를 불러오지 못했어요」 를 보인다(`RetryableImage`).
 
 **저장소 읽기는 트랜잭션 밖이다** — 권한 · 상태 확인은 읽기 전용 트랜잭션에서 끝내고, 파일을 읽는 동안 DB 연결을 잡지 않는다.
 
-**알려진 잔여 위험** — 이 변경 전에 올라간 파일은 `gigs/feedbacks/` 공개 폴더에 있고 옮기지 않았다(사용자 결정). 이 파일들도 화면에는 이 API 로 보이지만, 예전에 응답으로 나간 CloudFront 주소로는 계속 열린다(최대 하루 캐시). 당시 기록은 모두 테스트 기록이고 보유 기간(1년)이 지나면 자동으로 지워진다. 개인정보가 든 파일이 있다고 확인되면 `gigs/feedbacks/` → `private/feedbacks/` 복사 후 `STORAGE_OBJECT.OBJECT_KEY` 갱신 · 원본 삭제 · CloudFront 무효화를 별도로 한다.
+**알려진 잔여 위험** — 이 변경 전에 올라간 파일은 `gigs/feedbacks/` 공개 폴더에 있고 옮기지 않았다(사용자 결정). 이 파일들도 화면에는 이 API 로 보이지만, 예전에 응답으로 나간 CloudFront 주소로는 계속 열린다(최대 하루 캐시). 당시 기록은 모두 테스트 기록이고 보유 기간(1년)이 지나면 자동으로 지워진다. 개인정보가 없는 테스트 자료라 이전 작업 없이 진행하기로 했다(PR #537 리뷰, 2026-11-25).
 
-**배포** — `V64` 가 `FEEDBACK_IMAGE.IMAGE_URL` 을 지운다. stage 는 Flyway 가 꺼져 있어 손으로 한 번 적용해야 한다(Hibernate `update` 는 컬럼을 지우지 않아 `NOT NULL` 컬럼이 남으면 새 문의 저장이 실패한다).
+**배포** — `V64` 가 `FEEDBACK_IMAGE.IMAGE_URL` 을 지운다. stage 는 Flyway 가 꺼져 있어 손으로 한 번 적용해야 한다(Hibernate `update` 는 컬럼을 지우지 않아 `NOT NULL` 컬럼이 남으면 새 문의 저장이 실패한다). prod 배포 중 옛 인스턴스에서 일시적으로 오류가 날 수 있고, 개발자만 쓰는 단계라 감수하기로 했다(PR #537 리뷰, 2026-11-25).
 
 ### 퍼널·계측
 
@@ -815,6 +815,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | 2026-10-26 | 이미지는 PNG · JPG · WEBP. GIF 는 후속 | PR #341 리뷰 |
 | 2026-10-26 | 이미지는 공개 폴더로 시작, 비공개는 후속 | PR #341 리뷰 |
 | 2026-11-21 | 첨부 이미지 비공개: `private/feedbacks/` + 요청마다 권한을 확인하는 서버 전달. 서명 URL(CloudFront · S3)은 발급 뒤 만료까지 주소만으로 열려 권한 회수가 늦어서 택하지 않았다. 기존 `gigs/feedbacks/` 파일은 옮기지 않는다 | 사용자 결정 · [share](../../docs/share/2026-11-21-feedback-attachment-private.md) |
+| 2026-11-25 | 옛 `gigs/feedbacks/` 파일은 이전하지 않고, prod 배포 중 일시 오류는 감수한다. 사진 요청이 실패하면 인증을 한 번 갱신하고 다시 요청한다 | PR #537 리뷰 |
 | 2026-10-26 | rate limit 계정당 60초 1건 + 24시간 20건 | PR #341 리뷰 |
 | 2026-10-26 | 캡틴 메모 2000자 | PR #341 리뷰 |
 | 2026-10-26 | 삭제 API · `DELETED_AT` 없음 | PR #341 리뷰 |
