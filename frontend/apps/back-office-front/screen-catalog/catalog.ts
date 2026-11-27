@@ -1,6 +1,7 @@
 import { authScreenStates } from './features/auth/login.meta';
 import { prdDashboardStates } from './features/prd/dashboard.meta';
 import { prdOperationStates } from './features/prd/operations.meta';
+import { prdRetroStates } from './features/prd/retros.meta';
 import { prdStudyStates } from './features/prd/studies.meta';
 import { studyScreenStates } from './features/studies/studies.meta';
 import { pages } from './pages';
@@ -12,6 +13,7 @@ const screenStates: ScreenStateDef[] = [
   ...prdStudyStates,
   ...prdOperationStates,
   ...prdDashboardStates,
+  ...prdRetroStates,
 ];
 
 export const backOfficeScreenCatalog: ScreenCatalog = { pages, screenStates };

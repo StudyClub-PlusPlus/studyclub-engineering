@@ -20,6 +20,8 @@
 
 2026-11-18 갱신: 내 문의(ST-035) **7개 상태 · 11장**을 더했다. 행사 2개 상태는 기능 플래그로 뺐다(`excluded`). 기준 이미지를 다시 찍었다 — 10-31 이후 다른 변경(헤더 순서 · 시간대 표기 · ui 부품 전환)이 함께 반영돼 있다. 스크린샷 전에 Next 개발 도구 말풍선을 숨긴다.
 
+2026-11-27 갱신: 스터디 일정 회고(ST-039 · ST-040) **5개 상태 · 8장**을 더했다. 개발 MSW 회고 목을 고정 시각으로 찍는다 — 크루 18번 · 네비게이터 11번 · 담당 캡틴 1번 스터디. 작성 페이지는 회고 탭의 「회고 작성」을 눌러 들어간다(목의 회차 번호가 고정값이 아니다). 검증 오류로 스크롤된 뒤 전체 페이지를 찍을 때 헤더가 중간에 합성되지 않도록 러너가 맨 위로 되돌린다(백오피스 러너와 같다).
+
 스크린샷 파일명은 `{pageId}--{state}--{viewport}.png`다. 신청 화면의 옛 `study-apply--*` 이름도 `study-detail--*`로 통일했다.
 
 | 실행 상태 | PRD 시나리오 (부분 연결) | 스크린샷 |
@@ -58,6 +60,11 @@
 | `my-feedback-detail--received` | CORE-ST-035-S07 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedback-detail--received--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedback-detail--received--mobile.png) |
 | `my-feedback-detail--answered` | CORE-ST-035-S07 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedback-detail--answered--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedback-detail--answered--mobile.png) |
 | `my-feedback-detail--not-found` | CORE-ST-035-V07, CORE-ST-035-S08 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-feedback-detail--not-found--desktop.png) |
+| `my-joined-retro--crew` | CORE-ST-039-V01, CORE-ST-039-S01, CORE-ST-039-S07, CORE-ST-039-S08, CORE-ST-039-S13 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--crew--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--crew--mobile.png) |
+| `my-joined-retro--navigator` | CORE-ST-040-V01, CORE-ST-040-S01, CORE-ST-040-S02, CORE-ST-040-S03 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--navigator--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--navigator--mobile.png) |
+| `my-joined-retro--captain` | CORE-ST-040-S04 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--captain--desktop.png) |
+| `my-joined-retro-write--crew` | CORE-ST-039-S03 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro-write--crew--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro-write--crew--mobile.png) |
+| `my-joined-retro-write--invalid` | CORE-ST-039-V04, CORE-ST-039-S04 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro-write--invalid--desktop.png) |
 
 ## PRD별 완료 기준과 상태
 
@@ -501,6 +508,61 @@ V07 「연동 확인중」의 PRD 원문은 「스피너」지만 현재 `신청
 | 전송 실패 | 팝업 유지, 빨간 알림 / `의견을 보내지 못했습니다. 다시 시도해 주세요.` · `다시 시도` | `CORE-ST-035-V05` | 미연결 |
 | 너무 자주 보냄 | 빨간 알림 / `잠시 후 다시 시도해 주세요.` | `CORE-ST-035-V06` | 미연결 |
 | 상세 없음 | 남의 것 · 없는 번호 / `찾을 수 없는 문의입니다.` | `CORE-ST-035-V07` | `my-feedback-detail--not-found` |
+
+### ST-039 crew-write-meeting-retro
+
+[PRD](../../01-planning/stories/crew-write-meeting-retro/PRD.md) · [시나리오](../../frontend/apps/core-front/screen-catalog/features/prd/crew-write-meeting-retro.feature)
+
+**현재 코드 기준:** 회고 탭 · 작성 페이지(2026-11-27 카탈로그 연결). 개발 MSW 회고 목으로 찍는다 — 실제 저장 · 👍 반영 · 기한 판정은 검증하지 않는다. 백오피스 스터디 상세 회고 탭은 [관리자 대응표](./admin-e2e-prd-map.md)에 있다.
+
+| 완료 기준 | PRD 원문 | 연결 시나리오 | 실행 화면 근거 |
+|---|---|---|---|
+| 1 | 일정 표에는 회고 열이 없다 — 쓸 수 있는데 안 쓴 회고가 있으면 「회고」 탭 옆 점 | `CORE-ST-039-S01` | `my-joined-retro--crew` |
+| 2 | 회고 탭 버튼 — 기한 전 안 씀 「회고 작성」 · 기한 전 씀 「내 회고 수정」 · 기한 뒤 「회고 마감」(비활성) | `CORE-ST-039-S02` | 미연결 |
+| 3 | 회고 작성 — 좋았던 점 · 개선할 점(필수) · 소감(선택), 문항마다 500자 · 글자 수 | `CORE-ST-039-S03` | `my-joined-retro-write--crew` |
+| 4 | 필수 칸 누락 시 칸별 오류 표시와 제출 차단 | `CORE-ST-039-S04` | `my-joined-retro-write--invalid` |
+| 5 | 제출 뒤 완료 토스트와 회고 탭의 그 회차로 이동 | `CORE-ST-039-S05` | 미연결 |
+| 6 | 기한 안 내 회고 수정 — 쓴 내용 채움, 받은 👍 유지 | `CORE-ST-039-S06` | 미연결 |
+| 7 | 회고 탭 회차 고르기 — 끝난 회차만, 처음엔 가장 최근 회차 | `CORE-ST-039-S07` | `my-joined-retro--crew` |
+| 8 | 문항별 보기 하나 — 문항마다 답을 👍 많은 순으로 | `CORE-ST-039-S08` | `my-joined-retro--crew` |
+| 9 | 마감 시각 확인 — 기한 전 「…까지」 · 기한 뒤 「… 마감」 (내 프로필 시간대 · 약칭). 「n명 중 m명 작성」은 네비게이터 · 캡틴만 | `CORE-ST-039-S09` | 미연결 |
+| 10 | 쓰기 전에도 같은 반 회고 열람 — 실명 | `CORE-ST-039-S10` | 미연결 |
+| 11 | 문항마다 👍 누르기 · 취소, 0 도 표시 | `CORE-ST-039-S11` | 미연결 |
+| 12 | 내 답의 👍 는 받은 수만 확인 | `CORE-ST-039-S12` | 미연결 |
+| 13 | 아직 안 썼으면 회고 작성 권유 문구 확인 (안 쓴 사람 이름은 크루에게 보이지 않음) | `CORE-ST-039-S13` | `my-joined-retro--crew` |
+| 14 | 기한이 지난 회차의 작성 · 수정 차단 안내 | `CORE-ST-039-S14` | 미연결 |
+| 15 | 끝난 미팅이 없을 때 안내 문구 | `CORE-ST-039-S15` | 미연결 |
+
+| 상태 | PRD 화면·카피 | 연결 시나리오 | 실행 화면 근거 |
+|---|---|---|---|
+| 기본 | 회고 탭 — 가장 최근에 끝난 회차 / 「n명 중 m명 작성」 | `CORE-ST-039-V01` | `my-joined-retro--crew` |
+| 빈 결과 | 끝난 회차가 없음 / 「아직 끝난 미팅이 없어요. 미팅이 끝나면 여기서 회고를 남기고 볼 수 있어요.」 | `CORE-ST-039-V02` | 미연결 |
+| 빈 결과 | 그 회차에 쓴 회고 없음 / 「아직 이 회차에 남긴 회고가 없어요.」 | `CORE-ST-039-V03` | 미연결 |
+| 검증 실패 | 작성 폼 칸 아래 / 「좋았던 점을 적어 주세요.」 · 「개선할 점을 적어 주세요.」 · 「500자까지 쓸 수 있어요.」 | `CORE-ST-039-V04` | `my-joined-retro-write--invalid` |
+| 처리 실패 | 기한이 지난 뒤 제출 / 「작성 기한이 지나 저장하지 못했어요.」 | `CORE-ST-039-V05` | 미연결 |
+| 권한 없음 | 작성 페이지 — 미팅 전 · 기한 뒤 / 「미팅이 끝나면 회고를 쓸 수 있어요.」 · 「작성 기한이 지나 회고를 쓰거나 고칠 수 없어요.」 | `CORE-ST-039-V06` | 미연결 |
+| 완료 | 제출 · 수정 / 「회고를 남겼어요.」 · 「회고를 고쳤어요.」 | `CORE-ST-039-V07` | 미연결 |
+| 처리 중 | 회고 탭 · 작성 페이지를 여는 동안 / 「불러오는 중…」 | `CORE-ST-039-V08` | 미연결 |
+| 조회 실패 | 회고 탭 · 작성 페이지 / 「회고를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.」 · 수정할 내 회고를 못 읽으면 빈 폼을 열지 않고 「내 회고를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.」 | `CORE-ST-039-V09` | 미연결 |
+| 처리 실패 | 그 밖의 저장 실패 · 👍 실패 / 「회고를 저장하지 못했어요. 다시 시도해 주세요.」 · 「공감을 반영하지 못했어요. 다시 시도해 주세요.」(👍 는 누르는 즉시 그리고, 실패하면 그 칸만 되돌린다) | `CORE-ST-039-V10` | 미연결 |
+
+### ST-040 navigator-view-meeting-retros
+
+[PRD](../../01-planning/stories/navigator-view-meeting-retros/PRD.md) · [시나리오](../../frontend/apps/core-front/screen-catalog/features/prd/navigator-view-meeting-retros.feature)
+
+**현재 코드 기준:** 네비게이터 · 담당 캡틴의 회고 탭(2026-11-27 카탈로그 연결). 담당 캡틴의 작성 페이지(권한 없음)는 작성 주소의 회차 번호가 목에서 정해져 아직 찍지 않았다.
+
+| 완료 기준 | PRD 원문 | 연결 시나리오 | 실행 화면 근거 |
+|---|---|---|---|
+| 1 | 회고 탭 작성 현황 — 참여자마다 작성 · 미작성 구분, 「n명 중 m명 작성」 (크루에게는 둘 다 보이지 않는다) | `CORE-ST-040-S01` | `my-joined-retro--navigator` |
+| 2 | 문항별 보기의 👍 많은 순 정렬 (크루와 같다) | `CORE-ST-040-S02` | `my-joined-retro--navigator` |
+| 3 | 네비게이터 본인의 회고 작성 · 수정 (크루와 같은 규칙) | `CORE-ST-040-S03` | `my-joined-retro--navigator` |
+| 4 | 캡틴에게는 작성 버튼이 없다 — 미팅 참여자가 아니라 쓰지 않는다 | `CORE-ST-040-S04` | `my-joined-retro--captain` |
+
+| 상태 | PRD 화면·카피 | 연결 시나리오 | 실행 화면 근거 |
+|---|---|---|---|
+| 기본 | 회고 탭 작성 현황 / 「n명 중 m명 작성」 · 참여자마다 「작성」 · 「미작성」 | `CORE-ST-040-V01` | `my-joined-retro--navigator` |
+| 권한 없음 | 캡틴이 작성 페이지를 열었을 때 / 「캡틴은 미팅 참여자가 아니라 회고를 쓰지 않아요.」 | `CORE-ST-040-V02` | 미연결 |
 
 ## 검증 범위와 남은 작업
 

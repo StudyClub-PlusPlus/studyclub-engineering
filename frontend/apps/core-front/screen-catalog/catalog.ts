@@ -1,6 +1,7 @@
 import { authScreenStates } from './features/auth/login.meta';
 import { onboardingScreenStates } from './features/auth/onboarding.meta';
 import { homeScreenStates } from './features/home/home.meta';
+import { joinedRetroScreenStates } from './features/my/joinedRetro.meta';
 import { joinedScheduleScreenStates } from './features/my/joinedSchedule.meta';
 import { joinedStudiesScreenStates } from './features/my/joinedStudies.meta';
 import { feedbackScreenStates } from './features/prd/feedback.meta';
@@ -18,6 +19,7 @@ const screenStates: ScreenStateDef[] = [
   ...onboardingScreenStates,
   ...joinedStudiesScreenStates,
   ...joinedScheduleScreenStates,
+  ...joinedRetroScreenStates,
   ...prdScreenStates,
   ...feedbackScreenStates,
 ];
