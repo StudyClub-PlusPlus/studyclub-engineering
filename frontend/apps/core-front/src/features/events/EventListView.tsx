@@ -3,20 +3,19 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
-import type { ApiEventListItem } from '@/features/events/repository';
-import { useEventList } from '@/features/events/queries';
+import type { StudyclubEvent, Locale } from '@studyclub/types';
+import { Badge, Segmented } from '@studyclub/ui';
+import { ArrowUpRight } from 'lucide-react';
+
 import {
-  CHANNEL_LABEL,
   DISPLAY_STATUS_LABEL,
   FORMAT_LABEL,
   REGISTRATION_STATUS_LABEL,
   displayStatusTone,
   registrationTone,
 } from '@/features/events/labels';
-import type { StudyclubEvent, Locale } from '@studyclub/types';
-import { Badge, Segmented } from '@studyclub/ui';
-import { ArrowUpRight } from 'lucide-react';
-
+import { useEventList } from '@/features/events/queries';
+import type { ApiEventListItem } from '@/features/events/repository';
 import { useDisplayTimeZone } from '@/features/profile/use-display-timezone';
 import { track } from '@/lib/analytics';
 import { t } from '@/lib/i18n';
@@ -59,8 +58,6 @@ export function EventListView({
     () => ({ upcoming: upcoming.length, past: pastItems.length }),
     [upcoming.length, pastItems.length],
   );
-
-  const visible = view === 'upcoming' ? upcoming : pastItems;
 
   return (
     <section className='pb-10'>

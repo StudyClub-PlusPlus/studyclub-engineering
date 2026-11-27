@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { ApiEventDetail, ApiEventRegistration } from '@/features/events/repository';
+import type { Locale } from '@studyclub/types';
+import { Badge, Button, Checkbox, Input, Modal, Radio, Select, Textarea } from '@studyclub/ui';
+import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, MapPin, Video } from 'lucide-react';
+
+import { getUser } from '@/features/auth/auth';
 import {
   answersForUnchangedQuestions,
   draftToSubmitPayload,
@@ -13,6 +17,7 @@ import {
   validateDraftAnswers,
   type DraftAnswers,
 } from '@/features/events/answers';
+import { TEXT_ANSWER_MAX, TEXTAREA_ANSWER_MAX } from '@/features/events/answers';
 import { eventChannels, SCHEDULE_ZONES } from '@/features/events/channels';
 import { formatEventInstant } from '@/features/events/format';
 import {
@@ -30,16 +35,11 @@ import {
   useMyEventRegistration,
   useSubmitEventRegistration,
 } from '@/features/events/queries';
-import { getUser } from '@/features/auth/auth';
+import type { ApiEventDetail, ApiEventRegistration } from '@/features/events/repository';
 import { useDisplayTimeZone } from '@/features/profile/use-display-timezone';
-import type { Locale } from '@studyclub/types';
-import { Badge, Button, Checkbox, Input, Modal, Radio, Select, Textarea } from '@studyclub/ui';
-import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, MapPin, Video } from 'lucide-react';
-
-import { TEXT_ANSWER_MAX, TEXTAREA_ANSWER_MAX } from '@/features/events/answers';
-import { DETAIL_ASIDE, DETAIL_GRID, PAGE } from '@/lib/layout';
 import { track } from '@/lib/analytics';
 import { ApiError } from '@/lib/http';
+import { DETAIL_ASIDE, DETAIL_GRID, PAGE } from '@/lib/layout';
 
 function errorCode(e: unknown): string | undefined {
   return e instanceof ApiError ? (e.body as { errorCode?: string } | undefined)?.errorCode : undefined;
@@ -71,6 +71,8 @@ export function EventDetailView({
   const [questionsUpdated, setQuestionsUpdated] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState('');
+  const [applyError, setApplyError] = useState('');
+  const [cancelError, setCancelError] = useState('');
   const idempotencyRef = useRef<string | null>(null);
   const receiptRef = useRef<HTMLHeadingElement>(null);
   const [focusReceipt, setFocusReceipt] = useState(0);
@@ -125,6 +127,7 @@ export function EventDetailView({
     setFormQuestions(event.questions);
     setQuestionsUpdated(false);
     setFieldErrors({});
+    setApplyError('');
     setBanner('');
     idempotencyRef.current = crypto.randomUUID();
     setApplyOpen(true);
@@ -156,33 +159,41 @@ export function EventDetailView({
         },
       });
       setApplyOpen(false);
+      setApplyError('');
       setFocusReceipt((n) => n + 1);
       setBanner(locale === 'ko' ? '신청이 접수되었어요.' : 'Your application was submitted.');
       await refetch();
     } catch (err) {
       const code = errorCode(err);
+      const message = err instanceof ApiError ? err.message : locale === 'ko' ? '신청에 실패했어요.' : 'Application failed.';
       if (code === 'EVENT_QUESTIONS_CHANGED') {
         setQuestionsUpdated(true);
-        setBanner(locale === 'ko' ? '신청 질문이 변경되었어요. 확인한 뒤 다시 신청해 주세요.' : 'Questions changed. Review and apply again.');
+        setApplyError(
+          locale === 'ko' ? '신청 질문이 변경되었어요. 확인한 뒤 다시 신청해 주세요.' : 'Questions changed. Review and apply again.',
+        );
         await refetch();
         return;
       }
-      if (
+      const terminal =
         code === 'EVENT_CHANNEL_FULL' ||
         code === 'EVENT_ALREADY_REGISTERED' ||
         code === 'EVENT_REGISTRATION_CLOSED' ||
         code === 'EVENT_CANCELLED' ||
-        code === 'EVENT_ENDED'
-      ) {
+        code === 'EVENT_ENDED';
+      if (terminal) {
         setApplyOpen(false);
+        setApplyError('');
+        setBanner(message);
         await refetch();
+        return;
       }
-      setBanner(err instanceof ApiError ? err.message : locale === 'ko' ? '신청에 실패했어요.' : 'Application failed.');
+      setApplyError(message);
     }
   }
 
   async function handleCancel() {
     if (!myRegistration) return;
+    setCancelError('');
     try {
       await cancelMutation.mutateAsync(myRegistration.registrationId);
       setCancelOpen(false);
@@ -190,12 +201,27 @@ export function EventDetailView({
       await refetch();
     } catch (err) {
       const code = errorCode(err);
-      if (code === 'EVENT_REGISTRATION_STATUS_NOT_ALLOWED' || code === 'NOT_FOUND') {
+      const message = err instanceof ApiError ? err.message : locale === 'ko' ? '취소에 실패했어요.' : 'Cancel failed.';
+      const terminal =
+        code === 'EVENT_REGISTRATION_STATUS_NOT_ALLOWED' ||
+        code === 'NOT_FOUND' ||
+        code === 'EVENT_REGISTRATION_CLOSED' ||
+        code === 'EVENT_CANCELLED' ||
+        code === 'EVENT_ENDED';
+      if (terminal) {
         setCancelOpen(false);
+        setCancelError('');
+        setBanner(message);
         await refetch();
+        return;
       }
-      setBanner(err instanceof ApiError ? err.message : locale === 'ko' ? '취소에 실패했어요.' : 'Cancel failed.');
+      setCancelError(message);
     }
+  }
+
+  function openCancelModal() {
+    setCancelError('');
+    setCancelOpen(true);
   }
 
   return (
@@ -402,7 +428,7 @@ export function EventDetailView({
                   {locale === 'ko' ? '신청서 보기' : 'View application'}
                 </Button>
                 {myRegistration.canCancel && (
-                  <Button size='sm' variant='tertiary' onClick={() => setCancelOpen(true)}>
+                  <Button size='sm' variant='tertiary' onClick={openCancelModal}>
                     {locale === 'ko' ? '신청 취소' : 'Cancel application'}
                   </Button>
                 )}
@@ -469,6 +495,11 @@ export function EventDetailView({
               );
             })}
           </fieldset>
+          {applyError && (
+            <p role='alert' className='rounded-control border border-error-200 bg-error-50 p-3 type-body-sm text-error-700'>
+              {applyError}
+            </p>
+          )}
           {questionsUpdated && (
             <p role='status' className='rounded-control bg-warning-bg p-3 type-body-sm text-warning-fg'>
               {locale === 'ko'
@@ -482,7 +513,6 @@ export function EventDetailView({
               question={q}
               value={answers[q.questionId]}
               error={fieldErrors[q.questionId]}
-              locale={locale}
               onChange={(next) => setAnswers((prev) => ({ ...prev, [q.questionId]: next }))}
             />
           ))}
@@ -509,6 +539,11 @@ export function EventDetailView({
             ? '취소하면 자리가 반환돼요. 모집 중이면 다시 신청할 수 있어요.'
             : 'Your spot will open up. You can apply again while registration is open.'}
         </p>
+        {cancelError && (
+          <p role='alert' className='mt-3 rounded-control bg-error-50 p-3 type-body-sm text-error-700'>
+            {cancelError}
+          </p>
+        )}
       </Modal>
 
       <Modal
@@ -556,13 +591,11 @@ function QuestionField({
   question,
   value,
   error,
-  locale,
   onChange,
 }: {
   question: ApiEventDetail['questions'][number];
   value: string | string[] | undefined;
   error?: string;
-  locale: Locale;
   onChange: (next: string | string[]) => void;
 }) {
   const label = question.label;

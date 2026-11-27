@@ -22,8 +22,9 @@ export function useEventList(initial?: Awaited<ReturnType<typeof fetchEventList>
   return useQuery({
     queryKey: eventKeys.list(),
     queryFn: fetchEventList,
-    initialData: initial,
-    staleTime: 30_000,
+    placeholderData: initial,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 
@@ -31,8 +32,9 @@ export function useEventDetail(eventId: number, initial?: Awaited<ReturnType<typ
   return useQuery({
     queryKey: eventKeys.detail(eventId),
     queryFn: () => fetchEventDetail(eventId),
-    initialData: initial,
-    staleTime: 15_000,
+    placeholderData: initial,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 

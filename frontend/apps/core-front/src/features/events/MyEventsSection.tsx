@@ -3,18 +3,20 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
+import { Badge, Button } from '@studyclub/ui';
+import { ArrowRight, CalendarDays } from 'lucide-react';
+
+import { getUser } from '@/features/auth/auth';
+import { formatEventInstant } from '@/features/events/format';
 import {
   CHANNEL_LABEL,
   REGISTRATION_STATUS_LABEL,
   registrationTone,
 } from '@/features/events/labels';
-import { formatEventInstant } from '@/features/events/format';
 import { useMyEvents } from '@/features/events/queries';
-import { getUser } from '@/features/auth/auth';
 import { useDisplayTimeZone } from '@/features/profile/use-display-timezone';
-import type { Locale } from '@studyclub/types';
-import { Badge, Button } from '@studyclub/ui';
-import { ArrowRight, CalendarDays } from 'lucide-react';
+
 
 export function MyEventsSection({ locale }: { locale: Locale }) {
   const user = getUser();
