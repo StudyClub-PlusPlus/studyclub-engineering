@@ -22,16 +22,16 @@ class EventMailValuesTest {
 
         @ParameterizedTest(name = "{0} {1}")
         @CsvSource({
-            "Asia/Seoul, 2026-12-05T10:00:00Z, 12월 5일 (토) 19:00 ~ 12월 5일 (토) 22:00 KST",
-            "America/New_York, 2026-12-05T15:00:00Z, 12월 5일 (토) 10:00 ~ 12월 5일 (토) 13:00 EST",
-            "America/New_York, 2026-07-10T14:00:00Z, 7월 10일 (금) 10:00 ~ 7월 10일 (금) 13:00 EDT",
-            "America/Toronto, 2026-12-05T15:00:00Z, 12월 5일 (토) 10:00 ~ 12월 5일 (토) 13:00 EST",
-            "America/Toronto, 2026-07-10T14:00:00Z, 7월 10일 (금) 10:00 ~ 7월 10일 (금) 13:00 EDT",
-            "America/Los_Angeles, 2026-12-05T18:00:00Z, 12월 5일 (토) 10:00 ~ 12월 5일 (토) 13:00 PST",
-            "America/Los_Angeles, 2026-07-10T17:00:00Z, 7월 10일 (금) 10:00 ~ 7월 10일 (금) 13:00 PDT",
-            "America/Vancouver, 2026-01-10T18:00:00Z, 1월 10일 (토) 10:00 ~ 1월 10일 (토) 13:00 PST",
-            "America/Vancouver, 2026-07-10T17:00:00Z, 7월 10일 (금) 10:00 ~ 7월 10일 (금) 13:00 PCT",
-            "America/Vancouver, 2026-12-05T17:00:00Z, 12월 5일 (토) 10:00 ~ 12월 5일 (토) 13:00 PCT"
+            "Asia/Seoul, 2026-12-05T10:00:00Z, 12월 5일 (토) 19:00 KST ~ 12월 5일 (토) 22:00 KST",
+            "America/New_York, 2026-12-05T15:00:00Z, 12월 5일 (토) 10:00 EST ~ 12월 5일 (토) 13:00 EST",
+            "America/New_York, 2026-07-10T14:00:00Z, 7월 10일 (금) 10:00 EDT ~ 7월 10일 (금) 13:00 EDT",
+            "America/Toronto, 2026-12-05T15:00:00Z, 12월 5일 (토) 10:00 EST ~ 12월 5일 (토) 13:00 EST",
+            "America/Toronto, 2026-07-10T14:00:00Z, 7월 10일 (금) 10:00 EDT ~ 7월 10일 (금) 13:00 EDT",
+            "America/Los_Angeles, 2026-12-05T18:00:00Z, 12월 5일 (토) 10:00 PST ~ 12월 5일 (토) 13:00 PST",
+            "America/Los_Angeles, 2026-07-10T17:00:00Z, 7월 10일 (금) 10:00 PDT ~ 7월 10일 (금) 13:00 PDT",
+            "America/Vancouver, 2026-01-10T18:00:00Z, 1월 10일 (토) 10:00 PST ~ 1월 10일 (토) 13:00 PST",
+            "America/Vancouver, 2026-07-10T17:00:00Z, 7월 10일 (금) 10:00 PCT ~ 7월 10일 (금) 13:00 PCT",
+            "America/Vancouver, 2026-12-05T17:00:00Z, 12월 5일 (토) 10:00 PCT ~ 12월 5일 (토) 13:00 PCT"
         })
         void zones(String zone, String start, String expected) {
             Instant startsAt = Instant.parse(start);
@@ -43,6 +43,20 @@ class EventMailValuesTest {
                             List.of(ChannelDraft.online(10, null)));
 
             assertThat(EventMailValues.schedule(event, ZoneId.of(zone))).isEqualTo(expected);
+        }
+
+        @Test
+        @DisplayName("서머타임이 끝나는 밤을 가로지르면 시작은 EDT, 종료는 EST — 각 시각의 약어")
+        void acrossDaylightSavingEnd() {
+            ClubEvent event =
+                    EventMailFixtures.event(
+                            Instant.parse("2026-10-31T23:00:00Z"),
+                            Instant.parse("2026-11-01T12:00:00Z"),
+                            "America/New_York",
+                            List.of(ChannelDraft.online(10, null)));
+
+            assertThat(EventMailValues.schedule(event, ZoneId.of("America/New_York")))
+                    .isEqualTo("10월 31일 (토) 19:00 EDT ~ 11월 1일 (일) 07:00 EST");
         }
 
         @Test

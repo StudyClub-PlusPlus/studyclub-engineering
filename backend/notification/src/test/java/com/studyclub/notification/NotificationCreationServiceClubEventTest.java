@@ -114,7 +114,7 @@ class NotificationCreationServiceClubEventTest {
                                     .containsEntry("participation", "https://meet.example.com/abc")
                                     .containsEntry(
                                             "eventSchedule",
-                                            "12월 5일 (토) 05:00 ~ 12월 5일 (토) 08:00 EST");
+                                            "12월 5일 (토) 05:00 EST ~ 12월 5일 (토) 08:00 EST");
                         });
     }
 

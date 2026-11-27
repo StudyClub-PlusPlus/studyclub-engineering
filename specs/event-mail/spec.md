@@ -95,8 +95,8 @@ PRD §7 은 메일을 **운영자 안내**와 **자동**으로 나눈다. 둘 �
 
 **일정 문자열** (프로토 `eventNoticeValues` · `formatDate` 와 같은 결과)
 
-- 종료 시각이 있으면 `{시작} ~ {종료 + 시간대 약어}`, 없으면 `{시작 + 시간대 약어}`
-- 날짜 형식은 `ko-KR` 의 `M월 d일 (요일) HH:mm` (24시간), 약어는 그 시각의 약어. 예: `12월 5일 (금) 19:00 ~ 12월 5일 (금) 22:00 KST`, `11월 28일 (토) 10:00 EST`
+- 종료 시각이 있으면 `{시작 + 시간대 약어} ~ {종료 + 시간대 약어}`, 없으면 `{시작 + 시간대 약어}`
+- 날짜 형식은 `ko-KR` 의 `M월 d일 (요일) HH:mm` (24시간), 약어는 그 시각의 약어. 예: `12월 5일 (금) 19:00 KST ~ 12월 5일 (금) 22:00 KST`, `11월 28일 (토) 10:00 EST`
 - 약어는 프로토 `zoneAbbreviation` 규칙을 따른다: 서울 `KST`, 그 밖은 그 시각의 서머타임 여부에 따른 약어(`EST`·`EDT`·`PST`·`PDT`), 밴쿠버는 프로토 규칙의 약어 (PRD §7 「날짜별 시간대 약어로 표시」, crew-apply-event §2-2 「KST·EST·EDT·PST·PDT 같은 약어」)
 - 서버는 같은 입력에 프로토와 같은 문자열을 내는지 테스트로 고정한다 (시간대 넷 × 서머타임 전·후)
 
@@ -176,7 +176,7 @@ PRD §7 은 메일을 **운영자 안내**와 **자동**으로 나눈다. 둘 �
   "templateId": 3,
   "templateExists": true,
   "subject": "[StudyClub] 연말 네트워킹 밋업 안내",
-  "body": "<!DOCTYPE html>…안녕하세요, {{nickname}}님.…일정: 12월 5일 (금) 19:00 ~ 12월 5일 (금) 22:00 KST…온라인: https://meet.example.com/abc<br>오프라인: 서울 강남구 ○○빌딩 5층…",
+  "body": "<!DOCTYPE html>…안녕하세요, {{nickname}}님.…일정: 12월 5일 (금) 19:00 KST ~ 12월 5일 (금) 22:00 KST…온라인: https://meet.example.com/abc<br>오프라인: 서울 강남구 ○○빌딩 5층…",
   "format": "HTML",
   "displayTimeZone": "Asia/Seoul",
   "recipientCount": 76,

@@ -57,14 +57,23 @@ public final class EventMailValues {
         return ZoneId.of(eventTimeZone);
     }
 
-    /** 종료가 있으면 {@code {시작} ~ {종료} {약어}}, 없으면 {@code {시작} {약어}}. 약어는 그 시각의 것이다. */
+    /**
+     * 종료가 있으면 {@code {시작} {약어} ~ {종료} {약어}}, 없으면 {@code {시작} {약어}}. 약어는 각 시각의 것이다 (프로토 {@code
+     * formatDate}).
+     */
     public static String schedule(ClubEvent event, ZoneId zone) {
         Instant start = event.getStartsAt();
         Instant end = event.getEndsAt();
         if (end == null) {
             return format(start, zone) + " " + abbreviation(zone, start);
         }
-        return format(start, zone) + " ~ " + format(end, zone) + " " + abbreviation(zone, end);
+        return format(start, zone)
+                + " "
+                + abbreviation(zone, start)
+                + " ~ "
+                + format(end, zone)
+                + " "
+                + abbreviation(zone, end);
     }
 
     /** 서울 KST, 북미는 그 시각의 서머타임 여부로 EST · EDT · PST · PDT, 고정 뒤 밴쿠버는 PCT. */
