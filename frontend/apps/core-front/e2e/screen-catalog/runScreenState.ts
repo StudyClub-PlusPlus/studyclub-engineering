@@ -68,6 +68,12 @@ export async function runScreenState(
   // 7. 스크린샷 (visual regression)
   // Next 개발 도구 말풍선(「N」 · 「1 Insight」)은 Next 판마다 글자가 바뀐다 — 화면 비교에서 뺀다
   await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+  // 검증 오류의 scrollIntoView 이후 전체 페이지를 찍으면 fixed 헤더가 문서 중간에 합성된다.
+  // 입력 포커스는 유지하면서 캡처 위치만 문서 맨 위로 통일한다.
+  if (screenshot?.fullPage) {
+    await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  }
   const snapshotName = `${state.id}--${viewport}.png`;
   await expect(page).toHaveScreenshot(snapshotName, {
     fullPage: screenshot?.fullPage ?? false,

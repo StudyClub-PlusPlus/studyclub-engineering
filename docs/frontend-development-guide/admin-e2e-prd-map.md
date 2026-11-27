@@ -16,7 +16,7 @@
 
 ## PRD 연결 실행 카탈로그 (2026-10-31)
 
-신규 **45개 상태 · 48장**을 연결했다. 2026-11-18 에 문의·오류 신고(ST-036) **8개 상태 · 8장**을 더했고, 상세 머리 출석률 요약 API 의 고정 응답을 `stubPrd.ts` 기본값에 넣었다. 기존 8개 상태 · 10장과 합치면 **53개 상태 · 58장**이다. 신규 연결은 145개 명세 중 45개 시나리오에 표시 상태 근거를 제공하며, 나머지 100개에는 이번 신규 연결이 없다. 기존 부분 근거는 아래 표를 별도로 참고한다. 이 숫자는 완료 기준 통과율이 아니다.
+신규 **45개 상태 · 48장**을 연결했다. 2026-11-18 에 문의·오류 신고(ST-036) **8개 상태 · 8장**을 더했고, 상세 머리 출석률 요약 API 의 고정 응답을 `stubPrd.ts` 기본값에 넣었다. 기존 8개 상태 · 10장과 합치면 **53개 상태 · 58장**이다. 2026-11-27 에 회고(ST-040 백오피스 회고 탭 · ST-041 회고 모아보기) **10개 상태 · 13장**을 더해 **63개 상태 · 71장**이다. 사이드바 「회고」와 스터디 상세 「회고」 탭이 생겨 기존 기준 이미지도 다시 찍었다(사이드바 · 탭 줄이 보이는 화면만). 신규 연결은 145개 명세 중 45개 시나리오에 표시 상태 근거를 제공하며, 나머지 100개에는 이번 신규 연결이 없다. 기존 부분 근거는 아래 표를 별도로 참고한다. 이 숫자는 완료 기준 통과율이 아니다.
 
 고정 시각 `2026-10-31T03:00:00Z`, 로컬 가상 데이터, 상태별 API 응답으로 재현한다. API 주소를 테스트 설정에서 고정해 로컬 `.env`에 따라 MSW 응답이 달라지지 않게 한다. 정의하지 않은 브라우저 API 호출은 테스트 실패로 처리한다. 로딩·처리중은 응답을 보류하고, 오류는 HTTP 오류 응답으로 만든다.
 
@@ -77,6 +77,16 @@
 | `feedback-detail--not-found` | BO-ST-036-V08 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/feedback-detail--not-found--desktop.png) |
 
 파일명 통일 후 검증: `pnpm run test:e2e:catalog` 일반 비교 **58 passed (46.6s)**. TypeScript·변경 파일 ESLint 통과. 신규 48개 이미지와 연결 명세 ID·문서 링크 확인.
+| `study-detail--retro` | BO-ST-040-S01 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/study-detail--retro--desktop.png), [mobile](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/study-detail--retro--mobile.png) |
+| `study-detail--retro-closed-meeting` | BO-ST-040-S01 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/study-detail--retro-closed-meeting--desktop.png) |
+| `study-detail--retro-no-ended` | BO-ST-040-S01 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/study-detail--retro-no-ended--desktop.png) |
+| `study-detail--retro-empty` | BO-ST-040-S01 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/study-detail--retro-empty--desktop.png) |
+| `retros--default` | BO-ST-041-V01, BO-ST-041-S01, BO-ST-041-S03, BO-ST-041-S05 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/retros--default--desktop.png), [mobile](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/retros--default--mobile.png) |
+| `retros--table` | BO-ST-041-V02, BO-ST-041-S02, BO-ST-041-S04, BO-ST-041-S06, BO-ST-041-S07 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/retros--table--desktop.png), [mobile](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/retros--table--mobile.png) |
+| `retros--loading` | BO-ST-041-V03 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/retros--loading--desktop.png) |
+| `retros--empty` | BO-ST-041-V04, BO-ST-041-S09 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/retros--empty--desktop.png) |
+| `retros--table-empty` | BO-ST-041-V05, BO-ST-041-S09 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/retros--table-empty--desktop.png) |
+| `retros--error` | BO-ST-041-V06 | [desktop](../../frontend/apps/back-office-front/e2e/screen-catalog/specs/__screenshots__/retros--error--desktop.png) |
 
 ### 현재 코드와 PRD 차이·남은 범위
 
@@ -600,6 +610,43 @@
 | 회신 전송 | 초록 알림 / 실패 시 입력 유지 / `회신을 보냈습니다.` / `회신을 보내지 못했습니다. 다시 시도해 주세요.` | `BO-ST-036-V06` |
 | 메모 저장 | 초록 알림 / 실패 / `저장했습니다.` / `저장하지 못했습니다. 다시 시도해 주세요.` | `BO-ST-036-V07` |
 | 상세 없음 | 삭제되었거나 없는 건 / `삭제되었거나 없는 문의·오류 신고입니다.` | `BO-ST-036-V08` |
+
+### ST-040 navigator-view-meeting-retros (백오피스 회고 탭)
+
+[PRD](../../01-planning/stories/navigator-view-meeting-retros/PRD.md) · [시나리오](../../frontend/apps/back-office-front/screen-catalog/features/prd/navigator-view-meeting-retros.feature)
+
+**자동화 상태: 표시 상태 일부 실행 연결(2026-11-27). 행동 전체는 예정.** PRD §2 화면 3(백오피스 스터디 상세 회고 탭)만 다룬다 — 완료 기준 1~4 와 상태표는 사용자 사이트 화면이라 [core-front 대응표](./core-e2e-prd-map.md)에 있다. 반 둘(A · B) · 끝난 회차 둘 · 아직 안 한 회차 하나를 고정 응답으로 준다. 반 칩 전환과 서버의 쓸 사람 판정은 검증하지 않는다.
+
+| 범위 | PRD 원문 | 연결 시나리오 | 실행 화면 근거 |
+|---|---|---|---|
+| §2 화면 3 | 운영 콘솔 › 스터디 › 「회고」 탭에 이 화면이 캡틴으로 그대로 들어간다. 반이 여럿이면 반 칩으로 한 반씩 본다 | `BO-ST-040-S01` | `study-detail--retro`, `study-detail--retro-closed-meeting`, `study-detail--retro-no-ended`, `study-detail--retro-empty` |
+
+### ST-041 captain-collect-meeting-retros
+
+[PRD](../../01-planning/stories/captain-collect-meeting-retros/PRD.md) · [시나리오](../../frontend/apps/back-office-front/screen-catalog/features/prd/captain-collect-meeting-retros.feature)
+
+**자동화 상태: 표시 상태 일부 실행 연결(2026-11-27). 행동 전체는 예정.** `GET /api/admin/retros` 는 아직 서버에 없어(BE #128) 고정 응답으로 화면만 찍는다. 좁히기 · 정렬 · 열 끄기의 요청 조건은 단위 테스트(`RetrosBrowser.test.tsx`)가 본다. 가로 스크롤(기준 6)과 CSV 내려받기(기준 7)는 연결하지 않았다.
+
+| 완료 기준 | PRD 원문 | 연결 시나리오 | 실행 화면 근거 |
+|---|---|---|---|
+| 1 | 문항별 보기(기본) — 고른 문항(기본 개선할 점)의 답을 세로 목록으로, 스터디 · 반 · 회차 · 날짜 · 참여자 · 작성 시각 · 👍 수와 함께. 최신순 · 공감순 | `BO-ST-041-S01` | `retros--default` |
+| 1-1 | 표 보기 — 진행 중인 스터디의 끝난 회차 회고 표 — 스터디 · 참여자 · 반 · 회차 · 문항 셋 · 작성일 | `BO-ST-041-S02` | `retros--table` |
+| 2 | 스터디 · 회차 · 참여자 이름으로 좁히기와 건수 확인 | `BO-ST-041-S03` | `retros--default` |
+| 3 | 표 보기 — 보일 문항 열(좋았던 점 · 개선할 점 · 소감) 켜고 끄기, 최신순 · 공감순 줄 순서 | `BO-ST-041-S04` | `retros--table` |
+| 4 | 작성률과 문항별 건수(좋았던 점 · 개선할 점 · 소감) 확인 | `BO-ST-041-S05` | `retros--default` |
+| 5 | 문항 칸의 전문과 👍 수 확인 | `BO-ST-041-S06` | `retros--table` |
+| 6 | 가로 스크롤 중 스터디 · 참여자 열 고정 · 표 위 가로 스크롤바 | `BO-ST-041-S07` | `retros--table` |
+| 7 | 좁힌 조건 그대로 CSV 내려받기 | `BO-ST-041-S08` | 미연결 |
+| 8 | 조건에 맞는 줄이 없을 때 안내 문구 | `BO-ST-041-S09` | `retros--empty`, `retros--table-empty` |
+
+| 상태 | PRD 화면·카피 | 연결 시나리오 | 실행 화면 근거 |
+|---|---|---|---|
+| 기본 | 전체 스터디 · 문항별 · 개선할 점 · 최신순 / 「총 n건」 | `BO-ST-041-V01` | `retros--default` |
+| 표 보기 | 전체 스터디 · 문항 셋 · 최신순 / 「총 n건」 | `BO-ST-041-V02` | `retros--table` |
+| 로딩 | 목록 · 표 자리 / — | `BO-ST-041-V03` | `retros--loading` |
+| 빈 결과 (문항별) | 좁힌 조건에 그 문항 답 없음 / 「조건에 맞는 의견이 없어요.」 | `BO-ST-041-V04` | `retros--empty` |
+| 빈 결과 (표) | 좁힌 조건에 줄 없음 / 「조건에 맞는 회고가 없어요.」 | `BO-ST-041-V05` | `retros--table-empty` |
+| 조회 실패 | 목록을 못 읽음 / 「회고를 불러오지 못했습니다.」 · 「다시 시도」. 0건으로 보이지 않게 「총 n건」은 숨긴다 | `BO-ST-041-V06` | `retros--error` |
 
 ## 다음 구현 단계
 

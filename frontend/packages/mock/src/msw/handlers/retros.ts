@@ -1,4 +1,4 @@
-import { HttpResponse } from 'msw';
+import { HttpResponse, passthrough } from 'msw';
 
 import { CAPTAIN_STUDY_IDS, NAVIGATOR_STUDY_IDS, getStudyMeetingIds } from './meetings';
 import { studies } from '../../data';
@@ -82,7 +82,7 @@ function contextOf(params: MockResolveContext['params'], request?: Request) {
     const end = new Date(m.scheduledAt).getTime() + MEETING_MINUTES * 60_000;
     const next = regular[i + 1];
     const deadline = next ? new Date(next.scheduledAt).getTime() : end + LAST_MEETING_EXTRA_DAYS * 86_400_000;
-    return { id: m.id, end, deadline };
+    return { id: m.id, no: i + 1, scheduledAt: m.scheduledAt, end, deadline };
   });
   return { studyId, captain, navigator, people, meetings };
 }
@@ -323,5 +323,161 @@ export const meetingRetroHandlers = mockClient.createHandlerGroup('/api/studies'
     method: 'DELETE',
     path: '/:studyId/meetings/:meetingId/retros/:retroId/likes/:section',
     presets: [{ label: '성공', status: 200, response: likeResponse(false) }],
+  },
+]);
+
+/* ── 백오피스 회고 모아보기 (GET /api/admin/retros) ─────────────────────── */
+
+type AdminRow = {
+  studyId: number;
+  studyTitle: string;
+  groupName: string;
+  meetingId: number;
+  meetingNo: number;
+  meetingStartAt: string;
+  participantName: string;
+  closed: boolean;
+  retro: StoredRetro | null;
+};
+
+const FIELD = { GOOD: 'good', IMPROVE: 'improve', FEELING: 'feeling' } as const;
+
+/** 진행 중인 스터디의 끝난 회차 × 쓸 사람. 쓴 회고는 사용자 사이트 회고 목과 같은 데이터다. */
+function adminRows(request?: Request): AdminRow[] {
+  const now = Date.now();
+  return studies
+    .filter((s) => s.status === 'ongoing')
+    .flatMap((study) => {
+      const ctx = contextOf({ studyId: String(study.study_id) }, request);
+      if (!ctx) return [];
+      return ctx.meetings
+        .filter((m) => m.end <= now)
+        .flatMap((m) => {
+          const list = retrosOf(ctx, m.id);
+          return ctx.people.map((p) => ({
+            studyId: ctx.studyId,
+            studyTitle: study.title.ko,
+            groupName: '기본반',
+            meetingId: m.id,
+            meetingNo: m.no,
+            meetingStartAt: m.scheduledAt,
+            participantName: p.name,
+            closed: now >= m.deadline,
+            retro: list.find((r) => r.participantId === p.participantId) ?? null,
+          }));
+        });
+    });
+}
+
+/**
+ * TODO(api): 실제 API 는 specs/meeting-retro/spec.md 「GET /api/admin/retros」(BE #128) — 개발 서버에서만 이 목이 대신 답한다.
+ * CSV(export.csv)는 화면이 링크로 바로 열어 서비스 워커를 거치지 않으므로 목을 두지 않는다.
+ */
+export const adminRetrosHandlers = mockClient.createHandlerGroup('/api/admin', [
+  {
+    method: 'GET',
+    path: '/retros',
+    presets: [
+      {
+        label: '정상',
+        status: 200,
+        response: ({ request }: MockResolveContext) => {
+          const url = new URL(request.url);
+          const get = (k: string) => url.searchParams.get(k) ?? '';
+          const studyId = Number(get('studyId')) || null;
+          const meetingId = (studyId && Number(get('meetingId'))) || null;
+          const q = get('q');
+          const section = get('section') as Section | '';
+          const sections = (get('sections') ? get('sections').split(',') : SECTIONS) as Section[];
+          const likeSort = get('likeSort') as Section | '';
+          const likeDir = get('likeDir') === 'ASC' ? 1 : -1;
+          const offset = Number(get('offset')) || 0;
+          const limit = Number(get('limit')) || 20;
+
+          const rows = adminRows(request).filter(
+            (r) =>
+              (!studyId || r.studyId === studyId) &&
+              (!meetingId || r.meetingId === meetingId) &&
+              (!q || r.participantName.includes(q)),
+          );
+          const written = rows.filter((r) => r.retro) as (AdminRow & { retro: StoredRetro })[];
+          const has = (r: StoredRetro, s: Section) => Boolean(r[FIELD[s]]);
+          const recent = (a: AdminRow & { retro: StoredRetro }, b: AdminRow & { retro: StoredRetro }) =>
+            b.retro.writtenAt.localeCompare(a.retro.writtenAt);
+          const items = section
+            ? written
+                .filter((r) => has(r.retro, section))
+                .sort((a, b) =>
+                  get('sort') === 'LIKES'
+                    ? b.retro.likes[section] - a.retro.likes[section] || recent(a, b)
+                    : recent(a, b),
+                )
+            : written
+                .filter((r) => sections.some((s) => has(r.retro, s)))
+                .sort((a, b) => {
+                  if (likeSort) {
+                    // 그 문항을 비운 회고는 방향과 상관없이 맨 뒤
+                    const la = has(a.retro, likeSort) ? a.retro.likes[likeSort] : -1;
+                    const lb = has(b.retro, likeSort) ? b.retro.likes[likeSort] : -1;
+                    if (la !== lb) return la < 0 || lb < 0 ? lb - la : likeDir * (la - lb);
+                  }
+                  const sum = (r: StoredRetro) => sections.reduce((n, s) => n + (has(r, s) ? r.likes[s] : 0), 0);
+                  return get('sort') === 'LIKES' ? sum(b.retro) - sum(a.retro) || recent(a, b) : recent(a, b);
+                });
+          const closed = rows.filter((r) => r.closed);
+          return {
+            summary: {
+              rows: rows.length,
+              written: written.length,
+              closedRows: closed.length,
+              closedWritten: closed.filter((r) => r.retro).length,
+              good: written.filter((r) => has(r.retro, 'GOOD')).length,
+              improve: written.filter((r) => has(r.retro, 'IMPROVE')).length,
+              feeling: written.filter((r) => has(r.retro, 'FEELING')).length,
+            },
+            total: items.length,
+            items: items.slice(offset, offset + limit).map((r) => ({
+              studyId: r.studyId,
+              studyTitle: r.studyTitle,
+              groupName: r.groupName,
+              meetingId: r.meetingId,
+              meetingNo: r.meetingNo,
+              meetingStartAt: r.meetingStartAt,
+              participantName: r.participantName,
+              closed: r.closed,
+              retro: {
+                good: r.retro.good,
+                improve: r.retro.improve,
+                feeling: r.retro.feeling,
+                likes: { ...r.retro.likes },
+                writtenAt: r.retro.writtenAt,
+              },
+            })),
+          };
+        },
+      },
+      { label: '서버 오류', status: 500, response: { errorMessage: '회고를 불러오지 못했습니다.' } },
+    ],
+  },
+  {
+    // 회고 모아보기의 스터디 고르기만 답한다 — 다른 목록 요청(스터디 목록 화면)은 실제 서버로 보낸다
+    method: 'GET',
+    path: '/studies',
+    presets: [
+      {
+        label: '진행 중 스터디',
+        status: 200,
+        response: ({ request }: MockResolveContext) => {
+          const url = new URL(request.url);
+          if (url.searchParams.get('status') !== 'ONGOING' || url.searchParams.get('sort') !== 'TITLE_ASC')
+            return passthrough();
+          const items = studies
+            .filter((s) => s.status === 'ongoing')
+            .map((s) => ({ studyId: s.study_id, title: s.title.ko }))
+            .sort((a, b) => a.title.localeCompare(b.title));
+          return { items, total: items.length, offset: 0, limit: 100 };
+        },
+      },
+    ],
   },
 ]);

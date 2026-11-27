@@ -12,4 +12,5 @@ export const pages: PageDef[] = [
   { id: 'notices', label: '공지 관리', path: '/notices' },
   { id: 'feedbacks', label: '문의·오류 신고', path: '/feedbacks' },
   { id: 'feedback-detail', label: '문의·오류 신고 상세', path: '/feedbacks/:id' },
+  { id: 'retros', label: '회고 모아보기', path: '/retros' },
 ];
