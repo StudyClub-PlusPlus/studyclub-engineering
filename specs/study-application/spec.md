@@ -154,7 +154,7 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 | 추가 질문 CHECKBOX | 필수면 불가 | 1개 | 옵션 수(+기타 1) | `options` + (기타 시) 자유 입력 | 없음 | 동일 | 동일 |
 | 기타 자유 입력 | 기타를 고르면 불가 | 1자 | 100자 | — | 빈 칸 | `other-empty` / `other-max` | `기타 내용을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |
 
-공백만이면 빈 값이다. 오류 필드명은 `discordNickname` · `availableDays` · `scheduleAgreed` · `answers.{questionId}`.
+신청 폼을 저장한 적 없는 스터디(`STUDY.APPLICATION_FORM` 이 NULL · 빈 값)는 추가 질문이 없는 것으로 보고 신청을 받는다 — 신청 폼 조회와 같은 판정 (2026-11-25, ZAPP 스터디클럽 #113). 공백만이면 빈 값이다. 오류 필드명은 `discordNickname` · `availableDays` · `scheduleAgreed` · `answers.{questionId}`.
 
 CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 안의 빈 문자열·공백 항목은 제거하지 않고 거절한다. 기타 허용 질문은 `other-empty`, 그 밖에는 `enum` 사유를 사용한다. 정상 선택지와 빈 기타를 함께 보내도 제출할 수 없다.
 
