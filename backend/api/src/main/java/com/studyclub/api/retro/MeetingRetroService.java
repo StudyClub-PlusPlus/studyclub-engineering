@@ -117,15 +117,16 @@ public class MeetingRetroService {
             if (meeting.isKickoff()) {
                 statuses.add(
                         new MeetingRetroResponses.MeetingRetroStatus(
-                                meeting.getId(), null, null, null));
+                                meeting.getId(), null, null, null, null));
             } else {
                 Instant dl = deadline(meeting, allMeetings);
-                boolean open = !now.isBefore(meetingEndAt(meeting)) && now.isBefore(dl);
+                Instant endAt = meetingEndAt(meeting);
+                boolean open = !now.isBefore(endAt) && now.isBefore(dl);
                 Boolean retroMine =
                         participantId != null ? writtenMeetingIds.contains(meeting.getId()) : null;
                 statuses.add(
                         new MeetingRetroResponses.MeetingRetroStatus(
-                                meeting.getId(), dl, open, retroMine));
+                                meeting.getId(), endAt, dl, open, retroMine));
             }
         }
 

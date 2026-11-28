@@ -17,11 +17,11 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/me/studies/{studyId}/meetings/{meetingId}/retros | 내 뷰어 컨텍스트 (내 회고 ID · 내가 누른 👍) | 필요 (반 참여자) | 스펙확정 |
-| GET | /api/studies/{studyId}/meetings/{meetingId}/retros | 한 회차의 회고 목록 · 안 쓴 참여자(네비게이터 · 캡틴만) | 필요 (같음) | 스펙확정 |
-| PUT | /api/me/studies/{studyId}/meetings/{meetingId}/retro | 내 회고 작성 · 수정 | 필요 (그 회차의 쓸 사람) | 스펙확정 |
-| PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 누르기 | 필요 (반 참여자, 자기 회고 제외) | 스펙확정 |
-| DELETE | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 취소 | 필요 (같음) | 스펙확정 |
+| GET | /api/me/studies/{studyId}/meetings/{meetingId}/retros | 내 뷰어 컨텍스트 (내 회고 ID · 내가 누른 👍) | 필요 (반 참여자) | 구현완료 |
+| GET | /api/studies/{studyId}/meetings/{meetingId}/retros | 한 회차의 회고 목록 · 안 쓴 참여자(네비게이터 · 캡틴만) | 필요 (같음) | 구현완료 |
+| PUT | /api/me/studies/{studyId}/meetings/{meetingId}/retro | 내 회고 작성 · 수정 | 필요 (그 회차의 쓸 사람) | 구현완료 |
+| PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 누르기 | 필요 (반 참여자, 자기 회고 제외) | 구현완료 |
+| DELETE | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 취소 | 필요 (같음) | 구현완료 |
 | GET | /api/me/studies/{studyId}/retros/status | 반 회차별 회고 상태 (deadline·open·mine) | 필요 (반 참여자·네비·캡틴) | 구현완료 |
 | GET | /api/admin/retros | 회고 모아보기 (쓴 회고만) | 필요 (ADMIN) | 스펙작성중 |
 | GET | /api/admin/retros/export.csv | 같은 조건 CSV | 필요 (ADMIN) | 스펙작성중 |
@@ -36,8 +36,8 @@
 - 기한 = 다음 정규 회차 시작. 마지막 회차는 미팅 종료 + 7일
 - 쓸 수 있음 = 미팅 종료 ≤ 지금 < 기한
 - 쓸 사람 = 그 회차 시작 때 반에 있던 참여자(`STUDY_PARTICIPANT`, 그전에 참여를 중단했으면 뺀다). 캡틴은 넣지 않는다
-- 킥오프 회차에는 회고가 없다. 킥오프 회차의 `retroDeadline` · `retroOpen` · `retroMine` 은 `null`
-- 회차별 회고 상태(`retroDeadline` · `retroOpen` · `retroMine`)는 `GET /api/me/studies/{studyId}/retros/status` 로 조회한다
+- 킥오프 회차에는 회고가 없다. 킥오프 회차의 `meetingEndAt` · `retroDeadline` · `retroOpen` · `retroMine` 은 `null`
+- 회차별 회고 상태(`meetingEndAt` · `retroDeadline` · `retroOpen` · `retroMine`)는 `GET /api/me/studies/{studyId}/retros/status` 로 조회한다
 - 시각(회차 시작 · 종료 · 기한 · 작성일)은 모두 UTC 로 내려준다. 화면은 보는 사람의 시간대(사용자 사이트 = 프로필 시간대, 백오피스 = 표시 시간대)로 날짜 · 시각을 바꾸고 약칭을 붙인다 — 일정 표와 같은 날짜가 나와야 한다
 
 ## 데이터
@@ -139,8 +139,8 @@ GET /api/me/studies/{studyId}/retros/status?studyGroupId={groupId}
 ```json
 {
   "meetings": [
-    { "meetingId": 301, "retroDeadline": "2026-11-24T11:30:00Z", "retroOpen": true,  "retroMine": false },
-    { "meetingId": 300, "retroDeadline": null,                   "retroOpen": null,  "retroMine": null  }
+    { "meetingId": 301, "meetingEndAt": "2026-11-17T13:00:00Z", "retroDeadline": "2026-11-24T11:30:00Z", "retroOpen": true,  "retroMine": false },
+    { "meetingId": 300, "meetingEndAt": null,                   "retroDeadline": null,                   "retroOpen": null,  "retroMine": null  }
   ]
 }
 ```
@@ -148,7 +148,8 @@ GET /api/me/studies/{studyId}/retros/status?studyGroupId={groupId}
 - 인증 필요 (반 참여자·네비게이터·캡틴)
 - `studyGroupId` 생략 시 내 반 자동 감지 — 캡틴처럼 반 명부가 없는 경우 필수
 - `meetings` 순서: `scheduledAt` 오름차순
-- 킥오프 회차: 세 필드 모두 `null`
+- 킥오프 회차: `meetingEndAt` · `retroDeadline` · `retroOpen` · `retroMine` 모두 `null`
+- `meetingEndAt`: 미팅 종료 — 「판정」의 미팅 종료와 같은 값(실제 종료 시각, 없으면 회차 시작 + 진행 시간 120분). 작성 페이지의 「미팅 종료」 표시에 쓴다
 - 끝나지 않은 정규 회차(scheduledAt이 미래): `retroDeadline`은 계산된 기한값(null 아님), `retroOpen: false`, `retroMine: false` (참여자) 또는 `null` (캡틴)
 - `retroOpen`: 미팅 종료 ≤ 지금 < 기한 (`true`) · 그 외 `false`
 - `retroMine`: 내가 이 회차 회고를 작성했는지. 캡틴(쓸 사람이 아님)은 `null`

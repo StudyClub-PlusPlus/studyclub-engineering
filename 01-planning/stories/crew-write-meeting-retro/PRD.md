@@ -56,7 +56,7 @@ flowchart LR
 
 > 프로토 가정: 다른 참여자는 끝난 회차마다 열에 여섯 꼴로 썼고, 나는 가장 최근에 끝난 회차만 아직 안 썼다. 👍 수는 가정 값에 내가 누른 것을 더한다
 >
-> 내 회고와 내가 누른 👍 는 브라우저(localStorage)에만 남는다. 저장할 서버가 아직 없다
+> 프로토는 서버를 부르지 않아 내 회고와 내가 누른 👍 가 브라우저(localStorage)에만 남는다. 실제 화면(core-front)은 meeting-retro API 에 저장한다
 
 ### 1 — 회고 탭 점
 
@@ -172,7 +172,7 @@ flowchart LR
   - 문항마다 500자까지
   - 앞뒤 공백을 지우고 저장한다. 공백만 있으면 빈 칸이다
   - 필수 칸이 비면 「좋았던 점을 적어 주세요.」 · 「개선할 점을 적어 주세요.」
-- **데이터**: PUT /api/studies/{studyId}/meetings/{meetingId}/retros/me — 처음이면 만들고 있으면 고친다
+- **데이터**: PUT /api/me/studies/{studyId}/meetings/{meetingId}/retro — 처음이면 만들고 있으면 고친다
 
 #### 8-1 — 취소 · 제출
 
@@ -195,11 +195,13 @@ flowchart LR
 | 처리 실패 | 기한이 지난 뒤 제출 | 「작성 기한이 지나 저장하지 못했어요.」 |
 | 권한 없음 | 작성 페이지 — 미팅 전 · 기한 뒤 | 「미팅이 끝나면 회고를 쓸 수 있어요.」 · 「작성 기한이 지나 회고를 쓰거나 고칠 수 없어요.」 |
 | 완료 | 제출 · 수정 | 「회고를 남겼어요.」 · 「회고를 고쳤어요.」 |
+| 처리 중 | 회고 탭 · 작성 페이지를 여는 동안 | 「불러오는 중…」 |
+| 조회 실패 | 회고 탭 · 작성 페이지 | 「회고를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.」 · 수정할 내 회고를 못 읽으면 빈 폼을 열지 않고 「내 회고를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.」 |
+| 처리 실패 | 그 밖의 저장 실패 · 👍 실패 | 「회고를 저장하지 못했어요. 다시 시도해 주세요.」 · 「공감을 반영하지 못했어요. 다시 시도해 주세요.」(👍 는 누르는 즉시 그리고, 실패하면 그 칸만 되돌린다) |
 
 ### 비고
 
 - 범위 밖: 반의 작성 현황([ST-040](../navigator-view-meeting-retros/PRD.md)) · 백오피스 모아보기([ST-041](../captain-collect-meeting-retros/PRD.md)) · 회고 알림 · 회고 삭제
-- 미구현: 저장할 서버가 없어 내 회고와 👍 는 브라우저에만 남는다. 처리중 · 조회 실패 상태는 연동 시 함께 정의
 - 구현 지시: 자동 갱신 없음 — 다른 사람의 새 회고 · 👍 는 다시 열 때 읽는다
 
 ---
@@ -212,7 +214,7 @@ flowchart LR
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front 회고 탭 점 · `/my/joined/{id}/schedule/retro` · `…/retro/write` | 없음 | 화면 · API 연결 |
+| FE | core-front 회고 탭 점 · `/my/joined/{id}/schedule/retro` · `…/retro/write` | 있음 (2026-11-27) — 탭 점 · 회차 고르기 · 마감 시각 · 버튼 · 문항별 목록 · 👍 · 작성 · 수정을 위 API 에 연결 (`features/meeting-retro`). 「미팅 종료」 시각은 회차별 상태의 `meetingEndAt` | — |
 | BE | `GET /api/me/studies/{studyId}/retros/status` | 구현완료 | — |
 | BE | `GET /api/studies/{studyId}/meetings/{meetingId}/retros` | 구현완료 | — |
 | BE | `PUT /api/me/studies/{studyId}/meetings/{meetingId}/retro` | 구현완료 | — |
@@ -243,7 +245,7 @@ flowchart LR
 
 ### 처리
 
-- 작성 · 수정은 `PUT …/retros/me` 한 경로다. 없으면 만들고 있으면 고친다
+- 작성 · 수정은 `PUT /api/me/studies/{studyId}/meetings/{meetingId}/retro` 한 경로다. 없으면 만들고 있으면 고친다
 - 서버가 기한을 다시 본다. 기한 밖이면 `409 RETRO_CLOSED`, 미팅 전이면 `409 RETRO_NOT_OPEN`
 - 필수 누락 · 500자 초과는 `400`
 - 고쳐도 받은 👍 는 남는다

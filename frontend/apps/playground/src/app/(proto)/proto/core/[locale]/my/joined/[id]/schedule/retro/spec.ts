@@ -10,7 +10,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 
 const COMMON_NOTES = [
   '프로토 가정: 다른 참여자는 끝난 회차마다 열에 여섯 꼴로 썼고, 나는 가장 최근에 끝난 회차만 아직 안 썼다. 👍 수는 가정 값에 내가 누른 것을 더한다',
-  '내 회고와 내가 누른 👍 는 브라우저(localStorage)에만 남는다. 저장할 서버가 아직 없다',
+  '프로토는 서버를 부르지 않아 내 회고와 내가 누른 👍 가 브라우저(localStorage)에만 남는다. 실제 화면(core-front)은 meeting-retro API 에 저장한다',
 ];
 
 export const CREW_RETRO_SPEC: ScreenSpec = {
@@ -156,7 +156,7 @@ export const CREW_RETRO_SPEC: ScreenSpec = {
         '앞뒤 공백을 지우고 저장한다. 공백만 있으면 빈 칸이다',
         '필수 칸이 비면 「좋았던 점을 적어 주세요.」 · 「개선할 점을 적어 주세요.」',
       ],
-      data: ['PUT /api/studies/{studyId}/meetings/{meetingId}/retros/me — 처음이면 만들고 있으면 고친다'],
+      data: ['PUT /api/me/studies/{studyId}/meetings/{meetingId}/retro — 처음이면 만들고 있으면 고친다'],
     },
     {
       n: '8-1',

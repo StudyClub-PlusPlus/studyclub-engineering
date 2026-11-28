@@ -41,7 +41,7 @@ flowchart LR
 
 > 프로토 가정: 다른 참여자는 끝난 회차마다 열에 여섯 꼴로 썼고, 나는 가장 최근에 끝난 회차만 아직 안 썼다. 👍 수는 가정 값에 내가 누른 것을 더한다
 >
-> 내 회고와 내가 누른 👍 는 브라우저(localStorage)에만 남는다. 저장할 서버가 아직 없다
+> 프로토는 서버를 부르지 않아 내 회고와 내가 누른 👍 가 브라우저(localStorage)에만 남는다. 실제 화면(core-front)은 meeting-retro API 에 저장한다
 >
 > 프로토 가정: 로그인 회원은 DDIA 2판 「수요일반」의 네비게이터, AI 논문 스터디 「목요일반」의 캡틴이다
 
@@ -95,10 +95,10 @@ flowchart LR
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front 회고 탭 작성 현황 | 없음 | 화면 · API 연결 · `retros[].author`(쓴 사람) + `missing[]`(안 쓴 사람) 조합해 순서 구성 |
+| FE | core-front 회고 탭 작성 현황 | 있음 (2026-11-27) — 「n명 중 m명 작성」 · 작성 현황 목록(`retros[].author` 뒤에 `missing[]`). 응답의 `targets` 가 null(크루)이면 그리지 않는다 (`features/meeting-retro`) | — |
 | BE | `GET /api/studies/{studyId}/meetings/{meetingId}/retros` 응답의 `targets` · `missing` | 구현완료 | - |
 | BE | `GET /api/me/studies/{studyId}/retros/status` (회차별 deadline·open·mine) | 구현완료 | - |
-| FE | `GET /api/me/studies/{studyId}/meetings/{meetingId}/retros` (내 뷰어 컨텍스트 — 내 retroId · 누른 👍) | 없음 | API 연결 (회고 작성·수정 버튼 · 👍 상태 표시에 필요) |
+| FE | `GET /api/me/studies/{studyId}/meetings/{meetingId}/retros` (내 뷰어 컨텍스트 — 내 retroId · 누른 👍) | 있음 (2026-11-27) | — |
 
 ### 계산 규칙
 
