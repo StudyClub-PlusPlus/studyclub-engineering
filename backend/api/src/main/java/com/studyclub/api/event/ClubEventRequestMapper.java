@@ -8,6 +8,7 @@ import com.studyclub.domain.event.EventConfirmation;
 import com.studyclub.domain.event.EventDraft;
 import com.studyclub.domain.event.EventFormat;
 import com.studyclub.domain.event.EventQuestionType;
+import com.studyclub.domain.event.EventStatus;
 import com.studyclub.domain.event.QuestionDraft;
 import java.math.BigInteger;
 import java.time.Instant;
@@ -73,6 +74,11 @@ final class ClubEventRequestMapper {
             throw invalid("version", "운영 상세에서 받은 버전을 보내 주세요.");
         }
         return wholeNumber("version", request.version(), "운영 상세에서 받은 버전을 그대로 보내 주세요.");
+    }
+
+    /** 상태 전환의 목표 상태 — {@code CLOSED} · {@code PUBLISHED} · {@code CANCELLED} 만. */
+    static EventStatus toTargetStatus(String value) {
+        return parse("status", value, EventStatus.class);
     }
 
     private static EventDraft draft(

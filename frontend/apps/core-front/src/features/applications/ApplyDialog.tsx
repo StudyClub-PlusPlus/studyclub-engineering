@@ -22,9 +22,12 @@ import { addApplication, getApplication } from '@/features/applications/storage'
 import { getUser, setUser } from '@/features/auth/auth';
 import { DiscordPopupError, linkDiscord, requestDiscordCode, syncDiscordNickname } from '@/features/profile/discord';
 import { getDiscordNickname, getRegion } from '@/features/profile/local-state';
+import { profileKeys } from '@/features/profile/queries';
+import { fetchAccount } from '@/features/profile/repository';
 import { track } from '@/lib/analytics';
 import { ApiError } from '@/lib/http';
 import { m, t } from '@/lib/i18n';
+import { getQueryClient } from '@/lib/query-client';
 
 function StudyFormHeader({
   study,
@@ -72,6 +75,37 @@ function StudyFormHeader({
       </section>
     </div>
   );
+}
+
+/**
+ * 새로고침 실패 문구. 새로고침은 디스코드 연동을 다시 하므로, 브라우저 디스코드에 다른 계정으로 로그인돼 있으면 서버가 409 로 막는다
+ * (참여 중 계정 바꾸기 금지 POL-0007 · 다른 회원에 연동된 계정). 그때는 어느 계정으로 로그인해야 하는지 알려 준다.
+ */
+async function nicknameRefreshError(e: unknown, accountId: number): Promise<{ ko: string; en: string }> {
+  if (e instanceof DiscordPopupError) {
+    return {
+      ko: '디스코드 창이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해 주세요.',
+      en: 'The Discord window was blocked. Allow pop-ups in your browser and try again.',
+    };
+  }
+  if (e instanceof ApiError && e.status === 409) {
+    let handle: string | null = null;
+    try {
+      handle = (await getQueryClient().fetchQuery({ queryKey: profileKeys.account(accountId), queryFn: fetchAccount }))
+        .discordHandle ?? null;
+    } catch {
+      // 이름을 못 읽어도 안내는 한다
+    }
+    const who = handle ? `@${handle}` : '연동한 계정';
+    return {
+      ko: `디스코드 창에 로그인된 계정이 연동한 계정(${who})과 다릅니다. 디스코드에서 ${who} 으로 로그인한 뒤 다시 눌러 주세요. 지금 값으로도 신청할 수 있습니다.`,
+      en: `The Discord account you are signed in with is not the one you connected (${who}). Sign in to Discord as ${who} and try again. You can still apply with the current value.`,
+    };
+  }
+  return {
+    ko: '별명을 불러오지 못했습니다. 다시 시도해 주세요. 지금 값으로도 신청할 수 있습니다.',
+    en: 'Could not load your nickname. Please try again. You can still apply with the current value.',
+  };
 }
 
 export function ApplyDialog({
@@ -302,20 +336,7 @@ export function ApplyDialog({
       }
     } catch (e) {
       if (e instanceof DiscordPopupError && e.reason === 'cancelled') return;
-      setNickError(
-        t(
-          e instanceof DiscordPopupError
-            ? {
-                ko: '디스코드 창이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해 주세요.',
-                en: 'The Discord window was blocked. Allow pop-ups in your browser and try again.',
-              }
-            : {
-                ko: '별명을 불러오지 못했습니다. 다시 시도해 주세요. 지금 값으로도 신청할 수 있습니다.',
-                en: 'Could not load your nickname. Please try again. You can still apply with the current value.',
-              },
-          locale,
-        ),
-      );
+      setNickError(t(await nicknameRefreshError(e, user.id), locale));
     } finally {
       setRefreshingNick(false);
     }

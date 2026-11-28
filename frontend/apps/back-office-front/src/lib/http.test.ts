@@ -97,3 +97,39 @@ describe('HTTP response contracts', () => {
     await expect(http('/list', apiNotificationPageSchema)).rejects.toBeInstanceOf(ApiError);
   });
 });
+
+describe('갱신 장애와 인증 만료 구분', () => {
+  it('액세스 만료 후 갱신되면 원래 요청을 한 번만 다시 보낸다', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({}, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ ok: true }))
+      .mockResolvedValueOnce(Response.json({ saved: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(
+      http('/api/admin/studies', z.object({ saved: z.boolean() }), { method: 'PATCH', body: '{}' }),
+    ).resolves.toEqual({ saved: true });
+    expect(fetchMock.mock.calls[2]).toEqual(fetchMock.mock.calls[0]);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('refresh가 무효하면 원래 401을 전달하고 무한 재시도하지 않는다', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => Response.json({ message: 'expired' }, { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(http('/api/admin/studies', z.null())).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([429, 500, 502, 503, 504])('갱신의 %i 오류를 인증 만료 401로 바꾸지 않는다', async (status) => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ message: 'expired access' }, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ message: '잠시 후 다시 시도해 주세요.' }, { status }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(http('/api/admin/studies', z.null())).rejects.toMatchObject({
+      status,
+      message: '잠시 후 다시 시도해 주세요.',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});

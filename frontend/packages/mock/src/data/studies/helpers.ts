@@ -39,8 +39,8 @@ export function monthlyClubCohorts(
     ...shared,
     id: `${id}-g${c.g}`,
     title: {
-      ko: `${title.ko} ${c.g}기 (${c.month}월)`,
-      en: `${title.en} ${c.g} (${c.monthEn})`,
+      ko: title.ko,
+      en: title.en,
     },
     status: c.status,
     date: c.date,

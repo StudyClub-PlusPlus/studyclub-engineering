@@ -1,4 +1,5 @@
 import type { ScreenSpec } from '@/proto/annotate';
+import { REUSE_SPEC } from '@/proto/specs/study-reuse';
 
 /**
  * 스터디 운영 화면 — Story 별 번호 명세.
@@ -49,7 +50,7 @@ export const ATTENDEE_SPEC: ScreenSpec = {
       title: '사이트 공개 스위치',
       display: [
         '「모집중」 배지 아래 「사이트 공개」 스위치 — 켜짐(초록) 공개 · 꺼짐(회색) 미공개',
-        '바꿀 수 없으면 스위치 아래에 이유를 글로 보인다 — 「신청 폼을 먼저 연결하세요.」 · 「진행 중이거나 종료된 스터디는 비공개로 돌릴 수 없습니다.」',
+        '바꿀 수 없으면 스위치 아래에 이유를 글로 표시하고 aria-describedby로 연결한다 — 「신청 폼을 먼저 연결하세요.」 · 「진행 중이거나 종료된 스터디는 비공개로 돌릴 수 없습니다.」',
       ],
       behavior: ['누르면 목록과 같은 공개 · 비공개 확인 팝업이 뜬다. 「공개」 / 「비공개로 전환」을 눌러야 바뀐다'],
       policy: [
@@ -272,14 +273,10 @@ export const EDIT_SPEC: ScreenSpec = {
     },
     {
       n: '1-2',
-      title: '다음 기수 만들기',
+      title: '다음 기수 · 클럽 운영',
       when: '클럽의 운영 화면 머리',
-      display: ['헤더 오른쪽 「다음 기수 만들기」 — 클럽에만 보인다. 스터디에는 없다'],
-      behavior: [
-        '누르면 등록 팝업이 열린다. 프로그램은 이 스터디의 것으로 정해져 있고, 제목은 프로그램 제목 · 한 줄 소개 / 상세 설명 / 카테고리는 최신 기수의 것으로 채워져 있다',
-        '모집 마감일 · 진행 일정 · 정원은 기수마다 달라 비워 둔다',
-      ],
-      policy: ['새 기수를 고쳐도 지난 기수 값은 바뀌지 않는다 — 복사는 시작점일 뿐이다'],
+      display: ['헤더 오른쪽 「다음 기수 · 클럽 운영」 — 클럽에만 보인다'],
+      behavior: ['누르면 클럽 운영 화면으로 간다. 다음 기수 초안 확인 · 모집 시작 · 이어서 참여는 그 화면이 맡는다 (ST-021 · ST-045)'],
     },
     {
       n: '2',
@@ -1206,7 +1203,7 @@ export const RESULTS_SPEC: ScreenSpec = {
     {
       n: '5',
       title: '참여 가능한 요일',
-      when: '응답이 1건 이상일 때 (두 보기 모두 맨 위)',
+      when: '응답이 1건 이상일 때 (두 보기 모두 맨 위). 클럽 기수에는 없다 — 요일을 묻지 않는다. 표 보기의 요일 칸도 없다',
       display: [
         '요일(월 ~ 일)마다 고른 인원 막대 하나. 가장 많은 요일은 굵게',
         '「크루 현지 요일 그대로 셉니다 — 시차는 반영하지 않습니다」',
@@ -1227,4 +1224,4 @@ export const RESULTS_SPEC: ScreenSpec = {
   ],
 };
 
-export const SPECS = [ATTENDEE_SPEC, FORM_SPEC, RESULTS_SPEC, CLASS_SPEC, SCHEDULE_SPEC, ATTENDANCE_SPEC, EDIT_SPEC];
+export const SPECS = [REUSE_SPEC, ATTENDEE_SPEC, FORM_SPEC, RESULTS_SPEC, CLASS_SPEC, SCHEDULE_SPEC, ATTENDANCE_SPEC, EDIT_SPEC];

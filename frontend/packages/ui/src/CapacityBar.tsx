@@ -22,12 +22,20 @@ export interface CapacityBarProps {
   /** 진행바 아래 "정원 75%" 라벨 노출 여부. */
   showLabel?: boolean;
   label?: string;
+  /**
+   * `capacity`(기본) — 정원. 80% 를 넘으면 경고색.
+   * `goal` — 목표 대비 진행. 경고색 없이 primary, 목표를 채우면(100%) success. 100% 를 넘어도 막대는 가득 찬 데서 멈춘다.
+   */
+  variant?: 'capacity' | 'goal';
   className?: string;
 }
 
-export function CapacityBar({ taken, total, showLabel = false, label, className }: CapacityBarProps) {
+export function CapacityBar({ taken, total, showLabel = false, label, variant = 'capacity', className }: CapacityBarProps) {
   const pct = capacityPercent(taken, total);
-  const warn = pct >= CAPACITY_WARN_THRESHOLD;
+  const goal = variant === 'goal';
+  const warn = !goal && pct >= CAPACITY_WARN_THRESHOLD;
+  const done = goal && pct >= 100;
+  const fallback = goal ? `목표 ${pct}%` : `정원 ${pct}%`;
   return (
     <div className={cx('flex flex-col gap-1', className)}>
       <div
@@ -36,17 +44,17 @@ export function CapacityBar({ taken, total, showLabel = false, label, className 
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={label ?? `정원 ${pct}%`}
+        aria-label={label ?? fallback}
       >
         <div
           className={cx(
             'h-full rounded-pill transition-[width] duration-base ease-out',
-            warn ? 'bg-warning-fg' : 'bg-primary',
+            warn ? 'bg-warning-fg' : done ? 'bg-success-fg' : 'bg-primary',
           )}
           style={{ width: `${pct}%` }}
         />
       </div>
-      {showLabel && <span className='tnum type-label-sm text-fg-placeholder'>{label ?? `정원 ${pct}%`}</span>}
+      {showLabel && <span className='tnum type-label-sm text-fg-placeholder'>{label ?? fallback}</span>}
     </div>
   );
 }

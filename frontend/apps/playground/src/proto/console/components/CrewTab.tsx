@@ -56,7 +56,10 @@ export function CrewTab({
   onToggleNavigator,
   ownerCaptainId,
   onOwnerCaptainChange,
+  grouping = true,
 }: {
+  /** 반 · 역할(네비게이터) · 모임 시간 조율을 쓰는가. 클럽 기수는 반 · 네비게이터 · 모임 시각이 없어 명단만 본다 */
+  grouping?: boolean;
   /** 담당 캡틴 계정 id — 스터디당 한 명. */
   ownerCaptainId: string;
   onOwnerCaptainChange: (captainId: string) => void;
@@ -225,74 +228,76 @@ export function CrewTab({
   return (
     <div className='flex flex-col gap-6'>
       <OwnerCaptainField value={ownerCaptainId} onChange={onOwnerCaptainChange} />
-      <section data-anno='class:1'>
-        <h2 className='flex items-baseline gap-2 type-title-lg'>
-          반<span className='tnum type-label-lg text-fg-muted'>{classes.length}</span>
-          <span className='ml-auto'>
-            <Button
-              size='sm'
-              variant='secondary'
-              leadingIcon={<Plus size={15} />}
-              disabled={adding}
-              onClick={() => setRenaming({ id: NEW_CLASS, title: '', touched: false })}
-            >
-              반 추가
-            </Button>
-          </span>
-        </h2>
-        <ul data-anno='class:1-1' className='mt-2 flex flex-col gap-2'>
-          {classes.map((cls, i) => (
-            <li key={cls.id} className='card px-4 py-3'>
-              {renaming?.id === cls.id ? (
-                editor(cls)
-              ) : (
-                <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
-                  <span className='type-label-lg'>{classLabel(cls)}</span>
-                  {/* 첫 반 = 기본반. 스터디를 만들 때 생기고, 새로 신청한 크루가 여기로 들어온다 */}
-                  {i === 0 && (
-                    <span data-anno='class:1-5'>
-                      <Badge tone='neutral'>기본</Badge>
+      {grouping && (
+        <section data-anno='class:1'>
+          <h2 className='flex items-baseline gap-2 type-title-lg'>
+            반<span className='tnum type-label-lg text-fg-muted'>{classes.length}</span>
+            <span className='ml-auto'>
+              <Button
+                size='sm'
+                variant='secondary'
+                leadingIcon={<Plus size={15} />}
+                disabled={adding}
+                onClick={() => setRenaming({ id: NEW_CLASS, title: '', touched: false })}
+              >
+                반 추가
+              </Button>
+            </span>
+          </h2>
+          <ul data-anno='class:1-1' className='mt-2 flex flex-col gap-2'>
+            {classes.map((cls, i) => (
+              <li key={cls.id} className='card px-4 py-3'>
+                {renaming?.id === cls.id ? (
+                  editor(cls)
+                ) : (
+                  <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
+                    <span className='type-label-lg'>{classLabel(cls)}</span>
+                    {/* 첫 반 = 기본반. 스터디를 만들 때 생기고, 새로 신청한 크루가 여기로 들어온다 */}
+                    {i === 0 && (
+                      <span data-anno='class:1-5'>
+                        <Badge tone='neutral'>기본</Badge>
+                      </span>
+                    )}
+                    <span className='tnum ml-auto type-body-sm text-fg-secondary'>
+                      {active.filter((c) => assign[c.id] === cls.id).length}명
                     </span>
-                  )}
-                  <span className='tnum ml-auto type-body-sm text-fg-secondary'>
-                    {active.filter((c) => assign[c.id] === cls.id).length}명
-                  </span>
-                  <Button
-                    size='sm'
-                    variant='secondary'
-                    data-anno='class:1-2'
-                    aria-label={`${classLabel(cls)} 수정`}
-                    onClick={() => setRenaming({ id: cls.id, title: cls.title, touched: false })}
-                  >
-                    수정
-                  </Button>
-                  {/* 기본반과 사람이 든 반은 지우지 않는다 — 기본반은 신청자가 들어올 곳이고, 사람이 든 반은 출석 기록까지 사라진다 */}
-                  <Button
-                    size='sm'
-                    variant='danger'
-                    data-anno='class:1-3'
-                    aria-label={`${classLabel(cls)} 삭제`}
-                    disabled={i === 0 || active.some((c) => assign[c.id] === cls.id)}
-                    title={
-                      i === 0
-                        ? '기본반은 지울 수 없습니다. 새로 신청한 크루가 들어오는 반입니다'
-                        : active.some((c) => assign[c.id] === cls.id)
-                          ? '크루가 있는 반은 지울 수 없습니다'
-                          : undefined
-                    }
-                    onClick={() => onRemoveClass(cls.id)}
-                  >
-                    삭제
-                  </Button>
-                </div>
-              )}
-            </li>
-          ))}
-          {/* 「반 추가」 — 목록 맨 아래 새 카드가 입력칸으로 열린다. 저장해야 반이 생긴다 */}
-          {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
-        </ul>
-      </section>
-      {active.length > 0 && (
+                    <Button
+                      size='sm'
+                      variant='secondary'
+                      data-anno='class:1-2'
+                      aria-label={`${classLabel(cls)} 수정`}
+                      onClick={() => setRenaming({ id: cls.id, title: cls.title, touched: false })}
+                    >
+                      수정
+                    </Button>
+                    {/* 기본반과 사람이 든 반은 지우지 않는다 — 기본반은 신청자가 들어올 곳이고, 사람이 든 반은 출석 기록까지 사라진다 */}
+                    <Button
+                      size='sm'
+                      variant='danger'
+                      data-anno='class:1-3'
+                      aria-label={`${classLabel(cls)} 삭제`}
+                      disabled={i === 0 || active.some((c) => assign[c.id] === cls.id)}
+                      title={
+                        i === 0
+                          ? '기본반은 지울 수 없습니다. 새로 신청한 크루가 들어오는 반입니다'
+                          : active.some((c) => assign[c.id] === cls.id)
+                            ? '크루가 있는 반은 지울 수 없습니다'
+                            : undefined
+                      }
+                      onClick={() => onRemoveClass(cls.id)}
+                    >
+                      삭제
+                    </Button>
+                  </div>
+                )}
+              </li>
+            ))}
+            {/* 「반 추가」 — 목록 맨 아래 새 카드가 입력칸으로 열린다. 저장해야 반이 생긴다 */}
+            {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
+          </ul>
+        </section>
+      )}
+      {grouping && active.length > 0 && (
         <AvailabilityBoard people={people} pick={timePick} onPick={setTimePick} rosterId='crew-roster' />
       )}
       <section id='crew-roster' data-anno='attendee:3' className='scroll-mt-20'>
@@ -358,7 +363,7 @@ export function CrewTab({
                   selection={
                     <>
                       <SelectionCount count={selected.length} unit='명' />
-                      {classes.length > 1 && (
+                      {grouping && classes.length > 1 && (
                         <BulkSelect
                           label='바꿀 반'
                           placeholder='반 변경'
@@ -367,16 +372,18 @@ export function CrewTab({
                           onPick={(v) => applyBulk({ classId: v })}
                         />
                       )}
-                      <BulkSelect
-                        label='바꿀 역할'
-                        placeholder='역할 변경'
-                        options={[
-                          { value: 'crew', label: '크루' },
-                          { value: 'navigator', label: '네비게이터' },
-                        ]}
-                        disabled={selected.length === 0}
-                        onPick={(v) => applyBulk({ role: v as 'crew' | 'navigator' })}
-                      />
+                      {grouping && (
+                        <BulkSelect
+                          label='바꿀 역할'
+                          placeholder='역할 변경'
+                          options={[
+                            { value: 'crew', label: '크루' },
+                            { value: 'navigator', label: '네비게이터' },
+                          ]}
+                          disabled={selected.length === 0}
+                          onPick={(v) => applyBulk({ role: v as 'crew' | 'navigator' })}
+                        />
+                      )}
                       {selected.length > 0 && (
                         <Button size='sm' variant='tertiary' onClick={() => setCheckedIds(new Set())}>
                           선택 해제
@@ -385,19 +392,21 @@ export function CrewTab({
                     </>
                   }
                   save={
-                    <span data-anno='attendee:3-5' className='flex items-center gap-2'>
-                      <span role='status' className='type-label-sm text-fg-muted'>
-                        {saved && changed === 0 ? '저장했습니다.' : ''}
-                      </span>
-                      {changed > 0 && (
-                        <Button variant='tertiary' size='sm' onClick={discard}>
-                          변경 취소
+                    grouping && (
+                      <span data-anno='attendee:3-5' className='flex items-center gap-2'>
+                        <span role='status' className='type-label-sm text-fg-muted'>
+                          {saved && changed === 0 ? '저장했습니다.' : ''}
+                        </span>
+                        {changed > 0 && (
+                          <Button variant='tertiary' size='sm' onClick={discard}>
+                            변경 취소
+                          </Button>
+                        )}
+                        <Button size='sm' onClick={save} disabled={changed === 0}>
+                          저장
                         </Button>
-                      )}
-                      <Button size='sm' onClick={save} disabled={changed === 0}>
-                        저장
-                      </Button>
-                    </span>
+                      </span>
+                    )
                   }
                 />
               ) : undefined
@@ -418,11 +427,15 @@ export function CrewTab({
                 <th className='whitespace-nowrap'>디스코드</th>
                 <th>이메일</th>
                 <th className='whitespace-nowrap'>시간대</th>
-                <th data-anno='class:5' className='whitespace-nowrap'>
-                  참여 가능 요일
-                </th>
-                <th className='whitespace-nowrap'>반</th>
-                <th className='whitespace-nowrap'>역할</th>
+                {grouping && (
+                  <>
+                    <th data-anno='class:5' className='whitespace-nowrap'>
+                      참여 가능 요일
+                    </th>
+                    <th className='whitespace-nowrap'>반</th>
+                    <th className='whitespace-nowrap'>역할</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -452,23 +465,31 @@ export function CrewTab({
                     {crewZoneLabel(crewTimeZone(c) ?? UNKNOWN_ZONE)}
                   </td>
                   {/* 본인이 고른 현지 요일 그대로 — 기준 시간대로 옮기면 하루가 이틀에 걸친다 */}
-                  <td className='whitespace-nowrap text-fg-secondary'>{availableDaysText(dummyDays(c)) || '-'}</td>
-                  <td data-anno='class:2' className='whitespace-nowrap'>
-                    {/* 반 이동 = 이 값 변경. 칸 너비가 아니라 글자 너비로 — 화살표가 상자 안에 붙게 감싼다 */}
-                    <div className='inline-flex'>
-                      <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
-                    </div>
-                  </td>
-                  <td data-anno='attendee:3-2' className='whitespace-nowrap'>
-                    <div className='inline-flex'>
-                      <RolePick name={c.name} navigator={isNavigator(c.id)} onChange={(nav) => pickRole(c.id, nav)} />
-                    </div>
-                  </td>
+                  {grouping && (
+                    <>
+                      <td className='whitespace-nowrap text-fg-secondary'>{availableDaysText(dummyDays(c)) || '-'}</td>
+                      <td data-anno='class:2' className='whitespace-nowrap'>
+                        {/* 반 이동 = 이 값 변경. 칸 너비가 아니라 글자 너비로 — 화살표가 상자 안에 붙게 감싼다 */}
+                        <div className='inline-flex'>
+                          <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
+                        </div>
+                      </td>
+                      <td data-anno='attendee:3-2' className='whitespace-nowrap'>
+                        <div className='inline-flex'>
+                          <RolePick
+                            name={c.name}
+                            navigator={isNavigator(c.id)}
+                            onChange={(nav) => pickRole(c.id, nav)}
+                          />
+                        </div>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={9} className='text-center text-fg-muted'>
+                  <td colSpan={grouping ? 9 : 6} className='text-center text-fg-muted'>
                     {active.length === 0 ? '아직 크루가 없습니다.' : '조건에 맞는 크루가 없습니다.'}
                   </td>
                 </tr>

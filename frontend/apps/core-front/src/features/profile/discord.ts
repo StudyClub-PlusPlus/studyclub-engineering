@@ -219,3 +219,20 @@ export async function syncDiscordNickname(accountId: number): Promise<string | n
     return fallback;
   }
 }
+
+/**
+ * 서버에 저장된 디스코드 서버 별명을 다시 읽어 세션 회원 정보에도 넣는다. 연동이 별명을 새로 저장하므로 연동 직후 · 신청 폼을 열 때 부른다.
+ * 읽지 못하면 세션에 있던 값을 준다 — 신청 폼은 그 값으로도 제출할 수 있다.
+ */
+export async function syncDiscordNickname(accountId: number): Promise<string | null> {
+  const fallback = getUser()?.discordNickname ?? null;
+  try {
+    const me = await getQueryClient().fetchQuery({ queryKey: profileKeys.account(accountId), queryFn: fetchAccount });
+    const nick = me.discordNickname?.trim() || null;
+    const user = getUser();
+    if (user && user.discordNickname !== nick) setUser({ ...user, discordNickname: nick });
+    return nick;
+  } catch {
+    return fallback;
+  }
+}
