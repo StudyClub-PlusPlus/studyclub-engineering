@@ -7,6 +7,7 @@ import type { ApiRetroStatus } from '@/features/meeting-retro/types';
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
+  replace: vi.fn(),
   status: vi.fn(),
   list: vi.fn(),
   save: vi.fn(),
@@ -15,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace }) }));
 vi.mock('@/features/schedule/StudyManageShell', () => ({
   useManage: () => ({ study: { id: '5' }, groupId: 1005, locale: 'ko', role: 'crew', setDirty: vi.fn() }),
 }));
@@ -79,6 +80,15 @@ afterEach(() => {
 });
 
 describe('RetroWriteForm', () => {
+  it('반 명부에 없으면(명부에 없는 캡틴) 폼 없이 그 회차의 회고 탭으로 돌려보낸다', async () => {
+    mocks.status.mockResolvedValue({ meetings: [{ ...status(false).meetings[0], retroMine: null }] });
+    mocks.meetings.mockResolvedValue({ ...(await mocks.meetings()), me: { participantId: null, canEdit: false } });
+    renderForm();
+
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/ko/my/joined/5/schedule/retro?meeting=303'));
+    expect(screen.queryByRole('button', { name: '회고 제출' })).toBeNull();
+  });
+
   it('회차 정보에 서버가 준 미팅 종료 시각을 프로필 시간대로 보인다', async () => {
     mocks.status.mockResolvedValue(status(false));
     renderForm();

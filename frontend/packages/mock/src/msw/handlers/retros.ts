@@ -1,6 +1,6 @@
 import { HttpResponse, passthrough } from 'msw';
 
-import { CAPTAIN_STUDY_IDS, NAVIGATOR_STUDY_IDS, getStudyMeetingIds } from './meetings';
+import { CAPTAIN_STUDY_IDS, NAVIGATOR_STUDY_IDS, OFF_ROSTER_CAPTAIN_STUDY_IDS, getStudyMeetingIds } from './meetings';
 import { studies } from '../../data';
 import { getStudyCrew } from '../../data/crew';
 import { currentUserName, mockClient, type MockResolveContext } from '../utils';
@@ -8,7 +8,7 @@ import { currentUserName, mockClient, type MockResolveContext } from '../utils';
 /**
  * 미팅 회고 목 — specs/meeting-retro/spec.md.
  * 다른 참여자는 끝난 회차마다 열에 여섯 꼴로 썼고, 나(participantId 1)는 가장 최근에 끝난 회차만 아직 안 썼다.
- * 캡틴 스터디(CAPTAIN_STUDY_IDS)에서는 내가 쓸 사람이 아니다.
+ * 캡틴 스터디(CAPTAIN_STUDY_IDS)도 내가 반 명부에 있으면 쓸 사람이다. 명부에 없는 캡틴 스터디(OFF_ROSTER_CAPTAIN_STUDY_IDS)에서만 쓸 사람이 아니다.
  */
 
 const SECTIONS = ['GOOD', 'IMPROVE', 'FEELING'] as const;
@@ -71,8 +71,10 @@ function contextOf(params: MockResolveContext['params'], request?: Request) {
   if (!study) return undefined;
   const captain = CAPTAIN_STUDY_IDS.has(studyId);
   const navigator = NAVIGATOR_STUDY_IDS.has(studyId);
+  // 명부에 없는 캡틴 — 쓸 사람이 아니다 (서버는 participantId 가 null)
+  const offRoster = captain && OFF_ROSTER_CAPTAIN_STUDY_IDS.has(studyId);
   const people = [
-    ...(captain ? [] : [{ participantId: ME, name: currentUserName(request), role: navigator ? 'LEADER' : 'MEMBER' }]),
+    ...(offRoster ? [] : [{ participantId: ME, name: currentUserName(request), role: navigator ? 'LEADER' : 'MEMBER' }]),
     ...getStudyCrew(study).crew.map((p, i) => ({ participantId: i + 2, name: p.name, role: 'MEMBER' })),
   ];
   const regular = getStudyMeetingIds(studyId, study)
@@ -84,7 +86,7 @@ function contextOf(params: MockResolveContext['params'], request?: Request) {
     const deadline = next ? new Date(next.scheduledAt).getTime() : end + LAST_MEETING_EXTRA_DAYS * 86_400_000;
     return { id: m.id, no: i + 1, scheduledAt: m.scheduledAt, end, deadline };
   });
-  return { studyId, captain, navigator, people, meetings };
+  return { studyId, captain, offRoster, navigator, people, meetings };
 }
 
 type Ctx = NonNullable<ReturnType<typeof contextOf>>;
@@ -159,7 +161,7 @@ export const meetingRetroMeHandlers = mockClient.createHandlerGroup('/api/me/stu
                 meetingEndAt: new Date(r.end).toISOString(),
                 retroDeadline: new Date(r.deadline).toISOString(),
                 retroOpen: r.end <= now && now < r.deadline,
-                retroMine: ctx.captain ? null : mine,
+                retroMine: ctx.offRoster ? null : mine,
               };
             }),
           };
@@ -187,7 +189,7 @@ export const meetingRetroMeHandlers = mockClient.createHandlerGroup('/api/me/stu
             if (Object.values(row).some(Boolean)) liked[String(r.retroId)] = row;
           }
           return {
-            participantId: ctx.captain ? null : ME,
+            participantId: ctx.offRoster ? null : ME,
             retroId: list.find((r) => r.participantId === ME)?.retroId ?? null,
             liked,
           };
@@ -205,7 +207,7 @@ export const meetingRetroMeHandlers = mockClient.createHandlerGroup('/api/me/stu
         response: async ({ params, request }: MockResolveContext) => {
           const ctx = contextOf(params, request);
           if (!ctx) return error(404, 'NOT_FOUND', '스터디를 찾을 수 없습니다.');
-          if (ctx.captain) return error(403, 'FORBIDDEN', '회고를 쓸 사람이 아닙니다.');
+          if (ctx.offRoster) return error(403, 'FORBIDDEN', '이 회차의 회고를 작성할 수 없습니다.');
           const meetingId = idOf(params.meetingId);
           const { fail, meeting } = ensure(ctx, meetingId);
           if (fail) return fail;

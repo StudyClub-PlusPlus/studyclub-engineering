@@ -25,7 +25,7 @@ import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 /**
  * 회고 탭 — 사용자 사이트 스터디 일정의 회고 탭을 캡틴으로 본다. 명세: playground `console/studies/[id]/spec.ts` 탭 줄.
  *
- * 작성 버튼이 없고 👍 는 수만 보인다 — 캡틴은 쓸 사람도 반 참여자도 아니다.
+ * 작성 버튼이 없고 👍 는 수만 보인다 — 백오피스 회고 탭은 열람 전용이다. 명부에 있는 캡틴도 회고는 사용자 사이트에서 쓴다.
  * 반 칩은 일정 · 출석 탭과 같은 값이고, 고른 반의 크루만 쓸 사람으로 센다(서버가 반 회차의 명부로 센다).
  */
 export function RetroTab({

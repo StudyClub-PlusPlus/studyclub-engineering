@@ -25,7 +25,7 @@ import { useManage } from '@/features/schedule/StudyManageShell';
 import { track } from '@/lib/analytics';
 
 export function RetroBoard({ meetingId }: { meetingId?: number }) {
-  const { study, groupId, locale, role } = useManage();
+  const { study, groupId, locale } = useManage();
   const router = useRouter();
   const zone = useDisplayTimeZone();
   const studyId = Number(study.id);
@@ -51,7 +51,9 @@ export function RetroBoard({ meetingId }: { meetingId?: number }) {
     );
   }
 
-  const canWrite = role !== 'captain' && current.open;
+  // 쓸 사람 = 반 명부에 있는 사람. 캡틴도 명부에 있으면 쓴다 (명부에 없는 캡틴은 participantId 가 null)
+  const writer = myParticipantId !== null;
+  const canWrite = writer && current.open;
   const progress = listQuery.data ? writingStatus(listQuery.data, myParticipantId) : null;
 
   return (
@@ -77,7 +79,7 @@ export function RetroBoard({ meetingId }: { meetingId?: number }) {
             </span>
           )}
           <span className='tnum type-body-sm text-fg-muted'>{deadlineText(current, zone)}</span>
-          {role !== 'captain' &&
+          {writer &&
             (!current.open ? (
               <Button size='sm' disabled>
                 회고 마감
