@@ -16,6 +16,7 @@ import {
   retroStatuses,
   retrosOf,
   saveMyRetro,
+  captainOnRoster,
   retroMeetingDate,
   shortDateTime,
   toggleLike,
@@ -70,11 +71,14 @@ export function RetroBoard({
   meetingId,
   onMeetingChange,
   members,
+  readOnly = false,
 }: {
   study: Study;
   role: ScheduleRole;
   locale: string;
   meetingId?: string;
+  /** 열람 전용 — 백오피스 회고 탭. 작성 버튼 · 「나」 표시가 없다 */
+  readOnly?: boolean;
   /** 회차를 고를 때 — 없으면 사용자 사이트 주소(…/retro?meeting=)를 바꾼다. 백오피스 회고 탭은 탭 안 상태로 바꾼다 */
   onMeetingChange?: (meetingId: string) => void;
   /** 이 사람들만 쓸 사람으로 본다 — 백오피스 회고 탭에서 고른 반의 크루. 없으면 스터디 전체(사용자 사이트는 서버가 내 반만 준다) */
@@ -96,13 +100,15 @@ export function RetroBoard({
     );
   }
   const current = ended.find((s) => s.meeting.id === meetingId) ?? ended[ended.length - 1];
-  // 캡틴은 미팅 참여자가 아니다 — 「나」로 표시할 답이 없다. 프로토 로그인 회원이 그 반 참여자로도 잡혀 있어 백오피스 회고 탭에서 걸러 준다
+  // 백오피스 회고 탭은 열람 전용이다 — 「나」로 표시할 답이 없다. 프로토 로그인 회원이 그 반 참여자로도 잡혀 있어 걸러 준다
   const retros = retrosOf(study, current.meeting.id, undefined, members).map((r) =>
-    role === 'captain' && r.me ? { ...r, me: false } : r,
+    readOnly && r.me ? { ...r, me: false } : r,
   );
   const missing = missingOf(study, current.meeting.id, undefined, members);
   const lead = role !== 'crew';
-  const canWrite = role !== 'captain' && current.open;
+  // 쓸 사람 = 그날 반 명부에 있던 사람. 캡틴도 명부에 있으면 쓴다 — 명부에 없는 캡틴은 쓰지 않는다
+  const writer = !readOnly && current.iWrite;
+  const canWrite = writer && current.open;
   const deadline = shortDateTime(current.deadline.toISOString(), zone, true);
   const like = (r: Retro, s: RetroSection) => {
     toggleLike(study, current.meeting.id, r.authorId, s);
@@ -139,7 +145,7 @@ export function RetroBoard({
           <span className='tnum type-body-sm text-fg-muted'>
             {current.open ? `${deadline}까지` : `${deadline} 마감`}
           </span>
-          {role !== 'captain' &&
+          {writer &&
             (!current.open ? (
               <Button data-anno='retro:2-5' size='sm' disabled>
                 회고 마감
@@ -299,18 +305,25 @@ export function RetroWriteForm({
   }, [study, meetingId]);
 
   const listHref = retroHref(locale, study.study_id, meetingId);
-  if (status === undefined) return null;
+  // 명부에 없는 캡틴은 작성 버튼이 없다. 공유된 작성 주소로 들어오면 안내 화면 없이 그 회차의 회고 탭으로 돌려보낸다
+  const [offRoster, setOffRoster] = useState(false);
+  useEffect(() => {
+    const off = role === 'captain' && !captainOnRoster(study.id);
+    setOffRoster(off);
+    if (off) router.replace(listHref);
+  }, [role, study.id, router, listHref]);
 
-  const blocked =
-    role === 'captain'
-      ? '캡틴은 미팅 참여자가 아니라 회고를 쓰지 않아요.'
-      : !status
-        ? '이 회차를 찾을 수 없어요.'
-        : !status.ended
-          ? '미팅이 끝나면 회고를 쓸 수 있어요.'
-          : !status.open
-            ? '작성 기한이 지나 회고를 쓰거나 고칠 수 없어요.'
-            : null;
+  if (status === undefined || offRoster) return null;
+
+  const blocked = !status
+    ? '이 회차를 찾을 수 없어요.'
+    : !status.ended
+      ? '미팅이 끝나면 회고를 쓸 수 있어요.'
+      : !status.open
+        ? '작성 기한이 지나 회고를 쓰거나 고칠 수 없어요.'
+        : !status.iWrite
+          ? '이 회차의 회고를 작성할 수 없어요.'
+          : null;
   if (blocked || !status) {
     return (
       <div data-anno='retro:6' className='py-16 text-center'>

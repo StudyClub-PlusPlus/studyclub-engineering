@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
 import { RetroBoard } from '@core/components/MeetingRetro';
+import { RetroRosterToolbar } from '@core/components/RetroRosterToolbar';
 import { useManage } from '@core/components/StudyManageShell';
 
 import { MANAGE_SPEC } from '../spec';
@@ -18,6 +19,7 @@ function Board() {
       <ScreenSpecRegistrar spec={MANAGE_SPEC} />
       <ScreenSpecRegistrar spec={CREW_RETRO_SPEC} />
       {role !== 'crew' && <ScreenSpecRegistrar spec={LEAD_RETRO_SPEC} />}
+      {role === 'captain' && <RetroRosterToolbar studyId={study.id} />}
       <RetroBoard study={study} role={role} locale={locale} meetingId={meetingId} />
     </>
   );

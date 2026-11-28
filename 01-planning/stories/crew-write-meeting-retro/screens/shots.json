@@ -33,7 +33,9 @@
       "name": "write-invalid",
       "title": "회고 작성 — 필수 칸 오류",
       "path": "/proto/core/ko/my/joined/18/schedule/retro/write?meeting=claude-code-source-study-s7",
-      "click": ["회고 제출"],
+      "click": [
+        "회고 제출"
+      ],
       "fullPage": true
     },
     {
@@ -54,9 +56,21 @@
     {
       "story": "navigator-view-meeting-retros",
       "name": "retro-captain",
-      "title": "회고 탭 — 캡틴 (작성 버튼 없음)",
+      "title": "회고 탭 — 명부에 있는 캡틴 (작성 현황 · 「회고 작성」)",
       "path": "/proto/core/ko/my/joined/1/schedule/retro",
       "scrollTo": "[data-anno~=\"retro:2-1\"]"
+    },
+    {
+      "story": "navigator-view-meeting-retros",
+      "name": "retro-captain-off-roster",
+      "title": "회고 탭 — 명부에 없는 캡틴 (작성 버튼 없음)",
+      "path": "/proto/core/ko/my/joined/1/schedule/retro",
+      "scrollTo": "[data-anno~=\"retro:2-1\"]",
+      "storage": {
+        "sc_retro_captain_on_roster": {
+          "ai-paper-study": false
+        }
+      }
     },
     {
       "story": "navigator-view-meeting-retros",
@@ -75,7 +89,9 @@
       "name": "console-retros-table",
       "title": "콘솔 회고 모아보기 — 표 (문항 열 칩 · 최신순 · 공감순, 세 문항이 한 줄에)",
       "path": "/proto/console/retros",
-      "click": ["표"]
+      "click": [
+        "표"
+      ]
     }
   ]
 }

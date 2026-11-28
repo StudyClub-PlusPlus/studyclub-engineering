@@ -655,7 +655,7 @@ export function StudyConsole({ study }: { study: Study }) {
             })()
           ))}
         {tab === 'retro' && (
-          // 사용자 사이트 회고 탭과 같은 화면 — 캡틴으로 본다(작성 버튼 없음 · 작성 현황 · 「n명 중 m명 작성」).
+          // 사용자 사이트 회고 탭과 같은 화면 — 캡틴으로 열람만 한다(작성 버튼 없음 · 작성 현황 · 「n명 중 m명 작성」). 작성은 사용자 사이트에서.
           // TODO(api): 회고는 반의 회차에 붙는다 — 서버는 groupId 로 그 반 회차 · 참여자를 준다. 프로토는 스터디 회차에 그 반 크루만 걸러 본다
           <div>
             {/* 반 칩 — 일정 · 출석 탭과 같은 줄 · 같은 값. 반이 하나면 그리지 않는다 */}
@@ -668,6 +668,7 @@ export function StudyConsole({ study }: { study: Study }) {
               meetingId={retroMeetingId}
               onMeetingChange={setRetroMeetingId}
               members={retroMembers}
+              readOnly
             />
           </div>
         )}
