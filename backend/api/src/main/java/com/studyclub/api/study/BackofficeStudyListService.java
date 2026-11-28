@@ -2,10 +2,13 @@ package com.studyclub.api.study;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.common.time.TimeZoneFormatService;
+import com.studyclub.common.time.TimeZoneIds;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.RecruitmentTimeZones;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
@@ -58,24 +61,38 @@ public class BackofficeStudyListService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * @param displayTimeZone {@code *Formatted} 를 만들 시간대 — 컨트롤러가 헤더 규칙으로 정한다
+     */
     public BackofficeStudyListResponse getStudies(
-            BackofficeStudyListFilter filter, int offset, int limit) {
-        return getStudies(filter, offset, limit, Instant.now());
+            BackofficeStudyListFilter filter, int offset, int limit, String displayTimeZone) {
+        return getStudies(filter, offset, limit, Instant.now(), displayTimeZone);
+    }
+
+    public BackofficeStudyListResponse getStudies(
+            BackofficeStudyListFilter filter, int offset, int limit, Instant asOf) {
+        return getStudies(filter, offset, limit, asOf, TimeZoneIds.SEOUL);
     }
 
     /** 대시보드 보드와 목록이 같은 기준 시각으로 모집 여부를 판정한다. */
     public BackofficeStudyListResponse getStudies(
-            BackofficeStudyListFilter filter, int offset, int limit, Instant asOf) {
+            BackofficeStudyListFilter filter,
+            int offset,
+            int limit,
+            Instant asOf,
+            String displayTimeZone) {
         validate(filter, offset, limit);
         long total = backofficeStudyDao.count(filter, asOf);
         if (total == 0) {
-            return new BackofficeStudyListResponse(List.of(), 0, offset, limit);
+            return new BackofficeStudyListResponse(List.of(), 0, offset, limit, displayTimeZone);
         }
         List<Study> studies = backofficeStudyDao.getStudies(filter, asOf, offset, limit);
         if (studies.isEmpty()) {
-            return new BackofficeStudyListResponse(List.of(), total, offset, limit);
+            return new BackofficeStudyListResponse(
+                    List.of(), total, offset, limit, displayTimeZone);
         }
-        return new BackofficeStudyListResponse(toSummaries(studies, asOf), total, offset, limit);
+        return new BackofficeStudyListResponse(
+                toSummaries(studies, asOf, displayTimeZone), total, offset, limit, displayTimeZone);
     }
 
     private void validate(BackofficeStudyListFilter filter, int offset, int limit) {
@@ -97,7 +114,7 @@ public class BackofficeStudyListService {
     }
 
     private List<BackofficeStudyListResponse.StudySummary> toSummaries(
-            List<Study> studies, Instant asOf) {
+            List<Study> studies, Instant asOf, String displayTimeZone) {
         if (studies.isEmpty()) {
             return List.of();
         }
@@ -157,6 +174,10 @@ public class BackofficeStudyListService {
                                                                     "스터디 프로그램을 찾을 수 없습니다: "
                                                                             + study
                                                                                     .getProgramId()));
+                            RecruitmentTimeZones timeZones =
+                                    recruitment != null
+                                            ? recruitment.timeZones()
+                                            : RecruitmentTimeZones.UNSET;
                             return new BackofficeStudyListResponse.StudySummary(
                                     study.getId(),
                                     study.getProgramId(),
@@ -169,8 +190,13 @@ public class BackofficeStudyListService {
                                     study.recruitStatus(crewCount, deadline, capacity, asOf),
                                     recruitment != null ? recruitment.getStartAt() : null,
                                     deadline,
+                                    TimeZoneFormatService.formatDeadline(
+                                            deadline, displayTimeZone, asOf),
                                     study.getStartAt(),
-                                    study.getTimezone(),
+                                    TimeZoneFormatService.format(
+                                            study.getStartAt(), displayTimeZone),
+                                    RecruitmentTimeZonesView.from(timeZones),
+                                    timeZones.label(),
                                     hasQuestions(study.getApplicationForm()),
                                     study.getCreatedBy() == null
                                             ? null

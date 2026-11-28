@@ -2,6 +2,7 @@ package com.studyclub.domain.study;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.common.time.TimeZoneIds;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -88,7 +89,7 @@ public class StudyGroup extends BaseEntity {
         this.studyId = studyId;
         this.name = name;
         this.startAt = startAt;
-        this.timezone = timezone;
+        this.timezone = TimeZoneIds.normalize(timezone).orElse(timezone);
         this.capacity = capacity;
     }
 
@@ -140,9 +141,9 @@ public class StudyGroup extends BaseEntity {
         this.name = normalizeName(name);
     }
 
-    /** 시간대를 바꾼다. null 이면 미정으로 되돌린다. */
+    /** 시간대를 바꾼다. null 이면 미정으로 되돌린다. deprecated 링크는 정본 ID 로 저장한다. */
     public void changeTimezone(String timezone) {
-        this.timezone = timezone;
+        this.timezone = TimeZoneIds.normalize(timezone).orElse(timezone);
     }
 
     /** 정규 시작 시각을 바꾼다. null 이면 미정으로 되돌린다. */

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.studyclub.api.auth.AccountDeletionService;
 import com.studyclub.api.storage.ObjectStorage;
 import com.studyclub.api.study.StudyCreateRequest;
+import com.studyclub.api.study.StudyDateInput;
 import com.studyclub.api.study.StudyService;
 import com.studyclub.api.study.StudyUpdateRequest;
 import com.studyclub.common.error.BusinessException;
@@ -35,6 +36,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
             "spring.datasource.url=jdbc:h2:mem:studythumbnail;MODE=MySQL;DB_CLOSE_DELAY=-1"
         })
 class StudyThumbnailIntegrationTest {
+
+    private static final String SEOUL = "Asia/Seoul";
 
     @Autowired StudyService studyService;
     @Autowired UploadService uploadService;
@@ -79,13 +82,14 @@ class StudyThumbnailIntegrationTest {
                         null,
                         StudyCategory.ALGORITHM,
                         thumbnailFileId,
-                        Instant.now().plus(7, ChronoUnit.DAYS),
+                        StudyDateInput.of(Instant.now().plus(7, ChronoUnit.DAYS)),
                         null,
                         null,
                         null,
                         null,
                         null,
-                        null));
+                        null),
+                SEOUL);
     }
 
     private String thumbnailOf(Long studyId) {
@@ -132,7 +136,7 @@ class StudyThumbnailIntegrationTest {
         String firstKey = storageObjectRepository.findById(first).orElseThrow().getObjectKey();
         Long second = upload(b, StoragePurpose.STUDY_THUMBNAIL);
 
-        studyService.updateFromBackOffice(b, studyId, thumbnail(second));
+        studyService.updateFromBackOffice(b, studyId, thumbnail(second), SEOUL);
 
         assertThat(storageObjectRepository.findById(first)).isEmpty();
         assertThat(stored).doesNotContainKey(firstKey);
@@ -147,7 +151,7 @@ class StudyThumbnailIntegrationTest {
         Long fileId = upload(admin, StoragePurpose.STUDY_THUMBNAIL);
         Long studyId = createStudy(admin, fileId);
 
-        studyService.updateFromBackOffice(admin, studyId, thumbnail(null));
+        studyService.updateFromBackOffice(admin, studyId, thumbnail(null), SEOUL);
 
         assertThat(thumbnailOf(studyId)).isNull();
         assertThat(storageObjectRepository.findById(fileId)).isEmpty();

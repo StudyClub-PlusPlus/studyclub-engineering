@@ -2,6 +2,7 @@ package com.studyclub.api.study;
 
 import com.studyclub.api.auth.security.RequireAdmin;
 import com.studyclub.api.discord.StudyDiscordLinkService;
+import com.studyclub.api.timezone.DisplayTimeZoneResolver;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.study.RecruitStatus;
@@ -52,20 +53,24 @@ public class AdminStudyController {
                     "keyword",
                     "hasApplicationForm",
                     "sort",
+                    "displayTimeZone",
                     "offset",
                     "limit");
 
     private final BackofficeStudyListService backofficeStudyListService;
     private final StudyService studyService;
     private final StudyDiscordLinkService studyDiscordLinkService;
+    private final DisplayTimeZoneResolver displayTimeZoneResolver;
 
     public AdminStudyController(
             BackofficeStudyListService backofficeStudyListService,
             StudyService studyService,
-            StudyDiscordLinkService studyDiscordLinkService) {
+            StudyDiscordLinkService studyDiscordLinkService,
+            DisplayTimeZoneResolver displayTimeZoneResolver) {
         this.backofficeStudyListService = backofficeStudyListService;
         this.studyService = studyService;
         this.studyDiscordLinkService = studyDiscordLinkService;
+        this.displayTimeZoneResolver = displayTimeZoneResolver;
     }
 
     @Operation(
@@ -85,9 +90,11 @@ public class AdminStudyController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean hasApplicationForm,
             @RequestParam(required = false) BackofficeStudySort sort,
+            @RequestParam(required = false) String displayTimeZone,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            Authentication authentication) {
         rejectEmptyListQuery(request);
         return backofficeStudyListService.getStudies(
                 new BackofficeStudyListFilter(
@@ -102,7 +109,13 @@ public class AdminStudyController {
                         hasApplicationForm,
                         recruitFilter),
                 offset,
-                limit);
+                limit,
+                displayTimeZone(displayTimeZone, authentication));
+    }
+
+    private String displayTimeZone(String query, Authentication authentication) {
+        return displayTimeZoneResolver.forBackOffice(
+                query, "displayTimeZone", (Long) authentication.getPrincipal());
     }
 
     /** 선택 Query는 생략할 수 있지만, 키를 보냈다면 빈 값은 유효한 필터가 아니다 (specs/dashboard/spec.md 4.4). */
@@ -126,22 +139,34 @@ public class AdminStudyController {
         }
     }
 
-    @Operation(summary = "백오피스 스터디 상세 조회", description = "ADMIN만 호출 가능. DRAFT 도 조회된다.")
+    @Operation(
+            summary = "백오피스 스터디 상세 조회",
+            description =
+                    "ADMIN만 호출 가능. DRAFT 도 조회된다. 시각 표시는 displayTimeZone(헤더) → 저장된 헤더 → 프로필 → 서울.")
     @GetMapping("/{studyId}")
-    public StudyDetailResponse detail(@PathVariable Long studyId) {
-        return studyService.getDetailForBackOffice(studyId);
+    public StudyDetailResponse detail(
+            @PathVariable Long studyId,
+            @RequestParam(required = false) String displayTimeZone,
+            Authentication authentication) {
+        return studyService.getDetailForBackOffice(
+                studyId, displayTimeZone(displayTimeZone, authentication));
     }
 
     @Operation(
             summary = "스터디 등록",
             description =
                     "ADMIN만 호출 가능. 등록 후 STATUS=DRAFT 로 비공개. 디스코드 봇이 설정돼 있으면 등록 뒤"
-                            + " 디스코드 스터디를 만들어 연결한다 (실패해도 201).")
+                            + " 디스코드 스터디를 만들어 연결한다 (실패해도 201). 날짜만 보낸 마감 · 시작일은 displayTimeZone(헤더)"
+                            + " 달력으로 해석한다.")
     @PostMapping
     public ResponseEntity<Void> create(
-            @Valid @RequestBody StudyCreateRequest request, Authentication authentication) {
+            @Valid @RequestBody StudyCreateRequest request,
+            @RequestParam(required = false) String displayTimeZone,
+            Authentication authentication) {
         Long accountId = (Long) authentication.getPrincipal();
-        Long studyId = studyService.create(accountId, request);
+        Long studyId =
+                studyService.create(
+                        accountId, request, displayTimeZone(displayTimeZone, authentication));
         // 등록 트랜잭션이 커밋된 뒤에 봇을 부른다. 실패해도 등록은 성공이다 (specs/discord-study-link/spec.md)
         studyDiscordLinkService.linkAfterCreate(accountId, studyId);
         return ResponseEntity.created(URI.create("/api/admin/studies/" + studyId)).build();
@@ -156,8 +181,13 @@ public class AdminStudyController {
     public ResponseEntity<Void> update(
             @PathVariable Long studyId,
             @Valid @RequestBody StudyUpdateRequest request,
+            @RequestParam(required = false) String displayTimeZone,
             Authentication authentication) {
-        studyService.updateFromBackOffice((Long) authentication.getPrincipal(), studyId, request);
+        studyService.updateFromBackOffice(
+                (Long) authentication.getPrincipal(),
+                studyId,
+                request,
+                displayTimeZone(displayTimeZone, authentication));
         return ResponseEntity.noContent().build();
     }
 

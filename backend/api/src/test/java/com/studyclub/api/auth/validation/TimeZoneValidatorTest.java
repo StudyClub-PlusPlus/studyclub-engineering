@@ -3,7 +3,6 @@ package com.studyclub.api.auth.validation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -18,38 +17,41 @@ class TimeZoneValidatorTest {
                 "Asia/Seoul",
                 "America/New_York",
                 "America/Vancouver",
-                "America/Los_Angeles"
+                "America/Los_Angeles",
+                "America/Toronto",
+                "Asia/Tokyo",
+                "Europe/London",
+                "Australia/Sydney",
+                "UTC",
+                "US/Pacific",
+                " Asia/Seoul "
             })
-    @DisplayName("화면 드롭다운의 넷은 통과한다 — 온보딩·프로필 수정이 같은 목록을 쓴다")
-    void acceptsListedZones(String value) {
+    @DisplayName("지역 이름이 있는 IANA 는 모두 통과한다 — 고정 네 개 목록은 없다. deprecated 링크 · 앞뒤 공백은 저장 때 정본으로 바꾼다")
+    void acceptsAnyRegion(String value) {
         assertThat(validator.isValid(value, null)).isTrue();
     }
 
     @ParameterizedTest
     @ValueSource(
             strings = {
-                "Asia/Tokyo",
-                "Europe/London",
-                "UTC",
+                "+09:00",
+                "UTC+09:00",
+                "GMT+9",
+                "Etc/GMT-9",
+                "KST",
                 "Not/AZone",
-                "asia/seoul",
-                " Asia/Seoul",
-                "Asia/Seoul "
+                "asia/seoul"
             })
-    @DisplayName("존재하는 IANA ID 라도 목록에 없으면 거절한다 — 대소문자·앞뒤 공백도 고치지 않고 그대로 비교한다")
-    void rejectsUnlistedZones(String value) {
+    @DisplayName("오프셋만 있는 ID · 약칭 · 모르는 ID 는 거절한다 — 서울과 도쿄를 가를 수 없다")
+    void rejectsOffsetsAndUnknown(String value) {
         assertThat(validator.isValid(value, null)).isFalse();
     }
 
-    @Test
-    @DisplayName("허용 목록은 정확히 넷이다 — 화면의 ONBOARDING_ZONES 와 글자 단위로 같아야 하므로 늘거나 줄면 여기서 잡는다")
-    void allowedListIsExactlyTheFourOnScreen() {
-        assertThat(TimeZoneValidator.ALLOWED)
-                .containsExactlyInAnyOrder(
-                        "Asia/Seoul",
-                        "America/New_York",
-                        "America/Vancouver",
-                        "America/Los_Angeles");
+    @ParameterizedTest
+    @ValueSource(strings = {"America/Abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefgh"})
+    @DisplayName("64자를 넘으면 거절한다")
+    void rejectsTooLong(String value) {
+        assertThat(validator.isValid(value, null)).isFalse();
     }
 
     @ParameterizedTest

@@ -2,7 +2,7 @@
   "concepts": [
     { "name": "계정", "summary": "가입한 크루 한 명 — 로그인 수단(구글), 약관 동의, 탈퇴 사유", "tables": ["ACCOUNT", "ACCOUNT_IDENTITY", "ACCOUNT_CONSENT", "ACCOUNT_LEAVE_REASON"] },
     { "name": "스터디 운영", "summary": "프로그램(정체성) 아래 기수별 스터디, 스터디 안에 반과 모임, 모임마다 출석. 명부(참가자)는 반에 속한다", "tables": ["STUDY_PROGRAM", "STUDY", "STUDY_GROUP", "STUDY_MEETING", "STUDY_PARTICIPANT", "STUDY_ATTENDANCE", "STUDY_PARTICIPANT_GROUP_MOVE"] },
-    { "name": "모집", "summary": "기수의 모집 회차와 신청서. 신청 제출 = 기본 반 명부 편입", "tables": ["STUDY_RECRUITMENT", "STUDY_APPLICATION"] },
+    { "name": "모집", "summary": "기수의 모집 회차 · 모집 지역(시간대)과 신청서. 신청 제출 = 기본 반 명부 편입", "tables": ["STUDY_RECRUITMENT", "STUDY_RECRUITMENT_ZONE", "STUDY_APPLICATION"] },
     { "name": "제안", "summary": "크루가 열고 싶은 스터디를 제안하고 다른 크루가 관심을 표시", "tables": ["STUDY_PROPOSAL", "STUDY_PROPOSAL_INTEREST"] },
     { "name": "활동", "summary": "스터디에 남기는 후기와 북마크", "tables": ["STUDY_REVIEW", "STUDY_BOOKMARK"] },
     { "name": "알림", "summary": "메일 등 발송 한 건과 그 문구 템플릿", "tables": ["NOTIFICATION", "NOTIFICATION_TEMPLATE"] },

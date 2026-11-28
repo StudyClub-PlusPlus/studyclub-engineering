@@ -331,7 +331,7 @@
 | name | String | N | 반 제목. 앞뒤 공백을 자르고 1~20자(코드포인트 기준) |
 | daysOfWeek | String[] | N | `mon` ~ `sun`, 1개 이상 |
 | startTime | String (HH:mm, 분반 현지) | N | timezone 없으면 `Asia/Seoul` 기준으로 저장 |
-| timezone | String (IANA) | N | [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) 의 4개 값 중 하나 |
+| timezone | String (IANA) | N | 지역 이름이 있는 모든 IANA ([timezone §3.1](../timezone/spec.md)). 오프셋만 있는 ID 는 400, deprecated 링크는 정본으로 저장 |
 | moveUpcomingMeetings | Boolean | N | 기본 false. true 이고 `timezone` 이나 `startTime` 을 보냈을 때만 시작 전 회차를 옮긴다 |
 
 기간(시작일 · 종료일)은 받지 않는다. 반의 기간은 저장하지 않고 첫 회차 ~ 마지막 회차로 계산한다.

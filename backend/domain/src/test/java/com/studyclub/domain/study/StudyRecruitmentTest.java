@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -53,5 +54,59 @@ class StudyRecruitmentTest {
         assertThatThrownBy(() -> recruitment.updateCapacity(0))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(recruitment.getRecruitmentCapacity()).isEqualTo(30);
+    }
+
+    @Test
+    @DisplayName("모집 시간대: 새 모집 회차는 미정(unset)이다")
+    void timeZones_defaultUnset() {
+        StudyRecruitment recruitment = StudyRecruitment.builder().build();
+
+        assertThat(recruitment.timeZones()).isEqualTo(RecruitmentTimeZones.UNSET);
+    }
+
+    @Test
+    @DisplayName("모집 시간대 교체: 남은 지역은 같은 행을 두고, 빠진 지역만 지우고 새 지역만 더한다")
+    void changeTimeZones_keepsExistingRows() {
+        StudyRecruitment recruitment = StudyRecruitment.builder().build();
+        recruitment.changeTimeZones(
+                RecruitmentTimeZones.of("selected", List.of("Asia/Seoul", "America/Los_Angeles")));
+
+        recruitment.changeTimeZones(
+                RecruitmentTimeZones.of(
+                        "selected", List.of("America/Los_Angeles", "Europe/London")));
+
+        assertThat(recruitment.timeZones().mode()).isEqualTo(RecruitmentTimeZoneMode.SELECTED);
+        assertThat(recruitment.timeZones().zones())
+                .containsExactly("America/Los_Angeles", "Europe/London");
+    }
+
+    @Test
+    @DisplayName("모집 시간대 교체: all · unset 으로 바꾸면 지역을 모두 지운다")
+    void changeTimeZones_toAllClearsZones() {
+        StudyRecruitment recruitment = StudyRecruitment.builder().build();
+        recruitment.changeTimeZones(RecruitmentTimeZones.of("selected", List.of("Asia/Seoul")));
+
+        recruitment.changeTimeZones(RecruitmentTimeZones.of("all", List.of()));
+
+        assertThat(recruitment.timeZones())
+                .isEqualTo(new RecruitmentTimeZones(RecruitmentTimeZoneMode.ALL, List.of()));
+    }
+
+    @Test
+    @DisplayName("모집 시간대 읽기: 모드와 지역이 어긋난 행도 예외 없이 읽는다 — all 에 남은 지역은 무시, 지역 없는 selected 는 unset")
+    void timeZones_toleratesBrokenRows() {
+        StudyRecruitment allWithZone =
+                StudyRecruitment.builder()
+                        .timeZoneMode(RecruitmentTimeZoneMode.ALL)
+                        .zones(
+                                new java.util.ArrayList<>(
+                                        List.of(new StudyRecruitmentZone("Asia/Tokyo"))))
+                        .build();
+        StudyRecruitment selectedWithoutZone =
+                StudyRecruitment.builder().timeZoneMode(RecruitmentTimeZoneMode.SELECTED).build();
+
+        assertThat(allWithZone.timeZones())
+                .isEqualTo(new RecruitmentTimeZones(RecruitmentTimeZoneMode.ALL, List.of()));
+        assertThat(selectedWithoutZone.timeZones()).isEqualTo(RecruitmentTimeZones.UNSET);
     }
 }

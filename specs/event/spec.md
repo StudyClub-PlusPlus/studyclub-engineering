@@ -120,7 +120,7 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 - 시각은 초 단위 이하를 0 으로 맞춰 저장한다 (제안). 편집 폼이 분 단위라 비교가 흔들리지 않게 한다
 - `timeZone` 은 저장하고, 서버는 `effectiveEndsAt` 계산에 쓴다
 - **수정으로 저장 즉시 종료되는 시각은 받지 않는다** (N2 결정). 진행 중 행사의 종료 시각을 바꿀 때 새 `effectiveEndsAt ≤ now` 가 되면 저장을 막는다. `endsAt` 을 과거·현재로 바꾸는 경우와, 기본 종료 시각(시작일 다음 날 00:00)이 이미 지난 상태에서 `endsAt` 을 null 로 비우는 경우도 포함한다. 400 `INVALID_INPUT` (`endsAt`) 으로 다른 종료 시각을 고르게 한다
-- **`timeZone` 허용 값** (Q5 결정): `Asia/Seoul` · `America/Toronto` · `America/New_York` · `America/Los_Angeles` (프로토 `ZONES` 와 같다). [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) 의 회원 시간대(밴쿠버 포함)와는 지금 다르다. R1 에서 공통 시간대 선택지를 넓힐 때 행사에도 같이 적용한다
+- **`timeZone` 허용 값**: 지역 이름이 있는 모든 IANA ([timezone §3.1](../timezone/spec.md) · §11, 2026-11-27 BE 반영). 네 개 목록(`EventLimits.TIME_ZONES`)은 지웠다. 오프셋만 있는 ID 는 400 `timeZone`, deprecated 링크는 정본으로 저장한다. 응답의 `FormattedInstant` 는 후속 PR
 
 ### 수정할 수 있는 범위 (Q9 결정)
 
@@ -335,7 +335,7 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 | title | String | Y | 1~60자 | §2 「행사명 60자」 |
 | summary | String | Y | 1~120자 | §2 「한 줄 소개 120자」 |
 | description | String | Y | 1~5,000자. 서식 없는 글로 저장 (HTML 로 해석하지 않음) | §2 「모집 상세 5,000자」 |
-| timeZone | String | Y | `Asia/Seoul` · `America/Toronto` · `America/New_York` · `America/Los_Angeles` 중 하나 | §2 「기준 시간대」, Q5 |
+| timeZone | String | Y | 지역 이름이 있는 IANA (timezone §3.1) | §2 「기준 시간대」 |
 | startsAt | String | Y | UTC ISO 8601 | §2 |
 | endsAt | String | N | UTC ISO 8601. 있으면 `> startsAt`. 없거나 null 이면 null 저장. 수정에서는 새 `effectiveEndsAt > now` 도 필요 (아래 「행사 수정」) | §2 「종료는 선택 입력이며 입력 시 시작 이후」 |
 | deadlineAt | String | Y | UTC ISO 8601. `≤ startsAt` 이고 `> now` | §2 「신청 마감은 시작 이전 또는 같은 시각」 · 「신규 등록 시 미래 마감시간 필요」 |
@@ -653,7 +653,7 @@ ERD 문서가 없어 소스 칸은 아래 제안 이름을 쓴다. 확정은 ERD
 | 항목 | 레포 PRD·프로토 (PR #471 반영) | 이 스펙 |
 |---|---|---|
 | 서머타임 | §2 「사라진 시각은 다른 시각 선택 안내, 중복 시각은 전·후 선택」. 프로토 `resolveEventInput` | 화면이 정한 UTC 를 받는다. 서버는 순서·현재 시각만 검증 (Q4) |
-| 시간대 선택지 | 프로토 `ZONES`: 서울·토론토·뉴욕·LA | 같다 (Q5). POL-0006 회원 시간대(밴쿠버 포함)와는 R1 에서 맞춘다 |
+| 시간대 선택지 | 프로토 `ZONES`: 서울·토론토·뉴욕·LA | 서버는 전 IANA 를 받는다 (timezone §3.1). 프로토 선택지 확장은 FE 몫 |
 | 질문 타입 `SELECT` | 프로토 타입에 남아 있음. PRD 는 「제공 안 함, 단일 선택으로 전환」 | API 는 받지 않음 |
 | 등록 중복 제출 | 프로토 CREATE 는 같은 행사 ID 로 두 번 저장하면 막는다 | 서버도 막는다. 같은 계정 · 같은 `Idempotency-Key` 면 처음 만든 행사를 다시 돌려준다 (N1). 화면은 저장 중 버튼도 막는다 |
 | 진행 중 행사의 종료 시각 앞당김 | 프로토는 막지 않는다 | 저장 즉시 종료되는 `endsAt` 은 400 (N2). 확인 대기 신청이 실수로 한꺼번에 참가 불가가 되지 않게 한다 |

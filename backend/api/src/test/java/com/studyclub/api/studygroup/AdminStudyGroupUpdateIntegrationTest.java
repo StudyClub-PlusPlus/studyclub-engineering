@@ -227,13 +227,33 @@ class AdminStudyGroupUpdateIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 허용되지 않은 시간대면 400 INVALID_INPUT")
+    @DisplayName("실패 - 오프셋만 있는 시간대 · 모르는 ID 면 400 INVALID_INPUT")
     void invalidTimezone() {
-        var response =
-                patch(Map.of("timezone", "Europe/Paris"), ADMIN_ID, study.getId(), group.getId());
+        for (String zone : List.of("+01:00", "GMT+1", "Not/AZone")) {
+            var response = patch(Map.of("timezone", zone), ADMIN_ID, study.getId(), group.getId());
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        }
+    }
+
+    @Test
+    @DisplayName("성공 - 네 개 목록 밖의 IANA(파리)도 받고, deprecated 링크는 정본 ID 로 저장한다")
+    void acceptsAnyIanaTimezone() {
+        assertThat(
+                        patch(
+                                        Map.of("timezone", "Europe/Paris"),
+                                        ADMIN_ID,
+                                        study.getId(),
+                                        group.getId())
+                                .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getTimezone())
+                .isEqualTo("Europe/Paris");
+
+        patch(Map.of("timezone", "Asia/Calcutta"), ADMIN_ID, study.getId(), group.getId());
+        assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getTimezone())
+                .isEqualTo("Asia/Kolkata");
     }
 
     @Test

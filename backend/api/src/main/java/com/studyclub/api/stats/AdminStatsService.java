@@ -8,7 +8,6 @@ import com.studyclub.api.stats.AdminStatsResponses.StudiesByCategoryResponse;
 import com.studyclub.api.stats.AdminStatsResponses.StudyBoardItem;
 import com.studyclub.api.stats.AdminStatsResponses.StudyBoardResponse;
 import com.studyclub.api.stats.AdminStatsResponses.SummaryResponse;
-import com.studyclub.api.stats.AdminStatsResponses.TimeZoneGroup;
 import com.studyclub.api.stats.AdminStatsResponses.TrendPoint;
 import com.studyclub.api.stats.DashboardSummaryAggregateService.AttendanceResult;
 import com.studyclub.api.stats.DashboardSummaryAggregateService.ParticipationResult;
@@ -18,6 +17,7 @@ import com.studyclub.api.study.BackofficeStudyListService;
 import com.studyclub.api.study.BackofficeStudySort;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.common.time.TimeZoneFormatService;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.participant.StudyParticipant;
@@ -142,24 +142,14 @@ public class AdminStatsService {
         Instant asOf = Instant.now();
         ActiveCrewStats crew = activeCrewStats();
         Set<Long> accountIds = crew.accountIds();
-        Map<CrewTimeZoneGroupCode, Long> counts = new EnumMap<>(CrewTimeZoneGroupCode.class);
-        for (CrewTimeZoneGroupCode code : CrewTimeZoneGroupCode.values()) {
-            counts.put(code, 0L);
-        }
+        List<String> timeZones = new ArrayList<>();
         if (!accountIds.isEmpty()) {
             for (Account account : accountRepository.findAllById(accountIds)) {
-                CrewTimeZoneGroupCode code = classifyTimeZone(account.getTimeZone());
-                counts.merge(code, 1L, Long::sum);
+                timeZones.add(account.getTimeZone());
             }
         }
-        long total = crew.crewCount();
-        List<TimeZoneGroup> groups = new ArrayList<>();
-        for (CrewTimeZoneGroupCode code : CrewTimeZoneGroupCode.values()) {
-            long count = counts.getOrDefault(code, 0L);
-            Double percentage = total == 0 ? null : (count * 100.0) / total;
-            groups.add(new TimeZoneGroup(code, count, percentage));
-        }
-        return new CrewTimezonesResponse(asOf, total, groups);
+        return new CrewTimezonesResponse(
+                asOf, timeZones.size(), CrewTimeZoneDistribution.of(timeZones));
     }
 
     public AttendanceTrendResponse attendanceTrend(
@@ -257,7 +247,8 @@ public class AdminStatsService {
                                 BackofficeStudySort.TITLE_ASC),
                         0,
                         limit,
-                        asOf);
+                        asOf,
+                        zone.getId());
         List<StudyBoardItem> items =
                 page.items().stream()
                         .map(
@@ -266,6 +257,7 @@ public class AdminStatsService {
                                                 study.studyId(),
                                                 study.programId(),
                                                 study.title(),
+                                                null,
                                                 null,
                                                 null,
                                                 null))
@@ -288,7 +280,8 @@ public class AdminStatsService {
                                 BackofficeStudySort.RECRUITMENT),
                         0,
                         limit,
-                        asOf);
+                        asOf,
+                        zone.getId());
         Map<Long, Study> studies =
                 studyRepository
                         .findAllById(
@@ -307,6 +300,8 @@ public class AdminStatsService {
                                                 s.title(),
                                                 s.recruitStatus(),
                                                 s.recruitDeadlineAt(),
+                                                TimeZoneFormatService.formatDeadline(
+                                                        s.recruitDeadlineAt(), zone.getId(), asOf),
                                                 deadlineBadge(
                                                         studies.get(s.studyId()),
                                                         s.currentApplicants(),
@@ -350,28 +345,5 @@ public class AdminStatsService {
         return new ActiveCrewStats(accounts, enrollments.size());
     }
 
-    static CrewTimeZoneGroupCode classifyTimeZone(String timeZone) {
-        if (timeZone == null || timeZone.isBlank()) {
-            return CrewTimeZoneGroupCode.UNKNOWN;
-        }
-        return switch (timeZone) {
-            case "Asia/Seoul" -> CrewTimeZoneGroupCode.KST;
-            case "America/New_York", "America/Toronto" -> CrewTimeZoneGroupCode.ET;
-            case "America/Vancouver", "America/Los_Angeles" -> CrewTimeZoneGroupCode.PT;
-            default -> {
-                try {
-                    ZoneId.of(timeZone);
-                    yield CrewTimeZoneGroupCode.UNKNOWN;
-                } catch (Exception e) {
-                    yield CrewTimeZoneGroupCode.UNKNOWN;
-                }
-            }
-        };
-    }
-
-    private record ActiveCrewStats(Set<Long> accountIds, long enrollmentCount) {
-        long crewCount() {
-            return accountIds.size();
-        }
-    }
+    private record ActiveCrewStats(Set<Long> accountIds, long enrollmentCount) {}
 }

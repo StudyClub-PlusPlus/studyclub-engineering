@@ -1,6 +1,6 @@
 # 시간대 확장 — 공통 API·저장 계약
 
-> 상태: **스펙작성중**
+> 상태: **구현중** (BE — [plan](./plan.md) · [tasks](./tasks.md). FE 연결은 별도 PR)
 > 생성일: 2026-11-24
 > 기획: [전 세계 시간대 확장 PRD](../../01-planning/stories/timezone-expansion/PRD.md) · 정책 [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) · Playground 반영 PR [#527](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/527)
 >
@@ -85,7 +85,11 @@
 - `mode=all` · `mode=unset` 은 후보 **항목을 추가하지 않는다** (선택 시 위 OR 규칙으로만 포함).
 - `한국+LA` 스터디는 후보에 **한국** · **LA** 두 줄로 각각 뜬다 (조합 옵션 없음).
 
-목록·상세 응답에 **항상** 이 객체를 넣는다 (`study` 스펙). 사이트 카드·필터 라벨용 `recruitmentTimeZoneLabel` 은 서버가 내려준다 (예: `한국 · LA`).
+목록·상세 응답에 **항상** 이 객체를 넣는다 (`study` 스펙). 사이트 카드·필터 라벨용 `recruitmentTimeZoneLabel` 은 서버가 내려준다 — `unset` `미정`, `all` `모든 시간대에서 모집`, `selected` 는 지역 짧은 이름(§3.5)을 표시 순서(한국 → 미국 → 캐나다 → 오스트레일리아 → 영국 → 나머지)로 ` / ` 로 잇는다 (예: `한국 / 미국 · LA`, Playground `recruitmentZoneLabel` 과 같다). 응답의 `zones` 도 같은 순서다.
+
+**필터 후보 API**: `GET /api/studies/recruitment-zones` → `{ items: [{ timeZone, recruitmentZoneShortLabel }] }` (공개, 인증 불필요). 사이트 목록 Query `recruitmentZone` 은 단일 IANA 이고, 무효 · 오프셋 값은 400.
+
+**요청**: 등록 · 수정 본문의 `recruitmentTimeZones: { mode, zones }`. 등록에서 생략하면 `unset`. 수정에서 키를 빼면 유지, `null` 이면 `unset` 으로 되돌린다. `selected` 인데 `zones` 가 비었거나, `unset` · `all` 에 `zones` 가 있거나, 무효 · 오프셋 · 중복(정규화 뒤) 지역이면 400 `recruitmentTimeZones: …`.
 
 ### 3.3. `FormattedInstant`
 
@@ -119,6 +123,8 @@
 |---|---|
 | `dDay` | Integer | Y | `localDate` 기준 오늘과의 일수 차. **마감 판정에는 쓰지 않는다** (PRD §6). 마감 후 null |
 
+응답 필드 이름: 기존 UTC 필드(`recruitDeadlineAt` · `startAt`)는 그대로 두고 `recruitDeadlineFormatted`(dDay 포함) · `startAtFormatted` 를 더한다. 목록 · 상세 최상위 `displayTimeZone` 은 포맷에 쓴 시간대다. 대시보드 `study-board` 항목은 `recruitDeadlineFormatted` 를 응답 `timeZone` 으로 만든다. `dDay` 는 마감 계열에만 채우고, 마감 뒤(`now ≥ deadline`)·마감 아님은 `null` 이다.
+
 서버 구현은 `java.time` + **`backend/common`** 의 `TimeZoneFormatService`(약칭 표 §3.5 포함) 하나로 통일한다. 브라우저 `Intl` 과 1:1 일치를 요구하지 않으나, 통합 테스트는 PRD §9 시나리오(한국·LA·토론토 마감 동시성)로 고정한다.
 
 ### 3.4. `DisplayTimeZoneContext` (요청 해석 결과)
@@ -127,7 +133,7 @@
 
 | 맥락 | `displayTimeZone` 결정 순서 |
 |---|---|
-| 크루 사이트 조회 | `ACCOUNT.TIME_ZONE` → 클라이언트가 보낸 유효 `timeZone` Query → `Asia/Seoul` |
+| 크루 사이트 조회 | `ACCOUNT.TIME_ZONE` → 클라이언트가 보낸 유효 `timeZone` Query → `Asia/Seoul`. 사이트 `PATCH /api/studies/{id}` 의 날짜 입력도 같은 순서(Query 이름 `displayTimeZone`) |
 | 백오피스 조회·기록 포맷·**마감일·진행일 저장** | 요청의 `displayTimeZone` Query(= **현재 화면 헤더와 동기**) → `ADMIN_DISPLAY_TIME_ZONE` → `TIME_ZONE` → `Asia/Seoul`. 다른 기기에서 저장된 헤더가 **이 탭에 보이는 헤더보다 앞서면 안 된다** (PRD §6). |
 | 백오피스 대시보드 집계 | Query `timeZone`(헤더) **우선**. **프로필로 덮어쓰지 않는다** (PRD §7, 기존 dashboard §2.2 대체) |
 | 크루 사이트 **회차 표** 조회·기존 회차 수정 (캡틴·네비게이터) | 표에서 사용자가 고른 **임시 표시 시간대** → 프로필 → 기기 → `Asia/Seoul`. 프로필이 서울이어도 표에서 토론토를 고르면 조회·수정은 토론토 기준. |
@@ -155,7 +161,7 @@ Playground `time-zone-rules` · POL §날짜·시간과 정합:
 
 ---
 
-## 4. 스키마 변경 (제안)
+## 4. 스키마 변경 (V68)
 
 ### 4.1. `ACCOUNT`
 
@@ -214,9 +220,10 @@ Playground `time-zone-rules` · POL §날짜·시간과 정합:
 
 | Method | Path | 설명 | 인증 | 상태 |
 |---|---|---|---|---|
-| GET | `/api/admin/member-time-zones` | 회원 보유 IANA 후보 (선택기·집계) | ADMIN | 스펙작성중 |
-| GET | `/api/admin/me/display-time-zone` | 운영자 표시 시간대 조회 | ADMIN | 스펙작성중 |
-| PATCH | `/api/admin/me/display-time-zone` | 운영자 표시 시간대 저장 | ADMIN | 스펙작성중 |
+| GET | `/api/admin/member-time-zones` | 회원 보유 IANA 후보 (선택기·집계) | ADMIN | 구현중 |
+| GET | `/api/admin/me/display-time-zone` | 운영자 표시 시간대 조회 | ADMIN | 구현중 |
+| PATCH | `/api/admin/me/display-time-zone` | 운영자 표시 시간대 저장 | ADMIN | 구현중 |
+| GET | `/api/studies/recruitment-zones` | 사이트 목록 모집 시간대 필터 후보 (§3.2) | 없음 | 구현중 |
 
 도메인 기존 API 변경 요약:
 
@@ -258,8 +265,9 @@ Playground `time-zone-rules` · POL §날짜·시간과 정합:
 
 - 집계 대상: `ONBOARDING_COMPLETED_AT IS NOT NULL` · 탈퇴/삭제 제외 정책은 [user-leave](../user-leave/spec.md) 와 동일.
 - `TIME_ZONE` 이 null·무효인 계정은 **items 에 넣지 않는다** (미설정은 별도 API 없음 — 선택기는 전체 IANA 검색으로 보완).
-- **캐시**: 서버 메모리 또는 Redis, TTL 60s. `ACCOUNT.TIME_ZONE` 갱신·온보딩 완료·탈퇴 시 **캐시 무효화** (domain event 또는 `@CacheEvict`).
-- 조회 실패 시 503 — 프론트는 PRD §3: 이전 후보 유지·재시도. 첫 실패에도 전체 IANA 검색은 가능.
+- **캐시**: 서버 메모리, TTL 60s (`asOf` = 집계한 시각 — 캐시가 살아 있는 동안 같은 값). `PATCH /api/me` 로 시간대가 바뀜 · 온보딩 완료(`UserRegisteredEvent`) · 탈퇴(`AccountDeleted`) 트랜잭션이 **커밋된 뒤** 비운다. 서버가 여러 대면 다른 서버는 TTL 로만 갱신된다(최대 60초).
+- deprecated 링크로 저장된 값은 정본 지역에 합쳐 센다.
+- 조회 실패 시 503 `TIME_ZONE_CANDIDATES_UNAVAILABLE` — 프론트는 PRD §3: 이전 후보 유지·재시도. 첫 실패에도 전체 IANA 검색은 가능.
 
 ### Error
 
@@ -317,6 +325,10 @@ Playground `time-zone-rules` · POL §날짜·시간과 정합:
 
 스터디 등록·수정에서 `recruitDeadline` · `startAt` 를 보낼 때는 **같은 요청**에 `displayTimeZone` Query(헤더 값)를 넣는다. 서버는 §3.4 백오피스 저장 행 순서로 날짜를 UTC 로 환산한다.
 
+- 값은 ISO-8601 순간(`2026-09-16T14:59:59Z`) 또는 날짜(`2026-09-16`). 순간은 그대로 저장하고, 날짜만 오면 마감은 그 지역 달력의 23:59:59, 시작일은 00:00:00 을 UTC 로 바꾼다 (밴쿠버는 §3.5 규칙).
+- 마감을 보내지 않은 수정은 표시 시간대와 관계없이 저장된 UTC 를 바꾸지 않는다.
+- 명시한 `displayTimeZone` 이 빈 값 · 무효 · 오프셋이면 400.
+
 ---
 
 ## 8. 도메인별 반영 인덱스
@@ -349,7 +361,7 @@ Playground `time-zone-rules` · POL §날짜·시간과 정합:
 - 모집 OR 필터: `한국+LA` 스터디가 양쪽 필터에 노출
 - 마감: 동일 UTC 에서 한국·LA·토론토 `canApply` 동일, `dDay` 만 다를 수 있음
 - 헤더 PATCH 후 저장 UTC 동일 (마감 미수정 시)
-- `crew-timezones` 5칸: 합계 = 지역 수 + (`unset` 있으면 1). **≤5** → 전부·`other` 없음 (지역 4 + `unset` = 5칸). **>5·unset 있음** → 상위 3 + `other` + `unset` (지역 5 + `unset` → `other`에 2지역). **>5·unset 없음** → 상위 4 + `other` (지역 6 → `other`에 2지역)
+- `crew-timezones` 5칸: 활성 크루 0명이면 `timeZoneGroups: []`. 합계 = 지역 수 + (`unset` 있으면 1). **≤5** → 전부·`other` 없음 (지역 4 + `unset` = 5칸). **>5·unset 있음** → 상위 3 + `other` + `unset` (지역 5 + `unset` → `other`에 2지역). **>5·unset 없음** → 상위 4 + `other` (지역 6 → `other`에 2지역)
 
 ---
 

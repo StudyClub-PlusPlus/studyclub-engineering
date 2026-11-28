@@ -212,52 +212,69 @@ class AccountProfileIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 존재하는 IANA ID 라도 화면 목록에 없는 시간대는 400 — 서버도 시간대 정책의 목록으로 막는다")
-    void rejectsTimeZoneOutsideScreenList() {
+    @DisplayName("성공 - 네 개 목록 밖의 IANA(도쿄 · 런던)도 저장한다. deprecated 링크는 정본 ID 로 저장한다")
+    void acceptsAnyIanaAndNormalizes() {
         String nickname = uniqueNickname();
         Account account = seedOnboardedAccount(nickname);
 
-        var response = patchProfile(account, nickname, "Asia/Tokyo");
+        assertThat(patchProfile(account, nickname, "Asia/Tokyo").getBody())
+                .containsEntry("timeZone", "Asia/Tokyo");
+        assertThat(patchProfile(account, nickname, "Europe/London").getBody())
+                .containsEntry("timeZone", "Europe/London");
+        assertThat(patchProfile(account, nickname, "Canada/Pacific").getBody())
+                .containsEntry("timeZone", "America/Vancouver");
+        assertThat(accountRepository.findById(account.getId()).orElseThrow().getTimeZone())
+                .isEqualTo("America/Vancouver");
+    }
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
-        // 메시지는 "필드: 문구" 꼴 — 존재하지 않는 ID 와 같은 문구라 화면이 구분할 필요가 없다
-        assertThat(response.getBody().get("errorMessage"))
-                .asString()
-                .contains("timeZone: 고를 수 있는 타임존이 아닙니다");
+    @Test
+    @DisplayName("실패 - 오프셋만 있는 ID · 모르는 ID 는 400 — 메시지는 「필드: 문구」 꼴, 저장값은 그대로")
+    void rejectsOffsetOnlyTimeZone() {
+        String nickname = uniqueNickname();
+        Account account = seedOnboardedAccount(nickname);
+
+        for (String zone : List.of("+09:00", "UTC+09:00", "GMT+9", "Not/AZone")) {
+            var response = patchProfile(account, nickname, zone);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+            assertThat(response.getBody().get("errorMessage"))
+                    .asString()
+                    .contains("timeZone: 지역 이름이 있는 IANA 시간대여야 합니다");
+        }
         assertThat(accountRepository.findById(account.getId()).orElseThrow().getTimeZone())
                 .isEqualTo("Asia/Seoul");
     }
 
     @Test
-    @DisplayName("성공 - 막기 전에 목록 밖 시간대로 저장된 계정도 조회는 그대로 된다 — 검증은 저장할 때만 본다")
-    void returnsPreviouslySavedTimeZoneOutsideScreenList() {
+    @DisplayName("성공 - 예전에 무효 값으로 저장된 계정도 조회는 그대로 된다 — 검증은 저장할 때만 본다")
+    void returnsPreviouslySavedInvalidTimeZone() {
         Account account = seedUnonboardedAccount();
-        account.completeOnboarding(uniqueNickname(), "Asia/Tokyo", Instant.now());
+        account.completeOnboarding(uniqueNickname(), "+09:00", Instant.now());
         account = accountRepository.save(account);
 
         var response = getMe(account);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("timeZone", "Asia/Tokyo");
+        assertThat(response.getBody()).containsEntry("timeZone", "+09:00");
     }
 
     @Test
-    @DisplayName("실패 - 막기 전에 목록 밖 시간대로 저장된 계정은 그 값 그대로 다시 저장해도 400 — 넷 중 하나를 골라야 한다")
-    void rejectsPreviouslySavedTimeZoneOutsideScreenList() {
+    @DisplayName("실패 - 예전에 무효 값으로 저장된 계정이 그 값 그대로 다시 저장하면 400 — 닉네임도 바뀌지 않는다")
+    void rejectsPreviouslySavedInvalidTimeZone() {
         String nickname = uniqueNickname();
         Account account = seedUnonboardedAccount();
-        account.completeOnboarding(nickname, "Asia/Tokyo", Instant.now());
+        account.completeOnboarding(nickname, "+09:00", Instant.now());
         account = accountRepository.save(account);
 
-        var response = patchProfile(account, uniqueNickname(), "Asia/Tokyo");
+        var response = patchProfile(account, uniqueNickname(), "+09:00");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
         assertThat(response.getBody().get("errorMessage")).asString().contains("timeZone");
         Account saved = accountRepository.findById(account.getId()).orElseThrow();
         assertThat(saved.getNickname()).isEqualTo(nickname);
-        assertThat(saved.getTimeZone()).isEqualTo("Asia/Tokyo");
+        assertThat(saved.getTimeZone()).isEqualTo("+09:00");
     }
 
     @Test

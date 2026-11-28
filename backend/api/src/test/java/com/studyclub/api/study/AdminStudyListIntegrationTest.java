@@ -121,8 +121,12 @@ class AdminStudyListIntegrationTest {
                 .containsEntry("hasApplicationForm", true)
                 .containsKeys("recruitmentStartAt", "recruitDeadlineAt")
                 .containsEntry("authorNickname", "studylist_" + ADMIN_ID)
-                .containsEntry("timezone", null)
+                .containsEntry("recruitmentTimeZones", Map.of("mode", "unset", "zones", List.of()))
+                .containsEntry("recruitmentTimeZoneLabel", "미정")
+                .containsKeys("recruitDeadlineFormatted", "startAtFormatted")
+                .doesNotContainKey("timezone")
                 .doesNotContainKey("leaderNickname");
+        assertThat(response.getBody()).containsEntry("displayTimeZone", "Asia/Seoul");
 
         Map<String, Object> draft = itemById(response.getBody(), DRAFT_STUDY_ID);
         // 작성자가 기록되지 않은 스터디 — 화면은 「—」

@@ -14,4 +14,7 @@ public interface StudyListDao {
     List<Study> search(StudyListFilter filter, int offset, int limit);
 
     long count(StudyListFilter filter);
+
+    /** 공개 스터디의 최신 모집 회차 중 {@code selected} 지역 distinct. */
+    List<String> recruitmentZones();
 }

@@ -15,8 +15,8 @@
 | CITY | VARCHAR(100) | Y | |
 | REGION_GROUP | VARCHAR(20) | Y | 권역 — `KR` / `NA` / `ETC`. 회차 시간대 묶음용 |
 | SYSTEM_ROLE | VARCHAR(20) | N | 아래 |
-| TIME_ZONE | VARCHAR(64) | Y | IANA (`ZoneId` 유효 ID). [시간대 확장 스펙](../../specs/timezone/spec.md) §3.1 |
-| ADMIN_DISPLAY_TIME_ZONE | VARCHAR(64) | Y | 백오피스 헤더 표시용 IANA. `SYSTEM_ROLE=ADMIN` 만 사용. [timezone 스펙 §4.1](../../specs/timezone/spec.md) |
+| TIME_ZONE | VARCHAR(64) | Y | 지역 이름이 있는 모든 IANA ID. 오프셋만 있는 ID(`+09:00` · `GMT+9`)는 받지 않고, deprecated 링크(`US/Pacific`)는 정본으로 저장한다. [시간대 확장 스펙](../../specs/timezone/spec.md) §3.1 |
+| ADMIN_DISPLAY_TIME_ZONE | VARCHAR(64) | Y | 백오피스 헤더 표시용 IANA (V68). `SYSTEM_ROLE=ADMIN` 만 쓴다. NULL 이면 `TIME_ZONE` → 서울. `PATCH /api/admin/me/display-time-zone` 만 바꾸고 `TIME_ZONE` 과 따로 움직인다. [timezone 스펙 §4.1](../../specs/timezone/spec.md) |
 | DISCORD_ID | VARCHAR(64) | Y | 디스코드 내부 식별자 (snowflake) |
 | DISCORD_HANDLE | VARCHAR(64) | Y | 표시용 핸들 |
 | DISCORD_NICKNAME | VARCHAR(100) | Y | 스터디클럽 서버 별명 (이름/직무/지역/관심주제). 없으면 스터디 신청 시 필수 입력 |

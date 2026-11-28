@@ -14,6 +14,7 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantGroupMoveRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.storage.StoragePurpose;
+import com.studyclub.domain.study.RecruitmentTimeZones;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyGroup;
 import com.studyclub.domain.study.StudyGroupRepository;
@@ -96,10 +97,23 @@ public class StudyService {
         this.uploadService = uploadService;
     }
 
+    /**
+     * @param displayTimeZone 날짜만 보낸 마감 · 시작일을 해석할 시간대 — 이 탭의 헤더 기준 (specs/timezone/spec.md §7)
+     */
     @Transactional
-    public Long create(Long accountId, StudyCreateRequest request) {
+    public Long create(Long accountId, StudyCreateRequest request, String displayTimeZone) {
         Instant now = Instant.now();
-        if (request.recruitDeadline() != null && !now.isBefore(request.recruitDeadline())) {
+        Instant recruitDeadline =
+                request.recruitDeadline() == null
+                        ? null
+                        : request.recruitDeadline().toDeadline(displayTimeZone);
+        Instant startAt =
+                request.startAt() == null ? null : request.startAt().toStart(displayTimeZone);
+        RecruitmentTimeZones recruitmentTimeZones =
+                request.recruitmentTimeZones() == null
+                        ? RecruitmentTimeZones.UNSET
+                        : request.recruitmentTimeZones().toDomain();
+        if (recruitDeadline != null && !now.isBefore(recruitDeadline)) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "recruitDeadline: 모집 마감일은 미래여야 합니다.");
         }
@@ -130,13 +144,12 @@ public class StudyService {
                                 .thumbnailUrl(
                                         attachThumbnail(request.thumbnailFileId(), accountId, now))
                                 .schedule(request.schedule())
-                                .timezone(request.timezone())
                                 .createdBy(accountId)
                                 // 처음 담당 캡틴은 만든 캡틴 — 신청자 탭에서 바꾼다 (POL-0001)
                                 .ownerCaptainId(accountId)
                                 .build());
 
-        if (request.startAt() != null) study.changeStartAt(request.startAt());
+        if (startAt != null) study.changeStartAt(startAt);
         if (request.discordChannelUrl() != null && !request.discordChannelUrl().isBlank()) {
             study.changeDiscordChannelUrl(request.discordChannelUrl());
         }
@@ -151,9 +164,10 @@ public class StudyService {
                                 .title(DEFAULT_RECRUITMENT_TITLE)
                                 .description("")
                                 // 모집 시작 시각은 비워 둔다 — 공개(= 모집 시작)할 때 채운다. 채워 두면 신청 폼이 잠긴다
-                                .recruitDeadlineAt(request.recruitDeadline())
+                                .recruitDeadlineAt(recruitDeadline)
                                 .build());
         if (request.capacity() != null) recruitment.updateCapacity(request.capacity());
+        recruitment.changeTimeZones(recruitmentTimeZones);
 
         // 신청자가 들어갈 반 — 반을 나눌지는 신청자를 보고 캡틴이 정한다
         studyGroupRepository.save(StudyGroup.defaultOf(study.getId()));
@@ -199,20 +213,22 @@ public class StudyService {
 
     /** 사용자 사이트 — 권한은 {@code @RequireCaptainOrNavigator} 가 검사한다. */
     @Transactional
-    public void updateFromSite(Long accountId, Long studyId, StudyUpdateRequest request) {
+    public void updateFromSite(
+            Long accountId, Long studyId, StudyUpdateRequest request, String displayTimeZone) {
         // 인증 → 존재 순서. 없는 스터디에 네비게이터 판정을 먼저 돌리면 404 대신 403 이 나간다
         if (!accountRepository.existsById(accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
         Study study = findStudy(studyId);
-        applyUpdate(study, request);
+        applyUpdate(study, request, displayTimeZone);
     }
 
     /** 백오피스 — 권한은 {@code @RequireAdmin} 가 검사한다. 썸네일은 백오피스에서만 바꾼다. */
     @Transactional
-    public void updateFromBackOffice(Long accountId, Long studyId, StudyUpdateRequest request) {
+    public void updateFromBackOffice(
+            Long accountId, Long studyId, StudyUpdateRequest request, String displayTimeZone) {
         Study study = findStudy(studyId);
-        applyUpdate(study, request);
+        applyUpdate(study, request, displayTimeZone);
         if (request.thumbnailFileIdPresent()) {
             replaceThumbnail(
                     study, attachThumbnail(request.thumbnailFileId(), accountId, Instant.now()));
@@ -241,15 +257,27 @@ public class StudyService {
     }
 
     // 수정 본문 — 권한을 검사하지 않는다. 진입 메서드가 검사한 뒤에만 부른다
-    private void applyUpdate(Study study, StudyUpdateRequest request) {
+    // 마감을 보내지 않은 수정은 저장된 마감 UTC 를 그대로 둔다 — 표시 시간대가 바뀌어도 (PRD §6)
+    private void applyUpdate(Study study, StudyUpdateRequest request, String displayTimeZone) {
+        Instant recruitDeadline =
+                request.recruitDeadline() == null
+                        ? null
+                        : request.recruitDeadline().toDeadline(displayTimeZone);
+        Instant startAt =
+                request.startAt() == null ? null : request.startAt().toStart(displayTimeZone);
+        RecruitmentTimeZones recruitmentTimeZones =
+                !request.recruitmentTimeZonesPresent()
+                        ? null
+                        : request.recruitmentTimeZones() == null
+                                ? RecruitmentTimeZones.UNSET
+                                : request.recruitmentTimeZones().toDomain();
         if (request.title() != null && request.title().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "title: 제목을 입력하세요.");
         }
         if (request.oneLineSummary() != null && request.oneLineSummary().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "oneLineSummary: 한 줄 소개를 입력하세요.");
         }
-        if (request.recruitDeadline() != null
-                && !Instant.now().isBefore(request.recruitDeadline())) {
+        if (recruitDeadline != null && !Instant.now().isBefore(recruitDeadline)) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "recruitDeadline: 모집 마감일은 미래여야 합니다.");
         }
@@ -271,24 +299,24 @@ public class StudyService {
                 request.description(),
                 request.category(),
                 request.schedule());
-        if (request.startAtPresent()) study.changeStartAt(request.startAt());
-        if (request.timezonePresent()) study.changeTimezone(request.timezone());
+        if (request.startAtPresent()) study.changeStartAt(startAt);
         if (request.discordChannelUrlPresent()) {
             study.changeDiscordChannelUrl(request.discordChannelUrl());
         }
         if (request.driveUrlPresent()) study.changeDriveUrl(request.driveUrl());
 
-        if (request.capacityPresent() || request.recruitDeadline() != null) {
+        if (request.capacityPresent() || recruitDeadline != null || recruitmentTimeZones != null) {
             StudyRecruitment recruitment =
                     studyRecruitmentRepository
-                            .findFirstByStudyIdOrderByIdDesc(study.getId())
+                            .findLatestIdByStudyId(study.getId())
+                            .flatMap(studyRecruitmentRepository::findByIdWithZonesForUpdate)
                             .orElseThrow(
                                     () ->
                                             new BusinessException(
                                                     ErrorCode.NOT_FOUND, "모집 회차를 찾을 수 없습니다."));
             if (request.capacityPresent()) recruitment.updateCapacity(request.capacity());
-            if (request.recruitDeadline() != null)
-                recruitment.updateDeadline(request.recruitDeadline());
+            if (recruitDeadline != null) recruitment.updateDeadline(recruitDeadline);
+            if (recruitmentTimeZones != null) recruitment.changeTimeZones(recruitmentTimeZones);
         }
     }
 
@@ -344,16 +372,17 @@ public class StudyService {
      * StudyCaptainGuard#canSeePrivateLinks} 인 사람에게만 채운다.
      *
      * @param accountId 비로그인이면 {@code null}
+     * @param displayTimeZone {@code *Formatted} 를 만들 시간대
      */
     @Transactional(readOnly = true)
-    public StudyDetailResponse getDetail(Long studyId, Long accountId) {
+    public StudyDetailResponse getDetail(Long studyId, Long accountId, String displayTimeZone) {
         Study study = findStudy(studyId);
         // 공개 판정은 STATUS != DRAFT (POL-0002). 상태를 먼저 봐서 공개 스터디에는 권한 조회를 하지 않는다
         if (study.getStatus() == StudyStatus.DRAFT
                 && !studyCaptainGuard.isCaptainOrNavigator(accountId, studyId)) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
         }
-        StudyDetailResponse detail = toDetail(study);
+        StudyDetailResponse detail = toDetail(study, displayTimeZone);
         return studyCaptainGuard.canSeePrivateLinks(accountId, studyId)
                 ? detail
                 : detail.withoutPrivateLinks();
@@ -361,12 +390,12 @@ public class StudyService {
 
     /** 백오피스 상세 — 권한은 {@code @RequireAdmin}. DRAFT 도 보여 준다. */
     @Transactional(readOnly = true)
-    public StudyDetailResponse getDetailForBackOffice(Long studyId) {
-        return toDetail(findStudy(studyId));
+    public StudyDetailResponse getDetailForBackOffice(Long studyId, String displayTimeZone) {
+        return toDetail(findStudy(studyId), displayTimeZone);
     }
 
     // 상세 본문 — 권한을 검사하지 않는다
-    private StudyDetailResponse toDetail(Study study) {
+    private StudyDetailResponse toDetail(Study study, String displayTimeZone) {
         StudyRecruitment latestRecruitment =
                 studyRecruitmentRepository
                         .findFirstByStudyIdOrderByIdDesc(study.getId())
@@ -386,7 +415,12 @@ public class StudyService {
                 crewCount(study),
                 recruitDeadlineAt,
                 recruitmentCapacity,
-                studyDiscordLinkRepository.existsByStudyId(study.getId()));
+                latestRecruitment != null
+                        ? latestRecruitment.timeZones()
+                        : RecruitmentTimeZones.UNSET,
+                studyDiscordLinkRepository.existsByStudyId(study.getId()),
+                displayTimeZone,
+                Instant.now());
     }
 
     @Transactional

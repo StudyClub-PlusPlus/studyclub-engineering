@@ -2,6 +2,8 @@ package com.studyclub.api.stats;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.studyclub.common.time.FormattedInstant;
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.StudyCategory;
 import java.time.Instant;
@@ -53,12 +55,24 @@ public final class AdminStatsResponses {
             String title,
             RecruitStatus recruitStatus,
             Instant recruitDeadlineAt,
+            /** 응답 {@code timeZone} 으로 포맷한 마감 — 짧은 날짜 · D-N · 약칭. ONGOING 이면 null */
+            FormattedInstant recruitDeadlineFormatted,
             DashboardDeadlineBadge deadlineBadge) {}
 
     public record CrewTimezonesResponse(
             Instant asOf, long totalCrew, List<TimeZoneGroup> timeZoneGroups) {}
 
-    public record TimeZoneGroup(CrewTimeZoneGroupCode code, long count, Double percentage) {}
+    /**
+     * @param code 정본 IANA · {@code other} · {@code unset}
+     * @param breakdown {@code other} 일 때만 — 묶인 지역별 인원 · 비율(분모 = 전체 활성 크루)
+     */
+    public record TimeZoneGroup(
+            String code,
+            long count,
+            Double percentage,
+            @JsonInclude(JsonInclude.Include.NON_NULL) List<TimeZoneBreakdown> breakdown) {}
+
+    public record TimeZoneBreakdown(String code, long count, Double percentage) {}
 
     public record AttendanceTrendResponse(
             Instant asOf, String timeZone, Double averageRate, List<TrendPoint> points) {}

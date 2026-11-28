@@ -1,6 +1,12 @@
 # 스터디 API Spec
 
-> **시간대 확장 (2026-11-24):** 모집 시간대·목록 필터·시각 표시는 [timezone/spec.md](../timezone/spec.md) 가 정본이다. `STUDY.TIMEZONE` enum(`KST`/`PST`/`BOTH`)과 목록 Query `timezone` enum 은 **폐기 예정** — `recruitmentTimeZones` · Query `recruitmentZone`(단일 IANA) · `FormattedInstant` 로 대체한다. 데이터는 `STUDY_RECRUITMENT` + `STUDY_RECRUITMENT_ZONE` 에 저장(§4). 본문의 `timezone` 필드·표는 이관 완료 전까지 beta 계약으로 읽는다.
+> **시간대 확장 (2026-11-27 BE 반영, V68):** 모집 시간대·목록 필터·시각 표시는 [timezone/spec.md](../timezone/spec.md) 가 정본이다. `timezone` 필드·Query(`KST`/`PST`/`BOTH`)는 **삭제**했다 — 호환 없이 바로 바꾼다(timezone 부록 A). 데이터는 최신 모집 회차의 `STUDY_RECRUITMENT.RECRUITMENT_TZ_MODE` + [`STUDY_RECRUITMENT_ZONE`](../../docs/erd/STUDY_RECRUITMENT_ZONE.md), `STUDY.TIMEZONE` 은 읽기 전용 · 폐기 예정.
+>
+> - **요청** (등록 · 수정, 사이트 · 백오피스): `recruitmentTimeZones: { mode: unset|all|selected, zones: IANA[] }`. `recruitDeadline` · `startAt` 은 ISO 순간 또는 날짜(`YYYY-MM-DD`) — 날짜면 Query `displayTimeZone` 기준 마감 23:59:59 · 시작 00:00 을 UTC 로. 백오피스는 `displayTimeZone` → 저장된 헤더 → 프로필 → 서울, 사이트는 프로필 → `displayTimeZone` → 서울 (timezone §3.4 · §7)
+> - **응답** (목록 · 상세 · 백오피스 목록): `recruitmentTimeZones` · `recruitmentTimeZoneLabel` · `recruitDeadlineFormatted`(`FormattedInstant` + `dDay`) · `startAtFormatted` · 최상위 `displayTimeZone`. 사이트 목록 · 상세는 `canApply` 도 준다. 기존 UTC 필드(`recruitDeadlineAt` · `startAt`)는 그대로
+> - **Query**: `GET /api/studies` · `GET /api/studies/{id}` 는 `timeZone`(기기 시간대 대체값). `GET /api/studies` 의 필터는 `recruitmentZone`(단일 IANA, OR · `all` · `unset` 포함). 백오피스 `GET /api/admin/studies(/{id})` 는 `displayTimeZone`
+> - **필터 후보**: `GET /api/studies/recruitment-zones` (timezone §3.2)
+> - 백오피스 목록 정렬 `TIMEZONE_ASC/DESC` 는 이름을 두고 `selected → all → unset` 순으로 바꿨다
 >
 > ERD: [STUDY](../../docs/erd/STUDY.md) · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md)
 > Story PRD: [등록](../../01-planning/stories/study-create/PRD.md) · [수정·삭제](../../01-planning/stories/study-edit/PRD.md) · [공개](../../01-planning/stories/captain-publish-study/PRD.md) · [다음 기수](../../01-planning/stories/captain-reregister-cohort/PRD.md) · [운영 콘솔 목록](../../01-planning/stories/captain-list-all-studies/PRD.md) · [사용자 상세](../../01-planning/stories/crew-view-study-detail/PRD.md) · [운영 현황](../../01-planning/stories/study-detail/PRD.md) · [목록](../../01-planning/stories/crew-browse-studies/PRD.md)
@@ -222,7 +228,8 @@ private StudyDetailResponse toDetail(Study study) {
 | -------- | ------ | ---- | --------------------------------------------------------------------------------------------------------------------------------- |
 | keyword  | String | N    | 제목·소개 부분일치 검색 (대소문자 무관)                                                                                           |
 | status   | String | N    | 모집 상태 필터. `recruiting` / `ongoing` / `closed`                                                                               |
-| timezone | String | N    | 시간대 필터. `KST` / `PST` / `both`                                                                                               |
+| recruitmentZone | String | N | 모집 시간대 필터 — IANA 하나. `selected` 에 그 지역이 있거나 `all` · `unset`(모집 회차 없음 포함)이면 나온다. 무효 · 오프셋 값은 400 (timezone §3.2) |
+| timeZone | String | N | 시각 표시 대체값(기기 시간대). 로그인 회원은 프로필이 먼저 (timezone §3.4) |
 | category | String | N    | 분야 필터 (API enum 값, 예: `AI_ML`·`ALGORITHM`). 유효값은 [CATEGORY_DISPLAY](../../frontend/packages/utils/src/constants.ts) 참고 |
 
 > **정렬**: 지원하지 않는다 — 항상 최신순(등록 순번) 고정.
@@ -264,8 +271,8 @@ private StudyDetailResponse toDetail(Study study) {
 - **인증**: `ACCOUNT.SYSTEM_ROLE=ADMIN` (`assertCaptain`)
 - **Query**: `category`(StudyCategory) · `studyKind`(STUDY/CLUB) · `status`(StudyStatus) · `studyId`(Long) — 모두 선택. `offset`(기본 0) · `limit`(기본 20) 페이지네이션 지원
 - **설명**: DRAFT 포함 전 상태. 등록 직후 스터디가 여기 나온다
-- **Response — 200**: `{ items: [{ studyId, programId, title, status, category, studyKind, recruitmentCapacity, currentApplicants, recruitStatus, recruitmentStartAt, recruitDeadlineAt, startAt, timezone, hasApplicationForm, authorNickname }], total, offset, limit }` (`BackofficeStudyListResponse`)
-  - `timezone` — 운영자가 고른 값 그대로(`STUDY.TIMEZONE`). `null` 이면 미정. 일정 문구로 추정하지 않는다 ([captain-list-all-studies](../../01-planning/stories/captain-list-all-studies/PRD.md) 2-3). 사이트 목록(`GET /api/studies`)의 판정값과 다르다
+- **Response — 200**: `{ items: [{ studyId, programId, title, status, category, studyKind, recruitmentCapacity, currentApplicants, recruitStatus, recruitmentStartAt, recruitDeadlineAt, recruitDeadlineFormatted, startAt, startAtFormatted, recruitmentTimeZones, recruitmentTimeZoneLabel, hasApplicationForm, authorNickname }], total, displayTimeZone, offset, limit }` (`BackofficeStudyListResponse`)
+  - `recruitmentTimeZones` · `recruitmentTimeZoneLabel` — 최신 모집 회차의 값 그대로. 모집 회차가 없으면 `unset`. 일정 문구로 추정하지 않는다 ([captain-list-all-studies](../../01-planning/stories/captain-list-all-studies/PRD.md) 2-3). `recruitDeadlineFormatted` · `startAtFormatted` · 최상위 `displayTimeZone` 은 Query `displayTimeZone`(헤더) → 저장된 헤더 → 프로필 → 서울 (timezone §3.4)
   - `authorNickname` — 등록한 캡틴의 닉네임(`STUDY.CREATED_BY` → `ACCOUNT.NICKNAME`). 기록이 없으면 `null` (2026-10-31)
 - **프론트엔드 사용처**: back-office-front 스터디 관리 목록 — `lib/api.ts` `fetchStudies`(전부) · `fetchStudyListPage`(서버 페이지), 화면 `features/studies/StudiesTable.tsx`
 
@@ -315,8 +322,12 @@ private StudyDetailResponse toDetail(Study study) {
   "curriculum": "[{\"week\":1,\"topic\":\"배열\"}]",
   "capacity": 20,
   "schedule": "매주 목 20:00 · 8주 과정",
-  "timezone": "KST",
+  "recruitmentTimeZones": { "mode": "selected", "zones": ["Asia/Seoul", "America/Los_Angeles"] },
+  "recruitmentTimeZoneLabel": "한국 / 미국 · LA",
+  "canApply": true,
+  "displayTimeZone": "Asia/Seoul",
   "recruitDeadlineAt": "2026-10-01T00:00:00Z",
+  "recruitDeadlineFormatted": { "instant": "2026-10-01T00:00:00Z", "displayTimeZone": "Asia/Seoul", "localDate": "2026-10-01", "localTime": "09:00", "clock24": true, "abbreviation": "KST", "offsetLabel": "UTC+09:00", "dDay": 5 },
   "startAt": "2026-10-15T00:00:00Z",
   "endAt": "2026-12-15T00:00:00Z",
   "discordChannelUrl": "https://discord.com/channels/123/456",
@@ -342,7 +353,11 @@ private StudyDetailResponse toDetail(Study study) {
 | capacity | Integer | Y | 모집 정원. null = 제한 없음 | STUDY_RECRUITMENT.RECRUITMENT_CAPACITY — id 최대인 회차 1건 |
 | recruitDeadline | String | N | 모집 마감 (ISO 8601 UTC). 상시 모집은 없다 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT — id 최대인 회차 1건 |
 | schedule | String | Y | 진행 일정 (자유 텍스트) | STUDY.SCHEDULE |
-| timezone | String | Y | 기준 시간대 (enum). `KST` / `PST` / `BOTH`(동시 진행). 운영자가 등록 폼에서 직접 고른다 — null 이면 미정. 상세는 추정값을 채우지 않는다(수정 폼이 추정값을 저장하게 된다). 사이트는 `schedule`/킥오프 문구로 추정하거나 「시간대 미정」으로 표시 | STUDY.TIMEZONE |
+| recruitmentTimeZones | Object | N | `{ mode, zones }` — 최신 모집 회차 값 그대로, 없으면 `unset`. 추정하지 않는다 | STUDY_RECRUITMENT.RECRUITMENT_TZ_MODE · STUDY_RECRUITMENT_ZONE |
+| recruitmentTimeZoneLabel | String | N | `미정` · `모든 시간대에서 모집` · 짧은 이름을 ` / ` 로 (timezone §3.2) | 계산 |
+| canApply | Boolean | N | 지금 신청할 수 있는가 = `recruitStatus == RECRUITING`. 조회 시간대와 무관 | `Study.canApply` |
+| displayTimeZone | String | N | `*Formatted` 를 만든 시간대 | timezone §3.4 |
+| recruitDeadlineFormatted · startAtFormatted | Object | Y | `FormattedInstant` (마감은 `dDay` 포함). 원본 UTC 가 null 이면 null | timezone §3.3 |
 | startAt | String | Y | 진행 시작 일시 (ISO 8601 UTC). `recruitDeadline`·`schedule` 과는 다른 값 | STUDY.START_AT |
 | endAt | String | Y | 종료일 (ISO 8601 UTC) | STUDY.END_AT |
 | discordChannelUrl | String | Y | 참고용 채널 링크 하나(주로 로비). 없으면 사이트 기본 초대 링크로 안내. **사이트 상세는 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 채우고 그 밖엔 null** ([share](../../docs/share/2026-09-30-study-detail-private-urls.md)). 자동화(채널 조회·삭제 감지)의 근거로 쓰지 않는다 — [상세](../../docs/erd/STUDY.md#채널-삭제와-closed) | STUDY.DISCORD_CHANNEL_URL |
@@ -447,7 +462,7 @@ private StudyDetailResponse toDetail(Study study) {
   "recruitDeadline": "2026-11-01T00:00:00Z",
   "capacity": 20,
   "schedule": "매주 목 20:00 · 8주 과정",
-  "timezone": null,
+  "recruitmentTimeZones": { "mode": "selected", "zones": ["Asia/Seoul"] },
   "startAt": null,
   "discordChannelUrl": null,
   "driveUrl": null
@@ -468,7 +483,7 @@ private StudyDetailResponse toDetail(Study study) {
 | recruitDeadline | String | Y | 필수. 미래의 ISO 8601 UTC 시각 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT. 정책상 NOT NULL, 현행 API·DB의 NULL 허용은 별도 기존 불일치로 정리 필요 |
 | capacity          | Integer | N    | 1 이상의 정수. 비우면(null) 제한 없음                                                                                                                                | STUDY_RECRUITMENT.RECRUITMENT_CAPACITY                                                    |
 | schedule          | String  | N    | 자유 텍스트                                                                                                                                                          | STUDY.SCHEDULE                                                                            |
-| timezone          | String  | N    | `KST` / `PST` / `BOTH` 중 하나, 또는 null(미정). enum 이 아닌 값은 400                                                                                               | STUDY.TIMEZONE                                                                            |
+| recruitmentTimeZones | Object | N | `{ mode, zones }`. 생략하면 `unset`. 규칙은 timezone §3.2 | STUDY_RECRUITMENT.RECRUITMENT_TZ_MODE · STUDY_RECRUITMENT_ZONE |
 | startAt           | String  | N    | ISO 8601 UTC. 진행이 실제로 시작하는 일시 — `recruitDeadline`·`schedule` 과는 다른 값. 등록 시점엔 보통 비어 있고, 수정(PATCH, 미구현)으로 나중에 채우는 경우가 많다 | STUDY.START_AT                                                                            |
 | discordChannelUrl | String  | N    | http(s) URL. 클럽 새 기수는 보통 직전 기수와 같은 값                                                                                                                 | STUDY.DISCORD_CHANNEL_URL                                                                 |
 | driveUrl          | String  | N    | http(s) URL. 클럽 새 기수는 보통 직전 기수와 같은 값                                                                                                                 | STUDY.DRIVE_URL                                                                           |
@@ -495,7 +510,7 @@ Location: /api/admin/studies/{id}
 
 | 상태 | errorCode     | 조건                                                                                                                                                                                                                                                                                                                                                                       |
 | ---- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400  | INVALID_INPUT | title·oneLineSummary·category·recruitDeadline 누락, title 60자 초과, category 가 유효하지 않은 enum 값, recruitDeadline 이 과거, capacity 가 1 미만, studyKind 가 유효하지 않은 값, timezone 이 유효하지 않은 enum 값, `studyProgramId` 와 `studyKind` 를 함께 보냄, `studyProgramId` 가 없는 프로그램이거나 `CLUB` 이 아님. 복제 요청의 원본이 STUDY의 ENDED·CLOSED가 아님, `sourceStudyId`와 `studyProgramId`를 함께 지정하거나 복제에 `studyKind=CLUB` 지정. 실패한 필드 전부를 `필드명: 사유` 형태로 응답 |
+| 400  | INVALID_INPUT | title·oneLineSummary·category·recruitDeadline 누락, title 60자 초과, category 가 유효하지 않은 enum 값, recruitDeadline 이 과거, capacity 가 1 미만, studyKind 가 유효하지 않은 값, recruitmentTimeZones 규칙 위반(timezone §3.2), recruitDeadline · startAt 형식 오류, displayTimeZone 무효, `studyProgramId` 와 `studyKind` 를 함께 보냄, `studyProgramId` 가 없는 프로그램이거나 `CLUB` 이 아님. 복제 요청의 원본이 STUDY의 ENDED·CLOSED가 아님, `sourceStudyId`와 `studyProgramId`를 함께 지정하거나 복제에 `studyKind=CLUB` 지정. 실패한 필드 전부를 `필드명: 사유` 형태로 응답 |
 | 401  | UNAUTHORIZED  | 로그인 필요                                                                                                                                                                                                                                                                                                                                                                |
 | 403  | FORBIDDEN     | `SYSTEM_ROLE` 이 `ADMIN` 아님                                                                                                                                                                                                                                                                                                                                              |
 
@@ -654,7 +669,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
   "recruitDeadline": "2026-12-01T00:00:00Z",
   "capacity": 20,
   "schedule": "매주 목 20:00 · 8주 과정",
-  "timezone": "KST",
+  "recruitmentTimeZones": { "mode": "all", "zones": [] },
   "startAt": "2026-10-15T00:00:00Z",
   "discordChannelUrl": "https://discord.com/channels/123/456",
   "driveUrl": "https://drive.google.com/drive/folders/abc"
@@ -670,7 +685,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 | recruitDeadline   | String  | N    | **null 불가.** 값을 보내면 미래여야 함 — 상시 모집은 없다 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT — 최신 회차 행 UPDATE  |
 | capacity          | Integer | N    | 1 이상의 정수, 또는 `null`(제한 없음)                     | STUDY_RECRUITMENT.RECRUITMENT_CAPACITY — 최신 회차 행 UPDATE |
 | schedule          | String  | N    | 자유 텍스트                                               | STUDY.SCHEDULE                                               |
-| timezone          | String  | N    | `KST` / `PST` / `BOTH`, 또는 `null`(미정으로 되돌림)      | STUDY.TIMEZONE                                               |
+| recruitmentTimeZones | Object | N | `{ mode, zones }`, 또는 `null`(`unset` 으로 되돌림). 최신 모집 회차 행을 바꾼다 | STUDY_RECRUITMENT.RECRUITMENT_TZ_MODE · STUDY_RECRUITMENT_ZONE |
 | startAt           | String  | N    | ISO 8601 UTC, 또는 `null`(미정으로 되돌림)                | STUDY.START_AT                                               |
 | discordChannelUrl | String  | N    | http(s) URL, 또는 `null`                                  | STUDY.DISCORD_CHANNEL_URL                                    |
 | driveUrl          | String  | N    | http(s) URL, 또는 `null`                                  | STUDY.DRIVE_URL                                              |
@@ -686,11 +701,12 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 
 ### 구현 메모 (2026-09-27)
 
-- **`null` 과 키 생략을 구분한다.** `capacity`·`startAt`·`timezone`·`discordChannelUrl`·`driveUrl` 은 `null`(또는 빈 문자열 주소)을 보내면 비우고,
+- **`null` 과 키 생략을 구분한다.** `capacity`·`startAt`·`recruitmentTimeZones`·`discordChannelUrl`·`driveUrl` 은 `null`(또는 빈 문자열 주소)을 보내면 비우고,
   키를 빼면 그대로 둔다. 나머지 필드는 `null` 이면 바꾸지 않는다
 - **정원은 최신 모집 회차의 `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 에 저장한다** (V26 에서 `STUDY.CAPACITY` 를 옮기고 삭제).
   목록 응답·목록 단계 필터(JPQL)·상세의 모집 상태 판정이 모두 같은 회차의 정원과 신청 수를 비교한다. 모집 회차가 없으면 정원 수정은 404 다
-- `timezone` 은 `STUDY.TIMEZONE`(V40) 에 저장한다. `KST`·`PST`·`BOTH` 밖의 값은 본문 변환 단계에서 400 이다(필드 사유 없이 `INVALID_INPUT`) — `category` 와 같다
+- `recruitmentTimeZones` 는 최신 모집 회차에 저장한다(V68). 남은 지역 행은 두고 빠진 지역만 지운다. `STUDY.TIMEZONE` 에는 더 쓰지 않는다
+- 마감을 보내지 않은 수정은 `displayTimeZone` 이 달라도 저장된 마감 UTC 를 바꾸지 않는다 (PRD §6)
 - 운영 콘솔(정보 탭)은 **바뀐 칸만** 보낸다. 마감이 지난 스터디의 다른 칸을 고칠 때 지난 `recruitDeadline` 을 다시 보내면 400 이다
 - 프론트엔드 사용처: `frontend/apps/back-office-front/src/features/studies/StudyInfoTab.tsx` (DELETE 도 같은 파일) — 호출은 `features/studies/queries.ts` `useUpdateStudy`. `/api/admin/studies/{studyId}` 로 옮긴다
 
@@ -702,7 +718,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 검증 실패 — title 60자 초과, oneLineSummary 빈 값, category 가 유효하지 않은 enum 값, recruitDeadline 이 과거이거나 null, capacity 가 1 미만, timezone 이 유효하지 않은 enum 값, startAt·discordChannelUrl·driveUrl 형식 오류. 실패한 필드를 `필드명: 사유` 형태로 응답 |
+| 400 | INVALID_INPUT | 검증 실패 — title 60자 초과, oneLineSummary 빈 값, category 가 유효하지 않은 enum 값, recruitDeadline 이 과거이거나 null, capacity 가 1 미만, recruitmentTimeZones 규칙 위반, displayTimeZone 무효, recruitDeadline·startAt·discordChannelUrl·driveUrl 형식 오류. 실패한 필드를 `필드명: 사유` 형태로 응답 |
 | 401 | UNAUTHORIZED | 로그인 필요 |
 | 403 | FORBIDDEN | `/api/admin` — ADMIN 아님(네비게이터 포함). `/api/studies` — 캡틴도 그 스터디 네비게이터도 아님 |
 | 404 | NOT_FOUND | studyId 에 해당하는 스터디 없음 |

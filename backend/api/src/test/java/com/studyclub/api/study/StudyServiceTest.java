@@ -2,7 +2,10 @@ package com.studyclub.api.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.studyclub.common.error.BusinessException;
@@ -19,10 +22,12 @@ import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
+import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +38,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class StudyServiceTest {
+
+    private static final String SEOUL = "Asia/Seoul";
 
     @Mock AccountRepository accountRepository;
     @Mock StudyRepository studyRepository;
@@ -72,7 +79,7 @@ class StudyServiceTest {
                         null,
                         null);
 
-        assertThatThrownBy(() -> studyService.create(1L, request))
+        assertThatThrownBy(() -> studyService.create(1L, request, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -92,7 +99,7 @@ class StudyServiceTest {
                         null,
                         StudyCategory.ALGORITHM,
                         null,
-                        Instant.now().minusSeconds(3600),
+                        StudyDateInput.of(Instant.now().minusSeconds(3600)),
                         null,
                         null,
                         null,
@@ -101,7 +108,7 @@ class StudyServiceTest {
                         null);
 
         assertThat(request.studyKind()).isEqualTo(StudyKind.STUDY);
-        assertThatThrownBy(() -> studyService.create(1L, request))
+        assertThatThrownBy(() -> studyService.create(1L, request, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -129,7 +136,7 @@ class StudyServiceTest {
                         null,
                         null);
 
-        assertThatThrownBy(() -> studyService.create(1L, request))
+        assertThatThrownBy(() -> studyService.create(1L, request, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -161,7 +168,7 @@ class StudyServiceTest {
                         null,
                         null);
 
-        assertThatThrownBy(() -> studyService.create(1L, request))
+        assertThatThrownBy(() -> studyService.create(1L, request, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -176,7 +183,7 @@ class StudyServiceTest {
     void updateUnauthorizedWhenAccountNotFound() {
         when(accountRepository.existsById(1L)).thenReturn(false);
 
-        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, validUpdateRequest()))
+        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, validUpdateRequest(), SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -191,7 +198,7 @@ class StudyServiceTest {
         when(accountRepository.existsById(1L)).thenReturn(true);
         when(studyRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, validUpdateRequest()))
+        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, validUpdateRequest(), SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -207,7 +214,7 @@ class StudyServiceTest {
 
         StudyUpdateRequest request = new StudyUpdateRequest("  ", "소개", null, null, null, null);
 
-        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, request))
+        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, request, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -223,12 +230,43 @@ class StudyServiceTest {
 
         StudyUpdateRequest request = new StudyUpdateRequest("제목", "  ", null, null, null, null);
 
-        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, request))
+        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, request, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
                                 assertThat(((BusinessException) e).errorCode())
                                         .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName(
+            "성공(수정) - 모집 회차를 바꾸는 수정은 ID 만 먼저 찾고, 회차와 지역을 한 번의 잠금 조회로 읽는다 — 잠그지 않은 엔티티 · 지역 지연 로딩이 없게")
+    void updateLocksLatestRecruitmentOnFirstRead() {
+        when(accountRepository.existsById(1L)).thenReturn(true);
+        when(studyRepository.findById(10L))
+                .thenReturn(
+                        Optional.of(
+                                Study.builder()
+                                        .id(10L)
+                                        .programId(1L)
+                                        .status(StudyStatus.OPEN)
+                                        .build()));
+        StudyRecruitment recruitment = StudyRecruitment.builder().studyId(10L).build();
+        when(studyRecruitmentRepository.findLatestIdByStudyId(10L)).thenReturn(Optional.of(77L));
+        when(studyRecruitmentRepository.findByIdWithZonesForUpdate(77L))
+                .thenReturn(Optional.of(recruitment));
+        StudyUpdateRequest request = new StudyUpdateRequest();
+        request.setRecruitmentTimeZones(
+                new RecruitmentTimeZonesRequest("selected", List.of("Asia/Seoul")));
+        request.setCapacity(10);
+
+        studyService.updateFromSite(1L, 10L, request, SEOUL);
+
+        verify(studyRecruitmentRepository).findByIdWithZonesForUpdate(77L);
+        verify(studyRecruitmentRepository, never()).findFirstByStudyIdOrderByIdDesc(10L);
+        verify(studyRecruitmentRepository, never()).findByIdForUpdate(any());
+        assertThat(recruitment.timeZones().zones()).containsExactly("Asia/Seoul");
+        assertThat(recruitment.getRecruitmentCapacity()).isEqualTo(10);
     }
 
     @Test
@@ -241,7 +279,7 @@ class StudyServiceTest {
                 new StudyUpdateRequest(
                         "제목", "소개", null, null, Instant.now().minusSeconds(3600), null);
 
-        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, request))
+        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, request, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -256,7 +294,10 @@ class StudyServiceTest {
     void backOfficeUpdateStudyNotFound() {
         when(studyRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> studyService.updateFromBackOffice(1L, 10L, validUpdateRequest()))
+        assertThatThrownBy(
+                        () ->
+                                studyService.updateFromBackOffice(
+                                        1L, 10L, validUpdateRequest(), SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -271,7 +312,7 @@ class StudyServiceTest {
 
         StudyUpdateRequest request = new StudyUpdateRequest("  ", "소개", null, null, null, null);
 
-        assertThatThrownBy(() -> studyService.updateFromBackOffice(1L, 10L, request))
+        assertThatThrownBy(() -> studyService.updateFromBackOffice(1L, 10L, request, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -286,7 +327,7 @@ class StudyServiceTest {
     void detailNotFound() {
         when(studyRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> studyService.getDetail(10L, null))
+        assertThatThrownBy(() -> studyService.getDetail(10L, null, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -302,7 +343,7 @@ class StudyServiceTest {
         when(studyRepository.findById(10L)).thenReturn(Optional.of(draft));
         when(studyCaptainGuard.isCaptainOrNavigator(1L, 10L)).thenReturn(false);
 
-        assertThatThrownBy(() -> studyService.getDetail(10L, 1L))
+        assertThatThrownBy(() -> studyService.getDetail(10L, 1L, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -315,7 +356,7 @@ class StudyServiceTest {
     void backOfficeDetailNotFound() {
         when(studyRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> studyService.getDetailForBackOffice(10L))
+        assertThatThrownBy(() -> studyService.getDetailForBackOffice(10L, SEOUL))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
