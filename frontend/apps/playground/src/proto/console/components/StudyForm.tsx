@@ -6,7 +6,7 @@ import { tx } from '@console/lib/l10n';
 import { MARKDOWN_HINT } from '@core/components/ApplicationFormUi';
 import { recruitmentTimeZones } from '@core/lib/recruitment-timezones';
 import { isValidZone } from '@core/lib/schedule-timezone';
-import { latestCohort, programs, studies } from '@studyclub/mock';
+import { programs, studies } from '@studyclub/mock';
 import { type Study, type StudyKind, type RecruitmentTimeZones } from '@studyclub/types';
 import { Button, Checkbox, Input, Select, Textarea, FilterChip, DatePicker, Modal } from '@studyclub/ui';
 import { STUDY_CATEGORIES, categoriesOf, toISODate } from '@studyclub/utils';
@@ -14,7 +14,6 @@ import { STUDY_CATEGORIES, categoriesOf, toISODate } from '@studyclub/utils';
 import { RecruitmentTimeZoneField } from './RecruitmentTimeZoneField';
 import { canCopyStudy } from '../lib/reused-drafts';
 import { recruitmentDeadlineDate } from '@/proto/lib/recruitment-deadline';
-import { withSavedRecruitmentZones } from '@/proto/lib/recruitment-zone-store';
 
 /**
  * 스터디 입력 폼 — **등록 팝업과 정보 탭이 나눠 쓴다.**
@@ -30,7 +29,8 @@ import { withSavedRecruitmentZones } from '@/proto/lib/recruitment-zone-store';
  * - 상시 모집: 없다. 마감일은 필수이고, 이어지는 참여는 클럽의 기수 이월로 표현한다
  *
  * **프로그램은 따로 등록하지 않고 이 폼에서 함께 다룬다.** 프로그램은 제목·종류뿐이고 기수 없는 프로그램은
- * 의미가 없다. 등록 모드에서는 「새 프로그램」(첫 기수와 함께 만든다) 또는 「기존 클럽의 새 기수」를 고르고,
+ * 의미가 없다. 등록 모드는 늘 새 프로그램(첫 기수와 함께 만든다)이고 종류만 고른다.
+ * 클럽의 다음 기수는 클럽 운영 › 기수가 만든다 (POL-0012).
  * 수정 모드에서는 프로그램과 종류를 읽기 전용으로 보인다 — **종류는 한 번 정하면 바꾸지 못한다.**
  */
 
@@ -53,7 +53,10 @@ export const TITLE_MAX_WIDTH = 40;
 /** 한글·전각은 2, 그 밖은 1. 세는 법은 화면과 서버가 같아야 한다. */
 export function titleWidth(s: string): number {
   let w = 0;
-  for (const ch of s) w += /[\u1100-\u11FF\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch) ? 2 : 1;
+  for (const ch of s)
+    w += /[\u1100-\u11FF\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch)
+      ? 2
+      : 1;
   return w;
 }
 /** 카드 한 줄 소개가 줄바꿈 없이 한 줄로 유지되는 최대 글자수. */
@@ -140,35 +143,6 @@ export const EMPTY_FORM: StudyFormValues = {
   driveUrl: '',
 };
 
-/**
- * 기존 클럽에 새 기수를 붙일 때의 기본값.
- * 제목은 **프로그램 제목**, 한 줄 소개·상세 설명·카테고리는 **최신 기수**의 것이다. 마감일·일정·정원·진행 시작일은
- * 기수마다 달라 비운다.
- *
- * **디스코드 채널·드라이브 주소는 비우지 않고 최신 기수 값을 그대로 물려준다.** 클럽은 기수가 바뀌어도
- * 채널을 새로 파지 않고 같은 채널을 계속 쓴다 — 채널은 사실 기수(STUDY)가 아니라 프로그램 단위 자원이다.
- * 새 채널로 바꿨다면 이 값을 직접 고치면 된다.
- */
-export function cohortDefaults(programId: string): Partial<StudyFormValues> {
-  const program = programs.find((p) => p.id === programId);
-  const latestSource = latestCohort(programId);
-  const latest = latestSource ? withSavedRecruitmentZones(latestSource) : undefined;
-  return {
-    programId,
-    kind: 'club',
-    title: program ? tx(program.title) : '',
-    ...(latest && {
-      summary: tx(latest.summary),
-      description: tx(latest.description),
-      category: categoriesOf(latest)[0] ?? '',
-      recruitmentTimeZones: recruitmentTimeZones(latest),
-      thumbnail: latest.image ?? '',
-      discordUrl: latest.discord_url ?? '',
-      driveUrl: latest.driveUrl ?? '',
-    }),
-  };
-}
-
 /** 기존 스터디를 폼 값으로 되돌린다. 화면에 보이는 값과 폼 값이 같아야 편집이 성립한다. */
 export function studyToForm(study: Study, zone = 'Asia/Seoul'): StudyFormValues {
   const deadline = recruitmentDeadlineDate(study, zone) ?? '';
@@ -201,7 +175,6 @@ export type StudyFormErrors = Partial<Record<keyof StudyFormValues, string>>;
 
 export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   const e: StudyFormErrors = {};
-  if (f.programMode === 'existing' && !f.programId) e.programId = '기수를 추가할 프로그램을 고르세요.';
   if (!f.title.trim()) e.title = '제목을 입력하세요.';
   else if (titleWidth(f.title.trim()) > TITLE_MAX_WIDTH) e.title = '한글 20자(영문 40자) 이내로 입력하세요.';
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
@@ -209,7 +182,10 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
   if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim()))
     e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
-  if (f.recruitmentTimeZones.mode === 'selected' && (!f.recruitmentTimeZones.zones.length || !f.recruitmentTimeZones.zones.every(isValidZone)))
+  if (
+    f.recruitmentTimeZones.mode === 'selected' &&
+    (!f.recruitmentTimeZones.zones.length || !f.recruitmentTimeZones.zones.every(isValidZone))
+  )
     e.recruitmentTimeZones = '시간대를 하나 이상 선택하세요.';
   const isUrl = (v: string) => /^https?:\/\/.+/i.test(v.trim());
   if (f.discordUrl.trim() && !isUrl(f.discordUrl)) e.discordUrl = 'http(s):// 로 시작하는 주소를 입력하세요.';
@@ -239,7 +215,20 @@ export function StudyForm({
 }) {
   const [pending, setPending] = useState<StudyFormValues | null>(null);
   function replace(next: StudyFormValues) {
-    const hasInput = value.sourceId || value.title || value.summary || value.description !== EMPTY_FORM.description || value.thumbnail || value.deadline || value.schedule || value.capacity || !value.unlimited || value.startAt || value.discordUrl || value.driveUrl || value.recruitmentTimeZones.mode !== EMPTY_FORM.recruitmentTimeZones.mode;
+    const hasInput =
+      value.sourceId ||
+      value.title ||
+      value.summary ||
+      value.description !== EMPTY_FORM.description ||
+      value.thumbnail ||
+      value.deadline ||
+      value.schedule ||
+      value.capacity ||
+      !value.unlimited ||
+      value.startAt ||
+      value.discordUrl ||
+      value.driveUrl ||
+      value.recruitmentTimeZones.mode !== EMPTY_FORM.recruitmentTimeZones.mode;
     if (hasInput) setPending(next);
     else onChange(next);
   }
@@ -247,11 +236,26 @@ export function StudyForm({
 
   return (
     <div className='flex flex-col gap-3'>
-      <Modal open={pending !== null} onClose={() => setPending(null)} title='입력한 내용을 바꿀까요?'
-        footer={<>
-          <Button variant='secondary' data-autofocus onClick={() => setPending(null)}>취소</Button>
-          <Button onClick={() => { if (pending) onChange(pending); setPending(null); }}>바꾸기</Button>
-        </>}>
+      <Modal
+        open={pending !== null}
+        onClose={() => setPending(null)}
+        title='입력한 내용을 바꿀까요?'
+        footer={
+          <>
+            <Button variant='secondary' data-autofocus onClick={() => setPending(null)}>
+              취소
+            </Button>
+            <Button
+              onClick={() => {
+                if (pending) onChange(pending);
+                setPending(null);
+              }}
+            >
+              바꾸기
+            </Button>
+          </>
+        }
+      >
         작성한 내용이 선택한 스터디의 내용으로 바뀝니다.
       </Modal>
       {/*
@@ -259,17 +263,26 @@ export function StudyForm({
         운영자가 아직 정하지 않은 것을 먼저 묻는 일이다.
       */}
       <div data-anno='11'>
-        <ProgramField mode={mode} value={value} errors={errors} onChange={replace} />
+        <ProgramField mode={mode} value={value} onChange={replace} />
         {mode === 'create' && value.programMode === 'new' && value.kind === 'study' && (
-          <Select data-anno='reuse:2' aria-label='지난 스터디 불러오기' value={value.sourceId ?? ''}
+          <Select
+            data-anno='reuse:2'
+            aria-label='지난 스터디 불러오기'
+            value={value.sourceId ?? ''}
             onChange={(event) => {
               const source = studies.find((study) => study.id === event.target.value);
               replace(source ? copyStudyForm(source) : EMPTY_FORM);
-            }}>
+            }}
+          >
             <option value=''>지난 스터디 불러오기 (선택)</option>
-            {studies.filter(canCopyStudy).sort((a, b) => b.study_id - a.study_id).map((study) => (
-              <option key={study.id} value={study.id}>{tx(study.title)} · #{study.study_id}</option>
-            ))}
+            {studies
+              .filter(canCopyStudy)
+              .sort((a, b) => b.study_id - a.study_id)
+              .map((study) => (
+                <option key={study.id} value={study.id}>
+                  {tx(study.title)} · #{study.study_id}
+                </option>
+              ))}
           </Select>
         )}
       </div>
@@ -327,7 +340,11 @@ export function StudyForm({
       </div>
 
       <div data-anno='16'>
-        <RecruitmentTimeZoneField value={value.recruitmentTimeZones} onChange={(next) => set('recruitmentTimeZones', next)} error={errors.recruitmentTimeZones} />
+        <RecruitmentTimeZoneField
+          value={value.recruitmentTimeZones}
+          onChange={(next) => set('recruitmentTimeZones', next)}
+          error={errors.recruitmentTimeZones}
+        />
       </div>
 
       <div className='grid gap-3 sm:grid-cols-2'>
@@ -511,20 +528,19 @@ function CategoryField({
 }
 
 /**
- * 프로그램 — 등록이면 「새 프로그램 / 기존 클럽의 새 기수」, 수정이면 읽기 전용.
+ * 프로그램 — 등록이면 늘 새 프로그램(종류만 고른다), 수정이면 읽기 전용.
+ *
+ * 기존 클럽에 기수를 붙이는 길은 없다 — 클럽 기수는 클럽 운영 › 기수의 「다음 기수」만 만든다 (POL-0012).
  *
  * 종류는 기수마다 다른 값이 아니라 프로그램의 속성이고, **한 번 정하면 바꾸지 못한다.**
- * 새 기수를 붙일 수 있는 것은 클럽뿐이다 — 스터디는 기수가 1개다.
  */
 function ProgramField({
   mode,
   value,
-  errors,
   onChange,
 }: {
   mode: FormMode;
   value: StudyFormValues;
-  errors: StudyFormErrors;
   onChange: (next: StudyFormValues) => void;
 }) {
   const current = programs.find((p) => p.id === value.programId);
@@ -542,81 +558,33 @@ function ProgramField({
     );
   }
 
-  const clubs = programs.filter((p) => p.kind === 'club');
-
-  const modeBtn = (m: StudyFormValues['programMode'], label: string) => (
-    <FilterChip
-      role='radio'
-      selected={value.programMode === m}
-      selectMode='single'
-      onClick={() =>
-        // 모드를 옮기면 이전 모드의 선택을 들고 가지 않는다
-        onChange({ ...(value.sourceId && m !== value.programMode ? EMPTY_FORM : value), programMode: m, programId: '', kind: m === 'existing' ? 'club' : 'study' })
-      }
-      className='flex-1 justify-center'
-    >
-      {label}
-    </FilterChip>
-  );
-
   return (
     <div className='flex flex-col gap-2'>
       <span className='type-label-lg text-neutral-800'>
         프로그램
         <span className='ml-0.5 text-error-600'>*</span>
       </span>
-      <div role='radiogroup' aria-label='프로그램' className='flex gap-2'>
-        {modeBtn('new', '새 프로그램')}
-        {modeBtn('existing', '기존 클럽의 새 기수')}
+      <div className='flex flex-wrap items-center gap-2 type-body-sm'>
+        <span className='type-label-sm text-fg-muted'>종류</span>
+        <div role='radiogroup' aria-label='종류' className='inline-flex gap-1'>
+          {(['study', 'club'] as StudyKind[]).map((k) => (
+            <FilterChip
+              key={k}
+              role='radio'
+              selected={value.kind === k}
+              selectMode='single'
+              onClick={() => onChange({ ...(value.sourceId && k !== value.kind ? EMPTY_FORM : value), kind: k })}
+            >
+              {KIND_LABEL[k]}
+            </FilterChip>
+          ))}
+        </div>
+        <span data-anno='12-1' className='type-label-sm text-fg-muted'>
+          {value.kind === 'club'
+            ? '첫 기수를 만듭니다. 다음 기수부터는 클럽 운영에서 매달 만듭니다'
+            : '한 번 모집해 한 번 진행'}
+        </span>
       </div>
-
-      {value.programMode === 'new' ? (
-        <div className='flex flex-wrap items-center gap-2 type-body-sm'>
-          <span className='type-label-sm text-fg-muted'>종류</span>
-          <div role='radiogroup' aria-label='종류' className='inline-flex gap-1'>
-            {(['study', 'club'] as StudyKind[]).map((k) => (
-              <FilterChip
-                key={k}
-                role='radio'
-                selected={value.kind === k}
-                selectMode='single'
-                onClick={() => onChange({ ...(value.sourceId && k !== value.kind ? EMPTY_FORM : value), kind: k })}
-              >
-                {KIND_LABEL[k]}
-              </FilterChip>
-            ))}
-          </div>
-          <span data-anno='12-1' className='type-label-sm text-fg-muted'>
-            {value.kind === 'club' ? '이전 기수 참여자가 다음 기수에 이어집니다' : '한 번 모집해 한 번 진행'}
-          </span>
-        </div>
-      ) : (
-        <div className='flex flex-col gap-1.5'>
-          <Select
-            aria-label='프로그램 선택'
-            value={value.programId}
-            // 프로그램을 고르면 제목은 프로그램 제목, 소개·설명·카테고리는 최신 기수의 것으로 채운다
-            onChange={(ev) =>
-              onChange(
-                ev.target.value
-                  ? { ...value, ...cohortDefaults(ev.target.value) }
-                  : { ...value, programId: '', kind: 'club' },
-              )
-            }
-          >
-            <option value=''>클럽을 고르세요</option>
-            {clubs.map((p) => (
-              <option key={p.id} value={p.id}>
-                {tx(p.title)}
-              </option>
-            ))}
-          </Select>
-          <p className='type-label-sm text-fg-muted'>
-            새 기수를 붙일 수 있는 것은 클럽뿐입니다. 스터디는 기수가 1개이고, 종류는 한 번 정하면 바꿀 수 없습니다.
-          </p>
-          {errors.programId && <p className='type-label-sm text-error-600'>{errors.programId}</p>}
-        </div>
-      )}
     </div>
   );
 }

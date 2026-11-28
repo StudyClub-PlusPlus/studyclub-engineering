@@ -113,9 +113,6 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].meetings[].startAt | String (ISO 8601 UTC) | Y | 실제 시작 | STUDY_MEETING.START_AT |
 | items[].meetings[].endAt | String (ISO 8601 UTC) | Y | 실제 종료 | STUDY_MEETING.END_AT |
 | items[].meetings[].attendanceStatus | String | Y | `PRESENT` / `LATE` / `EXCUSED` / `ABSENT`. 출석 행이 없으면 null. **시작 전 회차**(`startAt` null 이고 `scheduledAt` > now)의 `ABSENT` 도 null — 회차를 만들 때 참여자 전원에게 기본으로 들어가는 값이라 화면에 결석으로 그리지 않는다. 시작 전이라도 `EXCUSED` 는 그대로 준다(사전 휴가 배지) | STUDY_ATTENDANCE.STATUS (내 계정) |
-| items[].meetings[].retroDeadline | String (ISO 8601 UTC) | Y | 회고 마감 시각. 킥오프 회차는 `null` | 계산: [meeting-retro spec 「판정」](../meeting-retro/spec.md#판정) |
-| items[].meetings[].retroOpen | Boolean | Y | 지금 회고를 쓸 수 있는 기간인지. 킥오프 회차는 `null` | 계산: 미팅 종료 ≤ now < retroDeadline |
-| items[].meetings[].retroMine | Boolean | Y | 내가 이 회차 회고를 썼는지. 킥오프 회차는 `null` | STUDY_MEETING_RETRO (PARTICIPANT_ID = 나) |
 | items[].meetings[].countedInRate | Boolean | N | 이 회차가 `attendanceRate` 분모에 들어갔는지. `scheduledAt` 이 지금 반에 들어온 시각(`JOINED_AT`, 반을 옮겼으면 그 뒤 가장 늦은 이동 시각 — [share 11-19](../../docs/share/2026-11-19-group-move-log.md)) 이상이고 상한(`ACTIVE`/`PAUSED`/`COMPLETED` 는 now, `WITHDRAWN`·`DELETED` 는 떠난 시각 `LEFT_AT`) 이하일 때 true — 하차 이전 회차는 그대로 집계에 남고 이후 회차만 제외한다([user-leave spec](../user-leave/spec.md) "WITHDRAWN·DELETED", 2026-10-01). 편입 전 회차는 격자에는 보이지만 false | 계산: `AttendanceRateCalculator.countsToward` 와 같은 조건 |
 
 #### relation — 나와의 관계
@@ -146,7 +143,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 - 스터디 기간(PRD §4-5): 첫·마지막 회차의 `scheduledAt`
 - 완주 점수판 `n/m`: `countedInRate = true` 인 회차 중 `attendanceStatus ∈ {PRESENT, LATE}` 개수 / `EXCUSED` 가 아닌 개수. 출석률과 같은 회차 집합을 본다. 반을 옮겼으면 옛 반 구간의 회차도 더한다 — 출석률과 같은 합산 (share 11-19). [NEEDS CLARIFICATION] 회차 격자(`meetings[]`)에 옛 반 회차를 함께 그릴지는 미정 — 지금은 지금 반 회차만
 - 참석 버튼 활성: `scheduledAt − 30분` ≤ now ≤ 회차 종료 기준
-- 회고 탭 점: 한 스터디 안에 `retroOpen === true && retroMine === false` 인 회차가 하나라도 있으면 「회고」 탭 옆에 점을 표시한다. `retroOpen`·`retroMine` 이 `null` 인 회차(킥오프)는 무시한다
+- 회고 탭 점: `GET /api/me/studies/{studyId}/retros/status` 응답에서 한 회차라도 `retroOpen === true && retroMine === false` 이면 「회고」 탭 옆에 점을 표시한다. `retroOpen`·`retroMine` 이 `null` 인 회차(킥오프)는 무시한다
 - 디스코드 아이콘: `COMPLETED` 면 채널 URL 과 무관하게 클럽 초대 링크(완주 뒤 채널은 닫힌다 — 프로토 `joined.ts` `discordUrl`). `UPCOMING`·`ONGOING` 은 `discordChannelUrl`, null 이면 클럽 초대 링크
 
 ### Error Responses

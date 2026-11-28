@@ -122,6 +122,8 @@ export function upcomingOf(study: JoinedStudy, locale: Locale, tz: WallTz = 'Asi
     return `${meetingLabel(next)} · ${date} ${time} ${zoneAbbreviation(tz, new Date(next.scheduledAt))}`;
   }
   if (lifeStatus(study) === 'ended') return locale === 'en' ? 'No upcoming meeting' : '다음 일정 없음';
+  // 시작 전 스터디에 「오늘 이후 회차 없음」 을 보이면 끝난 스터디처럼 읽힌다 — 아직 회차를 안 정한 것이다
+  if (lifeStatus(study) === 'upcoming') return locale === 'en' ? 'Schedule coming soon' : '일정 준비 중';
   return locale === 'en' ? 'No upcoming meeting' : '오늘 이후 회차 없음';
 }
 

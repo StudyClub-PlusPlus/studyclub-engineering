@@ -2,7 +2,7 @@
 
 > ERD: [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md) (V59, PR #478) · [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) (행사 취소 감사 기록 `EVENT_CANCEL`, 아래 「행사 취소 감사 기록」). 신청 테이블은 [CLUB_EVENT_REGISTRATION](../../docs/erd/CLUB_EVENT_REGISTRATION.md) (`V62__create_club_event_registration.sql`, 공통 신청 PR #516)
 > 생성일: 2026-11-18 · 리뷰 반영: 2026-11-19 (PR #479 리뷰 S1~S5 · PR #509 행사 취소 행동 분석) · 확정: 2026-11-25 (PR #516 · #517 병합 뒤 `beta` 코드와 대조)
-> 상태: 스펙확정 — 구현 계획 [plan](./plan.md) · [tasks](./tasks.md)
+> 상태: 구현중 — BE 구현 PR(`feat/event-status-be`, 마이그레이션 `V67__admin_audit_log_event_cancel.sql`). back-office-front 연결은 FE PR #528. 구현 계획 [plan](./plan.md) · [tasks](./tasks.md)
 >
 > Story PRD:
 > - [캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다](../../01-planning/stories/captain-manage-events/PRD.md) (ST-037) §1 「행사 관리」 S1~S5 · §3 「행사 취소 행동 분석」
@@ -18,7 +18,7 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| PATCH | /api/admin/events/{eventId}/status | 모집 마감(`CLOSED`) · 재모집(`PUBLISHED`) · 행사 취소(`CANCELLED`) 중 하나로 저장 상태를 바꾼다. 취소는 유효 신청을 같은 트랜잭션에서 취소하고 취소 안내 대상을 보존하며 감사 기록을 남긴다 | O (ADMIN) | 스펙확정 |
+| PATCH | /api/admin/events/{eventId}/status | 모집 마감(`CLOSED`) · 재모집(`PUBLISHED`) · 행사 취소(`CANCELLED`) 중 하나로 저장 상태를 바꾼다. 취소는 유효 신청을 같은 트랜잭션에서 취소하고 취소 안내 대상을 보존하며 감사 기록을 남긴다 | O (ADMIN) | 구현중 |
 
 이 스펙은 [event](../event/spec.md) 의 `GET /api/admin/events/{eventId}` 응답에 판정 필드 여섯 개를 **추가**한다 (아래 「운영 상세에 더하는 판정 필드」). 경로가 새로 생기지 않아 위 표에는 넣지 않았다.
 
@@ -180,7 +180,7 @@
 
 - 이메일 · 닉네임 · 신청서 답변 · 취소 안내 본문 · 신청 ID 목록은 넣지 않는다
 - **보관 기준**: 새 규칙 코드 `AUDIT_EVENT_CANCEL_V1` = 발생일 + 3년을 둔다. 행사 취소는 여러 크루의 신청을 한꺼번에 되돌릴 수 없게 바꾸는 운영 행위라, 권한 변경·말소 기록(`AUDIT_AUTHORITY_V1`, 3년, 「개인정보의 안전성 확보조치 기준」 제5조 제3항)과 같은 기간을 운영 기준으로 준용한다. 법이 이 행위에 기간을 직접 정한 것은 아니다. 권한 기록과 섞이지 않게 코드를 따로 둔다. 일일 정리 작업은 저장된 `EXPIRES_AT` 으로 지우므로 규칙만 더하면 된다
-- 구현 PR 에서 함께 할 일: [ADMIN_AUDIT_LOG ERD](../../docs/erd/ADMIN_AUDIT_LOG.md) 의 `EVENT_CANCEL` 행과 스키마 메모대로 마이그레이션(`TARGET_ACCOUNT_ID` nullable, `CLUB_EVENT_ID` 추가) · `AdminAuditAction.EVENT_CANCEL` · [data-retention](../data-retention/spec.md) 규칙 코드 표에 `AUDIT_EVENT_CANCEL_V1` 추가. `ACTION` 은 `VARCHAR(20)` 이라 `EVENT_CANCEL`(12자)이 그대로 들어간다
+- 스키마: `V67__admin_audit_log_event_cancel.sql` 이 `TARGET_ACCOUNT_ID` 를 nullable 로 바꾸고 `CLUB_EVENT_ID` 를 더한다 ([ADMIN_AUDIT_LOG ERD](../../docs/erd/ADMIN_AUDIT_LOG.md)). 규칙 코드 `AUDIT_EVENT_CANCEL_V1` 은 [data-retention](../data-retention/spec.md) 표에 있다. `ACTION` 은 `VARCHAR(20)` 이라 `EVENT_CANCEL`(12자)이 그대로 들어간다
 - 디스코드 등 운영자 알림과 감사 기록 조회 화면은 이번 범위가 아니다
 
 ### 탈퇴와의 잠금 순서
@@ -305,8 +305,7 @@
 | `club_event.cancelled` | `ClubEventCancelledEvent` (`com.studyclub.domain.event`, 신규) | 행사가 실제로 `CANCELLED` 로 바뀜 — 취소 1건마다 1개. S1 무변화·409 는 발행하지 않는다 | `club_event` · clubEventId · 취소한 캡틴 | `clubEventId` · `cancelledRegistrationIds`(처리 순서 8 에서 바꾼 신청, 빈 배열 가능). 연락처·답변·안내 본문은 싣지 않는다 | `AnalyticsEventListener` (`AFTER_COMMIT`, `@Async`) — 취소된 신청마다 취소 완료 분석 이벤트. 메일·ops 알림 구독자 없음 |
 
 - 신청별 취소 이벤트(`ClubEventRegistrationsCancelledEvent`)는 **발행하지 않는다.** 그 이벤트에는 자동 취소 메일 구독자([event-mail](../event-mail/spec.md#자동-메일-신청-상태-알림))가 붙어 S2 를 어긴다. 분석은 이 행사 단위 이벤트로 받는다
-- **`beta` 코드와의 차이 (구현 PR 에서 정리)**: PR #517 의 `ClubEventRegistrationsCancelledEvent.Cause` 에는 `EVENT_CANCELLED` 값이 미리 들어 있고, [domain-events](../domain-events/spec.md#이벤트) 표도 「행사 취소(`EVENT_CANCELLED`)는 event-status 가 더한다」고 적었다. 이 스펙은 그 값을 쓰지 않으므로 구현 PR 이 `Cause.EVENT_CANCELLED` 를 지우고 domain-events 표의 그 문장을 `club_event.cancelled` 줄로 바꾼다. 분석 속성 `cancel_type = event_cancelled` 는 `AnalyticsEventListener` 에 더하는 구독 메서드가 그대로 보낸다
-- [domain-events 「이벤트」](../domain-events/spec.md#이벤트) 표에 `club_event.cancelled` 줄을 더하는 일은 구현 PR 에서 한다
+- PR #517 이 미리 넣어 둔 `ClubEventRegistrationsCancelledEvent.Cause.EVENT_CANCELLED` 는 구현 PR 에서 지웠다. 분석 속성 `cancel_type = event_cancelled` 는 `AnalyticsEventListener.onClubEventCancelled` 가 보낸다. [domain-events 「이벤트」](../domain-events/spec.md#이벤트) 표에 `club_event.cancelled` 줄이 있다
 
 ## 퍼널·계측
 
@@ -321,7 +320,7 @@ PRD §3 「행사 취소 행동 분석」(PR #509) 을 따른다.
 - **개인정보**: 이메일 · 이름 · 닉네임 · 신청 답변 · 취소 안내 본문을 보내지 않는다. 수집 중단(분석 거부)·탈퇴한 계정은 analytics 스펙의 기존 규칙대로 보내지 않는다
 - **취소 안내 메일과 무관**: 작성 창을 닫거나 메일을 보내지 않아도 취소가 저장됐다면 기록한다
 - **OMTM 기대 변화**: 없음 (취소 사유별 철회 규모를 보는 관찰용). 실험(A/B) 없음
-- 트래킹 플랜 [analytics 스펙](../analytics/spec.md) 에는 `Event Registration Cancelled` 줄이 이미 있고 `cancel_type` 에 `event_cancelled` 가 들어 있다 (PR #517). 이 스펙의 구현 PR 은 그 줄의 「언제」 칸에 행사 전체 취소는 `club_event.cancelled` 로 보낸다는 것을 더한다. 이름 · 속성은 바꾸지 않는다
+- 트래킹 플랜 [analytics 스펙](../analytics/spec.md) 의 `Event Registration Cancelled` 줄에 `cancel_type = event_cancelled` 가 있고 (PR #517), 「언제」 칸에 행사 전체 취소는 `club_event.cancelled` 로 보낸다고 적었다. 이름 · 속성은 바꾸지 않았다
 
 ## 근거와 PRD·프로토·레포 규약의 차이
 

@@ -2,7 +2,10 @@
 // 연동 여부는 서버의 ACCOUNT.DISCORD_ID 가 정본이다. 브라우저에 따로 저장하지 않는다.
 // 백엔드(DSC-01·DSC-02) 전에는 개발 서버의 MSW 목(packages/mock handlers/discord.ts)이 답한다.
 
+import { z } from 'zod';
+
 import type { Account } from '@/features/account/types';
+import { getUser, setUser } from '@/features/auth/auth';
 import { profileKeys } from '@/features/profile/queries';
 import { fetchAccount } from '@/features/profile/repository';
 import { track, type DiscordConnectFailReason, type DiscordLinkSource } from '@/lib/analytics';
@@ -47,7 +50,8 @@ export function requestDiscordCode(): Promise<string> {
     client_id: DISCORD_CLIENT_ID,
     redirect_uri: window.location.origin + DISCORD_CALLBACK_PATH,
     response_type: 'code',
-    scope: 'identify guilds.members.read',
+    // guilds.join: 서버 밖이면 서버가 그 자리에서 스터디클럽 서버에 넣는다 (ZAPP 스터디클럽 #112)
+    scope: 'identify guilds.members.read guilds.join',
     state,
   });
   const w = 480;
@@ -147,8 +151,14 @@ function connectFailReason(e: unknown): DiscordConnectFailReason {
   return 'error';
 }
 
+/** 연동 응답. 204(옛 서버 · 목)면 null — 서버에 새로 들어가지 않은 것과 같다. */
+const linkResponseSchema = z.object({ joinedGuild: z.boolean() }).nullable();
+
+/** 연동 결과. joinedGuild 는 이번 연동에서 스터디클럽 서버에 새로 들어갔는가 */
+export type DiscordLinkResult = { joinedGuild: boolean };
+
 /**
- * POST /api/me/discord/link — 인가 코드만 보낸다. 디스코드 식별자·핸들은 서버가 직접 받는다. 응답 204.
+ * POST /api/me/discord/link — 인가 코드만 보낸다. 디스코드 식별자·핸들은 서버가 직접 받는다. 응답 200 `{ joinedGuild }`.
  * `code` 는 {@link requestDiscordCode} 의 Promise 를 그대로 받는다 — 팝업 단계 실패(취소·차단)도 여기서 센다.
  * `My Discord Connected` · `Discord Connect Failed` 는 여기서만 보낸다 — 연동하는 화면이 늘어도 빠지지 않게.
  */
@@ -156,14 +166,16 @@ export async function linkDiscord(
   accountId: number,
   code: string | Promise<string>,
   source: DiscordLinkSource,
-): Promise<void> {
+): Promise<DiscordLinkResult> {
+  let joinedGuild = false;
   try {
     const resolved = await code;
-    await http('/api/me/discord/link', emptyResponseSchema, {
+    const res = await http('/api/me/discord/link', linkResponseSchema, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: resolved }),
     });
+    joinedGuild = res?.joinedGuild ?? false;
   } catch (e) {
     track({
       name: 'Discord Connect Failed',
@@ -176,6 +188,51 @@ export async function linkDiscord(
   getQueryClient().setQueryData<Account>(profileKeys.account(accountId), (prev) =>
     prev ? { ...prev, discordLinked: true } : prev,
   );
-  // 응답은 204 라 discordHandle 이 없다 — 계정 캐시를 버려 마이페이지가 @이름을 다시 받게 한다
+  // 응답에 discordHandle 이 없다 — 계정 캐시를 버려 마이페이지가 @이름을 다시 받게 한다
   await getQueryClient().invalidateQueries({ queryKey: profileKeys.account(accountId) });
+  return { joinedGuild };
+}
+
+/** 연동된 디스코드 사용자명. 읽지 못하면 null */
+export async function fetchDiscordHandle(accountId: number): Promise<string | null> {
+  try {
+    const me = await getQueryClient().fetchQuery({ queryKey: profileKeys.account(accountId), queryFn: fetchAccount });
+    return me.discordHandle ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 서버에 저장된 디스코드 서버 별명을 다시 읽어 세션 회원 정보에도 넣는다. 연동이 별명을 새로 저장하므로 연동 직후 · 신청 폼을 열 때 부른다.
+ * 읽지 못하면 세션에 있던 값을 준다 — 신청 폼은 그 값으로도 제출할 수 있다.
+ */
+export async function syncDiscordNickname(accountId: number): Promise<string | null> {
+  const fallback = getUser()?.discordNickname ?? null;
+  try {
+    const me = await getQueryClient().fetchQuery({ queryKey: profileKeys.account(accountId), queryFn: fetchAccount });
+    const nick = me.discordNickname?.trim() || null;
+    const user = getUser();
+    if (user && user.discordNickname !== nick) setUser({ ...user, discordNickname: nick });
+    return nick;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * 서버에 저장된 디스코드 서버 별명을 다시 읽어 세션 회원 정보에도 넣는다. 연동이 별명을 새로 저장하므로 연동 직후 · 신청 폼을 열 때 부른다.
+ * 읽지 못하면 세션에 있던 값을 준다 — 신청 폼은 그 값으로도 제출할 수 있다.
+ */
+export async function syncDiscordNickname(accountId: number): Promise<string | null> {
+  const fallback = getUser()?.discordNickname ?? null;
+  try {
+    const me = await getQueryClient().fetchQuery({ queryKey: profileKeys.account(accountId), queryFn: fetchAccount });
+    const nick = me.discordNickname?.trim() || null;
+    const user = getUser();
+    if (user && user.discordNickname !== nick) setUser({ ...user, discordNickname: nick });
+    return nick;
+  } catch {
+    return fallback;
+  }
 }

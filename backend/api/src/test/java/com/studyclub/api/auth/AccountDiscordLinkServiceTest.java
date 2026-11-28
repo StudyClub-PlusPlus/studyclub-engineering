@@ -30,7 +30,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 class AccountDiscordLinkServiceTest {
 
     private static final Long ACCOUNT_ID = 1L;
-    private static final DiscordUser USER = new DiscordUser("1327394882193880001", "jiwon_dev");
+    private static final DiscordUser USER =
+            new DiscordUser("1327394882193880001", "jiwon_dev", "지원/SWE/서울", false);
 
     @Mock DiscordOAuthClient discordOAuthClient;
     @Mock AccountRepository accountRepository;
@@ -71,6 +72,7 @@ class AccountDiscordLinkServiceTest {
         service.link(ACCOUNT_ID, "code");
 
         verify(account).linkDiscord(USER.id(), USER.handle());
+        verify(account).changeDiscordNickname("지원/SWE/서울");
         verify(accountRepository).saveAndFlush(account);
     }
 

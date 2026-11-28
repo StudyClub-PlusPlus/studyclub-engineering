@@ -22,6 +22,7 @@
 | PUT | /api/me/studies/{studyId}/meetings/{meetingId}/retro | 내 회고 작성 · 수정 | 필요 (그 회차의 쓸 사람) | 스펙확정 |
 | PUT | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 누르기 | 필요 (반 참여자, 자기 회고 제외) | 스펙확정 |
 | DELETE | /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section} | 👍 취소 | 필요 (같음) | 스펙확정 |
+| GET | /api/me/studies/{studyId}/retros/status | 반 회차별 회고 상태 (deadline·open·mine) | 필요 (반 참여자·네비·캡틴) | 구현완료 |
 | GET | /api/admin/retros | 회고 모아보기 (쓴 회고만) | 필요 (ADMIN) | 스펙작성중 |
 | GET | /api/admin/retros/export.csv | 같은 조건 CSV | 필요 (ADMIN) | 스펙작성중 |
 
@@ -36,7 +37,7 @@
 - 쓸 수 있음 = 미팅 종료 ≤ 지금 < 기한
 - 쓸 사람 = 그 회차 시작 때 반에 있던 참여자(`STUDY_PARTICIPANT`, 그전에 참여를 중단했으면 뺀다). 캡틴은 넣지 않는다
 - 킥오프 회차에는 회고가 없다. 킥오프 회차의 `retroDeadline` · `retroOpen` · `retroMine` 은 `null`
-- 회차별 회고 상태(`retroDeadline` · `retroOpen` · `retroMine`)는 `GET /api/me/studies` 응답의 `meetings[]` 각 항목에 포함한다 — 별도 status 엔드포인트 없음
+- 회차별 회고 상태(`retroDeadline` · `retroOpen` · `retroMine`)는 `GET /api/me/studies/{studyId}/retros/status` 로 조회한다
 - 시각(회차 시작 · 종료 · 기한 · 작성일)은 모두 UTC 로 내려준다. 화면은 보는 사람의 시간대(사용자 사이트 = 프로필 시간대, 백오피스 = 표시 시간대)로 날짜 · 시각을 바꾸고 약칭을 붙인다 — 일정 표와 같은 날짜가 나와야 한다
 
 ## 데이터
@@ -83,6 +84,13 @@ erDiagram
 
 ## GET /api/studies/{studyId}/meetings/{meetingId}/retros
 
+```
+GET /api/studies/{studyId}/meetings/{meetingId}/retros?groupId={groupId}
+```
+
+- `groupId` (선택) — 캡틴(ADMIN)에게만 적용. 여러 반을 관리하는 캡틴이 어느 반 명부 기준으로 `targets`·`missing` 을 볼지 지정. 생략하면 그 미팅의 소속 반을 사용. 캡틴 외(네비게이터·크루)가 보내면 무시한다.
+
+네비게이터·캡틴:
 ```json
 {
   "meetingId": 301,
@@ -104,10 +112,46 @@ erDiagram
 }
 ```
 
+크루:
+```json
+{
+  "meetingId": 301,
+  "deadline": "2026-11-24T11:30:00Z",
+  "open": true,
+  "targets": null,
+  "retros": [ ... ],
+  "missing": []
+}
+```
+
 - 순서: `writtenAt` 오름차순
 - 👍 를 누른 사람은 내려주지 않는다 — 수만
-- `missing` 은 그 반의 LEADER · CO_LEADER 와 ADMIN 에게만 채운다. 크루에게는 늘 `[]` — 안 쓴 사람 이름을 크루에게 보이지 않는다. 내가 썼는지 · 내가 누른 👍 는 `GET .../retros/me` 로 확인한다
+- `targets` · `missing` 은 그 반의 LEADER 와 ADMIN 에게만 채운다. 크루에게는 `targets: null` · `missing: []` — 작성 현황(「n명 중 m명 작성」 · 미작성자 목록)을 크루에게 보이지 않는다
+- 내가 썼는지 · 내가 누른 👍 는 `GET /api/me/studies/{studyId}/meetings/{meetingId}/retros` 로 확인한다
 - 끝나지 않은 회차는 `409 RETRO_NOT_OPEN`
+
+## GET /api/me/studies/{studyId}/retros/status
+
+```
+GET /api/me/studies/{studyId}/retros/status?studyGroupId={groupId}
+```
+
+```json
+{
+  "meetings": [
+    { "meetingId": 301, "retroDeadline": "2026-11-24T11:30:00Z", "retroOpen": true,  "retroMine": false },
+    { "meetingId": 300, "retroDeadline": null,                   "retroOpen": null,  "retroMine": null  }
+  ]
+}
+```
+
+- 인증 필요 (반 참여자·네비게이터·캡틴)
+- `studyGroupId` 생략 시 내 반 자동 감지 — 캡틴처럼 반 명부가 없는 경우 필수
+- `meetings` 순서: `scheduledAt` 오름차순
+- 킥오프 회차: 세 필드 모두 `null`
+- 끝나지 않은 정규 회차(scheduledAt이 미래): `retroDeadline`은 계산된 기한값(null 아님), `retroOpen: false`, `retroMine: false` (참여자) 또는 `null` (캡틴)
+- `retroOpen`: 미팅 종료 ≤ 지금 < 기한 (`true`) · 그 외 `false`
+- `retroMine`: 내가 이 회차 회고를 작성했는지. 캡틴(쓸 사람이 아님)은 `null`
 
 ## PUT /api/me/studies/{studyId}/meetings/{meetingId}/retro
 

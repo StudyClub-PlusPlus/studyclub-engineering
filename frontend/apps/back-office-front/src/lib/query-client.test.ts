@@ -54,7 +54,7 @@ it('세션 정리에 실패해도 로그인 화면을 연다', async () => {
   expect(location.replace).toHaveBeenCalledOnce();
 });
 
-it.each([403, 500])('%i는 세션을 지우거나 로그인으로 이동하지 않는다', async (status) => {
+it.each([403, 429, 500, 502, 503, 504])('%i는 세션을 지우거나 로그인으로 이동하지 않는다', async (status) => {
   await handleUnauthorized(new ApiError(status, 'Request failed'));
   expect(logout).not.toHaveBeenCalled();
   expect(location.replace).not.toHaveBeenCalled();

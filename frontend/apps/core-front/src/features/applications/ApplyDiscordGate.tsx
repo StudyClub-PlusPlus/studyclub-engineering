@@ -6,10 +6,16 @@ import { useEffect, useState } from 'react';
 import { site } from '@studyclub/mock';
 import type { Locale } from '@studyclub/types';
 import { Button, Modal } from '@studyclub/ui';
-import { ExternalLink, MessageCircle } from 'lucide-react';
+import { Check, ExternalLink, MessageCircle } from 'lucide-react';
 
 import { clearSession, getUser } from '@/features/auth/auth';
-import { DISCORD_LINK_READY, DiscordPopupError, linkDiscord, requestDiscordCode } from '@/features/profile/discord';
+import {
+  DISCORD_LINK_READY,
+  DiscordPopupError,
+  fetchDiscordHandle,
+  linkDiscord,
+  requestDiscordCode,
+} from '@/features/profile/discord';
 import { ApiError } from '@/lib/http';
 import { t } from '@/lib/i18n';
 
@@ -70,6 +76,8 @@ export function ApplyDiscordGate({
   const [notInGuild, setNotInGuild] = useState(false);
   /** 가입 링크를 열고 창 포커스가 돌아온 뒤 — 연동 버튼을 눌러 달라는 안내로 바꾼다 */
   const [returnedFromDiscord, setReturnedFromDiscord] = useState(false);
+  /** 연동하면서 서버에 새로 들어왔다 — 신청 폼으로 넘기기 전에 규칙 동의 안내를 한 번 보인다. 값은 연동한 디스코드 사용자명(못 읽으면 빈 문자열) */
+  const [joinedAs, setJoinedAs] = useState<string | null>(null);
 
   useEffect(() => {
     if (!notInGuild) return;
@@ -98,8 +106,14 @@ export function ApplyDiscordGate({
     setError(null);
     setNotInGuild(false);
     setReturnedFromDiscord(false);
+    setJoinedAs(null);
     try {
-      await linkDiscord(user.id, code, 'apply_gate');
+      const { joinedGuild } = await linkDiscord(user.id, code, 'apply_gate');
+      if (joinedGuild) {
+        setJoinedAs((await fetchDiscordHandle(user.id)) ?? '');
+        setLinking(false);
+        return;
+      }
       setLinking(false);
       onLinked();
     } catch (e) {
@@ -116,7 +130,13 @@ export function ApplyDiscordGate({
     setError(null);
     setNotInGuild(false);
     setReturnedFromDiscord(false);
+    setJoinedAs(null);
     onClose();
+  }
+
+  function continueToForm() {
+    setJoinedAs(null);
+    onLinked();
   }
 
   return (
@@ -125,7 +145,9 @@ export function ApplyDiscordGate({
       onClose={linking ? () => {} : handleClose}
       title={t({ ko: '디스코드 연동', en: 'Connect Discord' }, locale)}
       footer={
-        DISCORD_LINK_READY ? (
+        joinedAs !== null ? (
+          <Button onClick={continueToForm}>{t({ ko: '신청 폼으로', en: 'Continue to the form' }, locale)}</Button>
+        ) : DISCORD_LINK_READY ? (
           <>
             <Button variant='secondary' onClick={handleClose} disabled={linking}>
               {t({ ko: '취소', en: 'Cancel' }, locale)}
@@ -148,8 +170,24 @@ export function ApplyDiscordGate({
           {t({ ko: '스터디 신청 전 디스코드 연동은 필수입니다.', en: 'You must connect Discord before applying.' }, locale)}
         </p>
         <p className='type-body-sm text-fg-secondary'>
-          {t({ ko: '스터디는 디스코드에서 진행됩니다. 연동이 끝나면 신청 폼으로 이동합니다.', en: 'Studies run on Discord. After connecting, you continue to the application form.' }, locale)}
+          {t({ ko: '스터디는 스터디클럽 디스코드 서버에서 진행됩니다. 연동하면 서버에도 함께 들어가고, 신청 폼으로 이동합니다.', en: 'Studies run on the StudyClub Discord server. Connecting also adds you to the server, then you continue to the application form.' }, locale)}
         </p>
+        {joinedAs !== null && (
+          <div role='status' className='flex flex-col gap-2 rounded-control bg-success-50 p-3'>
+            <p className='flex items-center gap-1.5 type-label-lg text-success-700'>
+              <Check size={16} aria-hidden />
+              {joinedAs
+                ? t({ ko: `${joinedAs} 계정으로 연동하고 스터디클럽 서버에 들어왔습니다.`, en: `Connected as ${joinedAs} and joined the StudyClub server.` }, locale)
+                : t({ ko: '연동하고 스터디클럽 서버에 들어왔습니다.', en: 'Connected and joined the StudyClub server.' }, locale)}
+            </p>
+            <p className='type-body-sm text-fg'>
+              {t({ ko: '디스코드에서 서버 규칙 동의와 첫 질문을 마쳐 주세요. 마치기 전에는 서버에서 채팅할 수 없습니다.', en: 'Accept the server rules and answer the welcome questions in Discord. You cannot chat on the server until you do.' }, locale)}
+            </p>
+            <Button variant='tertiary' size='sm' className='self-start' onClick={connect} loading={linking}>
+              {t({ ko: '다른 디스코드 계정으로 연동', en: 'Use a different Discord account' }, locale)}
+            </Button>
+          </div>
+        )}
         {!DISCORD_LINK_READY && (
           <p role='status' className='type-body-sm text-fg-secondary'>
             {t({ ko: '디스코드 연동은 준비 중입니다. 캡틴에게 문의해 주세요.', en: 'Discord connection is coming soon. Please contact a captain.' }, locale)}
@@ -160,7 +198,7 @@ export function ApplyDiscordGate({
             <p className='type-body-sm text-fg'>
               {returnedFromDiscord
                 ? t({ ko: '서버에 가입하셨나요? 아래 버튼을 눌러 연동을 완료하세요.', en: 'Joined the server? Click the button below to finish connecting.' }, locale)
-                : t({ ko: '스터디클럽 디스코드 서버에 아직 가입하지 않았습니다. 서버에 가입한 뒤 아래 버튼을 눌러 다시 연동해 주세요.', en: 'You have not joined the StudyClub Discord server yet. Join the server, then click the button below to connect again.' }, locale)}
+                : t({ ko: '스터디클럽 디스코드 서버에 자동으로 들어가지 못했습니다. 아래 링크로 서버에 가입한 뒤 다시 연동해 주세요.', en: 'We could not add you to the StudyClub Discord server. Join the server with the link below, then connect again.' }, locale)}
             </p>
             {!returnedFromDiscord && (
               <a

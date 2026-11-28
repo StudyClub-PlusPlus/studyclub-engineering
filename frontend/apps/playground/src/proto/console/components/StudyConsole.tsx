@@ -8,12 +8,14 @@ import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
 import { ClassPicker } from '@console/components/ClassPicker';
 import { ClassScheduleDialog } from '@console/components/ClassScheduleDialog';
+import { ClubStudyAttendance, useClubCohort } from '@console/components/ClubBookSection';
 import { CrewTab } from '@console/components/CrewTab';
 import { ResultsTab } from '@console/components/ResultsTab';
 import { StudyCreateDialog } from '@console/components/StudyCreateDialog';
 import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import { classView, FIRST_CLASS, type ClassView } from '@console/lib/class-view';
 import { classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
+import { clubAverageRate, clubOfStudy } from '@console/lib/clubs';
 import { tx } from '@console/lib/l10n';
 import { useStudiesListHref } from '@console/lib/list-return';
 import { type ScheduleRule } from '@console/lib/schedule';
@@ -28,13 +30,14 @@ import { dropPresenters } from '@core/lib/schedule-source';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew } from '@studyclub/mock';
 import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
-import { Badge, Button, Modal, Switch, Tabs } from '@studyclub/ui';
+import { Badge, Button, ButtonLink, Modal, Switch, Tabs } from '@studyclub/ui';
 import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState } from '@studyclub/utils';
 import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
 import { canCopyStudy } from '../lib/reused-drafts';
 import { useAnnotate } from '@/proto/annotate';
 import { recruitState, recruitmentDeadlineLabel, recruitmentDaysLeft } from '@/proto/lib/recruitment-deadline';
+import { kindRules } from '@/proto/lib/study-kind';
 import { useRecruitmentClock } from '@/proto/lib/use-recruitment-clock';
 
 /**
@@ -121,6 +124,20 @@ export function StudyConsole({ study }: { study: Study }) {
   const [ruleOpen, setRuleOpen] = useState(false);
 
   const [tab, setTab] = useState<TabKey>('info');
+  // 종류마다 다른 것(탭 · 반 · 출석률 설명 · 다음 기수)은 한 표에서 읽는다 — 화면에서 종류를 직접 가르지 않는다
+  const rules = kindRules(study);
+  const tabs = TABS.filter((t) => !rules.hiddenTabs.includes(t.key));
+  // 클럽 설정이 있으면 출석은 날짜별 출석부다 — 위 숫자 칸과 출석 탭이 같은 출석부를 본다
+  const club = clubOfStudy(study);
+  const clubCohort = useClubCohort(club);
+  const clubStats = useMemo(
+    () =>
+      club && {
+        rate: clubAverageRate(clubCohort.book),
+        attendees: clubCohort.members.filter((m) => !m.leftOn).length,
+      },
+    [club, clubCohort.book, clubCohort.members],
+  );
   // 회고 탭에서 고른 회차 — 없으면 가장 최근에 끝난 회차
   const [retroMeetingId, setRetroMeetingId] = useState<string | undefined>();
   const [crewDirty, setCrewDirty] = useState(false);
@@ -132,7 +149,6 @@ export function StudyConsole({ study }: { study: Study }) {
   const scheduleDirty = tableDirty || rulesDirty;
   const [leave, setLeave] = useState<LeaveIntent | null>(null);
   const [reuseOpen, setReuseOpen] = useState(false);
-  const [nextOpen, setNextOpen] = useState(false);
   /** 출석 탭의 「회차 추가」로 넘어왔으면 일정 탭에서 회차 추가 창을 바로 연다. */
   const [addOnOpen, setAddOnOpen] = useState(false);
   // 저장 전 고침은 보고 있는 탭에만 있다 — 탭을 옮기거나 반을 바꾸면 사라진다.
@@ -166,13 +182,15 @@ export function StudyConsole({ study }: { study: Study }) {
   // 사용자 사이트의 「백오피스 출석부」 버튼이 `?tab=attendance` 로 연다 — 들어와서 탭을 다시 찾게 하지 않는다.
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get('tab');
-    if (q && TABS.some((t) => t.key === q)) setTab(q as TabKey);
-  }, []);
+    if (q && tabs.some((t) => t.key === q)) setTab(q as TabKey);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 처음 들어올 때 한 번만
 
   const active = crew;
   // 위 카드의 출석률 — 모든 반의 분자 · 분모를 합친다(반별 평균을 다시 평균하지 않는다).
   // 출석 탭과 같은 규칙: 휴가 · 킥오프 · 중단 뒤 회차는 뺀다. 프로토는 목 데이터로 셈하고, 실제는 서버 값을 그린다.
   const studyRate = useMemo(() => {
+    // 클럽 기수는 날짜별 출석부 하나 — 같은 산식(가중평균)으로 이번 기수를 센다
+    if (clubStats) return clubStats.rate;
     let score = 0;
     let total = 0;
     for (const cls of classes) {
@@ -197,9 +215,10 @@ export function StudyConsole({ study }: { study: Study }) {
       }
     }
     return total === 0 ? undefined : Math.round((score / total) * 100);
-  }, [classes, study, meetings, active, assign, navigators, left, books]);
+  }, [clubStats, classes, study, meetings, active, assign, navigators, left, books]);
   useRecruitmentClock([study]);
-  const reusable = canCopyStudy(study);
+  // 복제는 종류 표가 허락하고(스터디만) 끝난 스터디일 때
+  const reusable = rules.reusable && canCopyStudy(study);
   const open = recruitState(study) === 'apply';
   const deadline = recruitmentDeadlineLabel(study, zone);
   const dday = recruitmentDaysLeft(study, zone);
@@ -396,14 +415,21 @@ export function StudyConsole({ study }: { study: Study }) {
           <div data-anno='attendee:1-2' className='flex items-center gap-2'>
             {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
             {reusable && (
-              <Button data-anno='reuse:1' size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setReuseOpen(true)}>
+              <Button
+                data-anno='reuse:1'
+                size='sm'
+                variant='secondary'
+                leadingIcon={<Plus size={14} />}
+                onClick={() => setReuseOpen(true)}
+              >
                 스터디 복제
               </Button>
             )}
-            {study.program?.kind === 'club' && (
-              <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setNextOpen(true)}>
-                다음 기수 만들기
-              </Button>
+            {/* 클럽의 다음 기수는 클럽 운영 화면이 맡는다 — 매달 초안이 자동으로 생기고 거기서 모집을 시작한다 */}
+            {rules.nextCohort && (
+              <ButtonLink size='sm' variant='secondary' linkAs={Link} href={rules.nextCohort.href}>
+                {rules.nextCohort.label}
+              </ButtonLink>
             )}
             <span title={deadline}>
               <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
@@ -428,7 +454,11 @@ export function StudyConsole({ study }: { study: Study }) {
               aria-describedby={publishBlocked ? reasonId : undefined}
               onCheckedChange={setPublishConfirm}
             />
-            {publishBlocked && <p id={reasonId} className='type-label-sm text-fg-muted'>{publishBlocked}</p>}
+            {publishBlocked && (
+              <p id={reasonId} className='type-label-sm text-fg-muted'>
+                {publishBlocked}
+              </p>
+            )}
           </div>
         </div>
       </header>
@@ -475,15 +505,15 @@ export function StudyConsole({ study }: { study: Study }) {
         <SummaryStat label='진행 일정' value={study.schedule ? tx(study.schedule) : '미정 · 신청자 조율'} small />
         <SummaryStat
           label='참석자'
-          value={String(active.length)}
+          value={String(clubStats?.attendees ?? active.length)}
           sub={study.recruitment?.capacity ? `정원 ${study.recruitment.capacity}명` : '정원 제한 없음'}
         />
-        <SummaryStat label='출석률' value={studyRate === undefined ? '-' : `${studyRate}%`} sub='모든 반 · 지각 포함' />
+        <SummaryStat label='출석률' value={studyRate === undefined ? '-' : `${studyRate}%`} sub={rules.rateScope} />
       </div>
       <div data-anno='attendee:2 crew:1 results:1' className='mt-6'>
         <Tabs
           activeKey={tab}
-          items={TABS.map((tb) => ({ key: tb.key, label: tb.label }))}
+          items={tabs.map((tb) => ({ key: tb.key, label: tb.label }))}
           onChange={(key) => requestTab(key as TabKey)}
         />
       </div>
@@ -496,6 +526,7 @@ export function StudyConsole({ study }: { study: Study }) {
             assign={assign}
             onSaveClass={saveClass}
             onDirtyChange={setCrewDirty}
+            grouping={rules.grouping}
             onRemoveClass={removeClass}
             onAssign={(crewId, id) => setAssign((a) => ({ ...a, [crewId]: id }))}
             navigators={navigators}
@@ -583,7 +614,15 @@ export function StudyConsole({ study }: { study: Study }) {
               </Button>
             </div>
           ))}
+        {tab === 'attendance' && club && (
+          <ClubStudyAttendance
+            club={club}
+            cohort={clubCohort}
+            onDirtyChange={(d) => setDirtyBooks((m) => (m.club === d ? m : { ...m, club: d }))}
+          />
+        )}
         {tab === 'attendance' &&
+          !club &&
           (classes.length === 0 ? (
             // 반이 없으면 출석부도 없다 — 안내와 갈 곳은 출석부 컴포넌트가 그린다
             <AttendanceTab
@@ -677,7 +716,6 @@ export function StudyConsole({ study }: { study: Study }) {
       </div>
 
       {reusable && <StudyCreateDialog open={reuseOpen} onClose={() => setReuseOpen(false)} reuseOf={study} />}
-      <StudyCreateDialog open={nextOpen} onClose={() => setNextOpen(false)} nextOf={study} />
 
       <Modal
         open={leave !== null}

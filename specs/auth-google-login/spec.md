@@ -60,6 +60,10 @@ Spring POST /auth/social-login { code, provider, platform }
 - core `/[locale]/my`(수강생 A8) 신규 — 미로그인 `/login` 바운스, 로그인 시 account + 내 스터디(당분간 mock).
 - BO 전 페이지 로그인 게이트(미들웨어), `platform=BACK_OFFICE` 는 BO Next 라우트에서 강제. 응답 `user.role` 이 ADMIN 아니면 쿠키를 안 심는다(2차 차단).
 
+### 토큰 갱신
+
+인증 갱신의 화면·오류 처리 계약은 [프론트 인증 흐름](../../docs/frontend-development-guide/auth-flow.md#토큰-만료와-로그아웃)을 따른다. access 만료 시 API 요청과 보호 화면 진입 모두 갱신하고, 일시적인 장애로 refresh 쿠키를 삭제하지 않는다. 재검증 시나리오는 [로그인 유지 테스트](../../.prober/tests/auth-session-refresh.md)를 참고한다.
+
 ## 퍼널·계측
 
 - 단계: 가입 · 재방문 (로그인 화면)

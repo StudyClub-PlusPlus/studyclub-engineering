@@ -129,9 +129,9 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| discordNickname | String | Y | 제출 시점 서버 별명. 계정 `DISCORD_NICKNAME` 에도 같은 값으로 갱신 |
-| availableDays | String[] | Y | `mon` `tue` `wed` `thu` `fri` `sat` `sun`. 화면 라벨이 아니라 이 키 |
-| scheduleAgreed | Boolean | 기수 `STUDY.SCHEDULE` 이 있을 때만 Y | 일정이 있으면 `true`만 허용. 일정이 없으면 생략·null·false는 무시하고 저장하지 않으며 true는 거절 |
+| discordNickname | String | Y | 제출 시점 서버 별명. 계정 `DISCORD_NICKNAME` 이 있으면 서버는 이 값 대신 계정 값을 저장한다(2026-11-25, 칸이 읽기 전용). 계정 값이 없는 계정만 요청 값을 받아 계정에도 저장 |
+| availableDays | String[] | 스터디 Y · 클럽 N | `mon` `tue` `wed` `thu` `fri` `sat` `sun`. 화면 라벨이 아니라 이 키. **클럽 기수(`STUDY_KIND = CLUB`)는 받지 않는다** — 보내도 무시하고 저장하지 않는다 |
+| scheduleAgreed | Boolean | 스터디 기수에 `STUDY.SCHEDULE` 이 있을 때만 Y (클럽 기수는 받지 않는다) | 일정이 있으면 `true`만 허용. 일정이 없으면 생략·null·false는 무시하고 저장하지 않으며 true는 거절 |
 | answers | Object | Y | `questions[].id` → 문자열 또는 문자열 배열. 추가 질문이 없으면 `{}` |
 
 행이 있으면 제출 완료다. 대기·취소·검토 상태값을 두지 않는다. 이미 낸 신청은 덮어쓰지 않는다.
@@ -145,7 +145,7 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 
 | 필드 | Empty | MIN | MAX | ENUM | 기본값 | 사유 코드 | 실패 카피 |
 |------|-------|-----|-----|------|--------|-----------|-----------|
-| discordNickname | 불가 | 1자 | 100자 | — | 계정 `DISCORD_NICKNAME`. 없으면 빈 칸 | `empty` / `max` | `디스코드 서버 별명을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |
+| discordNickname | 불가(읽기 전용, 「새로고침」 만) | 1자 | 100자 | — | 계정 `DISCORD_NICKNAME`(연동할 때 디스코드에서 받은 값). 없으면 빈 칸 | `empty` / `max` | `디스코드 서버 별명을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |
 | availableDays | 불가 | 1개 | 7개 | 요일 키 7종 | 없음 | `empty` / `max` / `enum` | `참여 가능한 요일을 하나 이상 선택해 주세요.` / `참여 가능한 요일을 다시 선택해 주세요.` |
 | scheduleAgreed | 일정 있으면 불가 | — | — | `true` | `false` | `empty` / `unexpected` | `일정 참여 가능 여부를 확인해 주세요.` |
 | 추가 질문 TEXT | 필수면 불가 | 1자 | 200자 | — | 빈 칸 | `empty` / `max` | `필수 질문에 답해 주세요.` / `{N}자 이내로 입력해 주세요.` |
@@ -154,7 +154,7 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 | 추가 질문 CHECKBOX | 필수면 불가 | 1개 | 옵션 수(+기타 1) | `options` + (기타 시) 자유 입력 | 없음 | 동일 | 동일 |
 | 기타 자유 입력 | 기타를 고르면 불가 | 1자 | 100자 | — | 빈 칸 | `other-empty` / `other-max` | `기타 내용을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |
 
-공백만이면 빈 값이다. 오류 필드명은 `discordNickname` · `availableDays` · `scheduleAgreed` · `answers.{questionId}`.
+신청 폼을 저장한 적 없는 스터디(`STUDY.APPLICATION_FORM` 이 NULL · 빈 값)는 추가 질문이 없는 것으로 보고 신청을 받는다 — 신청 폼 조회와 같은 판정 (2026-11-25, ZAPP 스터디클럽 #113). 공백만이면 빈 값이다. 오류 필드명은 `discordNickname` · `availableDays` · `scheduleAgreed` · `answers.{questionId}`.
 
 CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 안의 빈 문자열·공백 항목은 제거하지 않고 거절한다. 기타 허용 질문은 `other-empty`, 그 밖에는 `enum` 사유를 사용한다. 정상 선택지와 빈 기타를 함께 보내도 제출할 수 없다.
 
@@ -162,13 +162,13 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 
 | 문항 | 저장 위치 | 화면 |
 |------|-----------|------|
-| 디스코드 서버 별명 | `FORM_ANSWER.discordNickname` + `ACCOUNT.DISCORD_NICKNAME` | 모든 신청 폼. 계정 값으로 채우고 지원자가 고칠 수 있다 |
-| 참여 가능한 요일 | `FORM_ANSWER.availableDays` | 모든 신청 폼. 진행 일정 유무와 무관. 단, 클럽형(`StudyKind.CLUB`)은 받지 않을 예정 — MVP 이후 클럽 신청 설계 때 확정 |
-| 일정 참여 확인 | `FORM_ANSWER.scheduleAgreed` | `STUDY.SCHEDULE` 이 있을 때만. 없으면 화면에 `일정 미정`이고 이 문항은 없음 |
+| 디스코드 서버 별명 | `FORM_ANSWER.discordNickname` + `ACCOUNT.DISCORD_NICKNAME` | 모든 신청 폼. 계정 값으로 채운다. 지원자는 직접 고치지 못하고 「새로고침」(디스코드 연동 다시)으로만 바꾼다 (2026-11-25) |
+| 참여 가능한 요일 | `FORM_ANSWER.availableDays` | 스터디 신청 폼. 진행 일정 유무와 무관. **클럽(`StudyKind.CLUB`)은 받지 않는다** — 모임 시각이 없다 ([POL-0012](../../01-planning/_registry/policies/POL-0012-club-cohort.md), 2026-11-25 확정) |
+| 일정 참여 확인 | `FORM_ANSWER.scheduleAgreed` | 스터디에 `STUDY.SCHEDULE` 이 있을 때만. 없으면 화면에 `일정 미정`이고 이 문항은 없음. 클럽은 진행 방식 글이 있어도 묻지 않는다 |
 
 이름·이메일은 신청 폼에 두지 않는다. 계정에서 읽기만 한다.
 
-별명 기본값은 로그인 본인의 `GET /api/me` 응답에 있는 `discordNickname`에서 읽는다. null이면 빈 칸으로 표시한다. 공개 신청 폼 조회 응답에 계정별 별명을 포함하지 않는다.
+별명 기본값은 로그인 본인의 `GET /api/me` 응답에 있는 `discordNickname`에서 읽는다(폼을 열 때마다 다시 읽는다). null이면 빈 칸이고 「새로고침」 으로 불러온다. 공개 신청 폼 조회 응답에 계정별 별명을 포함하지 않는다.
 
 ---
 
@@ -368,6 +368,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 | 참여 중단 (`STUDY_WITHDRAWN`) | `참여 중단된 스터디는 다시 신청할 수 없어요.` |
 | 이미 신청 | `이미 신청한 스터디입니다.` |
 | 이미 참여 중 | `이미 참여 중인 스터디입니다.` |
+| 클럽 이어서 참여 예정 | `다음 기수로 이어서 참여합니다. 따로 신청하지 않아도 돼요.` |
 | 모집 마감 | `모집이 마감되었습니다.` |
 | 정원 초과 | `정원이 가득 찼습니다.` |
 
@@ -417,6 +418,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 | applicationId | Long | Y | `applied=false` 이면 null | STUDY_APPLICATION.ID |
 | submittedAt | String | Y | 행 생성 시각. `applied=false` 이면 null | STUDY_APPLICATION.CREATED_AT (`BaseEntity`) |
 | withdrawn | Boolean | N | 참이면 다시 신청할 수 없다 (신청 제출 `409 STUDY_WITHDRAWN`) | 계산: 이 기수 내 `STUDY_PARTICIPANT.STATUS = WITHDRAWN` |
+| carriedOver | Boolean | N | 클럽 기수만. 참이면 직전 기수에서 이어서 참여하므로 신청하지 않는다 — 화면은 `신청 완료`(비활성) | 계산: [club-cohort 「크루 신청」](../club-cohort/spec.md#크루-신청--넘어갈-사람은-막는다) |
 
 ### Error Responses
 
@@ -532,7 +534,8 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 - **Method**: POST
 - **Path**: `/api/me/discord/link`
 - **인증**: 필요 — 로그인 본인
-- **설명**: 인가 코드를 서버가 토큰으로 바꿔 `ACCOUNT.DISCORD_ID` · `DISCORD_HANDLE` 을 저장한다. 클라이언트가 보낸 식별자·핸들은 쓰지 않는다.
+- **설명**: 인가 코드를 서버가 토큰으로 바꿔 `ACCOUNT.DISCORD_ID` · `DISCORD_HANDLE` · `DISCORD_NICKNAME` 을 저장한다. 클라이언트가 보낸 식별자·핸들은 쓰지 않는다.
+- **서버 별명** (2026-11-25): 길드 멤버 확인 응답의 `nick` → 없으면 `/users/@me` 의 `global_name` → 없으면 `username`. 연동할 때마다 덮어쓴다 — 신청 폼 별명 칸은 이 값을 읽기만 하고, 「새로고침」 이 이 API 를 다시 부른다
 
 계정 도메인으로 옮길 수 있다. 신청 스토리가 이 값 없이 진행되지 않아 여기에 적는다.
 
@@ -550,7 +553,15 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 `discordId` / `handle` 을 바디에 넣으면 무시하거나 `400`.
 
-### Response — 204 No Content
+### Response — 200 OK (2026-11-25, 전에는 204)
+
+```json
+{ "joinedGuild": true }
+```
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| joinedGuild | Boolean | 이번 연동에서 서버가 스터디클럽 디스코드 서버에 새로 넣었는가. 신청 직전 연동 창이 「서버에 들어왔다 · 디스코드에서 규칙 동의를 마쳐 달라」 를 한 번 보인다 |
 
 연결 여부는 이후 `GET /api/me`의 `discordLinked`로, 연결된 계정 이름은 `discordHandle`로 확인한다.
 
@@ -560,12 +571,13 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 |------|-----------|------|
 | 400 | INVALID_INPUT | `code` 없음 |
 | 401 | UNAUTHORIZED | 미로그인 |
-| 403 | DISCORD_NOT_IN_GUILD | 스터디클럽 디스코드 서버(길드) 멤버가 아님. 저장하지 않는다. 화면이 갈린다: 온보딩 권유 화면은 「나중에 연동하기」로 넘어가고, 신청 직전 연동 창은 서버 가입 안내(초대 링크는 프론트 상수 `site.discord_invite`)를 띄운다 |
+| 403 | DISCORD_NOT_IN_GUILD | 스터디클럽 디스코드 서버(길드) 멤버가 아니고 **봇이 넣지도 못함**(차단된 계정 · 디스코드 서버 수 한도 · 봇 권한 · 봇 없음, 사유는 봇 호출 로그 `op=add-guild-member`). 저장하지 않는다. 화면이 갈린다: 온보딩 권유 화면은 「나중에 연동하기」로 넘어가고, 신청 직전 연동 창은 서버 가입 안내(초대 링크는 프론트 상수 `site.discord_invite`)를 띄운다 |
 | 409 | CONFLICT | 그 `DISCORD_ID` 가 다른 계정에 이미 있음 (`UNIQUE(DISCORD_ID)`) |
 | 409 | DISCORD_UNLINK_BLOCKED | 이미 다른 디스코드 계정이 연동돼 있고 참여 중인 스터디가 있다 — 갈아타기 거절 (POL-0007). 연동은 그대로 둔다 |
 | 503 | EXTERNAL_SERVICE_ERROR | 디스코드 토큰 교환 실패·타임아웃, 서버에 OAuth 설정 없음. 폼을 열지 않는다. 연동 팝업에 잔류 |
 
-- 같은 계정이 같은 `DISCORD_ID` 로 다시 연동하면 204 (멱등). 핸들은 새 값으로 바뀐다.
+- 서버 밖이면 봇 [add-guild-member](../../docs/discord-development-guide/api/add-guild-member.md) 로 그 자리에서 넣는다 (ZAPP 스터디클럽 #112). 서버에 규칙 확인 · 온보딩 질문이 켜져 있어 들어온 사람은 디스코드에서 그 단계를 마쳐야 채팅할 수 있다
+- 같은 계정이 같은 `DISCORD_ID` 로 다시 연동하면 200 (멱등). 핸들은 새 값으로 바뀐다.
 - 외부 실패는 다른 연동(구글·봇)과 같은 503 이다 (처음 적었던 502 에서 바꿈, #298).
 
 Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이션한다. 실패 시 미연결 유지, 오류 안내와 재시도 제공.
@@ -573,7 +585,7 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 ### 화면 흐름 (DSC-04, 2026-10-27)
 
 ```
-「디스코드 연동하기」 ─ window.open ─▶ discord.com/oauth2/authorize (scope identify guilds.members.read, state)
+「디스코드 연동하기」 ─ window.open ─▶ discord.com/oauth2/authorize (scope identify guilds.members.read guilds.join, state)
                                               │ 승인
                                               ▼
                 <사이트>/api/auth/discord/callback ─ postMessage({code, state}) ─▶ 연동 창 ─▶ POST /api/me/discord/link
@@ -601,7 +613,8 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 - 공급자: Discord OAuth
 - 서버가 인가 코드 → 액세스 토큰 → 사용자 식별. 화면에 `DISCORD_ID` 를 돌려주지 않는다
 - 실패·타임아웃 시 계정 컬럼을 부분 저장하지 않는다
-- OAuth scope: `identify` `guilds.members.read`. 길드 멤버 확인은 사용자 토큰으로 `GET /users/@me/guilds/{DISCORD_CONFIG_GUILD_ID}/member` (404 면 멤버 아님)
+- OAuth scope: `identify` `guilds.members.read` `guilds.join`. 길드 멤버 확인은 사용자 토큰으로 `GET /users/@me/guilds/{DISCORD_CONFIG_GUILD_ID}/member` (404 면 멤버 아님 → 봇이 그 토큰으로 서버에 넣는다)
+- `guilds.join` 은 로그인용 OAuth 앱과 서버의 봇이 **같은 디스코드 앱**이어야 하고, 봇에 초대 만들기 권한이 있어야 한다. 액세스 토큰은 봇에 한 번 넘기고 저장 · 로그하지 않는다
 - `redirect_uri` 는 서버 설정(`DISCORD_OAUTH_REDIRECT_URI`) 고정. 요청에서 받지 않는다
 - `DISCORD_HANDLE` 은 디스코드 `username` (표시 이름 아님)
 - 디스코드 호출이 다 끝난 뒤 저장만 짧은 트랜잭션으로 감싼다 — 호출 중 DB 커넥션을 잡지 않는다

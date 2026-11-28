@@ -9,12 +9,16 @@ import com.studyclub.domain.event.EventConfirmation;
 import com.studyclub.domain.event.EventDisplayStatus;
 import com.studyclub.domain.event.EventFormat;
 import com.studyclub.domain.event.EventQuestionType;
+import com.studyclub.domain.event.EventReopenBlockedReason;
 import com.studyclub.domain.event.EventSeatCounts;
 import com.studyclub.domain.event.EventStatus;
 import java.time.Instant;
 import java.util.List;
 
-/** 운영 상세 — 편집 폼 값 전부 + 방식별 모집 현황 + 지금 할 수 있는 수정 + 돌려보낼 버전. 등록·수정 응답도 이 모양이다. */
+/**
+ * 운영 상세 — 편집 폼 값 전부 + 방식별 모집 현황 + 지금 할 수 있는 수정 · 상태 전환 + 취소 안내 대상 수 + 돌려보낼 버전. 등록 · 수정 · 상태 전환 응답도
+ * 이 모양이다.
+ */
 public record AdminClubEventDetailResponse(
         Long eventId,
         Long version,
@@ -39,6 +43,12 @@ public record AdminClubEventDetailResponse(
         boolean canChangeConfirmation,
         boolean canSetFutureStart,
         List<EventChannel> removableChannels,
+        boolean canClose,
+        boolean canReopen,
+        EventReopenBlockedReason reopenBlockedReason,
+        boolean canCancel,
+        boolean hasCancellationRecipients,
+        int cancellationRecipientCount,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -63,7 +73,8 @@ public record AdminClubEventDetailResponse(
             EventChannel channel, int capacity, int pending, int confirmed, int remaining) {}
 
     /** 판정은 전부 엔티티 메서드가 내린다 — 여기는 옮겨 담기만 한다. */
-    static AdminClubEventDetailResponse of(ClubEvent event, Instant now, EventSeatCounts counts) {
+    static AdminClubEventDetailResponse of(
+            ClubEvent event, Instant now, EventSeatCounts counts, int cancellationRecipientCount) {
         return new AdminClubEventDetailResponse(
                 event.getId(),
                 event.getVersion(),
@@ -92,6 +103,12 @@ public record AdminClubEventDetailResponse(
                 event.canChangeConfirmation(now),
                 event.canSetFutureStart(now),
                 event.removableChannels(counts),
+                event.canClose(now),
+                event.canReopen(now),
+                event.reopenBlockedReason(now),
+                event.canCancel(now),
+                cancellationRecipientCount > 0,
+                cancellationRecipientCount,
                 event.getCreatedAt(),
                 event.getUpdatedAt());
     }
