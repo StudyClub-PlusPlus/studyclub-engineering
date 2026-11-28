@@ -32,37 +32,45 @@ import { track } from '@/lib/analytics';
 const EMPTY: RetroAnswers = { good: '', improve: '', feeling: '' };
 
 export function RetroWriteForm({ meetingId }: { meetingId?: number }) {
-  const { study, groupId, locale, role } = useManage();
+  const { study, groupId, locale } = useManage();
+  const router = useRouter();
   const zone = useDisplayTimeZone();
   const studyId = Number(study.id);
   const statusQuery = useRetroStatus(studyId, groupId);
   const meetingsQuery = useStudyMeetings(studyId, groupId);
   const ended = endedRetroMeetings(statusQuery.data, meetingsQuery.data?.meetings);
   const current = ended.find((m) => m.meetingId === meetingId);
-  const fetchMine = role !== 'captain' && current?.mine === true;
+  // 쓸 사람 = 반 명부에 있는 사람. 캡틴도 명부에 있으면 쓴다 (명부에 없는 캡틴은 participantId 가 null)
+  const writer = (meetingsQuery.data?.me.participantId ?? null) !== null;
+  const fetchMine = writer && current?.mine === true;
   const listQuery = useMeetingRetros(studyId, fetchMine ? current.meetingId : undefined);
   const listHref = retroHref(locale, study.id, meetingId);
   const initial = fetchMine ? myAnswers(listQuery.data, meetingsQuery.data?.me.participantId ?? null) : null;
+  // 명부에 없는 캡틴은 작성 버튼이 없다. 공유된 작성 주소로 들어오면 안내 화면 없이 그 회차의 회고 탭으로 돌려보낸다
+  const offRoster = meetingsQuery.isSuccess && !writer;
 
+  useEffect(() => {
+    if (offRoster) router.replace(listHref);
+  }, [offRoster, router, listHref]);
+
+  if (offRoster) return null;
   if (statusQuery.isPending || meetingsQuery.isPending || (fetchMine && listQuery.isPending)) {
     return <p className='py-16 text-center type-body-sm text-fg-muted'>불러오는 중…</p>;
   }
 
   const blocked =
-    role === 'captain'
-      ? '캡틴은 미팅 참여자가 아니라 회고를 쓰지 않아요.'
-      : statusQuery.isError || meetingsQuery.isError
-        ? '회고를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.'
-        : !current
-          ? statusQuery.data?.meetings.some((s) => s.meetingId === meetingId && s.retroDeadline !== null)
-            ? '미팅이 끝나면 회고를 쓸 수 있어요.'
-            : '이 회차를 찾을 수 없어요.'
-          : !current.open
-            ? '작성 기한이 지나 회고를 쓰거나 고칠 수 없어요.'
-            : // 쓴 회고를 못 읽었는데 빈 폼을 열면, 제출할 때 쓴 내용을 덮어쓴다
-              fetchMine && !initial
-              ? '내 회고를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.'
-              : null;
+    statusQuery.isError || meetingsQuery.isError
+      ? '회고를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.'
+      : !current
+        ? statusQuery.data?.meetings.some((s) => s.meetingId === meetingId && s.retroDeadline !== null)
+          ? '미팅이 끝나면 회고를 쓸 수 있어요.'
+          : '이 회차를 찾을 수 없어요.'
+        : !current.open
+          ? '작성 기한이 지나 회고를 쓰거나 고칠 수 없어요.'
+          : // 쓴 회고를 못 읽었는데 빈 폼을 열면, 제출할 때 쓴 내용을 덮어쓴다
+            fetchMine && !initial
+            ? '내 회고를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.'
+            : null;
 
   if (blocked || !current) {
     return (

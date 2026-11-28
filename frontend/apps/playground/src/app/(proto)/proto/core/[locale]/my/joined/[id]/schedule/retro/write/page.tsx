@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
 import { RetroWriteForm } from '@core/components/MeetingRetro';
+import { RetroRosterToolbar } from '@core/components/RetroRosterToolbar';
 import { useManage } from '@core/components/StudyManageShell';
 
 import { CREW_RETRO_SPEC } from '../spec';
@@ -15,6 +16,7 @@ function Form() {
   return (
     <>
       <ScreenSpecRegistrar spec={CREW_RETRO_SPEC} />
+      {role === 'captain' && <RetroRosterToolbar studyId={study.id} />}
       <RetroWriteForm study={study} role={role} locale={locale} meetingId={meetingId} />
     </>
   );

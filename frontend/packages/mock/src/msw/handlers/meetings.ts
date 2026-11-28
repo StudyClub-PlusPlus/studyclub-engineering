@@ -27,6 +27,11 @@ function rulesFor(studyId: number): string {
   return LONG_RULES_IDS.has(studyId) ? RULES_LONG : RULES_SHORT;
 }
 export const CAPTAIN_STUDY_IDS = new Set([1, 9, 20]);
+/**
+ * 캡틴 스터디 중 내가 반 명부에 없는 곳 — 회차 응답의 me.participantId 가 null 이고 명부에 내가 없다.
+ * 나머지 캡틴 스터디(1 · 9)는 명부에 있다(스터디를 만들 때 들어간다). 회고는 명부에 있으면 쓰고, 없으면 쓰지 않는다.
+ */
+export const OFF_ROSTER_CAPTAIN_STUDY_IDS = new Set([20]);
 export const NAVIGATOR_STUDY_IDS = new Set([11]);
 export const withdrawnState = new Map<number, Set<number>>();
 export function getWithdrawnParticipants(studyId: number): Set<number> {
@@ -147,6 +152,7 @@ function responseFor({
   const crew = getStudyCrew(study);
   const groupId = study.study_id + GROUP_ID_OFFSET;
   const isCaptain = CAPTAIN_STUDY_IDS.has(study.study_id);
+  const offRoster = isCaptain && OFF_ROSTER_CAPTAIN_STUDY_IDS.has(study.study_id);
   const isNavigator = NAVIGATOR_STUDY_IDS.has(study.study_id);
   const myName = currentUserName(request);
   const withdrawnSet = getWithdrawnParticipants(study.study_id);
@@ -162,7 +168,7 @@ function responseFor({
   }>;
   if (isCaptain) {
     participants = [
-      { participantId: 1, name: myName, discordNickname: null },
+      ...(offRoster ? [] : [{ participantId: 1, name: myName, discordNickname: null }]),
       { participantId: 2, name: "가온", discordNickname: null },
       ...crew.crew
         .filter((p) => p.name !== "가온")
@@ -217,7 +223,7 @@ function responseFor({
       rules: rulesFor(study.study_id),
     },
     me: {
-      participantId: 1,
+      participantId: offRoster ? null : 1,
       canEdit: isCaptain || isNavigator,
       captain: isCaptain,
     },

@@ -341,8 +341,8 @@ class MeetingRetroIntegrationTest {
     }
 
     @Test
-    @DisplayName("회고_작성_실패_캡틴은_작성_불가_403")
-    void 회고_작성_실패_캡틴_403() {
+    @DisplayName("회고_작성_실패_명부에_없는_캡틴은_작성_불가_403")
+    void 회고_작성_실패_명부에_없는_캡틴_403() {
         var response =
                 writeRetro(
                         study.getId(),
@@ -351,6 +351,34 @@ class MeetingRetroIntegrationTest {
                         Map.of("good", "좋았어요", "improve", "개선점", "feeling", ""));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("회고_작성_명부에_있는_캡틴은_작성_201")
+    void 회고_작성_명부에_있는_캡틴_201() {
+        StudyParticipant captainRow =
+                participantRepo.save(
+                        StudyParticipant.builder()
+                                .accountId(CAPTAIN_ID)
+                                .studyGroupId(group.getId())
+                                .studyId(study.getId())
+                                .status(ParticipantStatus.ACTIVE)
+                                .participantRole(ParticipantRole.MEMBER)
+                                .joinedAt(Instant.now().minus(10, ChronoUnit.DAYS))
+                                .build());
+
+        var response =
+                writeRetro(
+                        study.getId(),
+                        endedMeeting.getId(),
+                        CAPTAIN_ID,
+                        Map.of("good", "좋았어요", "improve", "개선점", "feeling", ""));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(
+                        retroRepo.findByMeetingIdAndParticipantId(
+                                endedMeeting.getId(), captainRow.getId()))
+                .isPresent();
     }
 
     // ── 회고 목록 ────────────────────────────────────────────────────────────

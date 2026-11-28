@@ -11,12 +11,15 @@ export function FilterSelect({
   value,
   options,
   onChange,
+  className,
 }: {
   label: string;
   /** `ALL` 이면 거르지 않는다. */
   value: string;
   options: readonly { value: string; label: string }[];
   onChange: (next: string) => void;
+  /** 폭 — 고른 값에 따라 칸이 줄고 늘지 않게 최소 폭을 줄 때. */
+  className?: string;
 }) {
   const all = value === 'ALL';
   return (
@@ -25,7 +28,11 @@ export function FilterSelect({
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={cx('w-auto shrink-0', all ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg')}
+      className={cx(
+        'w-auto shrink-0',
+        all ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+        className,
+      )}
     >
       <option value='ALL'>{all ? label : '전체'}</option>
       {options.map((o) => (

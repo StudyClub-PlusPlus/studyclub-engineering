@@ -12,6 +12,8 @@ export const pages: PageDef[] = [
   { id: 'my-joined-schedule', label: '내 스터디 일정', path: '/ko/my/joined/:id/schedule' },
   { id: 'my-joined-attendance', label: '내 스터디 출석', path: '/ko/my/joined/:id/schedule/attendance' },
   { id: 'my-joined-notice', label: '내 스터디 공지', path: '/ko/my/joined/:id/schedule/notice' },
+  { id: 'my-joined-retro', label: '내 스터디 회고', path: '/ko/my/joined/:id/schedule/retro' },
+  { id: 'my-joined-retro-write', label: '내 스터디 회고 작성', path: '/ko/my/joined/:id/schedule/retro/write' },
   { id: 'my-saved', label: '찜한 스터디', path: '/ko/my/saved' },
   { id: 'my-leave', label: '회원 탈퇴', path: '/ko/my/leave' },
   { id: 'my-feedbacks', label: '내 문의', path: '/ko/my/feedbacks' },

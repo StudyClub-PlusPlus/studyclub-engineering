@@ -12,6 +12,7 @@ import { ApplicationFormTab } from '@/features/application-form/ApplicationFormT
 import { ApplicationResultsTab } from '@/features/application-results/ApplicationResultsTab';
 import { useStudyAttendanceRate } from '@/features/attendance/api';
 import { AttendanceTab } from '@/features/attendance/AttendanceTab';
+import { RetroTab } from '@/features/meeting-retro/RetroTab';
 import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupChangesDialog';
 import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
 import { participantKeys, useParticipants } from '@/features/participants/queries';
@@ -31,6 +32,8 @@ const TABS = [
   { key: 'crew', label: '신청자' },
   { key: 'schedule', label: '일정' },
   { key: 'attendance', label: '출석' },
+  // 사용자 사이트 스터디 일정의 탭(일정 · 출석 · 회고)은 백오피스에도 둔다
+  { key: 'retro', label: '회고' },
 ] as const;
 
 const TAB_DEFAULTS = { tab: 'info' };
@@ -56,7 +59,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   const router = useRouter();
   // 보고 있는 탭(일정 · 출석)의 저장 전 고침. 탭 · 반 · 링크를 누르면 나가기 전에 한 번 묻는다
   const [dirty, setDirty] = useState(false);
-  // 고른 반 — 일정 탭과 출석 탭이 같이 쓴다. 비면 첫 반
+  // 고른 반 — 일정 · 출석 · 회고 탭이 같이 쓴다. 비면 첫 반
   const [groupId, setGroupId] = useState('');
   const displayTz = useDisplayTimeZone();
   // 출석부 회차 머리의 시간대 — 반을 바꿔도 남는다. 처음은 내 프로필 시간대
@@ -271,6 +274,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
             }}
           />
         )}
+        {tab === 'retro' && <RetroTab detail={detail} groupId={groupId} onGroup={setGroupId} />}
         {tab === 'crew' && <ParticipantsTab studyId={detail.id} onDirtyChange={setDirtyParticipants} />}
         {tab === 'schedule' && (
           <ScheduleTab

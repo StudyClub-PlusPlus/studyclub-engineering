@@ -23,7 +23,8 @@
  *         "scrollTo": "[data-anno=\"retros:3\"]",     // 찍기 전에 이 요소를 화면 가운데로
  *         "scrollLeft": { "selector": "...", "px": 600 }, // 가로 스크롤 상자를 민다
  *         "hover": "월 21시 KST · 9명",               // 찍기 직전에 마우스를 올릴 버튼의 글자 (말풍선 · 툴팁)
- *         "annotate": false                          // true 면 번호 주석을 켜고 찍는다
+ *         "annotate": false,                         // true 면 번호 주석을 켜고 찍는다
+ *         "storage": { "sc_retro_captain_on_roster": { "1": false } } // 이 샷만 브라우저 저장소에 더 넣을 값 (프로토 가정 바꾸기)
  *       }
  *     ]
  *   }
@@ -120,7 +121,8 @@ const SESSION = {
 
 /** 화면 위에 뜨는 개발 · 검토 도구(Next 개발 도구, MSW 설정, 주석 켜기 단추)는 숨긴다 — 서비스 화면이 아니고 내용을 가린다. */
 const HIDE_DEV_UI = `nextjs-portal, [data-nextjs-toast], [data-next-badge-root],
-  button[title="MSW 설정"], button[title="설명 켜기/끄기 (A)"], button[title^="이 화면은 아직 설명이"] { display: none !important; }`;
+  button[title="MSW 설정"], button[title="설명 켜기/끄기 (A)"], button[title^="이 화면은 아직 설명이"],
+  aside[aria-label="회고 검토 도구"] { display: none !important; }`;
 /** 붙는 헤더 높이만큼 덜 내린다 — 맨 위로 올린 요소가 헤더에 가리지 않게. */
 const STICKY_OFFSET = 88;
 
@@ -136,7 +138,7 @@ async function capture(browser, shot) {
     for (const [k, v] of Object.entries(session)) {
       if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(v));
     }
-  }, SESSION);
+  }, { ...SESSION, ...(shot.storage ?? {}) });
   const page = await context.newPage();
   await page.goto(new URL(shot.path, BASE).href, { waitUntil: 'networkidle', timeout: 120_000 });
   await page.addStyleTag({ content: HIDE_DEV_UI });

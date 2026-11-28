@@ -60,7 +60,7 @@ export type RetroMeeting = {
   meetingEndAt: string | null;
   deadline: string;
   open: boolean;
-  /** 캡틴(쓸 사람이 아님)은 null. */
+  /** 반 명부에 없는 사람(명부에 없는 캡틴)은 null. */
   mine: boolean | null;
 };
 
@@ -98,7 +98,7 @@ export function endedRetroMeetings(
   return out.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
 }
 
-/** 회고 탭 옆 점 — 지금 쓸 수 있는데 아직 안 쓴 회차 수. 캡틴은 retroMine 이 null 이라 0. */
+/** 회고 탭 옆 점 — 지금 쓸 수 있는데 아직 안 쓴 회차 수. 명부에 없는 캡틴은 retroMine 이 null 이라 0. */
 export function pendingRetroCount(status: ApiRetroStatus | undefined): number {
   return status?.meetings.filter((s) => s.retroOpen === true && s.retroMine === false).length ?? 0;
 }
