@@ -146,7 +146,7 @@ GET /api/me/studies/{studyId}/retros/status?studyGroupId={groupId}
 ```
 
 - 인증 필요 (반 참여자·네비게이터·캡틴)
-- `studyGroupId` 생략 시 내 반 자동 감지 — 캡틴처럼 반 명부가 없는 경우 필수
+- `studyGroupId` 생략 시 내 반 자동 감지 — 명부에 없는 캡틴처럼 반 명부가 없는 경우 필수
 - `meetings` 순서: `scheduledAt` 오름차순
 - 킥오프 회차: `meetingEndAt` · `retroDeadline` · `retroOpen` · `retroMine` 모두 `null`
 - `meetingEndAt`: 미팅 종료 — 「판정」의 미팅 종료와 같은 값(실제 종료 시각, 없으면 회차 시작 + 진행 시간 120분). 작성 페이지의 「미팅 종료」 표시에 쓴다
