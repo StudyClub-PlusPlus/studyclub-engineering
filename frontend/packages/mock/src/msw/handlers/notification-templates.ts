@@ -12,6 +12,15 @@ export type ApiNotificationTemplate = {
 
 export const mockNotificationTemplates: ApiNotificationTemplate[] = [
   {
+    id: 4,
+    eventType: 'STUDY_APPLICATION_RECEIVED',
+    channel: 'EMAIL',
+    subject: '[StudyClub] {{studyTitle}}에 새 신청이 도착했어요',
+    body: '<p>{{studyTitle}}에 새로운 신청이 접수되었습니다.</p><a href="{{applicationsUrl}}">신청자 확인하기</a>',
+    updatedAt: '2026-11-26T00:00:00Z',
+    updatedByAdminId: 1,
+  },
+  {
     id: 1,
     eventType: 'USER_REGISTERED',
     channel: 'EMAIL',

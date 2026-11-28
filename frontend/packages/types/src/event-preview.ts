@@ -79,6 +79,7 @@ export type PreviewNotificationTemplate = Omit<EventNoticeTemplate, "trigger"> &
     | "USER_REGISTERED"
     | "USER_WITHDRAWN"
     | "FEEDBACK_REPLIED"
+    | "STUDY_APPLICATION_RECEIVED"
     | "EVENT_ANNOUNCEMENT"
     | "EVENT_CANCELLATION"
     | "EVENT_REGISTRATION_PENDING"

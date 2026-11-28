@@ -10,6 +10,16 @@ import org.springframework.data.repository.query.Param;
 public interface StudyApplicationRepository extends JpaRepository<StudyApplication, Long> {
 
     @Query(
+            "SELECT new com.studyclub.domain.application.StudyApplicationCaptain(a.id, s.id, captain.id) "
+                    + "FROM StudyApplication a "
+                    + "JOIN StudyRecruitment r ON r.id = a.recruitmentId "
+                    + "JOIN Study s ON s.id = r.studyId "
+                    + "LEFT JOIN Account captain ON captain.id = s.ownerCaptainId "
+                    + "AND captain.systemRole = com.studyclub.domain.account.SystemRole.ADMIN "
+                    + "WHERE a.id IN :ids")
+    List<StudyApplicationCaptain> findCaptainsByIdIn(@Param("ids") Collection<Long> ids);
+
+    @Query(
             "SELECT COUNT(application) > 0 FROM StudyApplication application "
                     + "JOIN StudyRecruitment recruitment ON recruitment.id = application.recruitmentId "
                     + "WHERE recruitment.studyId = :studyId AND application.accountId = :accountId")

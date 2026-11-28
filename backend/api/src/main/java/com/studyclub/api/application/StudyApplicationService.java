@@ -88,7 +88,7 @@ public class StudyApplicationService {
 
         Study study =
                 studyRepository
-                        .findById(studyId)
+                        .findByIdForUpdate(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (isWithdrawn(accountId, studyId)) {
             throw new BusinessException(ErrorCode.STUDY_WITHDRAWN);
@@ -190,7 +190,7 @@ public class StudyApplicationService {
     }
 
     // 신청이 명부를 늘리므로 회차 행을 잠근 뒤 정원을 센다 — 마지막 한 자리에 두 명이 동시에 들어오지 않게.
-    // 잠금 순서는 계정 → 모집 회차. 다른 경로도 이 순서를 따라야 교착하지 않는다
+    // 잠금 순서는 신청 계정 → 스터디 → 모집 회차. 스터디 잠금은 담당자 변경·탈퇴와 메일 예약도 직렬화한다.
     private StudyRecruitment openRecruitment(Long studyId) {
         Long recruitmentId =
                 studyRecruitmentRepository.findOpenByStudyIdOrderByStartAtDesc(studyId).stream()

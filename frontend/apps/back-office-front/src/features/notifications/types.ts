@@ -31,7 +31,7 @@ export type ApiNotificationPage = {
 };
 
 /** 재발송을 접수하지 못한 이유. 오류가 아니라 응답의 `skipped[].reason` 으로 온다. */
-export type ResendSkipReason = 'NOT_FAILED' | 'RECIPIENT_GONE';
+export type ResendSkipReason = 'NOT_FAILED' | 'RECIPIENT_GONE' | 'STATE_CHANGED';
 
 export type ApiNotificationResend = {
   /** 다시 `PENDING` 으로 되돌려 접수한 줄 — 끝을 쫓을 때 `?ids=` 에 그대로 넘긴다. */
