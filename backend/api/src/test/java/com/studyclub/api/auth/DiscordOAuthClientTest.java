@@ -2,7 +2,10 @@ package com.studyclub.api.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.studyclub.api.discord.DiscordBotClient;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.sun.net.httpserver.HttpExchange;
@@ -69,9 +72,11 @@ class DiscordOAuthClientTest {
         exchange.close();
     }
 
-    private static DiscordOAuthClient configured(String apiUrl) {
+    private final DiscordBotClient bot = mock(DiscordBotClient.class);
+
+    private DiscordOAuthClient configured(String apiUrl) {
         return new DiscordOAuthClient(
-                apiUrl, "client-id", "client-secret", "http://localhost:4700/discord", GUILD);
+                apiUrl, "client-id", "client-secret", "http://localhost:4700/discord", GUILD, bot);
     }
 
     private void respond(String path, int status, String body) {
@@ -85,7 +90,8 @@ class DiscordOAuthClientTest {
         DiscordOAuthClient.DiscordUser user = client.exchange("auth-code");
 
         assertThat(user)
-                .isEqualTo(new DiscordOAuthClient.DiscordUser(USER, "jiwon_dev", "jiwon_dev"));
+                .isEqualTo(
+                        new DiscordOAuthClient.DiscordUser(USER, "jiwon_dev", "jiwon_dev", false));
         assertThat(receivedPaths)
                 .containsExactly(
                         "/oauth2/token", "/users/@me", "/users/@me/guilds/" + GUILD + "/member");
@@ -119,8 +125,35 @@ class DiscordOAuthClientTest {
     }
 
     @Test
-    @DisplayName("길드_멤버가_아니면_DISCORD_NOT_IN_GUILD")
-    void 길드_멤버가_아니면_DISCORD_NOT_IN_GUILD() {
+    @DisplayName("길드_멤버가_아니면_봇이_서버에_넣고_joinedGuild_를_준다")
+    void 길드_멤버가_아니면_봇이_서버에_넣고_joinedGuild_를_준다() {
+        respond("/users/@me/guilds/" + GUILD + "/member", 404, "{\"code\":10004}");
+        when(bot.isConfigured()).thenReturn(true);
+        when(bot.addGuildMember(USER, "tok-123")).thenReturn(true);
+
+        DiscordOAuthClient.DiscordUser user = client.exchange("auth-code");
+
+        assertThat(user.joinedGuild()).isTrue();
+        assertThat(user.nickname()).isEqualTo("jiwon_dev");
+    }
+
+    @Test
+    @DisplayName("봇이_넣지_못하면_DISCORD_NOT_IN_GUILD")
+    void 봇이_넣지_못하면_DISCORD_NOT_IN_GUILD() {
+        respond("/users/@me/guilds/" + GUILD + "/member", 404, "{\"code\":10004}");
+        when(bot.isConfigured()).thenReturn(true);
+        when(bot.addGuildMember(USER, "tok-123"))
+                .thenThrow(new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR));
+
+        assertThatThrownBy(() -> client.exchange("auth-code"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.DISCORD_NOT_IN_GUILD);
+    }
+
+    @Test
+    @DisplayName("봇이_없는_환경에서_길드_멤버가_아니면_DISCORD_NOT_IN_GUILD")
+    void 봇이_없는_환경에서_길드_멤버가_아니면_DISCORD_NOT_IN_GUILD() {
         respond("/users/@me/guilds/" + GUILD + "/member", 404, "{\"code\":10004}");
 
         assertThatThrownBy(() -> client.exchange("auth-code"))
@@ -167,7 +200,7 @@ class DiscordOAuthClientTest {
     void 설정이_비어_있으면_호출하지_않고_실패한다() {
         DiscordOAuthClient unconfigured =
                 new DiscordOAuthClient(
-                        "http://127.0.0.1:" + server.getAddress().getPort(), "", "", "", "");
+                        "http://127.0.0.1:" + server.getAddress().getPort(), "", "", "", "", bot);
 
         assertThatThrownBy(() -> unconfigured.exchange("auth-code"))
                 .isInstanceOf(BusinessException.class)

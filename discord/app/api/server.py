@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app import __version__
-from app.api.routes import channels, health, roles, studies
+from app.api.routes import channels, health, members, roles, studies
 from app.config import Settings
 from app.study_reservations import StudyReservations
 
@@ -74,4 +74,5 @@ def create_app(settings: Settings, bot: commands.Bot | None = None) -> FastAPI:
     # so "alert" and "announcement" are never matched as channel IDs.
     app.include_router(channels.router, prefix=API_PREFIX)
     app.include_router(roles.router, prefix=API_PREFIX)
+    app.include_router(members.router, prefix=API_PREFIX)
     return app
