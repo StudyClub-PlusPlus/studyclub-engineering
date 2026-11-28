@@ -211,7 +211,7 @@ export function setDiscordNickname(nickname: string) {
  */
 const SEED_KEY = 'sc_demo_seed';
 /** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
-const SEED_VERSION = 12;
+const SEED_VERSION = 13;
 
 /** A newly registered preview member must not inherit the demo member's studies or Discord. */
 export function resetMemberData() {
@@ -239,6 +239,8 @@ export function seedDemoData() {
       accepted('ai-paper-study', '2026-08-11'),
       accepted('claude-code-source-study', '2026-07-20'),
       accepted('python-pandas-ml-coding', '2026-08-20'),
+      // 클럽 — 진행 중인 얼리버드 기수. 끝까지 남으면 다음 기수로 이어진다 (POL-0012)
+      accepted('early-bird-g3', '2026-08-25'),
       // 참여 종료 — 완주 / 참여 중단(배지는 "참여 종료")
       accepted('leetcode150-2026', '2026-02-03'),
       accepted('sql-for-data-analysis', '2025-11-12'),

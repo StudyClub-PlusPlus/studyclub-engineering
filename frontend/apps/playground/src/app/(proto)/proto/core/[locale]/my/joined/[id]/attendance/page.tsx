@@ -14,7 +14,9 @@ export default function AttendanceRedirectPage() {
   const id = typeof params?.id === 'string' ? params.id : '';
 
   useEffect(() => {
-    router.replace(id ? `/proto/core/${locale}/my/joined/${id}/schedule/attendance` : `/proto/core/${locale}/my/joined`);
+    router.replace(
+      id ? `/proto/core/${locale}/my/joined/${id}/schedule/attendance` : `/proto/core/${locale}/my/joined`,
+    );
   }, [id, locale, router]);
 
   return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;

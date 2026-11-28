@@ -42,7 +42,7 @@ export const APPLY_SPEC: ScreenSpec = {
         'study.applicationFormTitle ?? study.title · applicationFormDescription ?? study.summary',
         'study.description / schedule / recruitment.deadline / categoriesOf(study)',
       ],
-      when: '신청 폼 다이얼로그가 열려 있을 때',
+      when: '스터디 신청 폼일 때 — 클럽 기수에는 없다',
     },
     {
       n: '2',
@@ -66,7 +66,7 @@ export const APPLY_SPEC: ScreenSpec = {
         'Empty 불가(일정 있을 때) · ENUM true · 기본값 false',
         '체크하지 않고 제출하면 오류(7) "일정 참여 가능 여부를 확인해 주세요."로 막고 이 카드로 화면을 옮긴다',
       ],
-      when: '스터디에 확정된 일정이 있을 때',
+      when: '스터디에 확정된 일정이 있을 때 — 클럽 기수에는 없다 (진행 방식 글은 모임 시각이 아니다)',
     },
     {
       n: '4',
@@ -74,7 +74,7 @@ export const APPLY_SPEC: ScreenSpec = {
       display: ['월요일부터 일요일까지 체크박스. 여러 요일을 고를 수 있다'],
       behavior: ['누르면 그 요일이 토글된다'],
       policy: [
-        '모든 신청 폼에 보인다 — 진행 일정 유무와 관계없다',
+        '스터디 신청 폼에 보인다 — 진행 일정 유무와 관계없다. **클럽 기수는 묻지 않는다** (모임 시각이 없다 · POL-0012)',
         'Empty 불가 · MIN 1개 · MAX 7개 · ENUM mon|tue|wed|thu|fri|sat|sun · 기본값 없음',
         '미선택 시 "참여 가능한 요일을 하나 이상 선택해 주세요." · ENUM 밖 "참여 가능한 요일을 다시 선택해 주세요."',
       ],

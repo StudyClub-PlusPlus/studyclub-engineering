@@ -8,7 +8,8 @@ import { getUser } from '@core/lib/auth';
 import type { Locale, Study } from '@core/lib/content';
 import { withoutApplyIntent } from '@core/lib/discord-preview';
 import { t } from '@core/lib/i18n';
-import { getApplication, getDiscord } from '@core/lib/me';
+import { carriedFrom } from '@core/lib/joined';
+import { getApplication, getApplications, getDiscord } from '@core/lib/me';
 import { recruitLabel, recruitState } from '@core/lib/recruit';
 import { Button } from '@studyclub/ui';
 import { createPortal } from 'react-dom';
@@ -40,9 +41,11 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   const doneLabel = t({ ko: '신청 완료', en: 'Applied' }, locale);
 
   useEffect(() => {
-    setAlreadyApplied(Boolean(getApplication(study.id)));
+    // 클럽 — 진행 중인 기수에서 이어서 참여하는 사람도 신청 완료로 막는다 (POL-0012 이어서 참여)
+    const applied = getApplications().map((a) => a.studyId);
+    setAlreadyApplied(Boolean(getApplication(study.id)) || Boolean(carriedFrom(study, applied)));
     setReady(true);
-  }, [study.id, completeOpen]);
+  }, [study, completeOpen]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -51,9 +54,10 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     if (!user || user.onboardingCompletedAt === null) return;
     router.replace(withoutApplyIntent(`${url.pathname}${url.search}${url.hash}`), { scroll: false });
     if (state === 'closed' || getApplication(study.id)) return;
+    if (carriedFrom(study, getApplications().map((a) => a.studyId))) return;
     if (getDiscord()) setFormOpen(true);
     else setDiscordOpen(true);
-  }, [pathname, router, state, study.id]);
+  }, [pathname, router, state, study]);
 
 
   function requestApply(ev: MouseEvent<HTMLButtonElement>) {
