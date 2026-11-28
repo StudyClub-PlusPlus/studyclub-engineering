@@ -10,9 +10,7 @@ import static org.mockito.Mockito.when;
 import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
-import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
-import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
@@ -67,10 +65,6 @@ class MeetingRetroServiceTest {
                 mockMeeting(meetingStart, false, meetingStart.plus(2, ChronoUnit.HOURS));
         givenMeetingInGroup(ended);
 
-        Account account = mock(Account.class);
-        when(account.getSystemRole()).thenReturn(SystemRole.MEMBER);
-        when(accountRepository.findById(ACCOUNT_ID)).thenReturn(Optional.of(account));
-
         // 다음 회차(기한) — isKickoff, scheduledAt 만 필요
         StudyMeeting next = mock(StudyMeeting.class);
         when(next.isKickoff()).thenReturn(false);
@@ -114,10 +108,6 @@ class MeetingRetroServiceTest {
         StudyMeeting ended =
                 mockMeeting(meetingStart, false, meetingStart.plus(2, ChronoUnit.HOURS));
         givenMeetingInGroup(ended);
-
-        Account account = mock(Account.class);
-        when(account.getSystemRole()).thenReturn(SystemRole.MEMBER);
-        when(accountRepository.findById(ACCOUNT_ID)).thenReturn(Optional.of(account));
 
         StudyMeeting next = mock(StudyMeeting.class);
         when(next.isKickoff()).thenReturn(false);

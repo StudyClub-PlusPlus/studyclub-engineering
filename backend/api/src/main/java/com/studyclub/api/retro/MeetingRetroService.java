@@ -36,7 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 미팅 회고 조회·작성·공감 (specs/meeting-retro/spec.md).
  *
  * <p>권한 판정: 반 참여자·네비게이터·캡틴 → {@link StudyCaptainGuard#assertCaptainNavigatorOrMemberOfGroup}. 쓰기는
- * 거기서 한 단계 더 좁혀 「쓸 사람」(회차 시작 때 반에 있던 비캡틴 참여자)만 허용한다.
+ * 거기서 한 단계 더 좁혀 「쓸 사람」(회차 시작 때 반 명부에 있던 참여자 — 캡틴 포함)만 허용한다.
  */
 @Service
 public class MeetingRetroService {
@@ -267,15 +267,6 @@ public class MeetingRetroService {
         StudyMeeting meeting = meeting(meetingId, studyId);
         Long groupId = meeting.getStudyGroupId();
 
-        // 캡틴 제외
-        Account account =
-                accountRepository
-                        .findById(accountId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
-        if (account.getSystemRole() == SystemRole.ADMIN) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "캡틴은 회고를 작성할 수 없습니다.");
-        }
-
         // 시간 조건 — 참여자 여부보다 우선 (킥오프·미종료는 RETRO_NOT_OPEN, 기한 초과는 RETRO_CLOSED)
         assertMeetingEnded(meeting);
         List<StudyMeeting> allMeetings =
@@ -284,7 +275,7 @@ public class MeetingRetroService {
             throw new BusinessException(ErrorCode.RETRO_CLOSED, "작성 기한이 지나 저장하지 못했어요.");
         }
 
-        // 쓸 사람 확인 — 그 회차 시작 때 반에 있던 참여자
+        // 쓸 사람 확인 — 그 회차 시작 때 반에 있던 참여자. 캡틴도 명부에 있으면 쓸 수 있다
         StudyParticipant participant =
                 participantRepository
                         .findByStudyGroupIdAndAccountId(groupId, accountId)
