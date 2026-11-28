@@ -11,6 +11,7 @@ import com.studyclub.domain.bookmark.StudyBookmarkRepository;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.notice.StudyNoticeRepository;
 import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.StudyParticipantGroupMoveRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.storage.StoragePurpose;
 import com.studyclub.domain.study.Study;
@@ -52,6 +53,7 @@ public class StudyService {
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
     private final StudyParticipantRepository studyParticipantRepository;
+    private final StudyParticipantGroupMoveRepository studyParticipantGroupMoveRepository;
     private final StudyBookmarkRepository studyBookmarkRepository;
     private final StudyCaptainGuard studyCaptainGuard;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
@@ -69,6 +71,7 @@ public class StudyService {
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository,
             StudyParticipantRepository studyParticipantRepository,
+            StudyParticipantGroupMoveRepository studyParticipantGroupMoveRepository,
             StudyBookmarkRepository studyBookmarkRepository,
             StudyCaptainGuard studyCaptainGuard,
             StudyDiscordLinkRepository studyDiscordLinkRepository,
@@ -84,6 +87,7 @@ public class StudyService {
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
         this.studyParticipantRepository = studyParticipantRepository;
+        this.studyParticipantGroupMoveRepository = studyParticipantGroupMoveRepository;
         this.studyBookmarkRepository = studyBookmarkRepository;
         this.studyCaptainGuard = studyCaptainGuard;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
@@ -323,6 +327,7 @@ public class StudyService {
         studyNoticeRepository.deleteByStudyId(studyId);
         studyGroupRepository.deleteByStudyId(studyId);
         studyParticipantRepository.deleteByStudyId(studyId);
+        studyParticipantGroupMoveRepository.deleteByStudyId(studyId);
         if (!recruitmentIds.isEmpty()) {
             studyApplicationRepository.deleteByRecruitmentIdIn(recruitmentIds);
         }

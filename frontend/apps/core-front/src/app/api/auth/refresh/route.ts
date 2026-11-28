@@ -1,18 +1,17 @@
-// httpOnly refresh 쿠키로 액세스 토큰을 갱신한다.
-// fetch wrapper 에서 401 수신 시 이 라우트를 호출하고 원래 요청을 재시도한다.
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/features/auth/auth';
 import { tokenResponseSchema } from '@/features/auth/response-schema';
+import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/cookie-names';
 import { accessCookie, clearAccess, clearRefresh } from '@/lib/cookies';
+import { DEFAULT_LOCALE, isLocale } from '@/lib/i18n';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
-export async function POST(req: NextRequest) {
+type Refreshed = { accessToken: string; maxAge: number } | { status: number; message: string; expired?: true };
+
+async function refreshAccess(req: NextRequest): Promise<Refreshed> {
   const refreshToken = req.cookies.get(REFRESH_COOKIE)?.value;
-  if (!refreshToken) {
-    return NextResponse.json({ message: 'refresh token 없음' }, { status: 401 });
-  }
+  if (!refreshToken) return { status: 401, message: 'refresh token 없음' };
 
   let upstream: Response;
   try {
@@ -20,25 +19,89 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
     });
   } catch {
-    return NextResponse.json({ message: '백엔드에 연결할 수 없습니다.' }, { status: 502 });
+    return { status: 502, message: '백엔드에 연결할 수 없습니다.' };
   }
 
+  if (upstream.status === 401) {
+    return { status: 401, message: '세션이 만료됐습니다. 다시 로그인해 주세요.', expired: true };
+  }
   if (!upstream.ok) {
-    // refresh 실패 = 세션 만료. 쿠키 둘 다 제거해 미들웨어가 로그인으로 보내도록 한다.
-    const res = NextResponse.json({ message: '세션이 만료됐습니다. 다시 로그인해 주세요.' }, { status: 401 });
+    return { status: upstream.status, message: '로그인을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.' };
+  }
+
+  const parsed = tokenResponseSchema.safeParse(await upstream.json().catch(() => null));
+  if (!parsed.success) return { status: 502, message: '백엔드 응답 형식이 올바르지 않습니다.' };
+  return { accessToken: parsed.data.accessToken, maxAge: parsed.data.accessTokenExpiresIn ?? 60 * 15 };
+}
+
+function withResult(res: NextResponse, result: Refreshed): NextResponse {
+  res.headers.set('Cache-Control', 'no-store');
+  if ('accessToken' in result) {
+    res.cookies.set(ACCESS_COOKIE, result.accessToken, accessCookie(result.maxAge));
+  } else if (result.expired) {
     res.cookies.set(ACCESS_COOKIE, '', clearAccess);
     res.cookies.set(REFRESH_COOKIE, '', clearRefresh);
-    return res;
   }
-
-  const raw = await upstream.json().catch(() => null);
-  const parsed = tokenResponseSchema.safeParse(raw);
-  if (!parsed.success) return NextResponse.json({ message: '백엔드 응답 형식이 올바르지 않습니다.' }, { status: 502 });
-  const data = parsed.data;
-
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set(ACCESS_COOKIE, data.accessToken, accessCookie(data.accessTokenExpiresIn ?? 60 * 15));
   return res;
+}
+
+export async function POST(req: NextRequest) {
+  const result = await refreshAccess(req);
+  const res =
+    'accessToken' in result
+      ? NextResponse.json({ ok: true })
+      : NextResponse.json({ message: result.message }, { status: result.status });
+  return withResult(res, result);
+}
+
+// 배포된 Next 는 프록시 뒤에서 req.nextUrl 의 호스트를 자기 주소(localhost:3000)로 본다. 미들웨어 리다이렉트는 Next 가
+// 상대 경로로 바꿔 주지만 라우트 핸들러 응답은 그대로 나가므로 Location 을 상대 경로로 쓴다(NextResponse.redirect 는 절대 주소만 받는다).
+function redirectInSite(path: string): NextResponse {
+  const { pathname, search } = new URL(path, 'http://site.invalid');
+  // 정규화 뒤 `//` 로 시작하면(`/x/..//evil`) 브라우저가 다른 호스트로 읽는다
+  const location = (pathname.startsWith('//') ? '/' : pathname) + search;
+  return new NextResponse(null, { status: 307, headers: { Location: location } });
+}
+
+export async function GET(req: NextRequest) {
+  const next = safeNext(req.nextUrl.searchParams.get('next'));
+  const locale = next.split('/')[1] === 'en' ? 'en' : 'ko';
+  const result = await refreshAccess(req);
+  if (!('accessToken' in result) && result.status !== 401) {
+    return unavailable(next, result.status, locale);
+  }
+  const target = 'accessToken' in result ? next : `/${locale}/login?next=${encodeURIComponent(next)}`;
+  return withResult(redirectInSite(target), result);
+}
+
+function unavailable(next: string, status: number, locale: string): NextResponse {
+  const title = locale === 'en' ? 'Unable to verify your sign-in' : '로그인을 확인하지 못했습니다';
+  const message = locale === 'en' ? 'Please try again shortly.' : '잠시 후 다시 시도해 주세요.';
+  const retry = locale === 'en' ? 'Try again' : '다시 시도';
+  // 보호 화면을 렌더링할 수 없는 상태라 인증에 의존하지 않는 문서에서 재시도한다.
+  return new NextResponse(
+    `<!doctype html><html lang="${locale}"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title><body><main><h1>${title}</h1><p>${message}</p><a href="/api/auth/refresh?next=${encodeURIComponent(next)}">${retry}</a></main></body></html>`,
+    {
+      status,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+        'Referrer-Policy': 'no-referrer',
+      },
+    },
+  );
+}
+
+// 로그인 후 복귀와 달리 온보딩 자체로도 돌아갈 수 있어야 한다.
+function safeNext(next: string | null): string {
+  const fallback = `/${DEFAULT_LOCALE}/my`;
+  if (!next?.startsWith('/') || next.startsWith('//') || next.includes('\\')) return fallback;
+  const url = new URL(next, 'http://site.invalid');
+  if (url.origin !== 'http://site.invalid' || !isLocale(url.pathname.split('/')[1] ?? '')) return fallback;
+  return url.pathname + url.search;
 }

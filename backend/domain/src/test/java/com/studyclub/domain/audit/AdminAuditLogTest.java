@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.event.EventStatus;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.retention.RetentionPolicy;
@@ -70,6 +71,33 @@ class AdminAuditLogTest {
         assertThat(entry.getRetentionPolicy()).isEqualTo(RetentionPolicy.AUDIT_ACCESS_TWO_YEARS_V1);
         assertThat(entry.isRetentionExpired(Instant.parse("2026-10-31T12:00:00Z"))).isFalse();
         assertThat(entry.isRetentionExpired(Instant.parse("2027-10-31T12:00:00Z"))).isTrue();
+    }
+
+    @Test
+    @DisplayName("행사 취소는 대상 회원 없이 행사 ID · 직전 상태 · 함께 취소된 신청 수를 남긴다")
+    void eventCancelSnapshot() {
+        AdminAuditLog entry = AdminAuditLog.eventCancel(1L, 7L, EventStatus.CLOSED, 0);
+
+        assertThat(entry.getAction()).isEqualTo(AdminAuditAction.EVENT_CANCEL);
+        assertThat(entry.getActorAccountId()).isEqualTo(1L);
+        assertThat(entry.getTargetAccountId()).isNull();
+        assertThat(entry.getClubEventId()).isEqualTo(7L);
+        assertThat(entry.getBeforeValue()).isEqualTo("CLOSED");
+        assertThat(entry.getAfterValue()).isEqualTo("0");
+    }
+
+    @Test
+    @DisplayName("행사 취소는 접속 기록 2년 설정이어도 AUDIT_EVENT_CANCEL_V1 로 발생일 + 3년에 만료된다")
+    void eventCancelRetention() throws Exception {
+        AdminAuditLog entry = AdminAuditLog.eventCancel(1L, 7L, EventStatus.PUBLISHED, 84);
+        entry.selectRetentionPolicy(2);
+        created(entry, "2026-11-26T12:00:00Z");
+
+        assertThat(entry.getRetentionPolicy()).isEqualTo(RetentionPolicy.AUDIT_EVENT_CANCEL_V1);
+        Instant expiry = Instant.parse("2029-11-26T12:00:00Z");
+        assertThat(entry.getExpiresAt()).isEqualTo(expiry);
+        assertThat(entry.isRetentionExpired(expiry.minusNanos(1))).isFalse();
+        assertThat(entry.isRetentionExpired(expiry)).isTrue();
     }
 
     private void created(AdminAuditLog entry, String instant) throws Exception {

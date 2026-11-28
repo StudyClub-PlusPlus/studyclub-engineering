@@ -1,0 +1,8 @@
+{
+  "shots": [
+    { "story": "captain-club-monthly-attendance", "name": "club-book-earlybird", "title": "월간 출석부 — 얼리버드 (지각 포함)", "path": "/proto/console/clubs", "click": ["출석부"] },
+    { "story": "captain-club-monthly-attendance", "name": "club-book-leetcode", "title": "월간 출석부 — Daily LeetCode", "path": "/proto/console/clubs", "click": ["Daily LeetCode", "출석부"] },
+    { "story": "captain-club-monthly-attendance", "name": "club-book-paste", "title": "시트에서 붙여넣기", "path": "/proto/console/clubs", "click": ["출석부", "시트에서 붙여넣기"] },
+    { "story": "captain-club-monthly-attendance", "name": "club-book-mobile", "title": "월간 출석부 — 휴대폰", "path": "/proto/console/clubs", "click": ["출석부"], "viewport": "mobile" }
+  ]
+}

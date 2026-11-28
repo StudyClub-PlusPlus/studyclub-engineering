@@ -26,6 +26,7 @@
 | IA-009 | 내 스터디 | `/my/joined` | IA-007 | ST-009 | 주간 일정 · 정렬 · 역할 필터 |
 | IA-010 | 스터디 일정 — 일정 탭 | `/my/joined/{id}/schedule` | IA-009 | ST-015 · ST-011 | 정보 카드 · 규칙 · 회차 표(선택 · 일괄 삭제) · 발표 신청 |
 | IA-011 | 스터디 일정 — 출석 탭 | `/my/joined/{id}/schedule/attendance` | IA-010 | ST-017 · ST-010 · ST-018 | 고치기 · 참여 중단(캡틴·네비게이터) · 보기(크루). 옛 `/my/joined/{id}/attendance` 는 여기로 보낸다 |
+| IA-044 | 스터디 일정(클럽) — 오늘 · 출석 탭 | `/my/joined/{id}/schedule` · `…/schedule/attendance` | IA-009 | ST-044 | 스터디 일정과 같은 껍데기, 클럽 기수일 때 탭이 「오늘 · 출석 · 공지」. 오늘: 내 기록 / 출석: 멤버 전원의 판(크루 보기 · 캡틴 고치기) |
 | IA-038 | 스터디 일정 — 공지 탭 | `/my/joined/{id}/schedule/notice` | IA-010 | ST-016 | 받는 사람 고르기 · 메일·디스코드 보내기 · 보낸 공지 기록(캡틴·네비게이터만 보인다) |
 | IA-012 | 찜한 스터디 | `/my/saved` | IA-007 | — | **고아** — 찜 Story 가 없다 (스펙: `specs/study-bookmark`). 내 스터디에서 버튼은 뺐다 |
 | IA-036 | 내 문의 | `/my/feedbacks` · `/my/feedbacks/{id}` | IA-007 | ST-035 | 목록 · 문의하기 팝업 · 상세(답변). 프로필 드롭다운에서 들어온다 |
@@ -45,7 +46,7 @@
 | IA-022 | 스터디 관리 | `/studies` | IA-021 | ST-022 · ST-020 | 목록 · 공개 설정 |
 | IA-023 | 스터디 등록 (모달) | `/studies` › 스터디 등록 | IA-022 | ST-001 | 섹션 노드 |
 | IA-024 | 스터디 상세 | `/studies/{id}` | IA-022 | ST-003 | 머리 · 탭 |
-| IA-025 | 정보 탭 | `/studies/{id}` › 정보 | IA-024 | ST-004 · ST-021 | 수정 · 삭제 · 다음 기수 만들기 |
+| IA-025 | 정보 탭 | `/studies/{id}` › 정보 | IA-024 | ST-004 · ST-021 · ST-042 | 수정 · 삭제 · 다음 기수(클럽 운영으로 이동) · 스터디 복제 |
 | IA-026 | 신청 폼 탭 | `/studies/{id}` › 신청 폼 | IA-024 | ST-023 | |
 | IA-027 | 신청 결과 탭 | `/studies/{id}` › 신청 결과 | IA-024 | ST-024 | |
 | IA-028 | 신청자 탭 | `/studies/{id}` › 신청자 | IA-024 | ST-026 · ST-025 | 반 목록(제목) · 참여 크루 명단 · 반 · 역할 · 일괄 변경 |
@@ -84,6 +85,7 @@
 | IA-036 | 내 문의 | ST-035 크루는 캡틴에게 문의/오류신고를 제출할 수 있다. | [crew-submit-feedback](../stories/crew-submit-feedback/PRD.md) |
 | IA-008 | 회원 탈퇴 | ST-013 크루는 회원에서 탈퇴할 수 있다. | [crew-leave](../stories/crew-leave/PRD.md) |
 | IA-009 | 내 스터디 | ST-009 크루는 참여 중인 스터디를 모아 볼 수 있다. | [crew-joined-studies](../stories/crew-joined-studies/PRD.md) |
+| IA-044 | 스터디 일정(클럽) | ST-044 크루는 「내 클럽」에서 매일 인증하고 이번 달 기록을 볼 수 있다. | [crew-my-club](../stories/crew-my-club/PRD.md) |
 | IA-010 | 스터디 일정 — 일정 탭 | ST-015 네비게이터는 스터디 회차를 등록할 수 있다. | [navigator-register-sessions](../stories/navigator-register-sessions/PRD.md) |
 | | | ST-011 크루는 발표자를 신청할 수 있다. | [crew-apply-presenter](../stories/crew-apply-presenter/PRD.md) |
 | IA-011 | 스터디 일정 — 출석 탭 | ST-017 네비게이터는 스터디별 출석 상태를 수정할 수 있다. | [navigator-edit-attendance](../stories/navigator-edit-attendance/PRD.md) |
@@ -122,6 +124,9 @@
 | IA-035 | 공지 관리 | ST-033 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | [captain-post-notice](../stories/captain-post-notice/PRD.md) |
 | IA-037 | 문의·오류 신고 | ST-036 캡틴은 유저가 제출한 문의/오류신고를 조회할 수 있다. | [captain-view-feedbacks](../stories/captain-view-feedbacks/PRD.md) |
 | IA-042 | 회고 모아보기 | ST-041 캡틴은 백오피스에서 스터디 미팅 회고를 모아 볼 수 있다. | [captain-collect-meeting-retros](../stories/captain-collect-meeting-retros/PRD.md) |
+| IA-043 | 클럽 운영 | ST-021 캡틴은 기존 스터디를 재등록할 수 있다(기수제). — 다음 기수 | [captain-reregister-cohort](../stories/captain-reregister-cohort/PRD.md) |
+| | | ST-045 캡틴은 지난 기수를 끝까지 마친 참여자를 다음 기수로 이어 받을 수 있다. | [captain-carry-over-club-members](../stories/captain-carry-over-club-members/PRD.md) |
+| | | ST-043 캡틴은 클럽 기수의 월간 출석부를 입력할 수 있다. | [captain-club-monthly-attendance](../stories/captain-club-monthly-attendance/PRD.md) |
 | IA-033 | 알림 발송 이력 | ST-032 캡틴은 알림 발송 이력을 조회할 수 있다. | [notification-history](../stories/notification-history/PRD.md) |
 | IA-034 | 알림 템플릿 | ST-030 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다. | [notification-template](../stories/notification-template/PRD.md) |
 
@@ -142,6 +147,7 @@ IA-001 홈 /
 │  │     └─ IA-011 스터디 일정 — 출석 …/schedule/attendance
 │  │     └─ IA-038 스터디 일정 — 공지 …/schedule/notice
 │  │     └─ IA-040 스터디 일정 — 회고 …/schedule/retro       (ST-039 · ST-040)
+│  │     └─ IA-044 스터디 일정(클럽) — 오늘 · 출석 탭          (ST-044)
 │  │        └─ IA-041 회고 작성 …/schedule/retro/write     (ST-039)
 │  ├─ IA-012 찜한 스터디 /my/saved            (고아)
 │  └─ IA-036 내 문의 /my/feedbacks
@@ -164,6 +170,7 @@ IA-021 대시보드 /
 │     ├─ IA-028 신청자
 │     ├─ IA-032 일정
 │     └─ IA-029 출석
+├─ IA-043 클럽 운영 /clubs                    (ST-021 · ST-045 · ST-043)
 ├─ IA-030 유저 /users
 ├─ IA-042 회고 모아보기 /retros               (ST-041)
 ├─ IA-035 공지 관리 /notices

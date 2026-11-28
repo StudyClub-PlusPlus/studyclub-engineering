@@ -7,7 +7,7 @@ import { STUDIES_CLOSED_2026 } from './closed-2026';
 import type { StudyDraft } from './helpers';
 import { STUDIES_ONGOING } from './ongoing';
 import { STUDIES_RECRUITING } from './recruiting';
-import { DEMO_APPLICATION_FORM } from '../../constants';
+import { CLUB_APPLICATION_FORMS, DEMO_APPLICATION_FORM } from '../../constants';
 
 export type { StudyProgram };
 
@@ -103,7 +103,8 @@ export const studies: Study[] = STUDIES_SEED.map(
       (s.status === "closed" && Boolean(s.year) && Number(s.year) < 2026
         ? true
         : undefined),
-    applicationForm: DEMO_APPLICATION_FORM,
+    // 클럽은 그 클럽의 신청 폼 — 기수(id 끝의 -gN)가 달라도 같은 폼을 복사해 쓴다
+    applicationForm: CLUB_APPLICATION_FORMS[s.id.replace(/-g\d+$/, "")] ?? DEMO_APPLICATION_FORM,
   }),
 );
 

@@ -11,6 +11,8 @@ import type { ApplicationQuestion, Crew, Study } from '@studyclub/types';
 import { Button, Segmented } from '@studyclub/ui';
 import { ArrowRight } from 'lucide-react';
 
+import { kindRules } from '@/proto/lib/study-kind';
+
 /**
  * 신청 결과 탭 — 캡틴이 설계한 신청 폼 추가 질문에 지원자들이 남긴 답을 모아본다.
  *
@@ -117,13 +119,15 @@ function AvailableDaysSummary({ crew, onGoCrew }: { crew: Crew[]; onGoCrew: () =
 
 export function ResultsTab({ study, crew, onGoCrew }: { study: Study; crew: Crew[]; onGoCrew: () => void }) {
   const [view, setView] = useState<ViewMode>('summary');
+  // 클럽은 신청 때 요일을 묻지 않는다 — 요일 요약 · 칸을 그리지 않는다
+  const { asksDays } = kindRules(study);
   const questions = study.applicationForm ?? [];
   const respondents = crew.filter((c) => c.answers);
 
   if (questions.length === 0) {
     return (
       <div className='flex flex-col gap-4'>
-        {crew.length > 0 && <AvailableDaysSummary crew={crew} onGoCrew={onGoCrew} />}
+        {asksDays && crew.length > 0 && <AvailableDaysSummary crew={crew} onGoCrew={onGoCrew} />}
         <p
           data-anno='results:2'
           className='rounded-card border border-dashed border-border px-4 py-6 text-center type-body-sm text-fg-muted'
@@ -151,7 +155,7 @@ export function ResultsTab({ study, crew, onGoCrew }: { study: Study; crew: Crew
         </p>
       ) : view === 'summary' ? (
         <div data-anno='results:3' className='flex flex-col gap-4'>
-          <AvailableDaysSummary crew={respondents} onGoCrew={onGoCrew} />
+          {asksDays && <AvailableDaysSummary crew={respondents} onGoCrew={onGoCrew} />}
           {questions.map((q, qi) => (
             <QuestionSummary key={q.id} q={q} index={qi} respondents={respondents} />
           ))}
@@ -164,7 +168,7 @@ export function ResultsTab({ study, crew, onGoCrew }: { study: Study; crew: Crew
                 <th className='whitespace-nowrap'>디스코드 별명</th>
                 <th>이메일</th>
                 <th className='whitespace-nowrap'>시간대</th>
-                <th className='whitespace-nowrap'>참여 가능한 요일</th>
+                {asksDays && <th className='whitespace-nowrap'>참여 가능한 요일</th>}
                 {questions.map((q) => (
                   <th key={q.id} className='min-w-[10rem]'>
                     {q.label || '(제목 없음)'}
@@ -180,7 +184,7 @@ export function ResultsTab({ study, crew, onGoCrew }: { study: Study; crew: Crew
                   <td className='whitespace-nowrap text-fg-secondary'>
                     {crewZoneLabel(crewTimeZone(c) ?? UNKNOWN_ZONE)}
                   </td>
-                  <td className='whitespace-nowrap text-fg-secondary'>{daysText(dummyDays(c))}</td>
+                  {asksDays && <td className='whitespace-nowrap text-fg-secondary'>{daysText(dummyDays(c))}</td>}
                   {questions.map((q) => (
                     <td key={q.id} className='text-fg-secondary'>
                       {answerText(c.answers?.[q.id])}

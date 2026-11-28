@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const tokenResponseSchema = z.object({
   accessToken: z.string().min(1),
-  accessTokenExpiresIn: z.number().optional(),
+  accessTokenExpiresIn: z.number().positive().optional(),
 });
 
 export const authAccountSchema = z.object({
