@@ -38,6 +38,7 @@ import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { MEETING_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { kindRules } from '@/proto/lib/study-kind';
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 type Filter = 'all' | LifeStatus;
@@ -134,7 +135,7 @@ function weekRangeLabel(days: WeekDay[]): string {
   return `${ymd.slice(0, 4)}년 ${Number(ymd.slice(5, 7))}월`;
 }
 
-/** 내 스터디룸에서 들어가는 스터디 일정. 주소 값은 study_id(STUDY.ID). */
+/** 내 스터디룸에서 들어가는 스터디 일정. 주소 값은 study_id(STUDY.ID). 클럽도 같은 껍데기에 탭만 다르다 */
 function schedulePath(locale: Locale, study: Study): string {
   return `/proto/core/${locale}/my/joined/${study.study_id}/schedule`;
 }
@@ -272,7 +273,17 @@ export default function MyJoinedPage() {
     return mineIds.map((id) => byId.get(id)).filter((s): s is Study => Boolean(s));
   }, [mineIds, allStudies]);
 
-  const days = useMemo(() => weekDays(mine, locale, wallTz, weekStart), [mine, locale, wallTz, weekStart]);
+  // 주간 일정은 회차가 있는 것만 — 클럽은 회차가 없다
+  const days = useMemo(
+    () =>
+      weekDays(
+        mine.filter((s) => kindRules(s).meetings),
+        locale,
+        wallTz,
+        weekStart,
+      ),
+    [mine, locale, wallTz, weekStart],
+  );
   const thisWeek = weekStart === mondayOf(ymdInTz(new Date(), wallTz));
 
   const shown = useMemo(
@@ -379,7 +390,9 @@ export default function MyJoinedPage() {
               <StudyItem key={study.id} study={study} locale={locale} wallTz={wallTz} />
             ))}
           </ul>
-          {pages > 1 && <Pagination data-anno='5' className='mt-8' page={pageSafe} total={pages} onChange={changePage} />}
+          {pages > 1 && (
+            <Pagination data-anno='5' className='mt-8' page={pageSafe} total={pages} onChange={changePage} />
+          )}
         </div>
       )}
     </div>

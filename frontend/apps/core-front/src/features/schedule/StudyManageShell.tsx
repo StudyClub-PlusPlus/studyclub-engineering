@@ -132,7 +132,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
     { href: `${base}/retro`, label: '회고' },
     ...(canEdit ? [{ href: `${base}/notice`, label: '공지' }] : []),
   ];
-  // 쓸 수 있는데 안 쓴 회고가 있으면 회고 탭 옆 점. 캡틴은 retroMine 이 null 이라 늘 0
+  // 쓸 수 있는데 안 쓴 회고가 있으면 회고 탭 옆 점. 명부에 없는 캡틴은 retroMine 이 null 이라 늘 0 (명부에 있는 캡틴은 크루와 같다)
   const pendingRetros = pendingRetroCount(retroStatus);
 
   return (

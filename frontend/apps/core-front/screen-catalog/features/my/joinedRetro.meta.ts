@@ -2,7 +2,8 @@ import type { ScreenStateDef, ScreenStep } from '../../types';
 
 /**
  * ST-039 · ST-040 스터디 일정 「회고」 탭 · 회고 작성. 개발 MSW 회고 목(packages/mock 의 retros.ts)과 고정 시각으로 찍는다.
- * 목은 나(participantId 1)만 가장 최근에 끝난 회차를 안 썼고, 캡틴 스터디(1)에서는 내가 쓸 사람이 아니다.
+ * 목은 나(participantId 1)만 가장 최근에 끝난 회차를 안 썼다. 캡틴 스터디 1 은 내가 반 명부에 있어 쓸 사람이고,
+ * 캡틴 스터디 20 은 명부에 없어 쓸 사람이 아니다(목의 OFF_ROSTER_CAPTAIN_STUDY_IDS).
  * 작성 페이지는 회차 번호가 목에서 정해져 회고 탭의 「회고 작성」을 눌러 들어간다.
  */
 const CREW_STORAGE = [
@@ -19,6 +20,8 @@ const CREW_STORAGE = [
     },
   },
 ];
+/** 내가 반 명부에 없는 캡틴 스터디 — packages/mock 의 OFF_ROSTER_CAPTAIN_STUDY_IDS */
+const OFF_ROSTER_CAPTAIN_STUDY = 20;
 const retroUrl = (studyId: number) => `/ko/my/joined/${studyId}/schedule/retro`;
 const openWrite: ScreenStep = { action: 'click', selector: 'a:has-text("회고 작성")' };
 
@@ -53,12 +56,26 @@ export const joinedRetroScreenStates: ScreenStateDef[] = [
   {
     id: 'my-joined-retro--captain',
     prdScenarios: ['CORE-ST-040-S04'],
-    label: '내 스터디 회고 — 캡틴 (작성 버튼 없음)',
+    label: '내 스터디 회고 — 명부에 있는 캡틴 (작성 현황 · 회고 작성)',
     pageId: 'my-joined-retro',
-    rationale: '담당 캡틴은 미팅 참여자가 아니라 회고를 쓰지 않는다 — 작성 현황은 보이고 작성 버튼은 없다.',
+    rationale: '반 명부에 있는 담당 캡틴은 참여자처럼 회고를 쓴다 — 작성 현황 · 「n명 중 m명 작성」과 「회고 작성」이 함께 보인다.',
     recipe: { storage: CREW_STORAGE, render: { url: retroUrl(1) } },
     viewports: ['desktop'],
-    assertions: { visible: ['[aria-label="작성 현황"]'], hidden: ['a:has-text("회고 작성")', 'a:has-text("내 회고 수정")'] },
+    assertions: { visible: ['[aria-label="작성 현황"]', 'a:has-text("회고 작성")'], text: { main: '명 작성' } },
+    screenshot: { fullPage: true },
+  },
+  {
+    id: 'my-joined-retro--captain-off-roster',
+    prdScenarios: ['CORE-ST-040-S04'],
+    label: '내 스터디 회고 — 명부에 없는 캡틴 (작성 버튼 없음)',
+    pageId: 'my-joined-retro',
+    rationale: '반 명부에 없는 담당 캡틴은 회고를 쓰지 않는다 — 작성 현황은 보이고 작성 버튼 · 작성 권유 문구는 없다.',
+    recipe: { storage: CREW_STORAGE, render: { url: retroUrl(OFF_ROSTER_CAPTAIN_STUDY) } },
+    viewports: ['desktop'],
+    assertions: {
+      visible: ['[aria-label="작성 현황"]'],
+      hidden: ['a:has-text("회고 작성")', 'a:has-text("내 회고 수정")', 'button:has-text("회고 마감")'],
+    },
     screenshot: { fullPage: true },
   },
   {

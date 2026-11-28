@@ -62,14 +62,15 @@ public class MeetingRetroController {
     public MeetingRetroResponses.RetroList list(
             @PathVariable Long studyId,
             @PathVariable Long meetingId,
+            @RequestParam(required = false) Long groupId,
             Authentication authentication) {
-        return meetingRetroService.list(accountId(authentication), studyId, meetingId);
+        return meetingRetroService.list(accountId(authentication), studyId, meetingId, groupId);
     }
 
     @Operation(
             summary = "내 회고 작성·수정",
             description =
-                    "없으면 만들고(201) 있으면 고친다(200). 쓸 사람만 (캡틴 제외). 미팅 전 409 RETRO_NOT_OPEN · 기한 뒤 409 RETRO_CLOSED.")
+                    "없으면 만들고(201) 있으면 고친다(200). 쓸 사람만 (반 명부에 있는 참여자 — 캡틴도 명부에 있으면 포함). 미팅 전 409 RETRO_NOT_OPEN · 기한 뒤 409 RETRO_CLOSED.")
     @SecurityRequirement(name = "bearerAuth")
     @RequireOnboarding
     @PutMapping("/api/me/studies/{studyId}/meetings/{meetingId}/retro")

@@ -82,6 +82,8 @@ export type RetroMeetingStatus = {
   open: boolean;
   /** 내가 썼는가. */
   mine: boolean;
+  /** 내가 이 회차 회고를 쓸 사람인가 — 그날 반 명부에 있었나. 명부에 없는 캡틴은 false. */
+  iWrite: boolean;
   /** 이 회차 회고를 쓸 사람 — 그날 반에 있던 참여자. */
   targets: number;
   written: number;
@@ -115,6 +117,37 @@ function write(studyId: string, meetingId: string, patch: (m: MeetingStore) => M
   store[studyId] = study;
   try {
     localStorage.setItem(KEY, JSON.stringify(store));
+  } catch {
+    // 저장 실패해도 화면 동작은 막지 않는다
+  }
+}
+
+/* ── 캡틴의 명부 여부 (프로토 가정) ───────────────────────────────────── */
+
+const CAPTAIN_ROSTER_KEY = 'sc_retro_captain_on_roster';
+
+/**
+ * 프로토 가정 — 담당 캡틴이 그 반 명부에 있는가. 기본은 있다(스터디를 만들 때 명부에 들어간다).
+ * 검토 도구로 「명부에 없음」으로 바꿔 쓰지 않는 캡틴을 본다.
+ * TODO(api): 서버는 명부(STUDY_PARTICIPANT)에 있으면 participantId 를 준다 — 명부에 없는 캡틴은 null
+ */
+export function captainOnRoster(studyId: string): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const raw = localStorage.getItem(CAPTAIN_ROSTER_KEY);
+    const map = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+    return map[studyId] ?? true;
+  } catch {
+    return true;
+  }
+}
+
+export function setCaptainOnRoster(studyId: string, on: boolean): void {
+  try {
+    const raw = localStorage.getItem(CAPTAIN_ROSTER_KEY);
+    const map = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+    map[studyId] = on;
+    localStorage.setItem(CAPTAIN_ROSTER_KEY, JSON.stringify(map));
   } catch {
     // 저장 실패해도 화면 동작은 막지 않는다
   }
@@ -169,10 +202,16 @@ function deadlineOf(study: Study, list: ProtoMeeting[], i: number): Date {
   return new Date(meetingWindow(study, list[i]).end.getTime() + LAST_MEETING_GRACE_DAYS * 86_400_000);
 }
 
-/** 그 회차 시작 때 반에 있던 참여자 — 그전에 참여를 중단한 사람은 뺀다. 캡틴은 미팅 참여자가 아니라 뺀다. */
+/**
+ * 그 회차 시작 때 반 명부에 있던 참여자 — 그전에 참여를 중단한 사람은 뺀다.
+ * 캡틴도 명부에 있으면 넣는다. 명부에 없는 캡틴은 뺀다.
+ */
 function targetsOf(study: Study, m: ProtoMeeting, people = participantsOf(study)): Participant[] {
   const start = meetingWindow(study, m).start.getTime();
-  return people.filter((p) => p.role !== 'captain' && (!p.left || new Date(p.left.at).getTime() >= start));
+  const captainIn = captainOnRoster(study.id);
+  return people.filter(
+    (p) => (p.role !== 'captain' || captainIn) && (!p.left || new Date(p.left.at).getTime() >= start),
+  );
 }
 
 /**
@@ -209,6 +248,7 @@ export function retroStatuses(study: Study, now = new Date(), members?: readonly
       deadline,
       open: ended && now.getTime() < deadline.getTime(),
       mine: ended && mine,
+      iWrite,
       targets: targets.length,
       written: others + (ended && mine ? 1 : 0),
     };
@@ -328,9 +368,11 @@ export function saveMyRetro(
   meetingId: string,
   answers: RetroAnswers,
   now = new Date(),
-): { ok: true } | { ok: false; reason: 'NOT_ENDED' | 'CLOSED' | 'INVALID' } {
+): { ok: true } | { ok: false; reason: 'NOT_ENDED' | 'CLOSED' | 'INVALID' | 'FORBIDDEN' } {
   const status = retroStatusOf(study, meetingId, now);
   if (!status?.ended) return { ok: false, reason: 'NOT_ENDED' };
+  // 서버와 같다 — 명부에 없으면(명부에 없는 캡틴) 403
+  if (!status.iWrite) return { ok: false, reason: 'FORBIDDEN' };
   if (!status.open) return { ok: false, reason: 'CLOSED' };
   if (Object.keys(validateRetro(answers)).length > 0) return { ok: false, reason: 'INVALID' };
   const clean = { good: answers.good.trim(), improve: answers.improve.trim(), feeling: answers.feeling.trim() };

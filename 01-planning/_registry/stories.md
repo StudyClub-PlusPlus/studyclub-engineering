@@ -6,12 +6,12 @@
 <!-- NUMBER LEDGER — 모든 ID의 단일 발급처. 수동 편집 금지(에이전트가 갱신). -->
 | prefix | next |
 |---|---|
-| ST | 42 |
+| ST | 46 |
 | EP | 1 |
 | FN | 1 |
-| IA | 43 |
+| IA | 45 |
 | SRC | 1 |
-| POL | 12 |
+| POL | 13 |
 
 <!--
 발급 절차: next 값을 읽어 ID 를 만들고, 같은 커밋에서 next 를 +1 한다.
@@ -52,7 +52,7 @@
 | ST-018 | 네비게이터는 참여자를 스터디에서 제명할 수 있다. | 네비게이터 | [PRD](../stories/navigator-withdraw-participant/PRD.md) | [내 스터디 › 스터디 일정 › 출석](https://playground.studyclub.life/proto/core/ko/my/joined) | [study-participant](../../specs/study-participant/spec.md) · [attendance](../../specs/attendance/spec.md) | | 화면은 「참여 중단」 — 하차·제명을 가르지 않는다. 되돌리지 않는다 |
 | ST-019 | 캡틴은 백오피스에 접근할 수 있다. | 캡틴 |  |  | | 폐기 | Story 가 아니다 — 화면에서 하는 일이 아니라 모든 콘솔 화면에 걸리는 조건이다. 접근 판정은 [POL-0001](policies/POL-0001-roles.md), 로그인 흐름·에러는 [back-office-login](../../specs/back-office-login/spec.md) 소관 |
 | ST-020 | 캡틴은 등록한 스터디를 공개할 수 있다. | 캡틴 | [PRD](../stories/captain-publish-study/PRD.md) | [콘솔 › 스터디](https://playground.studyclub.life/proto/console/studies) | [study](../../specs/study/spec.md) | | |
-| ST-021 | 캡틴은 기존 스터디를 재등록할 수 있다(기수제). | 캡틴 | [PRD](../stories/captain-reregister-cohort/PRD.md) | [콘솔 › 스터디 상세](https://playground.studyclub.life/proto/console/studies/1) | [study](../../specs/study/spec.md) | | |
+| ST-021 | 캡틴은 기존 스터디를 재등록할 수 있다(기수제). | 캡틴 | [PRD](../stories/captain-reregister-cohort/PRD.md) | [콘솔 › 클럽 › 기수](https://playground.studyclub.life/proto/console/clubs) | [study](../../specs/study/spec.md) · [club-cohort](../../specs/club-cohort/spec.md) | | 클럽은 매월 초안 자동 생성 → 캡틴이 모집 시작 (POL-0012) |
 | ST-022 | 캡틴은 모든 스터디의 리스트를 볼 수 있다. | 캡틴 | [PRD](../stories/captain-list-all-studies/PRD.md) | [콘솔 › 스터디](https://playground.studyclub.life/proto/console/studies) | [study](../../specs/study/spec.md) · [study-recruit-status](../../specs/study-recruit-status/spec.md) | | |
 | ST-023 | 캡틴은 스터디 신청용 폼을 작성할 수 있다. | 캡틴 | [PRD](../stories/captain-application-form/PRD.md) | [콘솔 › 스터디 상세 › 신청 폼](https://playground.studyclub.life/proto/console/studies/1) | [study-application](../../specs/study-application/spec.md) | | |
 | ST-024 | 캡틴은 스터디 신청서 결과를 모아볼 수 있다. | 캡틴 | [PRD](../stories/captain-application-results/PRD.md) | [콘솔 › 스터디 상세 › 신청 결과](https://playground.studyclub.life/proto/console/studies/1) | [study-application](../../specs/study-application/spec.md) | | |
@@ -74,3 +74,6 @@
 | ST-040 | 네비게이터는 반의 회차별 회고 작성 현황을 볼 수 있다. | 네비게이터 | [PRD](../stories/navigator-view-meeting-retros/PRD.md) | 스터디 일정 › 회고 시안 | [meeting-retro](../../specs/meeting-retro/spec.md) | | 담당 캡틴도 같은 화면 (회고는 쓰지 않음) |
 | ST-041 | 캡틴은 백오피스에서 스터디 미팅 회고를 모아 볼 수 있다. | 캡틴 | [PRD](../stories/captain-collect-meeting-retros/PRD.md) | 콘솔 › 회고 시안 | [meeting-retro](../../specs/meeting-retro/spec.md) | | 열람 전용 |
 | ST-042 | 캡틴은 종료된 스터디를 복제해 새 스터디를 등록할 수 있다. | 캡틴 | [PRD](../stories/captain-reuse-ended-study/PRD.md) | 콘솔 › 스터디 등록·상세 | [study](../../specs/study/spec.md) | | ENDED · CLOSED |
+| ST-043 | 캡틴은 클럽 기수의 월간 출석부를 입력할 수 있다. | 캡틴 | [PRD](../stories/captain-club-monthly-attendance/PRD.md) | [콘솔 › 클럽 › 출석부](https://playground.studyclub.life/proto/console/clubs) | [club-cohort](../../specs/club-cohort/spec.md) | | R1 은 시트와 함께 쓴다 — 출석 여부만 |
+| ST-044 | 크루는 「내 클럽」에서 매일 인증하고 이번 달 기록을 볼 수 있다. | 크루 | [PRD](../stories/crew-my-club/PRD.md) | 사용자 사이트 › 스터디 일정(클럽) › 오늘 · 출석 | | | 스케치 · R2. 스터디와 같은 껍데기, 탭만 오늘 · 출석 · 공지. 출석 탭은 멤버 전원의 판(캡틴 출석부와 같은 부품) |
+| ST-045 | 캡틴은 지난 기수를 끝까지 마친 참여자를 다음 기수로 이어 받을 수 있다. | 캡틴 | [PRD](../stories/captain-carry-over-club-members/PRD.md) | [콘솔 › 클럽 › 기수](https://playground.studyclub.life/proto/console/clubs) | [club-cohort](../../specs/club-cohort/spec.md) | | 클럽 자동 연장 — 멤버가 계속 남고 캡틴은 빠질 사람만 고른다 (POL-0012) |

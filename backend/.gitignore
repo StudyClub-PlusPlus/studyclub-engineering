@@ -6,6 +6,8 @@ build/
 .idea/
 *.iml
 .vscode/
+# VS Code Java(Eclipse 언어 서버) 빌드 출력
+bin/
 
 # OS
 .DS_Store
