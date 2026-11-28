@@ -20,7 +20,7 @@
 
 ## 배포하는 사람이 할 일
 
-1. 기존 로그인용 `BACK_OFFICE_ORIGINS`가 하나의 주소면 메일에도 그대로 쓴다. 여러 주소를 허용하면 메일 대표 주소만 `NOTIFICATION_BACK_OFFICE_BASE_URL`로 지정한다. stage는 `https://back-office-stage.studyclub.life`, 운영은 `https://back-office.studyclub.life`다. 잘못되거나 모호한 주소로는 서버를 시작하지 않는다.
+1. 기존 로그인용 `BACK_OFFICE_ORIGINS`가 하나의 주소면 메일에도 그대로 쓴다. 여러 주소를 허용하면 메일 대표 주소만 `BACK_OFFICE_BASE_URL`로 지정한다. stage는 `https://back-office-stage.studyclub.life`, 운영은 `https://back-office.studyclub.life`다. 잘못되거나 모호한 주소로는 서버를 시작하지 않는다.
 2. 운영은 Flyway V68로 새 양식 한 건을 등록한다. 기존에 같은 조건이 있으면 덮어쓰거나 중복 등록하지 않는다.
 3. stage는 Flyway를 쓰지 않으므로 배포 후 백오피스에서 **스터디 신청 알림** 조건으로 시안의 제목·HTML을 한 번 등록하거나 V68을 수동 적용한다. 이번 작업에서 실제 DB는 변경하지 않았다.
 4. 기존 `OPS_WARN_WEBHOOK_URL` 이 설정돼 있는지 확인한다. 비어 있으면 개별 서버 로그만 남는다.

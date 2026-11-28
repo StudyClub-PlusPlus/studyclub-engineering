@@ -93,7 +93,7 @@ HTML 본문은 아래 세 가지와 **같이** 나가야 깨지지 않는다 —
 ### 스터디 신청 알림 적용
 
 - 새 조건은 `STUDY_APPLICATION_RECEIVED`다. 수신자는 현재 담당 캡틴이며 신청자 개인정보는 넣지 않는다. 가입메일의 카드·버튼 구조를 사용한다.
-- `{{applicationsUrl}}`은 기존 로그인용 `auth.back-office-origins`(`BACK_OFFICE_ORIGINS`)의 단일 주소 + `/studies/{studyId}?tab=crew`다. 주소가 여러 개이면 `NOTIFICATION_BACK_OFFICE_BASE_URL`로 메일 대표 주소를 지정한다. stage는 `https://back-office-stage.studyclub.life`, 운영은 `https://back-office.studyclub.life`다. 로컬 로그인 설정 기본값은 `http://localhost:4701`이다.
+- `{{applicationsUrl}}`은 기존 로그인용 `auth.back-office-origins`(`BACK_OFFICE_ORIGINS`)의 단일 주소 + `/studies/{studyId}?tab=crew`다. 주소가 여러 개이면 `BACK_OFFICE_BASE_URL`로 메일 대표 주소를 지정한다. stage는 `https://back-office-stage.studyclub.life`, 운영은 `https://back-office.studyclub.life`다. 로컬 로그인 설정 기본값은 `http://localhost:4701`이다.
 - `V68__study_application_received_email.sql`이 시안과 같은 HTML을 등록한다. 기존 같은 조건이 있으면 덮어쓰거나 추가하지 않는다. 과거 신청은 발송하지 않는다.
 - stage는 Flyway off다. 배포 후 **스터디 신청 알림** 조건으로 제목과 시안 HTML을 백오피스에서 한 번 등록하거나 V68을 수동 적용한다. 기존 조건이 있으면 중복 등록하지 않는다.
 - 템플릿을 지워도 신청은 계속 접수된다. 개별 로그와 운영 WARN을 확인한다. 같은 조건에 여러 템플릿을 등록하면 모두 발송한다.

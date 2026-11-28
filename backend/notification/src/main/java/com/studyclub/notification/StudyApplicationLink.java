@@ -20,7 +20,7 @@ public class StudyApplicationLink {
                         .toList();
         if (origins.size() != 1) {
             throw new IllegalArgumentException(
-                    "백오피스 주소가 여러 개이거나 비어 있으면 NOTIFICATION_BACK_OFFICE_BASE_URL 을 지정해야 합니다.");
+                    "백오피스 주소가 여러 개이거나 비어 있으면 BACK_OFFICE_BASE_URL 을 지정해야 합니다.");
         }
         URI uri = URI.create(origins.getFirst());
         if (!("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))

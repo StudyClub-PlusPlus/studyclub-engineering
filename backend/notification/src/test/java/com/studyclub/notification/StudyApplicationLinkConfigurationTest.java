@@ -23,11 +23,11 @@ class StudyApplicationLinkConfigurationTest {
         "https://back-office.studyclub.life",
         "https://preview.example.com",
     })
-    @DisplayName("NOTIFICATION_BACK_OFFICE_BASE_URL 을 그대로 쓴다 — APP_ENV 무관")
+    @DisplayName("BACK_OFFICE_BASE_URL 을 그대로 쓴다 — APP_ENV 무관")
     void usesSiteBaseUrlDirectly(String siteBaseUrl) throws IOException {
         var link =
                 new StudyApplicationLink(
-                        resolve(Map.of("NOTIFICATION_BACK_OFFICE_BASE_URL", siteBaseUrl)));
+                        resolve(Map.of("BACK_OFFICE_BASE_URL", siteBaseUrl)));
         assertThat(link.forStudy(42L)).isEqualTo(siteBaseUrl + "/studies/42?tab=crew");
     }
 
@@ -53,7 +53,7 @@ class StudyApplicationLinkConfigurationTest {
                                 Map.of(
                                         "auth.back-office-origins",
                                                 "https://one.example.com,https://two.example.com",
-                                        "NOTIFICATION_BACK_OFFICE_BASE_URL",
+                                        "BACK_OFFICE_BASE_URL",
                                                 "https://one.example.com")));
         assertThat(link.forStudy(42L)).startsWith("https://one.example.com/");
     }
