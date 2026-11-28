@@ -1,7 +1,7 @@
 # PRD: 01-planning/stories/navigator-view-meeting-retros/PRD.md
 # 대응표: docs/frontend-development-guide/core-e2e-prd-map.md
 # 자동화 예정 명세. 이 파일만으로 실행·검증된 것으로 보지 않는다. 연결된 표시 상태는 .meta.ts 가 실행한다.
-# 현재 코드 기준: 네비게이터는 11번, 담당 캡틴은 1번 스터디(개발 MSW 목).
+# 현재 코드 기준: 네비게이터는 11번, 명부에 있는 담당 캡틴은 1번, 명부에 없는 담당 캡틴은 20번 스터디(개발 MSW 목).
 @planned @ST-040
 Feature: ST-040 네비게이터는 반의 회차별 회고 작성 현황을 볼 수 있다.
 
@@ -26,12 +26,12 @@ Feature: ST-040 네비게이터는 반의 회차별 회고 작성 현황을 볼 
     When 네비게이터로 본인 회고를 쓰고 고친다
     Then 네비게이터 본인의 회고 작성 · 수정 (크루와 같은 규칙)
 
-# 실행 카탈로그(표시 상태 일부): my-joined-retro--captain
+# 실행 카탈로그(표시 상태 일부): my-joined-retro--captain, my-joined-retro--captain-off-roster
   @CORE-ST-040-S04 @catalog-partial
   Scenario: CORE-ST-040-S04 완료 기준 4
     Given PRD의 권한·데이터·응답 조건과 해당 완료 기준의 경계 조건이 준비되어 있다
-    When 담당 캡틴으로 회고 탭과 작성 주소를 연다
-    Then 캡틴에게는 작성 버튼이 없다 — 미팅 참여자가 아니라 쓰지 않는다
+    When 반 명부에 있는 담당 캡틴과 명부에 없는 담당 캡틴으로 회고 탭을 연다
+    Then 명부에 없는 캡틴에게는 작성 버튼이 없다 — 명부에 있는 캡틴은 참여자와 같이 쓴다
 
 # 실행 카탈로그(표시 상태 일부): my-joined-retro--navigator
   @CORE-ST-040-V01 @catalog-partial
@@ -44,4 +44,4 @@ Feature: ST-040 네비게이터는 반의 회차별 회고 작성 현황을 볼 
   Scenario: CORE-ST-040-V02 권한 없음
     Given 대상 화면이 PRD의 「권한 없음」 상태가 되도록 데이터·권한·응답을 준비한다
     When 대상 화면에 진입하거나 해당 상태로 전환하는 동작을 수행한다
-    Then 캡틴이 작성 페이지를 열었을 때 / 「캡틴은 미팅 참여자가 아니라 회고를 쓰지 않아요.」
+    Then 명부에 없는 캡틴이 작성 주소를 열면 / 안내 없이 그 회차의 회고 탭으로 돌아간다 (작성 버튼이 없어 주소로만 들어온다)

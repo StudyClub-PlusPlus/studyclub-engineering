@@ -22,6 +22,8 @@
 
 2026-11-27 갱신: 스터디 일정 회고(ST-039 · ST-040) **5개 상태 · 8장**을 더했다. 개발 MSW 회고 목을 고정 시각으로 찍는다 — 크루 18번 · 네비게이터 11번 · 담당 캡틴 1번 스터디. 작성 페이지는 회고 탭의 「회고 작성」을 눌러 들어간다(목의 회차 번호가 고정값이 아니다). 검증 오류로 스크롤된 뒤 전체 페이지를 찍을 때 헤더가 중간에 합성되지 않도록 러너가 맨 위로 되돌린다(백오피스 러너와 같다).
 
+2026-11-28 갱신: 캡틴도 반 명부에 있으면 회고를 쓴다. `my-joined-retro--captain`(명부에 있는 캡틴 · 스터디 1)을 다시 찍고, 명부에 없는 캡틴(스터디 20 — 목의 `OFF_ROSTER_CAPTAIN_STUDY_IDS`)의 회고 탭 1장을 더했다. 명부에 없는 캡틴이 작성 주소를 열면 회고 탭으로 돌려보내 따로 찍지 않는다. 스터디 1 캡틴의 일정 · 출석 · 공지 5장도 다시 찍었다(「회고」 탭 옆 점 — 10-31 기준 이미지 이후의 탭 · 문구 · 출석률 표시 변화가 함께 반영됐다. 출석률 「-」는 출석 목이 참여자 출석률을 주지 않아서다).
+
 스크린샷 파일명은 `{pageId}--{state}--{viewport}.png`다. 신청 화면의 옛 `study-apply--*` 이름도 `study-detail--*`로 통일했다.
 
 | 실행 상태 | PRD 시나리오 (부분 연결) | 스크린샷 |
@@ -63,6 +65,7 @@
 | `my-joined-retro--crew` | CORE-ST-039-V01, CORE-ST-039-S01, CORE-ST-039-S07, CORE-ST-039-S08, CORE-ST-039-S13 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--crew--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--crew--mobile.png) |
 | `my-joined-retro--navigator` | CORE-ST-040-V01, CORE-ST-040-S01, CORE-ST-040-S02, CORE-ST-040-S03 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--navigator--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--navigator--mobile.png) |
 | `my-joined-retro--captain` | CORE-ST-040-S04 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--captain--desktop.png) |
+| `my-joined-retro--captain-off-roster` | CORE-ST-040-S04 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro--captain-off-roster--desktop.png) |
 | `my-joined-retro-write--crew` | CORE-ST-039-S03 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro-write--crew--desktop.png), [mobile](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro-write--crew--mobile.png) |
 | `my-joined-retro-write--invalid` | CORE-ST-039-V04, CORE-ST-039-S04 | [desktop](../../frontend/apps/core-front/e2e/screen-catalog/specs/__screenshots__/my-joined-retro-write--invalid--desktop.png) |
 
@@ -550,19 +553,19 @@ V07 「연동 확인중」의 PRD 원문은 「스피너」지만 현재 `신청
 
 [PRD](../../01-planning/stories/navigator-view-meeting-retros/PRD.md) · [시나리오](../../frontend/apps/core-front/screen-catalog/features/prd/navigator-view-meeting-retros.feature)
 
-**현재 코드 기준:** 네비게이터 · 담당 캡틴의 회고 탭(2026-11-27 카탈로그 연결). 담당 캡틴의 작성 페이지(권한 없음)는 작성 주소의 회차 번호가 목에서 정해져 아직 찍지 않았다.
+**현재 코드 기준:** 네비게이터 · 담당 캡틴의 회고 탭(2026-11-27 카탈로그 연결). 2026-11-28 — 명부에 있는 캡틴(스터디 1, 회고 작성 가능)과 명부에 없는 캡틴(스터디 20, 작성 버튼 없음)으로 나눠 찍는다. 명부에 없는 캡틴이 작성 주소를 열면 회고 탭으로 돌려보낸다.
 
 | 완료 기준 | PRD 원문 | 연결 시나리오 | 실행 화면 근거 |
 |---|---|---|---|
 | 1 | 회고 탭 작성 현황 — 참여자마다 작성 · 미작성 구분, 「n명 중 m명 작성」 (크루에게는 둘 다 보이지 않는다) | `CORE-ST-040-S01` | `my-joined-retro--navigator` |
 | 2 | 문항별 보기의 👍 많은 순 정렬 (크루와 같다) | `CORE-ST-040-S02` | `my-joined-retro--navigator` |
 | 3 | 네비게이터 본인의 회고 작성 · 수정 (크루와 같은 규칙) | `CORE-ST-040-S03` | `my-joined-retro--navigator` |
-| 4 | 캡틴에게는 작성 버튼이 없다 — 미팅 참여자가 아니라 쓰지 않는다 | `CORE-ST-040-S04` | `my-joined-retro--captain` |
+| 4 | 반 명부에 없는 캡틴에게는 작성 버튼이 없다 — 명부에 있는 캡틴은 참여자와 같이 쓴다 | `CORE-ST-040-S04` | `my-joined-retro--captain`, `my-joined-retro--captain-off-roster` |
 
 | 상태 | PRD 화면·카피 | 연결 시나리오 | 실행 화면 근거 |
 |---|---|---|---|
 | 기본 | 회고 탭 작성 현황 / 「n명 중 m명 작성」 · 참여자마다 「작성」 · 「미작성」 | `CORE-ST-040-V01` | `my-joined-retro--navigator` |
-| 권한 없음 | 캡틴이 작성 페이지를 열었을 때 / 「캡틴은 미팅 참여자가 아니라 회고를 쓰지 않아요.」 | `CORE-ST-040-V02` | 미연결 |
+| 권한 없음 | 명부에 없는 캡틴이 작성 주소를 열면 / 안내 없이 그 회차의 회고 탭으로 돌아간다 | `CORE-ST-040-V02` | 미연결 (돌려보내기라 찍을 화면이 없다 — `RetroWriteForm.test.tsx`) |
 
 ## 검증 범위와 남은 작업
 
