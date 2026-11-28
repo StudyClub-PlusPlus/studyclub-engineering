@@ -1,6 +1,7 @@
 package com.studyclub.domain.feedback;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 public interface FeedbackImageRepository extends JpaRepository<FeedbackImage, Long> {
 
     List<FeedbackImage> findAllByFeedbackIdOrderByDisplayOrderAsc(Long feedbackId);
+
+    /** 사진을 내줄 때 「이 문의의 사진인가」 — 다른 문의의 번호를 가르지 않는다. */
+    Optional<FeedbackImage> findByIdAndFeedbackId(Long id, Long feedbackId);
 
     /** 보유 기간 만료 — FK cascade 가 없는 환경에서도 첨부 행을 명시적으로 지운다. */
     @Modifying(flushAutomatically = true)

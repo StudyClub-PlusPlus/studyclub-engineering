@@ -46,7 +46,7 @@
 | IA-022 | 스터디 관리 | `/studies` | IA-021 | ST-022 · ST-020 | 목록 · 공개 설정 |
 | IA-023 | 스터디 등록 (모달) | `/studies` › 스터디 등록 | IA-022 | ST-001 | 섹션 노드 |
 | IA-024 | 스터디 상세 | `/studies/{id}` | IA-022 | ST-003 | 머리 · 탭 |
-| IA-025 | 정보 탭 | `/studies/{id}` › 정보 | IA-024 | ST-004 · ST-021 | 수정 · 삭제 · 다음 기수(클럽 운영으로 이동) |
+| IA-025 | 정보 탭 | `/studies/{id}` › 정보 | IA-024 | ST-004 · ST-021 · ST-042 | 수정 · 삭제 · 다음 기수(클럽 운영으로 이동) · 스터디 복제 |
 | IA-026 | 신청 폼 탭 | `/studies/{id}` › 신청 폼 | IA-024 | ST-023 | |
 | IA-027 | 신청 결과 탭 | `/studies/{id}` › 신청 결과 | IA-024 | ST-024 | |
 | IA-028 | 신청자 탭 | `/studies/{id}` › 신청자 | IA-024 | ST-026 · ST-025 | 반 목록(제목) · 참여 크루 명단 · 반 · 역할 · 일괄 변경 |
@@ -125,7 +125,7 @@
 | IA-037 | 문의·오류 신고 | ST-036 캡틴은 유저가 제출한 문의/오류신고를 조회할 수 있다. | [captain-view-feedbacks](../stories/captain-view-feedbacks/PRD.md) |
 | IA-042 | 회고 모아보기 | ST-041 캡틴은 백오피스에서 스터디 미팅 회고를 모아 볼 수 있다. | [captain-collect-meeting-retros](../stories/captain-collect-meeting-retros/PRD.md) |
 | IA-043 | 클럽 운영 | ST-021 캡틴은 기존 스터디를 재등록할 수 있다(기수제). — 다음 기수 | [captain-reregister-cohort](../stories/captain-reregister-cohort/PRD.md) |
-| | | ST-042 캡틴은 지난 기수를 끝까지 마친 참여자를 다음 기수로 이어 받을 수 있다. | [captain-carry-over-club-members](../stories/captain-carry-over-club-members/PRD.md) |
+| | | ST-045 캡틴은 지난 기수를 끝까지 마친 참여자를 다음 기수로 이어 받을 수 있다. | [captain-carry-over-club-members](../stories/captain-carry-over-club-members/PRD.md) |
 | | | ST-043 캡틴은 클럽 기수의 월간 출석부를 입력할 수 있다. | [captain-club-monthly-attendance](../stories/captain-club-monthly-attendance/PRD.md) |
 | IA-033 | 알림 발송 이력 | ST-032 캡틴은 알림 발송 이력을 조회할 수 있다. | [notification-history](../stories/notification-history/PRD.md) |
 | IA-034 | 알림 템플릿 | ST-030 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다. | [notification-template](../stories/notification-template/PRD.md) |
@@ -170,7 +170,7 @@ IA-021 대시보드 /
 │     ├─ IA-028 신청자
 │     ├─ IA-032 일정
 │     └─ IA-029 출석
-├─ IA-043 클럽 운영 /clubs                    (ST-021 · ST-042 · ST-043)
+├─ IA-043 클럽 운영 /clubs                    (ST-021 · ST-045 · ST-043)
 ├─ IA-030 유저 /users
 ├─ IA-042 회고 모아보기 /retros               (ST-041)
 ├─ IA-035 공지 관리 /notices

@@ -12,6 +12,11 @@ import { z } from 'zod';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
+/** API 경로를 브라우저가 직접 열 주소로. `<img src>` 처럼 `http()` 를 거치지 않는 요청에 쓴다. */
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -49,6 +54,8 @@ export async function http<T>(path: string, schema: z.ZodType<T>, init?: Request
   if (res.status === 401) {
     const refreshed = await fetch('/api/auth/refresh', { method: 'POST', signal: init?.signal });
     if (refreshed.ok) res = await fetch(`${API_BASE}${path}`, request);
+    // 갱신 장애를 원래의 401로 숨기면 QueryCache가 로그아웃까지 실행한다.
+    else if (refreshed.status !== 401) res = refreshed;
   }
   const text = await res.text();
   let body: unknown = null;

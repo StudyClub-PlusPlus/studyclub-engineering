@@ -2,6 +2,7 @@
 
 > ERD: [FEEDBACK](../../docs/erd/FEEDBACK.md) (신규) · [FEEDBACK_IMAGE](../../docs/erd/FEEDBACK_IMAGE.md) (신규) · [STORAGE_OBJECT](../../docs/erd/STORAGE_OBJECT.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
 > 생성일: 2026-10-25
+> 갱신: 2026-11-21 — 첨부 이미지 비공개. 파일은 `private/feedbacks/` 에 두고 작성자 · 캡틴만 [이미지 열기](#첨부-이미지-열기) API 로 본다. `FEEDBACK_IMAGE.IMAGE_URL` 삭제. [후속 1](#후속-개발) 완료
 > 갱신: 2026-10-31 — 첫 회신 HTML 메일 알림 구현. [회신 알림](#회신-알림) 참고. 첫 답변일부터 1년·미답변은 접수일부터 1년 후 [자동 삭제](#보유-기간-만료-시-자동-삭제) 추가.
 > 갱신: 2026-10-26 — PR #341 리뷰 반영. 플로팅 버튼 없음 · 상태는 회신과 묶는다 · `DELETED_AT` 없음 · 회신 알림은 아래 2026-10-31 갱신 참고 · rate limit 60초 1건 + 24시간 20건 · GIF 제외 · 이미지는 공개 폴더로 시작 · 탈퇴 때 첨부 이미지 파기 · 온보딩 필수 유지 ([결정 기록](#결정-기록))
 > 상태: 구현중 — `feat/feedback-impl` (마이그레이션 `V51__feedback.sql`)
@@ -21,8 +22,10 @@
 | POST | /api/feedbacks | 문의·오류 신고 제출 — 이미지 번호를 잇고, 계정 기준 rate limit | O (`@RequireOnboarding`) | 구현중 |
 | GET | /api/me/feedbacks | 내 문의 목록 — 본인 것만, 접수 시각 내림차순, 페이지 | O (`@RequireOnboarding`) | 구현중 |
 | GET | /api/me/feedbacks/{feedbackId} | 내 문의 상세 — 본인 것만, 회신 포함 | O (`@RequireOnboarding`) | 구현중 |
+| GET | /api/me/feedbacks/{feedbackId}/images/{imageId} | 내 문의 첨부 이미지 — 본인 것만, 이미지 바이트 ([첨부 이미지 열기](#첨부-이미지-열기)) | O (`@RequireOnboarding`) | 구현중 |
 | GET | /api/admin/feedbacks | 운영 목록 — 유형·상태·검색·페이지, 걸러진 뒤 총 건수 | O (`@RequireAdmin`) | 구현중 |
 | GET | /api/admin/feedbacks/{feedbackId} | 운영 상세 — 제출 환경·회신·캡틴 전용 메모 포함 | O (`@RequireAdmin`) | 구현중 |
+| GET | /api/admin/feedbacks/{feedbackId}/images/{imageId} | 운영 첨부 이미지 — 캡틴, 이미지 바이트 ([첨부 이미지 열기](#첨부-이미지-열기)) | O (`@RequireAdmin`) | 구현중 |
 | PATCH | /api/admin/feedbacks/{feedbackId} | 상태 · 회신 · 캡틴 전용 메모 중 하나를 바꾼다. 첫 회신은 상태를 완료로 | O (`@RequireAdmin`) | 구현중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -148,7 +151,6 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | ID | BIGINT PK | N | |
 | FEEDBACK_ID | BIGINT | N | `fk_feedback_image_feedback` — 애그리거트 **안**이라 FK 를 건다 |
 | STORAGE_OBJECT_ID | BIGINT | N | 연결한 업로드 행. ID 참조(FK 없음) — 탈퇴 때 이 행을 `DELETING` 으로 |
-| IMAGE_URL | VARCHAR(512) | N | 공개 주소 스냅샷 (`ACCOUNT.PROFILE_IMG_URL` 과 같은 방식) |
 | DISPLAY_ORDER | INT | N | 0부터. 요청 배열 순서 |
 | CREATED_AT / UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 
@@ -157,7 +159,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 
 ### STORAGE_OBJECT — 용도 하나 추가
 
-- `StoragePurpose.FEEDBACK("gigs/feedbacks")` 를 더한다. **공개 폴더**(CloudFront `gigs/`)다 — 비공개는 [후속](#후속-개발)
+- `StoragePurpose.FEEDBACK("private/feedbacks")` 를 둔다. **비공개 폴더**다 — CloudFront 는 `gigs/` 만 공개하므로 이 키는 주소로 열리지 않고, 업로드 응답의 `url` 도 `null` 이다. 읽기는 [첨부 이미지 열기](#첨부-이미지-열기) 만 한다. 처음(2026-10-26)에는 `gigs/feedbacks` 공개 폴더였다
 - 화면은 `POST /api/uploads/images?purpose=FEEDBACK` 로 먼저 올리고 받은 `fileId` 를 제출 본문에 싣는다. 형식 jpeg · png · webp, 장당 5MB(`spring.servlet.multipart.max-file-size`), 계정당 연결 안 된 업로드 20개 상한은 기존 그대로
 
 ---
@@ -385,7 +387,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
   "status": "ANSWERED",
   "createdAt": "2026-10-12T16:40:00Z",
   "images": [
-    { "url": "https://d27gz6v6wvae1d.cloudfront.net/studyclub/gigs/feedbacks/2f1c….webp" }
+    { "id": 812, "url": "/api/me/feedbacks/198/images/812" }
   ],
   "reply": {
     "content": "스터디는 기수마다 정해진 기간에 함께 진도를 나가는 모임이고, 클럽은 기간 없이 매달 이어지는 모임이에요.",
@@ -403,7 +405,8 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | status | String | N | `RECEIVED` \| `ANSWERED` | 계산: `Feedback.submitterStatus()` |
 | createdAt | String | N | 접수 시각. UTC ISO 8601. 화면은 시각까지 | FEEDBACK.CREATED_AT |
 | images | Array | N | 첨부 순서대로. 없으면 `[]` | FEEDBACK_IMAGE (`DISPLAY_ORDER`) |
-| images[].url | String | N | | FEEDBACK_IMAGE.IMAGE_URL |
+| images[].id | Long | N | 이미지 번호 | FEEDBACK_IMAGE.ID |
+| images[].url | String | N | 공개 주소가 아니라 [첨부 이미지 열기](#첨부-이미지-열기) 경로(내 문의는 `/api/me/...`, 운영은 `/api/admin/...`). 로그인 쿠키를 싣고 요청해야 열린다 | 계산 |
 | reply | Object | Y | 회신이 없으면 null — 화면은 회색 「답변을 준비하고 있어요」. `status = ANSWERED` 이면 늘 있다 | |
 | reply.content | String | N | 평문. 수정됐으면 수정된 내용 | FEEDBACK.REPLY_CONTENT |
 | reply.repliedAt | String | N | **처음** 보낸 시각. UTC ISO 8601 | FEEDBACK.REPLIED_AT |
@@ -560,7 +563,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
   "selectableStatuses": ["NEW", "SEEN"],
   "content": "아이폰 사파리에서 오늘 출석 버튼을 눌러도 반응이 없습니다.\n데스크톱에서는 됩니다.",
   "images": [
-    { "url": "https://d27gz6v6wvae1d.cloudfront.net/studyclub/gigs/feedbacks/9a0e….webp" }
+    { "id": 813, "url": "/api/admin/feedbacks/241/images/813" }
   ],
   "browser": "Safari 26 · iOS",
   "viewport": { "width": 390, "height": 844 },
@@ -576,7 +579,8 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | selectableStatuses | String[] | N | 상태 드롭다운에서 지금 고를 수 있는 값. 회신 전 `["NEW","SEEN"]`, 회신 뒤 `[]`. 화면은 여기 없는 값을 고를 수 없게 그린다 — 회신 전 「완료」는 막고 「답변을 작성한 후 완료할 수 있어요.」, 회신 뒤에는 드롭다운을 잠근다 | 계산: `Feedback.selectableStatuses()` |
 | content | String | N | 평문 — 문자 그대로 출력 | FEEDBACK.CONTENT |
 | images | Array | N | 없으면 `[]` — 화면은 칸을 두지 않는다 | FEEDBACK_IMAGE (`DISPLAY_ORDER`) |
-| images[].url | String | N | | FEEDBACK_IMAGE.IMAGE_URL |
+| images[].id | Long | N | 이미지 번호 | FEEDBACK_IMAGE.ID |
+| images[].url | String | N | 공개 주소가 아니라 [첨부 이미지 열기](#첨부-이미지-열기) 경로(내 문의는 `/api/me/...`, 운영은 `/api/admin/...`). 로그인 쿠키를 싣고 요청해야 열린다 | 계산 |
 | browser | String | Y | 「Chrome 141 · macOS」. 모르면 null — 화면 「-」 | FEEDBACK.BROWSER |
 | viewport | Object | Y | 화면이 안 보냈으면 null. 화면은 「390 × 844」 로 적는다 | |
 | viewport.width | Integer | N | | FEEDBACK.VIEWPORT_WIDTH |
@@ -698,12 +702,48 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 
 ---
 
+## 첨부 이미지 열기
+
+문의에 붙은 사진은 비공개 폴더(`private/feedbacks/`)에 있다. 공개 주소가 없고, 서버가 요청마다 로그인 · 권한을 확인한 뒤 S3 에서 읽어 내준다. Slack 의 `url_private` 처럼 주소만으로는 열리지 않는다.
+
+| 경로 | 보는 사람 | 가드 |
+|---|---|---|
+| `GET /api/me/feedbacks/{feedbackId}/images/{imageId}` | 작성자 본인 | `@RequireOnboarding` + 조회 조건 `ACCOUNT_ID = 요청자` |
+| `GET /api/admin/feedbacks/{feedbackId}/images/{imageId}` | 현재 캡틴 | `@RequireAdmin` — 요청마다 DB 의 `SYSTEM_ROLE` 을 본다. 캡틴에서 빠지면 같은 토큰으로도 바로 403 |
+
+**404 하나로 가리는 경우** — 사유를 가르지 않는다(있는지조차 알리지 않는다): 없는 문의 · 남의 문의(작성자 경로) · 그 문의의 이미지가 아닌 번호 · 보유 기간이 지난 문의(`Feedback.isRetentionExpired`, 정리 배치가 지우기 전에도) · 파일 상태가 `ATTACHED` 가 아님(`StorageObject.isServable`, 탈퇴 · 만료 처리 중인 `DELETING` 포함) · 용도가 `FEEDBACK` 가 아님 · 저장소에 파일이 없음. 로그인하지 않았으면 401, 캡틴이 아니면(운영 경로) 403.
+
+**응답** — 200, 본문은 이미지 바이트.
+
+| 헤더 | 값 |
+|---|---|
+| Content-Type | `STORAGE_OBJECT.CONTENT_TYPE` (업로드 때 내용으로 판정한 값) |
+| Content-Length | `STORAGE_OBJECT.SIZE` |
+| Cache-Control | `private, no-store` — 브라우저 · 중간 캐시에 남기지 않는다. 권한이 바뀐 직후에도 옛 사진이 보이지 않게 |
+| Content-Disposition | `inline` |
+| X-Content-Type-Options | `nosniff` |
+| Cross-Origin-Resource-Policy | `same-site` |
+
+**화면** — `<img src="{API 주소}{images[].url}" crossorigin="use-credentials">`. `use-credentials` 가 없으면 `Origin` 헤더가 없어 백엔드가 두 앱의 쿠키 중 사이트 쿠키를 먼저 고른다 — 백오피스에서는 이 속성이 있어야 `bo_` 쿠키로 인증된다(`JwtAuthFilter`). 기존 CORS 설정(`allowCredentials`)을 그대로 쓴다. 이미지 요청이 실패하면 앱의 `/api/auth/refresh` 를 한 번 부르고 같은 주소를 `?retry=1` 로 다시 요청하며(`http()` 의 401 처리와 같은 규칙), 그래도 실패하면 「이미지를 불러오지 못했어요」 를 보인다(`RetryableImage`).
+
+**저장소 읽기는 트랜잭션 밖이다** — 권한 · 상태 확인은 읽기 전용 트랜잭션에서 끝내고, 파일을 읽는 동안 DB 연결을 잡지 않는다.
+
+**알려진 잔여 위험** — 이 변경 전에 올라간 파일은 `gigs/feedbacks/` 공개 폴더에 있고 옮기지 않았다(사용자 결정). 이 파일들도 화면에는 이 API 로 보이지만, 예전에 응답으로 나간 CloudFront 주소로는 계속 열린다(최대 하루 캐시). 당시 기록은 모두 테스트 기록이고 보유 기간(1년)이 지나면 자동으로 지워진다. 개인정보가 없는 테스트 자료라 이전 작업 없이 진행하기로 했다(PR #537 리뷰, 2026-11-25).
+
+**배포** — `V64` 가 `FEEDBACK_IMAGE.IMAGE_URL` 을 지운다. stage 는 Flyway 가 꺼져 있어 손으로 한 번 적용해야 한다(Hibernate `update` 는 컬럼을 지우지 않아 `NOT NULL` 컬럼이 남으면 새 문의 저장이 실패한다). prod 배포 중 옛 인스턴스에서 일시적으로 오류가 날 수 있고, 개발자만 쓰는 단계라 감수하기로 했다(PR #537 리뷰, 2026-11-25).
+
+### 퍼널·계측
+
+해당 없음 — 퍼널 단계와 이벤트에 변화가 없다. 권한만 바뀐다.
+
+---
+
 ## 탈퇴 때
 
 [user-leave](../user-leave/spec.md) 의 처리 순서에 한 단계를 더한다 (PR #341 리뷰 · [POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md)).
 
 - **첨부 이미지는 파기한다.** 탈퇴 트랜잭션 안에서 그 계정이 낸 `FEEDBACK` 의 `FEEDBACK_IMAGE` 를 찾아, 가리키는 `STORAGE_OBJECT` 를 `DELETING` 으로 바꾸고 `FEEDBACK_IMAGE` 행을 지운다. **커밋 뒤** 프로필 사진과 같은 길로 S3 파일과 `STORAGE_OBJECT` 행을 지운다. 실패하면 정리 배치가 다시 지운다
-  - 공개 주소에 남은 스크린샷은 주소만 지워서는 파기가 아니다 — 프로필 사진과 같은 이유
+  - 저장소의 파일 자체를 지워야 파기다. 행만 지워서는 안 된다 — 프로필 사진과 같은 이유
 - **문의 행은 아래 보유 기간까지만 남긴다** — 제목 · 본문 · 회신 · 캡틴 메모 · 브라우저 · 화면 크기. 화면에는 「탈퇴한 사용자」로 표시하지만 자유입력 내용에는 개인정보가 남을 수 있다. 탈퇴로 보유 기간이 다시 시작되지는 않는다
 - 탈퇴한 사람이 **완료 처리자**(캡틴)였다면 그 문의는 그대로다. 운영 목록의 `doneBy.nickname` 이 null → 「탈퇴한 사용자」
 
@@ -753,7 +793,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 
 이번 범위에서 뺐고, 다시 꺼낼 때 여기서 시작한다.
 
-1. **첨부 이미지 비공개** — 지금은 `gigs/feedbacks/` 공개 폴더다. 오류 신고 스크린샷에 이메일 · 닉네임이 찍힐 수 있다. 비공개 폴더 + 짧게 사는 서명 URL 로 바꾼다 — 업로드 서비스에 비공개 경로가 새로 필요하다. 11월 초 피드백 기간 (리뷰)
+1. ~~**첨부 이미지 비공개**~~ — 2026-11-21 완료. [첨부 이미지 열기](#첨부-이미지-열기). 서명 URL 대신 서버가 권한을 확인하고 읽어 내주는 방식으로 했다
 2. **온보딩 전 제출** — 온보딩에서 막힌 사람이 바로 신고할 수 있게. 동의 전 수집이 되므로 정책 확인이 먼저이고, 문의 전용 업로드(또는 공용 업로드의 가드 변경) · 내 문의 화면의 온보딩 강제 이동 예외 · 운영 화면의 「온보딩 전 사용자」 표시가 필요하다
 3. **수동 삭제** — 필요해지면 `DELETE /api/admin/feedbacks/{id}` 를 별도로 설계한다. 보유 기간 만료 시 자동 물리 삭제는 위 규칙으로 처리한다
 4. **GIF 첨부** — `ImageSanitizer` 에 GIF 판정 · 메타데이터 제거를 더한다
@@ -774,6 +814,8 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | 2026-10-26 | `DONE` 은 회신으로만, 회신 뒤 상태 고정, 회신 수정은 허용 | PR #341 리뷰 |
 | 2026-10-26 | 이미지는 PNG · JPG · WEBP. GIF 는 후속 | PR #341 리뷰 |
 | 2026-10-26 | 이미지는 공개 폴더로 시작, 비공개는 후속 | PR #341 리뷰 |
+| 2026-11-21 | 첨부 이미지 비공개: `private/feedbacks/` + 요청마다 권한을 확인하는 서버 전달. 서명 URL(CloudFront · S3)은 발급 뒤 만료까지 주소만으로 열려 권한 회수가 늦어서 택하지 않았다. 기존 `gigs/feedbacks/` 파일은 옮기지 않는다 | 사용자 결정 · [share](../../docs/share/2026-11-21-feedback-attachment-private.md) |
+| 2026-11-25 | 옛 `gigs/feedbacks/` 파일은 이전하지 않고, prod 배포 중 일시 오류는 감수한다. 사진 요청이 실패하면 인증을 한 번 갱신하고 다시 요청한다 | PR #537 리뷰 |
 | 2026-10-26 | rate limit 계정당 60초 1건 + 24시간 20건 | PR #341 리뷰 |
 | 2026-10-26 | 캡틴 메모 2000자 | PR #341 리뷰 |
 | 2026-10-26 | 삭제 API · `DELETED_AT` 없음 | PR #341 리뷰 |

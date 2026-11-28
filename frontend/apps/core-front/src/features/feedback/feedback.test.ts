@@ -9,6 +9,7 @@ import {
   TITLE_MAX,
   TOO_MANY_MESSAGE,
   feedbackImageForm,
+  feedbackImageSrc,
   feedbackSchema,
   imageProblem,
   sendErrorMessage,
@@ -16,7 +17,7 @@ import {
   uploadErrorMessage,
   viewportOf,
 } from './feedback';
-import { ApiError } from '../../lib/http';
+import { API_BASE, ApiError } from '../../lib/http';
 
 function messages(values: { type: string; title: string; content: string }) {
   const result = feedbackSchema.safeParse(values);
@@ -124,5 +125,11 @@ describe('uploadErrorMessage', () => {
     );
     expect(uploadErrorMessage(new ApiError(413, '요청에 실패했습니다 (413)'))).toBe(IMAGE_SIZE_ERROR);
     expect(uploadErrorMessage(new ApiError(500, 'boom'))).toBe('이미지를 올리지 못했습니다. 다시 시도해 주세요.');
+  });
+});
+
+describe('feedbackImageSrc', () => {
+  it('첨부 이미지 경로를 API 주소로 잇는다 — 공개 주소가 아니다', () => {
+    expect(feedbackImageSrc('/api/me/feedbacks/198/images/7')).toBe(`${API_BASE}/api/me/feedbacks/198/images/7`);
   });
 });

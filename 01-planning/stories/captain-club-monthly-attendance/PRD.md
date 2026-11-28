@@ -235,7 +235,7 @@ flowchart LR
   - 「취소」(기본 포커스)
 - **정책**
   - 이번 기수 안에서는 「참여 중단 취소」(3-7)로 되돌릴 수 있다
-  - 그날 클럽에서 나간다 — 다음 달로 이어지지 않는다 (ST-042)
+  - 그날 클럽에서 나간다 — 다음 달로 이어지지 않는다 (ST-045)
 - **데이터**: `PUT /api/admin/clubs/{programId}/checkins` 의 `withdrawals[]` — `CLUB_MEMBER.STATUS = LEFT` · `LEFT_AT` · `LEFT_REASON = CAPTAIN`
 
 #### 6-1 — 참여 중단 취소 확인

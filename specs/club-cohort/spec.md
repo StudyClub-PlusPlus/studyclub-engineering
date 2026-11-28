@@ -7,7 +7,7 @@
 >
 > Story PRD:
 > - [캡틴은 기존 스터디를 재등록할 수 있다(기수제). (ST-021)](../../01-planning/stories/captain-reregister-cohort/PRD.md)
-> - [캡틴은 지난 기수를 끝까지 마친 참여자를 다음 기수로 이어 받을 수 있다. (ST-042)](../../01-planning/stories/captain-carry-over-club-members/PRD.md)
+> - [캡틴은 지난 기수를 끝까지 마친 참여자를 다음 기수로 이어 받을 수 있다. (ST-045)](../../01-planning/stories/captain-carry-over-club-members/PRD.md)
 > - [캡틴은 클럽 기수의 월간 출석부를 입력할 수 있다. (ST-043)](../../01-planning/stories/captain-club-monthly-attendance/PRD.md)
 
 클럽(`STUDY_PROGRAM.STUDY_KIND = CLUB`)의 기수는 **달 하나**다. 다음 달 기수는 스케줄러가 초안 날(기본 15일)에 만들고 공개 날(기본 20일)에 공개한다. 캡틴은 기존 공개 API 로 먼저 열 수 있다.

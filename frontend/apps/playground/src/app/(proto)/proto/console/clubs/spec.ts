@@ -200,10 +200,10 @@ const COHORT: ScreenSpec = {
   ],
 };
 
-/** 이어서 참여 — 이번 달을 끝까지 마친 멤버는 다음 달에도 멤버로 남는다 (ST-042). 옮겨 적지 않는다. */
+/** 이어서 참여 — 이번 달을 끝까지 마친 멤버는 다음 달에도 멤버로 남는다 (ST-045). 옮겨 적지 않는다. */
 const CARRY: ScreenSpec = {
   screen: '클럽 운영 › 기수 (운영 콘솔)',
-  story: 'ST-042',
+  story: 'ST-045',
   prd: 'captain-carry-over-club-members',
   chip: '이어서 참여',
   scope: 'carry',
@@ -491,7 +491,7 @@ const BOOK: ScreenSpec = {
       behavior: ['「{n}명 참여 중단」 — 바로 반영된다', '「취소」(기본 포커스)'],
       policy: [
         '이번 기수 안에서는 「참여 중단 취소」(3-7)로 되돌릴 수 있다',
-        '그날 클럽에서 나간다 — 다음 달로 이어지지 않는다 (ST-042)',
+        '그날 클럽에서 나간다 — 다음 달로 이어지지 않는다 (ST-045)',
       ],
       data: [
         '`PUT /api/admin/clubs/{programId}/checkins` 의 `withdrawals[]` — `CLUB_MEMBER.STATUS = LEFT` · `LEFT_AT` · `LEFT_REASON = CAPTAIN`',

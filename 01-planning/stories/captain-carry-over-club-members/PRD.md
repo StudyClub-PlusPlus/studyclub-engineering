@@ -1,6 +1,6 @@
 # 캡틴은 지난 기수를 끝까지 마친 참여자를 다음 기수로 이어 받을 수 있다.
 
-story_id: ST-042 · IA: IA-043
+story_id: ST-045 · IA: IA-043
 
 기준 프로토타입: 운영 콘솔 › 클럽 › 기수 — https://playground.studyclub.life/proto/console/clubs
 

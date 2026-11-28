@@ -38,8 +38,8 @@ export type ApiAdminFeedbackDetail = ApiAdminFeedback & {
   selectableStatuses: FeedbackStatus[];
   /** 평문. HTML 로 해석하지 않는다. */
   content: string;
-  /** 없으면 `[]` — 화면은 칸을 두지 않는다. */
-  images: { url: string }[];
+  /** 없으면 `[]` — 화면은 칸을 두지 않는다. `url` 은 공개 주소가 아니라 로그인 쿠키로 여는 API 경로다. */
+  images: { id: number; url: string }[];
   /** 「Chrome 141 · macOS」. 모르면 null. */
   browser: string | null;
   viewport: { width: number; height: number } | null;

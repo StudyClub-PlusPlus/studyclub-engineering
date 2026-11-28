@@ -1,17 +1,18 @@
 'use client';
 
-import { useRef, type ChangeEvent } from 'react';
+import { useState, useRef, type ChangeEvent } from 'react';
 
 import { tx } from '@console/lib/l10n';
 import { MARKDOWN_HINT } from '@core/components/ApplicationFormUi';
 import { recruitmentTimeZones } from '@core/lib/recruitment-timezones';
 import { isValidZone } from '@core/lib/schedule-timezone';
-import { programs } from '@studyclub/mock';
+import { programs, studies } from '@studyclub/mock';
 import { type Study, type StudyKind, type RecruitmentTimeZones } from '@studyclub/types';
-import { Button, Checkbox, Input, Textarea, FilterChip, DatePicker } from '@studyclub/ui';
+import { Button, Checkbox, Input, Select, Textarea, FilterChip, DatePicker, Modal } from '@studyclub/ui';
 import { STUDY_CATEGORIES, categoriesOf, toISODate } from '@studyclub/utils';
 
 import { RecruitmentTimeZoneField } from './RecruitmentTimeZoneField';
+import { canCopyStudy } from '../lib/reused-drafts';
 import { recruitmentDeadlineDate } from '@/proto/lib/recruitment-deadline';
 
 /**
@@ -35,7 +36,7 @@ import { recruitmentDeadlineDate } from '@/proto/lib/recruitment-deadline';
 
 export const KIND_LABEL: Record<StudyKind, string> = { study: '스터디', club: '클럽' };
 
-export type FormMode = 'create' | 'edit' | 'reuse';
+export type FormMode = 'create' | 'edit';
 
 /**
  * 제목 한도 = **카드에서 잘리지 않는 길이**. 글자 수가 아니라 **폭**으로 센다.
@@ -52,7 +53,10 @@ export const TITLE_MAX_WIDTH = 40;
 /** 한글·전각은 2, 그 밖은 1. 세는 법은 화면과 서버가 같아야 한다. */
 export function titleWidth(s: string): number {
   let w = 0;
-  for (const ch of s) w += /[\u1100-\u11FF\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch) ? 2 : 1;
+  for (const ch of s)
+    w += /[\u1100-\u11FF\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch)
+      ? 2
+      : 1;
   return w;
 }
 /** 카드 한 줄 소개가 줄바꿈 없이 한 줄로 유지되는 최대 글자수. */
@@ -77,6 +81,7 @@ export const DESCRIPTION_TEMPLATE = `## 목표
 `;
 
 export type StudyFormValues = {
+  sourceId?: string;
   /** 등록에서만 고른다. 수정 모드는 늘 `existing` — 프로그램은 바꾸지 않는다. */
   programMode: 'new' | 'existing';
   /** `existing` 일 때 붙일 프로그램. */
@@ -161,6 +166,11 @@ export function studyToForm(study: Study, zone = 'Asia/Seoul'): StudyFormValues 
   };
 }
 
+export function copyStudyForm(source: Study): StudyFormValues {
+  const { title, summary, description, category, thumbnail } = studyToForm(source);
+  return { ...EMPTY_FORM, sourceId: source.id, title, summary, description, category, thumbnail };
+}
+
 export type StudyFormErrors = Partial<Record<keyof StudyFormValues, string>>;
 
 export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
@@ -172,7 +182,10 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
   if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim()))
     e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
-  if (f.recruitmentTimeZones.mode === 'selected' && (!f.recruitmentTimeZones.zones.length || !f.recruitmentTimeZones.zones.every(isValidZone)))
+  if (
+    f.recruitmentTimeZones.mode === 'selected' &&
+    (!f.recruitmentTimeZones.zones.length || !f.recruitmentTimeZones.zones.every(isValidZone))
+  )
     e.recruitmentTimeZones = '시간대를 하나 이상 선택하세요.';
   const isUrl = (v: string) => /^https?:\/\/.+/i.test(v.trim());
   if (f.discordUrl.trim() && !isUrl(f.discordUrl)) e.discordUrl = 'http(s):// 로 시작하는 주소를 입력하세요.';
@@ -200,18 +213,78 @@ export function StudyForm({
   onChange: (next: StudyFormValues) => void;
   mode?: FormMode;
 }) {
+  const [pending, setPending] = useState<StudyFormValues | null>(null);
+  function replace(next: StudyFormValues) {
+    const hasInput =
+      value.sourceId ||
+      value.title ||
+      value.summary ||
+      value.description !== EMPTY_FORM.description ||
+      value.thumbnail ||
+      value.deadline ||
+      value.schedule ||
+      value.capacity ||
+      !value.unlimited ||
+      value.startAt ||
+      value.discordUrl ||
+      value.driveUrl ||
+      value.recruitmentTimeZones.mode !== EMPTY_FORM.recruitmentTimeZones.mode;
+    if (hasInput) setPending(next);
+    else onChange(next);
+  }
   const set = <K extends keyof StudyFormValues>(key: K, v: StudyFormValues[K]) => onChange({ ...value, [key]: v });
 
   return (
     <div className='flex flex-col gap-3'>
+      <Modal
+        open={pending !== null}
+        onClose={() => setPending(null)}
+        title='입력한 내용을 바꿀까요?'
+        footer={
+          <>
+            <Button variant='secondary' data-autofocus onClick={() => setPending(null)}>
+              취소
+            </Button>
+            <Button
+              onClick={() => {
+                if (pending) onChange(pending);
+                setPending(null);
+              }}
+            >
+              바꾸기
+            </Button>
+          </>
+        }
+      >
+        작성한 내용이 선택한 스터디의 내용으로 바뀝니다.
+      </Modal>
       {/*
         **무엇을 만드는지부터 적고 날짜는 마지막에 받는다.** 제목·소개를 쓰기 전에 마감일을 묻는 것은
         운영자가 아직 정하지 않은 것을 먼저 묻는 일이다.
       */}
       <div data-anno='11'>
-         {mode === 'reuse' ? (
-          <p className='type-body-sm text-fg-secondary'>새 프로그램 · 스터디<br />이전 게시물 내용을 불러왔어요. 이번 모집에 맞게 확인하고 수정해 주세요.</p>
-        ) : <ProgramField mode={mode} value={value} onChange={onChange} />}
+        <ProgramField mode={mode} value={value} onChange={replace} />
+        {mode === 'create' && value.programMode === 'new' && value.kind === 'study' && (
+          <Select
+            data-anno='reuse:2'
+            aria-label='지난 스터디 불러오기'
+            value={value.sourceId ?? ''}
+            onChange={(event) => {
+              const source = studies.find((study) => study.id === event.target.value);
+              replace(source ? copyStudyForm(source) : EMPTY_FORM);
+            }}
+          >
+            <option value=''>지난 스터디 불러오기 (선택)</option>
+            {studies
+              .filter(canCopyStudy)
+              .sort((a, b) => b.study_id - a.study_id)
+              .map((study) => (
+                <option key={study.id} value={study.id}>
+                  {tx(study.title)} · #{study.study_id}
+                </option>
+              ))}
+          </Select>
+        )}
       </div>
 
       <div data-anno='2'>
@@ -267,7 +340,11 @@ export function StudyForm({
       </div>
 
       <div data-anno='16'>
-        <RecruitmentTimeZoneField value={value.recruitmentTimeZones} onChange={(next) => set('recruitmentTimeZones', next)} error={errors.recruitmentTimeZones} />
+        <RecruitmentTimeZoneField
+          value={value.recruitmentTimeZones}
+          onChange={(next) => set('recruitmentTimeZones', next)}
+          error={errors.recruitmentTimeZones}
+        />
       </div>
 
       <div className='grid gap-3 sm:grid-cols-2'>
@@ -353,7 +430,7 @@ export function StudyForm({
  * 남고, 새로고침하면 사라진다. 실제 연동 시엔 여기서 파일을 스토리지에 먼저 올리고, 돌아온 짧은
  * 호스팅 URL을 `STUDY.THUMBNAIL_URL`(VARCHAR(2048))에 넣어야 한다 — data URL은 못 들어간다.
  */
-function ThumbnailField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+export function ThumbnailField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function pick(ev: ChangeEvent<HTMLInputElement>) {
@@ -496,14 +573,16 @@ function ProgramField({
               role='radio'
               selected={value.kind === k}
               selectMode='single'
-              onClick={() => onChange({ ...value, kind: k })}
+              onClick={() => onChange({ ...(value.sourceId && k !== value.kind ? EMPTY_FORM : value), kind: k })}
             >
               {KIND_LABEL[k]}
             </FilterChip>
           ))}
         </div>
         <span data-anno='12-1' className='type-label-sm text-fg-muted'>
-          {value.kind === 'club' ? '첫 기수를 만듭니다. 다음 기수부터는 클럽 운영에서 매달 만듭니다' : '한 번 모집해 한 번 진행'}
+          {value.kind === 'club'
+            ? '첫 기수를 만듭니다. 다음 기수부터는 클럽 운영에서 매달 만듭니다'
+            : '한 번 모집해 한 번 진행'}
         </span>
       </div>
     </div>

@@ -1,18 +1,21 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import {
   EMPTY_FORM,
   StudyForm,
+  copyStudyForm,
   studyToForm,
   validateStudyForm,
   type StudyFormErrors,
   type StudyFormValues,
 } from '@console/components/StudyForm';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
+import { studies } from '@studyclub/mock';
 import type { Study } from '@studyclub/types';
-import { Button, Modal } from '@studyclub/ui';
+import { Button, Modal, toast } from '@studyclub/ui';
 
 import { saveReusedDraft } from '../lib/reused-drafts';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
@@ -47,7 +50,8 @@ export function StudyCreateDialog({
   const dirty = useRef(false);
   const [errors, setErrors] = useState<StudyFormErrors>({});
   const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState(false);
+  const router = useRouter();
+  const zone = useDisplayTimeZone();
 
   const [saveError, setSaveError] = useState('');
 
@@ -55,18 +59,15 @@ export function StudyCreateDialog({
     if (!open || dirty.current) return;
     setSaveError('');
     if (reuseOf) {
-      const { title, summary, description, category } = studyToForm(reuseOf);
-      setForm({ ...EMPTY_FORM, title, summary, description, category });
+      setForm(copyStudyForm(reuseOf));
     } else setForm(study ? studyToForm(study) : EMPTY_FORM);
     setErrors({});
-    setDone(false);
   }, [open, study, reuseOf]);
 
   function close() {
     dirty.current = false;
     setForm(EMPTY_FORM);
     setErrors({});
-    setDone(false);
     onClose();
   }
 
@@ -78,22 +79,23 @@ export function StudyCreateDialog({
     if (saving) return;
     setSaving(true);
     setSaveError('');
-    if (reuseOf) {
-      try {
-        saveReusedDraft(form);
-        setDone(true);
-      } catch {
-        setSaveError('저장하지 못했어요. 입력한 내용을 확인하고 다시 시도해 주세요.');
-      } finally {
-        setSaving(false);
+    try {
+      // TODO(api): POST /api/admin/studies → Location의 새 ID로 이동한다.
+      const source = studies.find((candidate) => candidate.id === form.sourceId);
+      const draft = !editing ? await saveReusedDraft(form, source, zone) : undefined;
+      if (study) saveRecruitmentZones(study.id, form.recruitmentTimeZones);
+      close();
+      toast.success(editing ? '저장되었습니다' : '미공개로 등록되었습니다');
+      if (draft) router.push(`/proto/console/studies/${draft.study_id}`);
+    } catch (error) {
+      if (error instanceof RangeError) {
+        setErrors({ deadline: error.message });
+        return;
       }
-      return;
+      setSaveError('저장하지 못했어요. 다시 시도해 주세요.');
+    } finally {
+      setSaving(false);
     }
-    // TODO(api): POST /api/studies — 저장 대상 테이블이 없어 화면 상태로만 처리
-    await new Promise((r) => setTimeout(r, 400));
-    if (study) saveRecruitmentZones(study.id, form.recruitmentTimeZones);
-    setSaving(false);
-    setDone(true);
   }
 
   return (
@@ -102,49 +104,26 @@ export function StudyCreateDialog({
       <Modal
         open={open}
         onClose={close}
-        title={
-          reuseOf ? '이 내용으로 새 스터디' : editing ? '스터디 편집' : '스터디 등록'
-        }
+        title={reuseOf ? '스터디 복제' : editing ? '스터디 편집' : '스터디 등록'}
         size='lg'
         footer={
-          done ? (
-            reuseOf ? (
-              <Link href={`/proto/console/studies?status=DRAFT&q=${encodeURIComponent(form.title)}`}>
-                스터디 목록에서 확인
-              </Link>
-            ) : (
-              <Button onClick={close}>확인</Button>
-            )
-          ) : (
-            /* 입력·설정 모달이라 취소를 두지 않는다 — 닫는 길은 X 와 Esc 다 (POL-0008) */
-            <>
-              {reuseOf && (
-                <Button variant='secondary' onClick={close}>
-                  취소
-                </Button>
-              )}
-              <Button data-anno='9' onClick={handleSubmit} loading={saving}>
-                {reuseOf ? '미공개로 등록' : editing ? '저장' : '등록'}
-              </Button>
-            </>
-          )
+          <>
+            <Button data-anno='9 reuse:3' onClick={handleSubmit} loading={saving}>
+              {editing ? '저장' : '미공개로 등록'}
+            </Button>
+          </>
         }
       >
-        {done ? (
-          <p className='py-6 text-center type-body-sm text-fg-muted'>
-            {editing ? '저장되었습니다.' : '등록되었습니다. 아직 사이트에 보이지 않습니다 — 목록에서 공개를 켜세요.'}
-          </p>
-        ) : (
-          <>
-            {saveError && <p role='alert'>{saveError}</p>}
-            <StudyForm
-              mode={reuseOf ? 'reuse' : editing ? 'edit' : 'create'}
-              value={form}
-              errors={errors}
-              onChange={(next) => { dirty.current = true; setForm(next); }}
-            />
-          </>
-        )}
+        {saveError && <p role='alert'>{saveError}</p>}
+        <StudyForm
+          mode={editing ? 'edit' : 'create'}
+          value={form}
+          errors={errors}
+          onChange={(next) => {
+            dirty.current = true;
+            setForm(next);
+          }}
+        />
       </Modal>
     </>
   );

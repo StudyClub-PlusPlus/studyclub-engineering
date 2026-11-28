@@ -34,6 +34,7 @@ import { Badge, Button, ButtonLink, Modal, Switch, Tabs } from '@studyclub/ui';
 import { attendancePoint, attendanceRate, applyFormUrl, lifecycleState, publishState } from '@studyclub/utils';
 import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
+import { canCopyStudy } from '../lib/reused-drafts';
 import { useAnnotate } from '@/proto/annotate';
 import { recruitState, recruitmentDeadlineLabel, recruitmentDaysLeft } from '@/proto/lib/recruitment-deadline';
 import { kindRules } from '@/proto/lib/study-kind';
@@ -216,8 +217,8 @@ export function StudyConsole({ study }: { study: Study }) {
     return total === 0 ? undefined : Math.round((score / total) * 100);
   }, [clubStats, classes, study, meetings, active, assign, navigators, left, books]);
   useRecruitmentClock([study]);
-  const lifecycle = lifecycleState(study);
-  const reusable = rules.reusable && (lifecycle === 'ENDED' || lifecycle === 'CLOSED');
+  // 복제는 종류 표가 허락하고(스터디만) 끝난 스터디일 때
+  const reusable = rules.reusable && canCopyStudy(study);
   const open = recruitState(study) === 'apply';
   const deadline = recruitmentDeadlineLabel(study, zone);
   const dday = recruitmentDaysLeft(study, zone);
@@ -228,7 +229,7 @@ export function StudyConsole({ study }: { study: Study }) {
   const [publishConfirm, setPublishConfirm] = useState<boolean | null>(null);
   // 아직 켜지 않은 스터디는 사이트에 없다 — 헤더에서 그 사실을 알린다.
   const draft = !published;
-  const publishReasonId = useId();
+  const reasonId = useId();
   const publishBlocked = published
     ? lifecycleState(study) !== 'OPEN' && lifecycleState(study) !== 'DRAFT'
       ? '진행 중이거나 종료된 스터디는 비공개로 돌릴 수 없습니다.'
@@ -414,8 +415,14 @@ export function StudyConsole({ study }: { study: Study }) {
           <div data-anno='attendee:1-2' className='flex items-center gap-2'>
             {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
             {reusable && (
-              <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setReuseOpen(true)}>
-                이 내용으로 새 스터디
+              <Button
+                data-anno='reuse:1'
+                size='sm'
+                variant='secondary'
+                leadingIcon={<Plus size={14} />}
+                onClick={() => setReuseOpen(true)}
+              >
+                스터디 복제
               </Button>
             )}
             {/* 클럽의 다음 기수는 클럽 운영 화면이 맡는다 — 매달 초안이 자동으로 생기고 거기서 모집을 시작한다 */}
@@ -437,18 +444,18 @@ export function StudyConsole({ study }: { study: Study }) {
               </Badge>
             )}
           </div>
-          {/* 사이트 공개 스위치 — 상세에서도 켜고 끈다. 막히면 이유를 바로 아래 글로 (백오피스 PublishSwitch 와 같다) */}
+          {/* 사이트 공개 스위치 — 상세에서도 켜고 끈다. 제한 사유는 조작할 때 알린다 */}
           <div data-anno='attendee:1-3' className='flex flex-col items-end gap-1'>
             <Switch
               label='사이트 공개'
               tone='success'
               checked={published}
               aria-disabled={publishBlocked ? true : undefined}
-              aria-describedby={publishBlocked ? publishReasonId : undefined}
+              aria-describedby={publishBlocked ? reasonId : undefined}
               onCheckedChange={setPublishConfirm}
             />
             {publishBlocked && (
-              <p id={publishReasonId} className='type-label-sm text-fg-muted'>
+              <p id={reasonId} className='type-label-sm text-fg-muted'>
                 {publishBlocked}
               </p>
             )}
@@ -501,11 +508,7 @@ export function StudyConsole({ study }: { study: Study }) {
           value={String(clubStats?.attendees ?? active.length)}
           sub={study.recruitment?.capacity ? `정원 ${study.recruitment.capacity}명` : '정원 제한 없음'}
         />
-        <SummaryStat
-          label='출석률'
-          value={studyRate === undefined ? '-' : `${studyRate}%`}
-          sub={rules.rateScope}
-        />
+        <SummaryStat label='출석률' value={studyRate === undefined ? '-' : `${studyRate}%`} sub={rules.rateScope} />
       </div>
       <div data-anno='attendee:2 crew:1 results:1' className='mt-6'>
         <Tabs

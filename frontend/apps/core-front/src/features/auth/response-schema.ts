@@ -13,7 +13,7 @@ export const sessionUserSchema = z.object({
 
 export const tokenResponseSchema = z.object({
   accessToken: z.string().min(1),
-  accessTokenExpiresIn: z.number().optional(),
+  accessTokenExpiresIn: z.number().positive().optional(),
   refreshToken: z.string().nullable().optional(),
   refreshTokenExpiresIn: z.number().optional(),
 });

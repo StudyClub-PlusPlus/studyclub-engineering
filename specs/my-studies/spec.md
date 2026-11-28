@@ -143,6 +143,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 - 스터디 기간(PRD §4-5): 첫·마지막 회차의 `scheduledAt`
 - 완주 점수판 `n/m`: `countedInRate = true` 인 회차 중 `attendanceStatus ∈ {PRESENT, LATE}` 개수 / `EXCUSED` 가 아닌 개수. 출석률과 같은 회차 집합을 본다. 반을 옮겼으면 옛 반 구간의 회차도 더한다 — 출석률과 같은 합산 (share 11-19). [NEEDS CLARIFICATION] 회차 격자(`meetings[]`)에 옛 반 회차를 함께 그릴지는 미정 — 지금은 지금 반 회차만
 - 참석 버튼 활성: `scheduledAt − 30분` ≤ now ≤ 회차 종료 기준
+- 회고 탭 점: `GET /api/me/studies/{studyId}/retros/status` 응답에서 한 회차라도 `retroOpen === true && retroMine === false` 이면 「회고」 탭 옆에 점을 표시한다. `retroOpen`·`retroMine` 이 `null` 인 회차(킥오프)는 무시한다
 - 디스코드 아이콘: `COMPLETED` 면 채널 URL 과 무관하게 클럽 초대 링크(완주 뒤 채널은 닫힌다 — 프로토 `joined.ts` `discordUrl`). `UPCOMING`·`ONGOING` 은 `discordChannelUrl`, null 이면 클럽 초대 링크
 
 ### Error Responses
