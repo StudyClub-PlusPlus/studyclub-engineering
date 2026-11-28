@@ -201,6 +201,92 @@ class StudyDiscordLinkServiceTest {
     }
 
     /** 저장 직전 잠금 재확인. 트랜잭션 템플릿은 콜백을 그대로 실행한다. */
+    @Test
+    @DisplayName("주소가_비어_있으면_첫_텍스트_채널_주소로_채운다")
+    void 주소가_비어_있으면_첫_텍스트_채널_주소로_채운다() {
+        StudyDiscordLinkService withGuild = serviceWithGuild();
+        givenStudy("알고리즘 스터디");
+        givenAccount(DISCORD_USER_ID);
+        when(discordBotClient.createStudy("알고리즘 스터디", DISCORD_USER_ID)).thenReturn(CREATED);
+        when(discordBotClient.getStudyChannels(DISCORD_USER_ID, CREATED.discordStudyId()))
+                .thenReturn(
+                        List.of(
+                                new DiscordBotClient.StudyChannel(
+                                        "1327394882193883200",
+                                        "음성",
+                                        DiscordBotClient.ChannelType.VOICE),
+                                new DiscordBotClient.StudyChannel(
+                                        "1327394882193883201",
+                                        "로비",
+                                        DiscordBotClient.ChannelType.TEXT)));
+        Study locked = givenLockedStudy();
+
+        withGuild.link(ADMIN_ID, STUDY_ID, null);
+
+        verify(locked)
+                .changeDiscordChannelUrl(
+                        "https://discord.com/channels/" + GUILD_ID + "/1327394882193883201");
+    }
+
+    @Test
+    @DisplayName("캡틴이_넣어_둔_주소는_덮어쓰지_않는다")
+    void 캡틴이_넣어_둔_주소는_덮어쓰지_않는다() {
+        StudyDiscordLinkService withGuild = serviceWithGuild();
+        givenStudy("알고리즘 스터디");
+        givenAccount(DISCORD_USER_ID);
+        when(discordBotClient.createStudy("알고리즘 스터디", DISCORD_USER_ID)).thenReturn(CREATED);
+        when(discordBotClient.getStudyChannels(DISCORD_USER_ID, CREATED.discordStudyId()))
+                .thenReturn(
+                        List.of(
+                                new DiscordBotClient.StudyChannel(
+                                        "1327394882193883201",
+                                        "로비",
+                                        DiscordBotClient.ChannelType.TEXT)));
+        Study locked = givenLockedStudy();
+        when(locked.getDiscordChannelUrl()).thenReturn("https://discord.gg/old");
+
+        withGuild.link(ADMIN_ID, STUDY_ID, null);
+
+        verify(locked, never()).changeDiscordChannelUrl(anyString());
+    }
+
+    @Test
+    @DisplayName("채널_조회가_실패해도_연결은_성공한다")
+    void 채널_조회가_실패해도_연결은_성공한다() {
+        StudyDiscordLinkService withGuild = serviceWithGuild();
+        givenStudy("알고리즘 스터디");
+        givenAccount(DISCORD_USER_ID);
+        when(discordBotClient.createStudy("알고리즘 스터디", DISCORD_USER_ID)).thenReturn(CREATED);
+        givenStudyStillExists(true);
+        when(discordBotClient.getStudyChannels(DISCORD_USER_ID, CREATED.discordStudyId()))
+                .thenThrow(new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR));
+
+        assertThatCode(() -> withGuild.link(ADMIN_ID, STUDY_ID, null)).doesNotThrowAnyException();
+    }
+
+    private static final String GUILD_ID = "1327394882193883000";
+
+    private StudyDiscordLinkService serviceWithGuild() {
+        return new StudyDiscordLinkService(
+                discordBotClient,
+                studyDiscordLinkRepository,
+                studyRepository,
+                accountRepository,
+                studyParticipantRepository,
+                transactionTemplate,
+                GUILD_ID);
+    }
+
+    /** 연결 저장과 주소 채우기가 둘 다 잠가서 읽는 같은 스터디를 받는다. */
+    private Study givenLockedStudy() {
+        Study locked = mock(Study.class);
+        when(transactionTemplate.execute(any()))
+                .thenAnswer(
+                        inv -> inv.<TransactionCallback<?>>getArgument(0).doInTransaction(null));
+        when(studyRepository.findByIdForUpdate(STUDY_ID)).thenReturn(Optional.of(locked));
+        return locked;
+    }
+
     private void givenStudyStillExists(boolean exists) {
         when(transactionTemplate.execute(any()))
                 .thenAnswer(

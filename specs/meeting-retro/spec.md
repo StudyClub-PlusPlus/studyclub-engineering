@@ -84,6 +84,12 @@ erDiagram
 
 ## GET /api/studies/{studyId}/meetings/{meetingId}/retros
 
+```
+GET /api/studies/{studyId}/meetings/{meetingId}/retros?groupId={groupId}
+```
+
+- `groupId` (선택) — 캡틴(ADMIN)에게만 적용. 여러 반을 관리하는 캡틴이 어느 반 명부 기준으로 `targets`·`missing` 을 볼지 지정. 생략하면 그 미팅의 소속 반을 사용. 캡틴 외(네비게이터·크루)가 보내면 무시한다.
+
 네비게이터·캡틴:
 ```json
 {

@@ -1,0 +1,7 @@
+{
+  "shots": [
+    { "story": "captain-reregister-cohort", "name": "club-next-draft", "title": "다음 기수 — 15일에 만들어진 초안", "path": "/proto/console/clubs" },
+    { "story": "captain-reregister-cohort", "name": "club-next-none", "title": "다음 기수 — 초안 만들기 전 (12/10)", "path": "/proto/console/clubs", "click": ["12/10"] },
+    { "story": "captain-reregister-cohort", "name": "club-next-confirm", "title": "모집 시작 확인", "path": "/proto/console/clubs", "click": ["모집 시작"] }
+  ]
+}

@@ -32,7 +32,10 @@ public class AccountDiscordLinkService {
     private final StudyParticipantRepository studyParticipantRepository;
     private final TransactionTemplate transactionTemplate;
 
-    public void link(Long accountId, String code) {
+    /**
+     * @return 이번 연동에서 봇이 스터디클럽 서버에 새로 넣었는가
+     */
+    public boolean link(Long accountId, String code) {
         DiscordUser user = discordOAuthClient.exchange(code);
         try {
             transactionTemplate.executeWithoutResult(status -> save(accountId, user));
@@ -40,6 +43,7 @@ public class AccountDiscordLinkService {
             // 검사와 flush 사이에 다른 계정이 같은 ID 를 먼저 가져간 경우의 마지막 방어선
             throw new BusinessException(ErrorCode.CONFLICT, CONFLICT_MESSAGE);
         }
+        return user.joinedGuild();
     }
 
     /**
@@ -95,6 +99,8 @@ public class AccountDiscordLinkService {
                             throw new BusinessException(ErrorCode.CONFLICT, CONFLICT_MESSAGE);
                         });
         account.linkDiscord(user.id(), user.handle());
+        // 신청 폼 별명 칸은 이 값을 읽기만 한다 — 연동(새로고침 포함)할 때마다 서버에서 보이는 이름으로 덮어쓴다
+        account.changeDiscordNickname(user.nickname());
         accountRepository.saveAndFlush(account);
     }
 }

@@ -31,6 +31,22 @@ class MarkedGroup:
 
 
 @dataclass(frozen=True)
+class NoMeetingGroup:
+    """A group with nobody to mark, and its meeting nearest to now -- so the
+    navigator sees that the time is off rather than guessing."""
+
+    study_group_id: int
+    group_name: str | None = None
+    # IANA zone; None means the group has none set (shown in Asia/Seoul).
+    timezone: str | None = None
+    nearest_number: int | None = None
+    nearest_type: str | None = None
+    nearest_title: str | None = None
+    # UTC ISO 8601 as the backend sent it; None when the group has no open meeting.
+    nearest_scheduled_at: str | None = None
+
+
+@dataclass(frozen=True)
 class AttendanceResult:
     """A 200 from the backend, split the way the contract splits it."""
 
@@ -38,6 +54,7 @@ class AttendanceResult:
     unmatched: list[str] = field(default_factory=list)
     not_participant: list[str] = field(default_factory=list)
     no_meeting: list[str] = field(default_factory=list)
+    no_meeting_groups: list[NoMeetingGroup] = field(default_factory=list)
 
     @property
     def marked_count(self) -> int:
@@ -126,4 +143,16 @@ def _parse(body: dict) -> AttendanceResult:
         unmatched=list(body.get("unmatched") or []),
         not_participant=list(body.get("notParticipant") or []),
         no_meeting=list(body.get("noMeeting") or []),
+        no_meeting_groups=[
+            NoMeetingGroup(
+                study_group_id=group["studyGroupId"],
+                group_name=group.get("groupName"),
+                timezone=group.get("timezone"),
+                nearest_number=(group.get("nearestMeeting") or {}).get("number"),
+                nearest_type=(group.get("nearestMeeting") or {}).get("meetingType"),
+                nearest_title=(group.get("nearestMeeting") or {}).get("title"),
+                nearest_scheduled_at=(group.get("nearestMeeting") or {}).get("scheduledAt"),
+            )
+            for group in body.get("noMeetingGroups") or []
+        ],
     )

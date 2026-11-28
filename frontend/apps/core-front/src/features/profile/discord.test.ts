@@ -32,7 +32,7 @@ describe('requestDiscordCode', () => {
     const url = new URL(vi.mocked(window.open).mock.calls[0][0] as string);
     expect(url.origin + url.pathname).toBe('https://discord.com/oauth2/authorize');
     expect(url.searchParams.get('redirect_uri')).toBe(window.location.origin + DISCORD_CALLBACK_PATH);
-    expect(url.searchParams.get('scope')).toBe('identify guilds.members.read');
+    expect(url.searchParams.get('scope')).toBe('identify guilds.members.read guilds.join');
     const state = url.searchParams.get('state');
 
     post({ source: DISCORD_OAUTH_SOURCE, code: 'forged', state: 'other' });

@@ -171,22 +171,33 @@ public class MeetingRetroService {
     // ── GET /api/studies/{studyId}/meetings/{meetingId}/retros ───────────────
 
     @Transactional(readOnly = true)
-    public MeetingRetroResponses.RetroList list(Long accountId, Long studyId, Long meetingId) {
+    public MeetingRetroResponses.RetroList list(
+            Long accountId, Long studyId, Long meetingId, Long groupId) {
         StudyMeeting meeting = meeting(meetingId, studyId);
-        Long groupId = meeting.getStudyGroupId();
+
+        // 캡틴(ADMIN)만 groupId 를 반영. 그 외는 미팅의 반 사용
+        Account callerAccount =
+                accountRepository
+                        .findById(accountId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+        Long resolvedGroupId =
+                (groupId != null && callerAccount.getSystemRole() == SystemRole.ADMIN)
+                        ? groupId
+                        : meeting.getStudyGroupId();
 
         studyCaptainGuard.assertCaptainNavigatorOrMemberOfGroup(
-                accountId, studyId, groupId, RETRO_FORBIDDEN);
+                accountId, studyId, resolvedGroupId, RETRO_FORBIDDEN);
         assertMeetingEnded(meeting);
 
         // 기한·open
         List<StudyMeeting> allMeetings =
-                meetingRepository.findByStudyGroupIdOrderByScheduledAt(groupId);
+                meetingRepository.findByStudyGroupIdOrderByScheduledAt(resolvedGroupId);
         Instant deadline = deadline(meeting, allMeetings);
-        boolean open = Instant.now().isBefore(deadline);
+        Instant now = Instant.now();
+        boolean open = !now.isBefore(meetingEndAt(meeting)) && now.isBefore(deadline);
 
         // 쓸 사람 목록
-        List<StudyParticipant> roster = participantRepository.findByStudyGroupId(groupId);
+        List<StudyParticipant> roster = participantRepository.findByStudyGroupId(resolvedGroupId);
         List<StudyParticipant> writables = writableParticipants(meeting, roster);
 
         // 회고 목록
@@ -228,9 +239,8 @@ public class MeetingRetroService {
                             likes));
         }
 
-        // targets · missing — 네비게이터·캡틴에게만 (account 를 미리 로드해 isNavigatorOrCaptain 쿼리 절약)
-        Account callerAccount = accountRepository.findById(accountId).orElse(null);
-        boolean leaderOrCaptain = isNavigatorOrCaptain(callerAccount, accountId, groupId);
+        // targets · missing — 네비게이터·캡틴에게만
+        boolean leaderOrCaptain = isNavigatorOrCaptain(callerAccount, accountId, resolvedGroupId);
 
         Integer targets = leaderOrCaptain ? writables.size() : null;
         List<MeetingRetroResponses.MissingItem> missing = List.of();

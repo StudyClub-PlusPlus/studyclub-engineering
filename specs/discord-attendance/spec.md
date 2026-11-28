@@ -211,7 +211,15 @@ CREATE TABLE STUDY_DISCORD_LINK (
   ],
   "unmatched": ["1327394882193883999"],
   "notParticipant": [],
-  "noMeeting": ["1327394882193884000"]
+  "noMeeting": ["1327394882193884000"],
+  "noMeetingGroups": [
+    {
+      "studyGroupId": 8,
+      "groupName": "B",
+      "timezone": "Asia/Seoul",
+      "nearestMeeting": { "number": 0, "meetingType": "KICKOFF", "title": "킥오프", "scheduledAt": "2026-11-21T08:00:00Z" }
+    }
+  ]
 }
 ```
 
@@ -226,6 +234,7 @@ CREATE TABLE STUDY_DISCORD_LINK (
 | `unmatched` | 계정 연동이 안 된 유저 |
 | `notParticipant` | 연동은 됐지만 이 스터디 명부에 없는 유저 |
 | `noMeeting` | 명부에는 있지만 그 반이 지금 모이는 중이 아닌 유저 |
+| `noMeetingGroups[]` | `noMeeting` 사람들의 반 · 반 시간대 · **끝나지 않은 회차 중 예정 시각이 지금에 가장 가까운 회차**(없으면 `nearestMeeting` null). 봇은 「B: 가장 가까운 회차 킥오프 11/21(토) 17:00 KST」 처럼 반 시간대로 적는다 — 반장이 회차 시각이 어긋난 걸 바로 안다 (2026-11-25, ZAPP 스터디클럽 #114: 킥오프가 17:00 으로 저장돼 11:40 모임에서 안 잡혔다) |
 
 전원이 `unmatched` 여도, `groups` 가 비어도 **200** 이다. 호출은 정상이고 찍을 대상이 없을 뿐이다.
 봇은 `groups[].marked` 를 합쳐 "N명 체크" 를 찍고, 나머지 세 목록은 이유별로 안내하면 된다.

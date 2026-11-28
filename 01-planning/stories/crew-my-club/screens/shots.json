@@ -1,0 +1,10 @@
+{
+  "shots": [
+    { "story": "crew-my-club", "name": "earlybird-today", "title": "얼리버드 — 오늘 탭 (스터디와 같은 껍데기)", "path": "/proto/core/ko/my/joined/11/schedule", "fullPage": true },
+    { "story": "crew-my-club", "name": "earlybird-board", "title": "얼리버드 — 출석 탭 (멤버 전원)", "path": "/proto/core/ko/my/joined/11/schedule/attendance", "fullPage": true },
+    { "story": "crew-my-club", "name": "weeklyx-today", "title": "WEEKLY X — 오늘 탭", "path": "/proto/core/ko/my/joined/14/schedule", "fullPage": true },
+    { "story": "crew-my-club", "name": "weeklyx-board", "title": "WEEKLY X — 출석 탭 (주 단위)", "path": "/proto/core/ko/my/joined/14/schedule/attendance", "fullPage": true },
+    { "story": "crew-my-club", "name": "leetcode-board", "title": "Daily LeetCode — 출석 탭 (연속일)", "path": "/proto/core/ko/my/joined/17/schedule/attendance", "fullPage": true },
+    { "story": "crew-my-club", "name": "console-book", "title": "운영 콘솔 — 클럽 출석부 (같은 판 + 캡틴 도구)", "path": "/proto/console/clubs", "click": ["출석부"], "fullPage": true }
+  ]
+}

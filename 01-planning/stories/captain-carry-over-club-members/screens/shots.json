@@ -1,0 +1,5 @@
+{
+  "shots": [
+    { "story": "captain-carry-over-club-members", "name": "carry-over-list", "title": "이어서 참여 — 넘어감 · 뺌 · 참여 중단", "path": "/proto/console/clubs", "scrollTo": "[data-anno=\"carry:2\"]" }
+  ]
+}

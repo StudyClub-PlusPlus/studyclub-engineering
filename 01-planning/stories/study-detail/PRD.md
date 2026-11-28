@@ -48,10 +48,10 @@
   - 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다
   - 모집 상태는 **한 곳에서만 계산한다** — 사용자 사이트와 판정이 갈리면 안 된다 ([POL-0002](https://raw.githubusercontent.com/StudyClub-PlusPlus/studyclub-engineering/beta/01-planning/stories/../_registry/policies/POL-0002-study-status.md))
 
-#### 1-3 — 다음 기수 만들기
+#### 1-3 — 다음 기수 · 클럽 운영
 - **조건**: 클럽일 때만
-- **동작**: 누르면 같은 프로그램의 새 기수를 만든다
-- **정책**: 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 하나라 새 공고가 곧 새 프로그램이다
+- **동작**: 누르면 클럽 운영 › 기수로 간다. 다음 기수는 거기서 만든다 (15일 자동 초안 · 「지금 만들기」)
+- **정책**: 이 화면에서 기수를 바로 만들지 않는다 — 클럽 기수는 클럽 운영의 「다음 기수」로만 만든다 ([POL-0012](../../_registry/policies/POL-0012-club-cohort.md))
 
 ### 2 — 탭
 - **내용**: 정보 · 신청 폼 · 신청 결과 · 신청자 · 출석. 지금 보고 있는 탭이 드러난다
@@ -99,7 +99,7 @@
 | 스터디명 | 기수 제목 | 그대로 표시 |
 | 모집 상태 | 마감일·정원으로 계산 | 저장하지 않는다 ([POL-0002](https://raw.githubusercontent.com/StudyClub-PlusPlus/studyclub-engineering/beta/01-planning/stories/../_registry/policies/POL-0002-study-status.md)) |
 | 공개 상태 | 기수 상태 | 미공개면 사이트에 보이지 않는다 |
-| 클럽 여부 | 프로그램 종류 | 다음 기수 만들기를 띄울지 가른다 |
+| 클럽 여부 | 프로그램 종류 | 「다음 기수 · 클럽 운영」 링크를 띄울지 가른다 |
 
 ### API · 권한
 

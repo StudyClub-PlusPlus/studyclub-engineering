@@ -12,6 +12,7 @@ import com.studyclub.domain.study.StudyRepository;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -35,6 +36,7 @@ public class StudyDiscordLinkService {
     private final AccountRepository accountRepository;
     private final StudyParticipantRepository studyParticipantRepository;
     private final TransactionTemplate transactionTemplate;
+    private final String guildId;
 
     public StudyDiscordLinkService(
             DiscordBotClient discordBotClient,
@@ -42,7 +44,9 @@ public class StudyDiscordLinkService {
             StudyRepository studyRepository,
             AccountRepository accountRepository,
             StudyParticipantRepository studyParticipantRepository,
-            TransactionTemplate transactionTemplate) {
+            TransactionTemplate transactionTemplate,
+            @Value("${discord.guild-id:}") String guildId) {
+        this.guildId = guildId;
         this.discordBotClient = discordBotClient;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
         this.studyRepository = studyRepository;
@@ -123,7 +127,37 @@ public class StudyDiscordLinkService {
         } catch (RuntimeException e) {
             log.warn("스터디 {} 기존 참여자 role 부여 실패 ({}), 손으로 맞춘다", studyId, e.getClass().getName());
         }
+        try {
+            fillChannelUrl(studyId, discordUserId, created.discordStudyId());
+        } catch (RuntimeException e) {
+            log.warn("스터디 {} 디스코드 주소 채우기 실패 ({}), 손으로 넣는다", studyId, e.getClass().getName());
+        }
         return new StudyDiscordLinkResponse(created.discordStudyId(), created.discordRoleId());
+    }
+
+    /** 스터디 디스코드 주소가 비어 있으면 방금 만든 카테고리의 첫 텍스트 채널 주소로 채운다. 캡틴이 넣어 둔 주소는 건드리지 않는다. 실패해도 연결은 그대로다. */
+    private void fillChannelUrl(Long studyId, String requesterId, String discordStudyId) {
+        if (guildId == null || guildId.isBlank()) {
+            return;
+        }
+        String channelId =
+                discordBotClient.getStudyChannels(requesterId, discordStudyId).stream()
+                        .filter(c -> c.discordChannelType() == DiscordBotClient.ChannelType.TEXT)
+                        .map(DiscordBotClient.StudyChannel::discordChannelId)
+                        .findFirst()
+                        .orElse(null);
+        if (channelId == null) {
+            return;
+        }
+        String url = "https://discord.com/channels/" + guildId + "/" + channelId;
+        transactionTemplate.execute(
+                status -> {
+                    studyRepository
+                            .findByIdForUpdate(studyId)
+                            .filter(s -> s.getDiscordChannelUrl() == null)
+                            .ifPresent(s -> s.changeDiscordChannelUrl(url));
+                    return null;
+                });
     }
 
     /**

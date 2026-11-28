@@ -1,5 +1,6 @@
 package com.studyclub.api.auth;
 
+import com.studyclub.api.discord.DiscordBotClient;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import java.time.Duration;
@@ -21,7 +22,10 @@ import org.springframework.web.client.RestClientResponseException;
 
 /**
  * 디스코드 OAuth code → access_token 교환 → 사용자 조회 → 길드 멤버 확인 (specs/study-application 「디스코드 계정 연동」).
- * {@link GoogleOAuthClient} 와 같은 모양이다. scope 는 {@code identify guilds.members.read}.
+ * {@link GoogleOAuthClient} 와 같은 모양이다. scope 는 {@code identify guilds.members.read guilds.join}.
+ *
+ * <p>서버 밖이면 봇이 그 자리에서 서버에 넣는다(guilds.join). 넣지 못하면 {@link ErrorCode#DISCORD_NOT_IN_GUILD} — 화면은 초대
+ * 링크 안내로 내려간다 (ZAPP 스터디클럽 #112).
  *
  * <p>code·토큰·디스코드 ID 는 로그에 남기지 않는다. 디스코드가 거절하거나 닿지 않으면 {@link ErrorCode#EXTERNAL_SERVICE_ERROR}, 길드
  * 멤버가 아니면 {@link ErrorCode#DISCORD_NOT_IN_GUILD}.
@@ -38,13 +42,16 @@ public class DiscordOAuthClient {
     private final String redirectUri;
     private final String guildId;
     private final RestClient restClient;
+    private final DiscordBotClient discordBotClient;
 
     public DiscordOAuthClient(
             @Value("${discord.oauth.api-url:https://discord.com/api}") String apiUrl,
             @Value("${discord.oauth.client-id:}") String clientId,
             @Value("${discord.oauth.client-secret:}") String clientSecret,
             @Value("${discord.oauth.redirect-uri:}") String redirectUri,
-            @Value("${discord.guild-id:}") String guildId) {
+            @Value("${discord.guild-id:}") String guildId,
+            DiscordBotClient discordBotClient) {
+        this.discordBotClient = discordBotClient;
         this.apiUrl = apiUrl;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
@@ -103,18 +110,22 @@ public class DiscordOAuthClient {
             }
 
             step = "guild-member";
+            Map<?, ?> member;
+            boolean joinedGuild = false;
             try {
-                restClient
-                        .get()
-                        .uri(apiUrl + "/users/@me/guilds/{guildId}/member", guildId)
-                        .header("Authorization", bearer)
-                        .retrieve()
-                        .toBodilessEntity();
+                member =
+                        restClient
+                                .get()
+                                .uri(apiUrl + "/users/@me/guilds/{guildId}/member", guildId)
+                                .header("Authorization", bearer)
+                                .retrieve()
+                                .body(Map.class);
             } catch (HttpClientErrorException.NotFound e) {
-                // 길드에 없는 사용자에게 디스코드는 404(Unknown Guild)를 준다
-                throw new BusinessException(ErrorCode.DISCORD_NOT_IN_GUILD);
+                // 길드에 없는 사용자에게 디스코드는 404(Unknown Guild)를 준다 — 봇이 넣어 본다
+                joinedGuild = joinGuild(id, String.valueOf(token.get("access_token")));
+                member = null;
             }
-            return new DiscordUser(id, handle);
+            return new DiscordUser(id, handle, serverNickname(member, user, handle), joinedGuild);
         } catch (RestClientResponseException e) {
             // 응답 바디에는 code 가 되울려 올 수 있어 싣지 않는다
             log.warn("discord oauth {}: {}", step, e.getStatusCode().value());
@@ -130,12 +141,36 @@ public class DiscordOAuthClient {
                 ErrorCode.EXTERNAL_SERVICE_ERROR, "디스코드 " + what + "에 실패했습니다.");
     }
 
+    /** 봇으로 서버에 넣는다. 봇이 없거나 거절하면(차단 · 서버 수 한도 · 봇 권한) 초대 링크 안내로 내려가도록 DISCORD_NOT_IN_GUILD. */
+    private boolean joinGuild(String discordUserId, String accessToken) {
+        if (!discordBotClient.isConfigured()) {
+            throw new BusinessException(ErrorCode.DISCORD_NOT_IN_GUILD);
+        }
+        try {
+            return discordBotClient.addGuildMember(discordUserId, accessToken);
+        } catch (BusinessException e) {
+            // 사유는 봇 호출 로그(op=add-guild-member)에 남는다
+            throw new BusinessException(ErrorCode.DISCORD_NOT_IN_GUILD);
+        }
+    }
+
+    /** 서버에서 보이는 이름 — 서버 별명, 없으면 디스코드 표시 이름, 그것도 없으면 사용자명. */
+    static String serverNickname(Map<?, ?> member, Map<?, ?> user, String handle) {
+        String nick = member == null ? null : asString(member.get("nick"));
+        if (StringUtils.hasText(nick)) return nick.trim();
+        String globalName = asString(user.get("global_name"));
+        if (StringUtils.hasText(globalName)) return globalName.trim();
+        return handle;
+    }
+
     private static String asString(Object o) {
         return o == null ? null : String.valueOf(o);
     }
 
     /**
      * @param handle 디스코드 사용자명({@code username}). 표시 이름이 아니라 계정마다 하나인 값
+     * @param nickname 스터디클럽 서버에서 보이는 이름 — 서버 별명 · 표시 이름 · 사용자명 순으로 처음 있는 값
+     * @param joinedGuild 이번 연동에서 봇이 서버에 새로 넣었는가
      */
-    public record DiscordUser(String id, String handle) {}
+    public record DiscordUser(String id, String handle, String nickname, boolean joinedGuild) {}
 }

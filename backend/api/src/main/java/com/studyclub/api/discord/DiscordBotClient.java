@@ -290,6 +290,35 @@ public class DiscordBotClient {
                                 .toBodilessEntity());
     }
 
+    /**
+     * 유저를 스터디클럽 서버에 넣는다 (add-guild-member). 유저가 연동 때 허락한 {@code guilds.join} 의 액세스 토큰을 한 번 넘기고 저장하지
+     * 않는다.
+     *
+     * @return 새로 들어왔으면 true, 이미 서버에 있었으면 false
+     */
+    public boolean addGuildMember(String discordUserId, String accessToken) {
+        String requesterId = systemUserId();
+        Map<?, ?> res =
+                execute(
+                        "add-guild-member",
+                        "서버 참가",
+                        UUID.randomUUID().toString(),
+                        requesterId,
+                        null,
+                        () ->
+                                request(
+                                                HttpMethod.PUT,
+                                                requesterId,
+                                                null,
+                                                "/api/v1/members/{discordUserId}",
+                                                discordUserId)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .body(Map.of("accessToken", accessToken))
+                                        .retrieve()
+                                        .body(Map.class));
+        return res != null && Boolean.TRUE.equals(res.get("joined"));
+    }
+
     /** alert 채널에 운영 알림을 올린다. 멘션은 알림을 울리지 않는다. */
     public void sendAlertMessage(String requesterId, String msg) {
         sendFixedChannelMessage(

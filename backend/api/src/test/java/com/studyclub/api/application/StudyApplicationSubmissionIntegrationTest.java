@@ -111,6 +111,62 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 신청 폼을 저장한 적 없는 스터디는 추가 질문 없이 신청을 받는다 (ZAPP #113)")
+    void acceptsApplicationWhenFormWasNeverSaved() {
+        jdbcTemplate.update("UPDATE STUDY SET APPLICATION_FORM = NULL WHERE ID = ?", STUDY_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(
+                                LINKED_ACCOUNT_ID,
+                                Map.of(
+                                        "discordNickname",
+                                        "새 별명",
+                                        "availableDays",
+                                        List.of("mon"),
+                                        "scheduleAgreed",
+                                        true,
+                                        "answers",
+                                        Map.of())),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(applicationCount()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("성공 - 연동 때 받아 둔 서버 별명이 있으면 요청의 별명 대신 그 값을 쓴다")
+    void usesStoredDiscordNicknameOverRequest() {
+        jdbcTemplate.update(
+                "UPDATE ACCOUNT SET DISCORD_NICKNAME = ? WHERE ID = ?",
+                "서버별명/SWE",
+                LINKED_ACCOUNT_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                "SELECT FORM_ANSWER FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ? AND ACCOUNT_ID = ?",
+                                String.class,
+                                RECRUITMENT_ID,
+                                LINKED_ACCOUNT_ID))
+                .contains("\"discordNickname\":\"서버별명/SWE\"")
+                .doesNotContain("새 별명");
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                "SELECT DISCORD_NICKNAME FROM ACCOUNT WHERE ID = ?",
+                                String.class,
+                                LINKED_ACCOUNT_ID))
+                .isEqualTo("서버별명/SWE");
+    }
+
+    @Test
     @DisplayName("성공 - 명부에 들어온 행마다 study_participant.joined 를 커밋 뒤 한 번 낸다")
     void publishesJoinedForNewRosterRow() {
         var response =

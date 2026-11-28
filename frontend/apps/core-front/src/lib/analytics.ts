@@ -16,7 +16,7 @@ type StudyBaseProps = {
 type BookmarkSource = 'card_landing' | 'card_list' | 'detail' | 'saved_page';
 
 /** 디스코드 연동을 마친 화면 — 온보딩 디스코드 단계 · 신청 전 연동 창 · 마이페이지 디스코드 줄 */
-export type DiscordLinkSource = 'onboarding' | 'apply_gate' | 'my_page';
+export type DiscordLinkSource = 'onboarding' | 'apply_gate' | 'my_page' | 'apply_nickname_refresh';
 
 /** 디스코드 연동 실패 사유 — 팝업 단계(cancelled·popup_blocked)와 연동 API 단계(나머지) */
 export type DiscordConnectFailReason =
