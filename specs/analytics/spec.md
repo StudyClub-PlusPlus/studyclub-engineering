@@ -69,8 +69,8 @@
 | `Study Filter Tab Changed` · `Study Category Filtered` · `Study Searched` · `Study Card Clicked` · `Hero CTA Clicked` · `Event Card Clicked` | 탐색 |
 | `Study Bookmarked` · `Study Unbookmarked` (`study_id`, `source`) | 하트 버튼 · 찜한 스터디(`source=saved_page`, 해제만) |
 | `Study Apply CTA Clicked` · `Study Apply External Opened` · `Study Apply Dialog Opened` · `Study Apply Slots Selected` · `Study Apply Submitted` · `Study Apply Completed` · `Study Apply Failed` · `Study Apply Dialog Dismissed` | 신청 |
-| `My Discord Connected` (`source`=`onboarding`·`apply_gate`·`my_page`) | 온보딩 디스코드 단계 · 신청 전 디스코드 연동 창 · 마이페이지 디스코드 줄 — OAuth 팝업으로 받은 코드가 연동 API 에서 204 일 때 (개발 서버는 목 연동). 연동 함수 `linkDiscord` 안에서만 보낸다 — 연동 화면이 늘어도 빠지지 않는다 |
-| `Discord Connect Failed` (`source`, `reason`=`cancelled`·`popup_blocked`·`not_in_guild`·`already_linked`·`session_expired`·`error`, `http_status`) | 위 세 곳에서 연동이 실패했을 때 — 팝업 단계(창 닫기·차단)와 연동 API 단계(403 서버 미가입 · 409 다른 계정에 연결됨 · 401 · 그 외) 모두. `linkDiscord` 안에서만 보낸다 |
+| `My Discord Connected` (`source`=`onboarding`·`apply_gate`·`my_page`·`apply_nickname_refresh`) | 온보딩 디스코드 단계 · 신청 전 디스코드 연동 창 · 마이페이지 디스코드 줄 · 신청 폼 서버 별명 「새로고침」 — OAuth 팝업으로 받은 코드가 연동 API 에서 204 일 때 (개발 서버는 목 연동). 연동 함수 `linkDiscord` 안에서만 보낸다 — 연동 화면이 늘어도 빠지지 않는다 |
+| `Discord Connect Failed` (`source`, `reason`=`cancelled`·`popup_blocked`·`not_in_guild`·`already_linked`·`session_expired`·`error`, `http_status`) | 위 네 곳에서 연동이 실패했을 때 — 팝업 단계(창 닫기·차단)와 연동 API 단계(403 서버 미가입 · 409 다른 계정에 연결됨 · 401 · 그 외) 모두. `linkDiscord` 안에서만 보낸다 |
 | `My Profile Updated` | 마이페이지 |
 | `Study Presenter Registered` · `Study Presenter Unregistered` (`study_id`, `meeting_id`, `slot`) | 스터디룸 일정 탭 — 발표자 신청·취소 API 가 성공했을 때 |
 | `Study Discord Opened` (`study_id`) | 스터디룸 정보 카드의 「디스코드」 버튼 (스터디 채널로 이동) |

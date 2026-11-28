@@ -129,7 +129,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| discordNickname | String | Y | 제출 시점 서버 별명. 계정 `DISCORD_NICKNAME` 에도 같은 값으로 갱신 |
+| discordNickname | String | Y | 제출 시점 서버 별명. 계정 `DISCORD_NICKNAME` 이 있으면 서버는 이 값 대신 계정 값을 저장한다(2026-11-25, 칸이 읽기 전용). 계정 값이 없는 계정만 요청 값을 받아 계정에도 저장 |
 | availableDays | String[] | 스터디 Y · 클럽 N | `mon` `tue` `wed` `thu` `fri` `sat` `sun`. 화면 라벨이 아니라 이 키. **클럽 기수(`STUDY_KIND = CLUB`)는 받지 않는다** — 보내도 무시하고 저장하지 않는다 |
 | scheduleAgreed | Boolean | 스터디 기수에 `STUDY.SCHEDULE` 이 있을 때만 Y (클럽 기수는 받지 않는다) | 일정이 있으면 `true`만 허용. 일정이 없으면 생략·null·false는 무시하고 저장하지 않으며 true는 거절 |
 | answers | Object | Y | `questions[].id` → 문자열 또는 문자열 배열. 추가 질문이 없으면 `{}` |
@@ -145,7 +145,7 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 
 | 필드 | Empty | MIN | MAX | ENUM | 기본값 | 사유 코드 | 실패 카피 |
 |------|-------|-----|-----|------|--------|-----------|-----------|
-| discordNickname | 불가 | 1자 | 100자 | — | 계정 `DISCORD_NICKNAME`. 없으면 빈 칸 | `empty` / `max` | `디스코드 서버 별명을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |
+| discordNickname | 불가(읽기 전용, 「새로고침」 만) | 1자 | 100자 | — | 계정 `DISCORD_NICKNAME`(연동할 때 디스코드에서 받은 값). 없으면 빈 칸 | `empty` / `max` | `디스코드 서버 별명을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |
 | availableDays | 불가 | 1개 | 7개 | 요일 키 7종 | 없음 | `empty` / `max` / `enum` | `참여 가능한 요일을 하나 이상 선택해 주세요.` / `참여 가능한 요일을 다시 선택해 주세요.` |
 | scheduleAgreed | 일정 있으면 불가 | — | — | `true` | `false` | `empty` / `unexpected` | `일정 참여 가능 여부를 확인해 주세요.` |
 | 추가 질문 TEXT | 필수면 불가 | 1자 | 200자 | — | 빈 칸 | `empty` / `max` | `필수 질문에 답해 주세요.` / `{N}자 이내로 입력해 주세요.` |
@@ -162,13 +162,13 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 
 | 문항 | 저장 위치 | 화면 |
 |------|-----------|------|
-| 디스코드 서버 별명 | `FORM_ANSWER.discordNickname` + `ACCOUNT.DISCORD_NICKNAME` | 모든 신청 폼. 계정 값으로 채우고 지원자가 고칠 수 있다 |
+| 디스코드 서버 별명 | `FORM_ANSWER.discordNickname` + `ACCOUNT.DISCORD_NICKNAME` | 모든 신청 폼. 계정 값으로 채운다. 지원자는 직접 고치지 못하고 「새로고침」(디스코드 연동 다시)으로만 바꾼다 (2026-11-25) |
 | 참여 가능한 요일 | `FORM_ANSWER.availableDays` | 스터디 신청 폼. 진행 일정 유무와 무관. **클럽(`StudyKind.CLUB`)은 받지 않는다** — 모임 시각이 없다 ([POL-0012](../../01-planning/_registry/policies/POL-0012-club-cohort.md), 2026-11-25 확정) |
 | 일정 참여 확인 | `FORM_ANSWER.scheduleAgreed` | 스터디에 `STUDY.SCHEDULE` 이 있을 때만. 없으면 화면에 `일정 미정`이고 이 문항은 없음. 클럽은 진행 방식 글이 있어도 묻지 않는다 |
 
 이름·이메일은 신청 폼에 두지 않는다. 계정에서 읽기만 한다.
 
-별명 기본값은 로그인 본인의 `GET /api/me` 응답에 있는 `discordNickname`에서 읽는다. null이면 빈 칸으로 표시한다. 공개 신청 폼 조회 응답에 계정별 별명을 포함하지 않는다.
+별명 기본값은 로그인 본인의 `GET /api/me` 응답에 있는 `discordNickname`에서 읽는다(폼을 열 때마다 다시 읽는다). null이면 빈 칸이고 「새로고침」 으로 불러온다. 공개 신청 폼 조회 응답에 계정별 별명을 포함하지 않는다.
 
 ---
 
@@ -534,7 +534,8 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 - **Method**: POST
 - **Path**: `/api/me/discord/link`
 - **인증**: 필요 — 로그인 본인
-- **설명**: 인가 코드를 서버가 토큰으로 바꿔 `ACCOUNT.DISCORD_ID` · `DISCORD_HANDLE` 을 저장한다. 클라이언트가 보낸 식별자·핸들은 쓰지 않는다.
+- **설명**: 인가 코드를 서버가 토큰으로 바꿔 `ACCOUNT.DISCORD_ID` · `DISCORD_HANDLE` · `DISCORD_NICKNAME` 을 저장한다. 클라이언트가 보낸 식별자·핸들은 쓰지 않는다.
+- **서버 별명** (2026-11-25): 길드 멤버 확인 응답의 `nick` → 없으면 `/users/@me` 의 `global_name` → 없으면 `username`. 연동할 때마다 덮어쓴다 — 신청 폼 별명 칸은 이 값을 읽기만 하고, 「새로고침」 이 이 API 를 다시 부른다
 
 계정 도메인으로 옮길 수 있다. 신청 스토리가 이 값 없이 진행되지 않아 여기에 적는다.
 

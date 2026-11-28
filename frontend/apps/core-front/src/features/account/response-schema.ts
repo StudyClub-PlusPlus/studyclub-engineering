@@ -11,4 +11,5 @@ export const accountSchema = z.object({
   onboardingCompletedAt: z.union([z.string(), z.null()]),
   discordLinked: z.union([z.boolean(), z.null()]).optional(),
   discordHandle: z.union([z.string(), z.null()]).optional(),
+  discordNickname: z.union([z.string(), z.null()]).optional(),
 });

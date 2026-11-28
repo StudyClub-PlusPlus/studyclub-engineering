@@ -226,6 +226,15 @@ Idempotency-Key: {호출마다 새 UUID v4}
 - role 부여 실패는 연결 저장 성공 여부에 영향을 주지 않는다.
 - `PENDING` · `WITHDRAWN` · `REJECTED` 상태 참여자는 대상에서 제외된다.
 
+## 스터디 디스코드 주소 자동 채우기 (2026-11-25)
+
+연결을 저장한 직후 `STUDY.DISCORD_CHANNEL_URL` 이 비어 있으면 봇 `get-study-channels` 로 방금 만든 카테고리의 채널을 읽어
+**첫 텍스트 채널** 주소 `https://discord.com/channels/{DISCORD_CONFIG_GUILD_ID}/{채널 ID}` 로 채운다.
+
+- 캡틴 · 운영진이 넣어 둔 주소는 덮어쓰지 않는다 (스터디 행을 잠그고 다시 확인한 뒤 쓴다)
+- 길드 ID 설정이 없거나 텍스트 채널이 없거나 봇 조회가 실패하면 비워 둔다 — WARN 로그만, 연결은 성공이다
+- 등록 경로(`linkAfterCreate`)와 재시도 엔드포인트(`link`) 모두 적용된다
+
 ## 알려진 한계
 
 - **봇 성공 뒤 저장 실패** (DB 장애, 두 재시도가 동시에 다른 이름으로 들어와 늦은 쪽, 기다리는 사이 스터디 삭제) → 디스코드에 카테고리가 남고
