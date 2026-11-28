@@ -1,6 +1,6 @@
 # 프론트엔드 인증 흐름
 
-기준: 2026-10-31 작업 트리. 일반 API 호출은 [API 연동 가이드](api-integration.md), 테스트 인증은 [E2E 가이드](e2e-guide.md)를 참고한다.
+일반 API 호출은 [API 연동 가이드](api-integration.md), 테스트 인증은 [E2E 가이드](e2e-guide.md)를 참고한다.
 
 ## 로그인과 코드 교환
 
@@ -38,10 +38,12 @@ Google 콜백의 발신 대상은 자기 출처, 운영·stage 백오피스, 로
 
 ## 토큰 만료와 로그아웃
 
-- core-front에는 `POST /api/auth/refresh`가 있다. refresh 쿠키를 백엔드 `/auth/refresh`로 보내고 성공하면 access 쿠키를 갱신한다.
-- core-front 가입·닉네임 확인은 `lib/http.ts`로 백엔드를 직접 호출하며 `{ refreshOnUnauthorized: true }` 옵션으로 401이면 refresh 후 한 번 재시도한다.
-- core-front 기본 `http()` 호출은 401 후 자동 갱신하지 않는다. 위 옵션을 지정한 요청만 한 번 갱신·재시도한다.
-- 백오피스 `http()`는 401이면 `POST /api/auth/refresh` 후 한 번 재시도한다. access 쿠키는 토큰과 같은 15분 뒤 사라지므로, 화면 이동은 미들웨어가 `GET /api/auth/refresh?next=...`로 보내 refresh 쿠키(30일)로 갱신한 뒤 원래 화면으로 돌려보낸다. 갱신에 실패하면 `/login?next=...`로 간다.
+- 두 앱의 `http()`는 401이면 `POST /api/auth/refresh`로 갱신한 뒤 원래 요청을 한 번 재시도한다. 갱신이 401 외 오류로 실패하면 그 오류를 전달하며, 원래 요청의 401로 바꾸지 않는다.
+- access 토큰과 쿠키는 15분, refresh 토큰과 쿠키는 로그인부터 30일이다. access 갱신으로 refresh 만료일을 연장하지 않는다.
+- 두 앱의 보호 화면은 access 쿠키가 없으면 `GET /api/auth/refresh?next=...`를 거친다. refresh 쿠키의 경로가 `/api/auth`라 화면 미들웨어에서는 보이지 않기 때문이다. 갱신 성공 시 access 쿠키를 설정하고 원래 경로·쿼리로 돌아간다.
+- refresh가 없거나 백엔드가 401로 거절하면 로그인으로 이동한다. 백엔드가 거절한 refresh 쿠키와 access 쿠키는 삭제한다. core-front는 복귀 경로의 `ko`·`en` 로케일을 유지한다.
+- 서버 오류·요청 제한·연결 실패·잘못된 응답은 쿠키를 삭제하지 않는다. 화면 이동 중 발생하면 재시도 안내를 표시하고, 다시 시도하면 원래 화면으로 돌아갈 수 있다. 갱신 요청은 최대 10초 기다리며 응답은 캐시하지 않는다.
+- 갱신 후 이동은 검증한 사이트 내부 상대 경로를 사용한다. 프록시 뒤의 내부 호스트(`localhost`)로 보내거나 외부 사이트로 이동시키지 않는다.
 - core-front의 QueryCache는 조회 401에서 UI 세션을 비우며 공개 화면을 강제로 이동시키지 않는다.
 - 백오피스의 QueryCache·MutationCache는 401에서 `logout()`으로 세션·캐시와 httpOnly 쿠키를 정리한 뒤 `/login?next=...`로 이동한다. 동시 401은 한 번만 처리하며, 로그아웃 요청은 최대 10초 기다린다. 정리 실패·시간 초과에도 로그인 페이지를 열어 재인증할 수 있다.
 - 두 앱의 `logout()`은 UI 세션을 지우고 `POST /api/auth/logout`으로 httpOnly 쿠키를 삭제한다.
@@ -52,8 +54,8 @@ Google 콜백의 발신 대상은 자기 출처, 운영·stage 백오피스, 로
 
 | 앱 | 현재 처리 |
 |---|---|
-| core-front | 로케일 없는 경로에 기본 로케일 추가. `/{locale}/my` 하위·온보딩은 쿠키 없으면 로케일 로그인으로 이동하며 `next`에 경로와 쿼리를 보존 |
-| back-office-front | API·정적 파일 외 화면을 게이트. access 쿠키 없으면 `/api/auth/refresh?next=...`(갱신 성공 시 원래 화면, 실패 시 `/login?next=...`). `/login`은 쿠키 존재와 무관하게 열어 인증 실패 후 무한 이동을 막는다 |
+| core-front | 로케일 없는 경로에 기본 로케일 추가. `/{locale}/my` 하위·온보딩은 access 쿠키가 없으면 갱신 경로로 이동하며 `next`에 경로와 쿼리를 보존 |
+| back-office-front | API·정적 파일 외 화면을 게이트. access 쿠키 없으면 갱신 경로로 이동. `/login`은 쿠키 존재와 무관하게 열어 인증 실패 후 무한 이동을 막는다 |
 
 백오피스의 개발 우회는 `NODE_ENV=development`와 `BO_DEV_BYPASS_AUTH=1`이 동시에 필요하다. 실제 API 권한을 부여하는 기능은 아니다. 카탈로그는 우회를 끄고 테스트 쿠키·고정 응답으로 실행한다.
 

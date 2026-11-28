@@ -29,12 +29,12 @@ export function StudyInfoCard({
   anno,
   className,
 }: {
-  /** 정규 시간. 사용자 사이트는 프로필 시간과 설명 버튼을 함께 넘긴다. */
-  time: ReactNode;
+  /** 정규 시간. 사용자 사이트는 프로필 시간과 설명 버튼을 함께 넘긴다. 없으면 칸을 두지 않는다(클럽 — 모임 시각이 없다). */
+  time?: ReactNode;
   /** 있으면 스터디 시간 옆에 「수정」을 둔다 — 백오피스 일정 탭만. */
   onEditTime?: () => void;
-  /** 네비게이터 이름. 없으면 부르는 쪽이 「미지정」 등으로 넘긴다. */
-  navigator: string;
+  /** 네비게이터 이름. 비었으면 부르는 쪽이 「미지정」 등으로 넘긴다. undefined 면 칸을 두지 않는다(클럽 — 네비게이터가 없다). */
+  navigator?: string;
   /** 바로가기 줄 맨 앞(「디스코드」 왼쪽)에 붙일 버튼. */
   leadingAction?: ReactNode;
   /** 비면 그 버튼을 두지 않는다. */
@@ -55,28 +55,32 @@ export function StudyInfoCard({
     <section data-anno={anno} className={cx('card px-5 py-4', className)}>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <dl className='flex flex-wrap items-center gap-x-6 gap-y-1 type-body-sm'>
-          <div className='flex min-w-0 items-center gap-2'>
-            <dt className='shrink-0 text-fg-muted'>스터디 시간</dt>
-            <dd className='min-w-0 tnum font-semibold text-fg'>{time}</dd>
-            {onEditTime && (
-              <dd>
-                <Button
-                  type='button'
-                  variant='tertiary'
-                  size='sm'
-                  data-anno={`${anno}-3`}
-                  aria-label='스터디 시간 수정'
-                  onClick={onEditTime}
-                >
-                  수정
-                </Button>
-              </dd>
-            )}
-          </div>
-          <div className='flex items-center gap-2'>
-            <dt className='text-fg-muted'>네비게이터</dt>
-            <dd className='font-semibold text-fg'>{navigator}</dd>
-          </div>
+          {time !== undefined && (
+            <div className='flex min-w-0 items-center gap-2'>
+              <dt className='shrink-0 text-fg-muted'>스터디 시간</dt>
+              <dd className='min-w-0 tnum font-semibold text-fg'>{time}</dd>
+              {onEditTime && (
+                <dd>
+                  <Button
+                    type='button'
+                    variant='tertiary'
+                    size='sm'
+                    data-anno={`${anno}-3`}
+                    aria-label='스터디 시간 수정'
+                    onClick={onEditTime}
+                  >
+                    수정
+                  </Button>
+                </dd>
+              )}
+            </div>
+          )}
+          {navigator !== undefined && (
+            <div className='flex items-center gap-2'>
+              <dt className='text-fg-muted'>네비게이터</dt>
+              <dd className='font-semibold text-fg'>{navigator}</dd>
+            </div>
+          )}
         </dl>
         {/* 시트 머리에 적어 두던 두 주소. 참가자·운영자에게만 보이는 화면이라 그대로 연다 (share 09-30) */}
         <div className='flex flex-wrap gap-1.5'>

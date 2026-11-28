@@ -27,5 +27,10 @@ public enum AdminAuditAction {
     /** 캡틴 계정 탈퇴에 따른 시스템 권한 말소. */
     ACCOUNT_ROLE_REVOKE,
     /** 활동 중인 네비게이터의 계정 탈퇴에 따른 참여 권한 말소. */
-    PARTICIPANT_REVOKE
+    PARTICIPANT_REVOKE,
+    /**
+     * 백오피스에서 행사를 취소했다 (specs/event-status/spec.md). 대상이 회원이 아니라 TARGET 은 비우고 CLUB_EVENT_ID 에 행사를
+     * 둔다. BEFORE 에 취소 직전 저장 상태, AFTER 에 함께 취소된 신청 수.
+     */
+    EVENT_CANCEL
 }

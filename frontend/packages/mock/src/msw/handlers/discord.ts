@@ -11,6 +11,8 @@ import { mockClient, readSessionUser, type MockResolveContext } from '../utils';
  */
 export const MOCK_DISCORD_LINKED_KEY = 'msw-discord-linked';
 const MOCK_DISCORD_HANDLE = 'jiwon_dev';
+/** 연동하면 서버가 디스코드에서 받아 저장하는 서버 별명 */
+const MOCK_DISCORD_NICKNAME = '테스트크루';
 
 function readLinked(): boolean {
   if (typeof window === 'undefined') return false;
@@ -48,7 +50,7 @@ function me(discordLinked: boolean) {
   return {
     ...sessionAccount(),
     createdAt: '2026-01-01T00:00:00Z',
-    discordNickname: null,
+    discordNickname: discordLinked ? MOCK_DISCORD_NICKNAME : null,
     discordLinked,
     discordHandle: discordLinked ? MOCK_DISCORD_HANDLE : null,
   };
@@ -74,7 +76,12 @@ async function realMeWithLinked(request: Request): Promise<Response | ReturnType
   if (real.status === 401 && readSessionUser()?.id === PREVIEW_ACCOUNT_ID) return me(readLinked());
   if (!real.ok) return real;
   const linked = readLinked();
-  return HttpResponse.json({ ...(await real.json()), discordLinked: linked, discordHandle: linked ? MOCK_DISCORD_HANDLE : null });
+  return HttpResponse.json({
+    ...(await real.json()),
+    discordLinked: linked,
+    discordHandle: linked ? MOCK_DISCORD_HANDLE : null,
+    discordNickname: linked ? MOCK_DISCORD_NICKNAME : null,
+  });
 }
 
 export const meDiscordHandlers = mockClient.createHandlerGroup('/api', [

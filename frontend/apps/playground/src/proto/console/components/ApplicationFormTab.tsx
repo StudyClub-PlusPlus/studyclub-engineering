@@ -61,7 +61,7 @@ function readApplicantAccount() {
   };
 }
 
-export function ApplicationFormTab({ study }: { study: Study }) {
+export function ApplicationFormTab({ study, onSave }: { study: Study; onSave?: (patch: Partial<Study>) => void }) {
   const [questions, setQuestions] = useState<ApplicationQuestion[]>(() => extrasOf(study));
   const [formTitle, setFormTitle] = useState(() => study.applicationFormTitle ?? tx(study.title));
   const [formDescription, setFormDescription] = useState(
@@ -179,6 +179,7 @@ export function ApplicationFormTab({ study }: { study: Study }) {
     setSaving(true);
     // TODO(api): PUT /api/admin/studies/{studyId}/application-form
     await new Promise((r) => setTimeout(r, 400));
+    onSave?.({ applicationForm: [DISCORD_QUESTION, ...questions], applicationFormTitle: formTitle, applicationFormDescription: formDescription });
     setSaving(false);
     setSaved(true);
   }

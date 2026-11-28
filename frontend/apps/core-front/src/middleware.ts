@@ -2,7 +2,7 @@
 //  1. 로케일 없는 경로(`/`, `/studies`)를 기본 로케일로 리다이렉트
 //     — 루트 레이아웃이 `app/[locale]/layout.tsx` 라서 로케일 없는 경로는 렌더할 레이아웃이 없다.
 //       덤으로 `/studies` 같은 외부 링크가 404 대신 정상 페이지로 착지한다(SEO).
-//  2. 수강생 영역(/:locale/my) · 온보딩 로그인 게이팅 — access 쿠키(sc_access_token)가 없으면 /login 으로.
+//  2. 수강생 영역(/:locale/my) · 온보딩 로그인 게이팅.
 //     온보딩 완료 여부는 쿠키만으로 알 수 없어, 미완료 분기는 로그인 응답·온보딩 페이지에서 처리한다.
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -44,8 +44,9 @@ export function middleware(req: NextRequest) {
 
   if (req.cookies.get(ACCESS_COOKIE)?.value) return NextResponse.next();
 
+  // refresh 쿠키는 /api/auth 에만 전송되므로 그 경로에서 갱신 가능 여부를 확인한다.
   const url = req.nextUrl.clone();
-  url.pathname = `/${first}/login`;
+  url.pathname = '/api/auth/refresh';
   url.search = `?next=${encodeURIComponent(pathname + (req.nextUrl.search || ''))}`;
   return NextResponse.redirect(url);
 }

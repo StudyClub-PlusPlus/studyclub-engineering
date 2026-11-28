@@ -103,18 +103,20 @@ public class DiscordOAuthClient {
             }
 
             step = "guild-member";
+            Map<?, ?> member;
             try {
-                restClient
-                        .get()
-                        .uri(apiUrl + "/users/@me/guilds/{guildId}/member", guildId)
-                        .header("Authorization", bearer)
-                        .retrieve()
-                        .toBodilessEntity();
+                member =
+                        restClient
+                                .get()
+                                .uri(apiUrl + "/users/@me/guilds/{guildId}/member", guildId)
+                                .header("Authorization", bearer)
+                                .retrieve()
+                                .body(Map.class);
             } catch (HttpClientErrorException.NotFound e) {
                 // 길드에 없는 사용자에게 디스코드는 404(Unknown Guild)를 준다
                 throw new BusinessException(ErrorCode.DISCORD_NOT_IN_GUILD);
             }
-            return new DiscordUser(id, handle);
+            return new DiscordUser(id, handle, serverNickname(member, user, handle));
         } catch (RestClientResponseException e) {
             // 응답 바디에는 code 가 되울려 올 수 있어 싣지 않는다
             log.warn("discord oauth {}: {}", step, e.getStatusCode().value());
@@ -130,12 +132,22 @@ public class DiscordOAuthClient {
                 ErrorCode.EXTERNAL_SERVICE_ERROR, "디스코드 " + what + "에 실패했습니다.");
     }
 
+    /** 서버에서 보이는 이름 — 서버 별명, 없으면 디스코드 표시 이름, 그것도 없으면 사용자명. */
+    static String serverNickname(Map<?, ?> member, Map<?, ?> user, String handle) {
+        String nick = member == null ? null : asString(member.get("nick"));
+        if (StringUtils.hasText(nick)) return nick.trim();
+        String globalName = asString(user.get("global_name"));
+        if (StringUtils.hasText(globalName)) return globalName.trim();
+        return handle;
+    }
+
     private static String asString(Object o) {
         return o == null ? null : String.valueOf(o);
     }
 
     /**
      * @param handle 디스코드 사용자명({@code username}). 표시 이름이 아니라 계정마다 하나인 값
+     * @param nickname 스터디클럽 서버에서 보이는 이름 — 서버 별명 · 표시 이름 · 사용자명 순으로 처음 있는 값
      */
-    public record DiscordUser(String id, String handle) {}
+    public record DiscordUser(String id, String handle, String nickname) {}
 }

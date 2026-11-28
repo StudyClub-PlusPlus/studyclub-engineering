@@ -4,7 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { AttendanceTab } from '@console/components/AttendanceTab';
+import { clubOfStudy } from '@console/lib/clubs';
 import { ruleFromMeetings } from '@console/lib/schedule';
+import { ClubDemoBar } from '@core/components/MyClub';
 import { useManage } from '@core/components/StudyManageShell';
 import { getMyAttendance, meetingWindow, meetingsOf } from '@core/lib/attendance';
 import { bookFromSchedule, wallParts } from '@core/lib/meetings';
@@ -15,8 +17,10 @@ import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { Button } from '@studyclub/ui';
 
+import { CLUB_BOARD_SPEC } from '../club-spec';
 import { ATTENDANCE_SPEC, MANAGE_SPEC } from '../spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { ClubAttendance } from '@/proto/club/ClubAttendance';
 
 /**
  * 출석부 — 백오피스 출석부와 같은 격자. 다른 점은 범위뿐이다: 여기는 **내 분반의 참여자만**.
@@ -31,7 +35,25 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
  * 저장을 누르면 확인 창을 거쳐 출석과 참여 중단이 함께 반영된다. 되돌리기는 없다.
  * 하차·제명을 가르지 않는다 — 사유는 묻지도 남기지도 않는다.
  */
+/** 클럽 기수면 클럽 출석부(멤버 × 날짜), 스터디면 회차 출석부 — 같은 탭 · 같은 자리 */
 export default function StudyManageAttendancePage() {
+  const { study, canEdit, setDirty } = useManage();
+  const club = clubOfStudy(study);
+  if (club)
+    return (
+      <>
+        <ScreenSpecRegistrar spec={MANAGE_SPEC} />
+        <ScreenSpecRegistrar spec={CLUB_BOARD_SPEC} />
+        <ClubDemoBar />
+        <div className='mt-4'>
+          <ClubAttendance club={club} canEdit={canEdit} onDirtyChange={setDirty} />
+        </div>
+      </>
+    );
+  return <StudyAttendance />;
+}
+
+function StudyAttendance() {
   const router = useRouter();
   const { study, group, locale, canEdit, setDirty } = useManage();
   const [book, setBook] = useState<AttendanceBook | null>(null);

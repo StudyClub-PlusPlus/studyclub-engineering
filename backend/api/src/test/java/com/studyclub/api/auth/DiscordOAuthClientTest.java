@@ -84,7 +84,8 @@ class DiscordOAuthClientTest {
     void 코드를_토큰으로_바꾸고_사용자와_길드_멤버를_확인한다() {
         DiscordOAuthClient.DiscordUser user = client.exchange("auth-code");
 
-        assertThat(user).isEqualTo(new DiscordOAuthClient.DiscordUser(USER, "jiwon_dev"));
+        assertThat(user)
+                .isEqualTo(new DiscordOAuthClient.DiscordUser(USER, "jiwon_dev", "jiwon_dev"));
         assertThat(receivedPaths)
                 .containsExactly(
                         "/oauth2/token", "/users/@me", "/users/@me/guilds/" + GUILD + "/member");
@@ -93,6 +94,28 @@ class DiscordOAuthClientTest {
                 .contains("code=auth-code")
                 .contains("client_id=client-id");
         assertThat(receivedAuthorization).isEqualTo("Bearer tok-123");
+    }
+
+    @Test
+    @DisplayName("서버_별명이_있으면_별명을_준다")
+    void 서버_별명이_있으면_별명을_준다() {
+        respond("/users/@me/guilds/" + GUILD + "/member", 200, "{\"nick\":\" 지원/SWE/서울 \"}");
+
+        assertThat(client.exchange("auth-code").nickname()).isEqualTo("지원/SWE/서울");
+    }
+
+    @Test
+    @DisplayName("서버_별명이_없으면_표시_이름_그것도_없으면_사용자명")
+    void 서버_별명이_없으면_표시_이름_그것도_없으면_사용자명() {
+        respond("/users/@me/guilds/" + GUILD + "/member", 200, "{\"nick\":null}");
+        respond(
+                "/users/@me",
+                200,
+                "{\"id\":\"" + USER + "\",\"username\":\"jiwon_dev\",\"global_name\":\"지원\"}");
+        assertThat(client.exchange("auth-code").nickname()).isEqualTo("지원");
+
+        respond("/users/@me", 200, USER_OK);
+        assertThat(client.exchange("auth-code").nickname()).isEqualTo("jiwon_dev");
     }
 
     @Test

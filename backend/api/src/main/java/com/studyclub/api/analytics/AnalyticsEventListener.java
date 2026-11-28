@@ -1,13 +1,16 @@
 package com.studyclub.api.analytics;
 
+import com.studyclub.common.event.EventMeta;
 import com.studyclub.domain.account.AccountActivatedEvent;
 import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.UserRegisteredEvent;
+import com.studyclub.domain.event.ClubEventCancelledEvent;
 import com.studyclub.domain.event.ClubEventRegistrationSubmittedEvent;
 import com.studyclub.domain.event.ClubEventRegistrationsCancelledEvent;
 import com.studyclub.domain.event.registration.ClubEventRegistration;
 import com.studyclub.domain.event.registration.ClubEventRegistrationRepository;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -27,6 +30,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *       Activated{activation_action=study_applied|event_applied}}
  *   <li>{@code club_event.registration_submitted} → {@code Event Registration Completed}
  *   <li>{@code club_event.registrations_cancelled} → {@code Event Registration Cancelled}
+ *   <li>{@code club_event.cancelled} → 함께 취소된 신청마다 {@code Event Registration
+ *       Cancelled{cancel_type=event_cancelled}}
  * </ul>
  *
  * <p>커밋 뒤·별도 스레드에서 돈다. 실패는 삼킨다 — 이미 커밋된 사실을 되돌릴 수 없다.
@@ -179,16 +184,32 @@ public class AnalyticsEventListener {
         }
     }
 
-    /** 행사 신청 취소 완료 — 바꾼 신청마다 한 건. 탈퇴 취소는 이 도메인 이벤트가 나지 않아 보내지 않는다. */
+    /** 행사 신청 취소 완료 (본인 · 운영진 개별) — 바꾼 신청마다 한 건. 탈퇴 취소는 이 도메인 이벤트가 나지 않아 보내지 않는다. */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onEventRegistrationsCancelled(ClubEventRegistrationsCancelledEvent event) {
-        if (!amplitude.enabled()) {
+        sendRegistrationsCancelled(
+                event.registrationIds(), event.clubEventId(), lower(event.cause()), event.meta());
+    }
+
+    /** 행사 전체 취소 — 함께 취소된 신청마다 신청자 기준으로 한 건. 바뀐 신청이 없으면 보내지 않는다. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onClubEventCancelled(ClubEventCancelledEvent event) {
+        sendRegistrationsCancelled(
+                event.cancelledRegistrationIds(),
+                event.clubEventId(),
+                "event_cancelled",
+                event.meta());
+    }
+
+    private void sendRegistrationsCancelled(
+            List<Long> registrationIds, Long clubEventId, String cancelType, EventMeta meta) {
+        if (!amplitude.enabled() || registrationIds.isEmpty()) {
             return;
         }
-        String cancelType = lower(event.cause());
         for (ClubEventRegistration registration :
-                registrationRepository.findAllById(event.registrationIds())) {
+                registrationRepository.findAllById(registrationIds)) {
             try {
                 privacy.whenAllowed(
                         registration.getAccountId(),
@@ -198,10 +219,10 @@ public class AnalyticsEventListener {
                                         "Event Registration Cancelled",
                                         analyticsId,
                                         "event_registration_cancelled_" + registration.getId(),
-                                        event.meta().occurredAt(),
+                                        meta.occurredAt(),
                                         Map.of(
                                                 "event_id",
-                                                String.valueOf(event.clubEventId()),
+                                                String.valueOf(clubEventId),
                                                 "registration_id",
                                                 String.valueOf(registration.getId()),
                                                 "channel",
@@ -211,7 +232,7 @@ public class AnalyticsEventListener {
             } catch (RuntimeException e) {
                 log.warn(
                         "amplitude: 행사 취소 이벤트 실패 eventId={} ({})",
-                        event.meta().eventId(),
+                        meta.eventId(),
                         e.getClass().getSimpleName());
             }
         }

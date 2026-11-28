@@ -23,6 +23,7 @@ import { categoriesOf } from '@studyclub/utils';
 import { CalendarClock } from 'lucide-react';
 
 import { recruitmentDeadlineLabel, recruitState } from '@/proto/lib/recruitment-deadline';
+import { kindRules } from '@/proto/lib/study-kind';
 
 /**
  * 스터디 신청 폼 — 프로토타입.
@@ -31,8 +32,8 @@ import { recruitmentDeadlineLabel, recruitState } from '@/proto/lib/recruitment-
  * 디스코드 **계정 연동**은 이 화면 앞에서 확인한다. 서버 별명이 있으면 기본값으로 채우고
  * 지원자가 고칠 수 있다. 고친 값은 계정에 다시 저장한다.
  *
- * 참여 가능한 요일은 모든 신청 폼에서 받는다. 확정된 진행 일정이 있으면 그 시간에
- * 참여 가능한지 확인도 받는다.
+ * 참여 가능한 요일은 스터디 신청 폼에서 받는다. 확정된 진행 일정이 있으면 그 시간에
+ * 참여 가능한지 확인도 받는다. 클럽은 모임 시각이 없어 둘 다 묻지 않는다 (POL-0012).
  *
  * 이미 제출한 신청서는 고치지 않는다. 같은 스터디에 다시 저장하지 않는다.
  *
@@ -107,7 +108,9 @@ export function ApplyDialog({
   onSubmitted: () => void;
   onDeadline?: (label: string) => void;
 }) {
-  const fixedSchedule = study.schedule ? t(study.schedule, locale) : null;
+  // 클럽은 요일 · 일정 확인을 묻지 않는다 — 진행 방식 글(「매일 아침 인증」)은 모임 시각이 아니다
+  const asksDays = kindRules(study).asksDays;
+  const fixedSchedule = asksDays && study.schedule ? t(study.schedule, locale) : null;
   const [myRegion, setMyRegion] = useState<MemberRegion>('KR');
   // 지역은 브라우저에 저장돼 있어 서버 렌더 시점에는 알 수 없다. 마운트 후 읽는다.
   useEffect(() => setMyRegion(getRegion()), [open]);
@@ -233,7 +236,7 @@ export function ApplyDialog({
         t({ ko: '100자 이내로 입력해 주세요.', en: 'Enter 100 characters or fewer.' }, locale),
       );
     }
-    const dayProblem = daysIssue(days);
+    const dayProblem = asksDays ? daysIssue(days) : undefined;
     if (dayProblem === 'empty' || dayProblem === 'max') {
       return markInvalid(
         'days',
@@ -297,7 +300,7 @@ export function ApplyDialog({
     try {
       const reqBody: Record<string, unknown> = {
         discordNickname: draftNick.trim(),
-        availableDays: days,
+        ...(asksDays && { availableDays: days }),
         answers,
       };
       if (fixedSchedule) reqBody.scheduleAgreed = agreed;
@@ -389,6 +392,7 @@ export function ApplyDialog({
             <FieldHint field='discord' />
           </section>
 
+          {asksDays && (
           <section data-anno='apply:4' ref={daysRef} tabIndex={-1} className={`${cardClass('days')} outline-none`}>
             <p className='type-label-lg text-neutral-800'>
               {t({ ko: '참여 가능한 요일', en: 'Days you can join' }, locale)}
@@ -406,6 +410,7 @@ export function ApplyDialog({
             </div>
             <FieldHint field='days' />
           </section>
+          )}
 
           {fixedSchedule && (
             <section data-anno='apply:3' ref={scheduleRef} tabIndex={-1} className={`${cardClass('schedule')} outline-none`}>

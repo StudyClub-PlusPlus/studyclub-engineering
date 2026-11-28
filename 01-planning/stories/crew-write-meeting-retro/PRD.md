@@ -213,10 +213,10 @@ flowchart LR
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | FE | core-front 회고 탭 점 · `/my/joined/{id}/schedule/retro` · `…/retro/write` | 없음 | 화면 · API 연결 |
-| BE | `GET /api/studies/{studyId}/retros/status` | 스펙작성중 | 스펙 확정 · 구현 |
-| BE | `GET /api/studies/{studyId}/meetings/{meetingId}/retros` | 스펙작성중 | 스펙 확정 · 구현 |
-| BE | `PUT /api/studies/{studyId}/meetings/{meetingId}/retros/me` | 스펙작성중 | 스펙 확정 · 구현 |
-| BE | `PUT · DELETE /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section}` | 스펙작성중 | 스펙 확정 · 구현 |
+| BE | `GET /api/me/studies/{studyId}/retros/status` | 구현완료 | — |
+| BE | `GET /api/studies/{studyId}/meetings/{meetingId}/retros` | 구현완료 | — |
+| BE | `PUT /api/me/studies/{studyId}/meetings/{meetingId}/retro` | 구현완료 | — |
+| BE | `PUT · DELETE /api/studies/{studyId}/meetings/{meetingId}/retros/{retroId}/likes/{section}` | 구현완료 | — |
 | 기획 | ZAPP 기획 「스터디 미팅 회고」 항목 | S-03 소감 · 👍 · 보기 전환이 기획 항목에 없음 | 항목 추가 |
 
 ### 데이터

@@ -308,6 +308,7 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 | 디스코드 연동 (`ACCOUNT.DISCORD_*`) | `ACCOUNT` 삭제에 포함 | "디스코드 연동 정보 즉시 파기" |
 | 프로필 사진 파일 (S3 `gigs/profiles/…`, `STORAGE_OBJECT` 행) | 트랜잭션 안에서 `DELETING`, 커밋 뒤 S3 파일·행 삭제. 실패 시 정리 배치가 재시도 | "프로필 즉시 파기" — 주소만 지우면 파일이 공개 주소에 남는다 |
 | `STUDY_ATTENDANCE` (출석) | 보존, 손대지 않음 | "출석 기록 보존, 비식별 처리" — FK 없어 자동으로 식별 불가 |
+| `STUDY_PARTICIPANT_GROUP_MOVE` (반 이동 기록) | 보존, 손대지 않음 | 출석률 구간의 재료라 지우면 구간을 잃는다. 옮긴 사람(`ACCOUNT_ID`)과 옮긴 캡틴(`MOVED_BY_ACCOUNT_ID`) 모두 FK 없는 ID 참조라 `STUDY_ATTENDANCE` 와 같은 매커니즘으로 비식별. 캡틴이 탈퇴해도 `MOVED_BY_ACCOUNT_ID` 를 비우지 않는다 — 권한 판정에 쓰지 않는다 ([ERD](../../docs/erd/STUDY_PARTICIPANT_GROUP_MOVE.md#쓰는-규칙)) |
 | `STUDY_REVIEW` (후기) | 보존, 손대지 않음 | 공개 콘텐츠, 다른 회원이 참고. `STUDY_ATTENDANCE` 와 동일 매커니즘으로 자동 비식별 |
 | `STUDY_APPLICATION` (신청서 답변) | 보존, 단 `FORM_ANSWER.discordNickname` 만 비식별 | 나머지는 `STUDY_ATTENDANCE` 와 동일 매커니즘. `discordNickname` 은 행에 직접 박힌 PII 라 별도 마스킹 필요 — [상세](#study_application-의-form_answerdiscordnickname) |
 | `STUDY_PROPOSAL` (제안 본문) | `STATUS=OPEN` 인 것만 `CLOSED` 로 전환, 행·본문 보존 | [STUDY_PROPOSAL 처리](#study_proposal-처리--기존-상태-전이-재사용) — 제3자 관심 표시 보호 |

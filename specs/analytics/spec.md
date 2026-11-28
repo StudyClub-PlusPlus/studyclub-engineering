@@ -50,7 +50,7 @@
 | 로그인 | `User Logged In` | `login` | method=`google`·`apple`·`email`(테스트 로그인) | front | 온보딩을 마친 회원의 로그인 완료 |
 | 활성화 | `Activated` | `activated` | activation_action=`study_applied`·`event_applied`, study_id 또는 event_id (GA4 는 activation_action 만) | server (GA4: server(MP)) | 계정의 **첫** 스터디 신청 또는 첫 행사 신청 저장 — 신청 트랜잭션이 `ACCOUNT.ACTIVATED_AT` 을 채웠을 때만 (`account.activated`) |
 | 행사 신청 완료 | `Event Registration Completed` | — | event_id, registration_id, channel=`online`·`offline`, status=`pending`·`confirmed` | server | 행사 신청 저장 (`club_event.registration_submitted`). 같은 `Idempotency-Key` 재시도는 새 신청이 없어 다시 나지 않는다 ([event-registration](../event-registration/spec.md#퍼널계측)) |
-| 행사 신청 취소 완료 | `Event Registration Cancelled` | — | event_id, registration_id, channel, cancel_type=`self`·`admin`·`event_cancelled` | server | 신청이 실제로 취소됨 (`club_event.registrations_cancelled`). 탈퇴 취소는 보내지 않는다 |
+| 행사 신청 취소 완료 | `Event Registration Cancelled` | — | event_id, registration_id, channel, cancel_type=`self`·`admin`·`event_cancelled` | server | 신청이 실제로 취소됨 — 본인 · 운영진 개별 취소는 `club_event.registrations_cancelled`, 행사 전체 취소는 `club_event.cancelled` 로 함께 취소된 신청마다 신청자 기준으로 보낸다 (바뀐 신청 0건이면 없음). 탈퇴 취소는 보내지 않는다 |
 
 - `page_name` 값 (경로 → 이름, `PageViewTracker` 의 `pathToPageName`): `landing` · `studies_list` · `study_detail` · `events_list` · `event_detail` · `notices_list` · `notice_detail` · `about` · `guide` · `terms` · `privacy` · `login` · `onboarding` · `my_page` · `my_studies`(`/my/joined`) · `saved_studies`(`/my/saved`) · `account_leave`(`/my/leave`) · `study_room_schedule` · `study_room_attendance` · `study_room_notice`(`/my/joined/{id}/schedule[/attendance|/notice]`). `study_detail` · `study_room_*` 는 `study_id` 를 함께 보낸다. 곧장 다른 화면으로 넘기는 경로(`/my/joined/{id}`, `/my/joined/{id}/attendance`)는 세지 않는다
 - 서버 이벤트 `insert_id` 는 결정적이다: `user_signed_up_{analyticsId}` · `activated_{analyticsId}` · `event_registration_completed_{registrationId}` · `event_registration_cancelled_{registrationId}` — 재전송돼도 Amplitude 가 중복을 지운다
@@ -69,8 +69,8 @@
 | `Study Filter Tab Changed` · `Study Category Filtered` · `Study Searched` · `Study Card Clicked` · `Hero CTA Clicked` · `Event Card Clicked` | 탐색 |
 | `Study Bookmarked` · `Study Unbookmarked` (`study_id`, `source`) | 하트 버튼 · 찜한 스터디(`source=saved_page`, 해제만) |
 | `Study Apply CTA Clicked` · `Study Apply External Opened` · `Study Apply Dialog Opened` · `Study Apply Slots Selected` · `Study Apply Submitted` · `Study Apply Completed` · `Study Apply Failed` · `Study Apply Dialog Dismissed` | 신청 |
-| `My Discord Connected` (`source`=`onboarding`·`apply_gate`·`my_page`) | 온보딩 디스코드 단계 · 신청 전 디스코드 연동 창 · 마이페이지 디스코드 줄 — OAuth 팝업으로 받은 코드가 연동 API 에서 204 일 때 (개발 서버는 목 연동). 연동 함수 `linkDiscord` 안에서만 보낸다 — 연동 화면이 늘어도 빠지지 않는다 |
-| `Discord Connect Failed` (`source`, `reason`=`cancelled`·`popup_blocked`·`not_in_guild`·`already_linked`·`session_expired`·`error`, `http_status`) | 위 세 곳에서 연동이 실패했을 때 — 팝업 단계(창 닫기·차단)와 연동 API 단계(403 서버 미가입 · 409 다른 계정에 연결됨 · 401 · 그 외) 모두. `linkDiscord` 안에서만 보낸다 |
+| `My Discord Connected` (`source`=`onboarding`·`apply_gate`·`my_page`·`apply_nickname_refresh`) | 온보딩 디스코드 단계 · 신청 전 디스코드 연동 창 · 마이페이지 디스코드 줄 · 신청 폼 서버 별명 「새로고침」 — OAuth 팝업으로 받은 코드가 연동 API 에서 204 일 때 (개발 서버는 목 연동). 연동 함수 `linkDiscord` 안에서만 보낸다 — 연동 화면이 늘어도 빠지지 않는다 |
+| `Discord Connect Failed` (`source`, `reason`=`cancelled`·`popup_blocked`·`not_in_guild`·`already_linked`·`session_expired`·`error`, `http_status`) | 위 네 곳에서 연동이 실패했을 때 — 팝업 단계(창 닫기·차단)와 연동 API 단계(403 서버 미가입 · 409 다른 계정에 연결됨 · 401 · 그 외) 모두. `linkDiscord` 안에서만 보낸다 |
 | `My Profile Updated` | 마이페이지 |
 | `Study Presenter Registered` · `Study Presenter Unregistered` (`study_id`, `meeting_id`, `slot`) | 스터디룸 일정 탭 — 발표자 신청·취소 API 가 성공했을 때 |
 | `Study Discord Opened` (`study_id`) | 스터디룸 정보 카드의 「디스코드」 버튼 (스터디 채널로 이동) |

@@ -1,8 +1,8 @@
 # 행사 API Spec: 캡틴이 백오피스에서 등록·수정·조회한다
 
-> ERD: [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md), [CLUB_EVENT_CHANNEL](../../docs/erd/CLUB_EVENT_CHANNEL.md), [CLUB_EVENT_QUESTION](../../docs/erd/CLUB_EVENT_QUESTION.md) (`V59__create_club_event.sql`). 신청 테이블은 신청 스펙에서 만든다
+> ERD: [CLUB_EVENT](../../docs/erd/CLUB_EVENT.md), [CLUB_EVENT_CHANNEL](../../docs/erd/CLUB_EVENT_CHANNEL.md), [CLUB_EVENT_QUESTION](../../docs/erd/CLUB_EVENT_QUESTION.md) (`V59__create_club_event.sql`). 신청 테이블은 [CLUB_EVENT_REGISTRATION](../../docs/erd/CLUB_EVENT_REGISTRATION.md) (`V62__create_club_event_registration.sql`, 공통 신청 PR #516)
 > 생성일: 2026-11-14 · 리뷰 반영: 2026-11-17 (PR #470 리뷰 · PR #471 결정)
-> 상태: 구현중 — BE PR(등록·수정·조회 API). 신청 수 집계·일괄 확정은 `ClubEventRegistrationPort` 임시 어댑터(0건·no-op), back-office-front 연결은 후속 FE PR ([plan](./plan.md))
+> 상태: 구현중 — BE PR(등록·수정·조회 API). 신청 수 집계·일괄 확정은 `ClubEventRegistrationPort` 의 실제 어댑터 `ClubEventRegistrationAdapter`(PR #516)가 답한다. 확정 안내 메일 구독자는 [event-mail](../event-mail/spec.md), back-office-front 연결은 후속 FE PR ([plan](./plan.md) · [tasks](./tasks.md))
 >
 > Story PRD:
 > - [캡틴은 행사를 등록하고 신청자의 참가를 확정할 수 있다](../../01-planning/stories/captain-manage-events/PRD.md) (ST-037)
@@ -87,10 +87,15 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 | 이 잠금을 잡는 요청 | 스펙 |
 |---|---|
 | 행사 수정 (`PUT`) | 이 스펙 |
-| 크루 신청 제출 | 신청 스펙 (같은 순서를 따라야 이 보장이 성립한다) |
-| 모집 마감 · 재모집 · 행사 취소 | 상태 전환 스펙 |
-| 운영진의 참가자 처리 (참가 확정 · 참가 불가 · 개별 취소) | 참가자 스펙 |
-| 행사 종료 시 자동 처리 (확인 대기 → 참가 불가 전환) | 참가자 스펙 |
+| 크루 신청 제출 (`ACCOUNT` → `CLUB_EVENT` 잠금 순서) | [event-registration](../event-registration/spec.md#같은-행사--같은-계정에-쓰는-요청의-처리-순서) (같은 순서를 따라야 이 보장이 성립한다) |
+| 크루 본인 취소 | [event-registration](../event-registration/spec.md#같은-행사--같은-계정에-쓰는-요청의-처리-순서) |
+| 모집 마감 · 재모집 · 행사 취소 | [event-status](../event-status/spec.md) |
+| 운영진의 참가자 처리 (참가 확정 · 참가 불가 · 개별 취소) | [event-participant](../event-participant/spec.md#참가-처리) |
+| 행사 종료 시 자동 처리 (확인 대기 → 참가 불가 전환) | [event-participant](../event-participant/spec.md#행사-종료-시-확인-대기-자동-전환) |
+| 안내 · 취소 안내 메일 보내기 | [event-mail](../event-mail/spec.md#메일-보내기) |
+| 회원 탈퇴 (`ACCOUNT` → `CLUB_EVENT` 잠금 순서) | [event-participant](../event-participant/spec.md#잠금-순서) · [user-leave](../user-leave/spec.md). 탈퇴 계정 `ACCOUNT` 를 먼저 잠그고, 그 계정 신청이 걸린 모든 `CLUB_EVENT` 를 ID 오름차순으로 잠근다 (`AccountDeletionService`, PR #516) |
+
+- **`ACCOUNT` 를 먼저 잠그는 두 예외** (PR #508 R1): 회원 탈퇴와 크루 신청 제출만 `ACCOUNT` → `CLUB_EVENT` 순서다. 계정 잠금은 행사 · 신청을 읽지 않으므로 「잠금 전에 행사 · 신청을 일반 `SELECT` 로 읽지 않는다」는 이 규칙의 목적은 그대로다. 그 밖의 요청(위 표의 나머지)은 `ACCOUNT` 를 잠그지 않고 행사 잠금 뒤 일반 조회로 읽는다. 어느 요청도 `CLUB_EVENT` → `ACCOUNT` 순서로 잠그지 않으므로 교착이 생기지 않는다
 
 결과는 어느 요청이 먼저 잠금을 얻었는지로 갈린다.
 
@@ -428,12 +433,18 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
   "canChangeConfirmation": true,
   "canSetFutureStart": true,
   "removableChannels": [],
+  "canClose": true,
+  "canReopen": false,
+  "reopenBlockedReason": null,
+  "canCancel": true,
+  "hasCancellationRecipients": true,
+  "cancellationRecipientCount": 84,
   "createdAt": "2026-11-18T05:00:00Z",
   "updatedAt": "2026-11-21T08:12:00Z"
 }
 ```
 
-이 예시는 시작 전이고, 온라인(확인 대기 3 · 참가 확정 41)과 오프라인(확인 대기 5 · 참가 확정 35) 모두 유효 신청이 남아 있다. 그래서 `removableChannels` 는 `[]` 이고 어느 방식도 없앨 수 없다. 오프라인은 잔여석 0 이지만 온라인에 자리가 있어 `displayStatus` 는 `RECRUITING` 이다.
+이 예시는 시작 전이고, 온라인(확인 대기 3 · 참가 확정 41)과 오프라인(확인 대기 5 · 참가 확정 35) 모두 유효 신청이 남아 있다. 그래서 `removableChannels` 는 `[]` 이고 어느 방식도 없앨 수 없다. 오프라인은 잔여석 0 이지만 온라인에 자리가 있어 `displayStatus` 는 `RECRUITING` 이다. 공개 중(`PUBLISHED`)이라 `canClose` · `canCancel` 이 true 이고, 지금 취소하면 유효 신청 84명(3 + 41 + 5 + 35, 모두 계정이 남아 있다)이 취소 안내 대상이 된다.
 
 | 필드 | 타입 | NULL | 설명 | 소스 |
 |------|------|------|------|------|
@@ -474,10 +485,17 @@ Q8 결정: 같은 행사의 신청과 정원 변경은 한 번에 하나씩 처�
 | canChangeConfirmation | Boolean | N | 확정 방식 변경 가능 | 계산: `ClubEvent.canChangeConfirmation(now)`. `canEdit` ∧ `now < STARTS_AT` |
 | canSetFutureStart | Boolean | N | 시작 시각을 현재 이후로 정할 수 있나. 이미 시작한 행사면 false | 계산: `ClubEvent.canSetFutureStart(now)`. `canEdit` ∧ `now < STARTS_AT`. 지금은 `canChangeConfirmation` 과 식이 같지만 근거 규칙이 달라(§2·§3) 따로 둔다 |
 | removableChannels | String[] | N | 지금 없앨 수 있는 참여 방식. 확인 대기·참가 확정 신청이 남은 방식은 빠진다. 단일 방식 행사는 그 방식을 없애면 방식이 0 개라 빈 배열이다 | 계산: `ClubEvent.removableChannels(counts)` |
+| canClose | Boolean | N | `모집 마감` 버튼을 보일까. 신청 마감과 무관 ([event-status](../event-status/spec.md#운영-상세에-더하는-판정-필드) S3) | 계산: `ClubEvent.canClose(now)`. `STATUS = PUBLISHED` ∧ `now < effectiveEndsAt` |
+| canReopen | Boolean | N | `모집 다시 열기` 를 바로 실행할 수 있나 | 계산: `ClubEvent.canReopen(now)`. `STATUS = CLOSED` ∧ `now < effectiveEndsAt` ∧ `now < STARTS_AT` ∧ `now < DEADLINE_AT` |
+| reopenBlockedReason | String | Y | 모집 마감 상태인데 다시 열 수 없는 이유 `STARTED` · `DEADLINE_PASSED` (시작 먼저). 그 밖은 null | 계산: `ClubEvent.reopenBlockedReason(now)` |
+| canCancel | Boolean | N | `행사 취소` 버튼을 보일까 | 계산: `ClubEvent.canCancel(now)`. `STATUS ≠ CANCELLED` ∧ `now < effectiveEndsAt` |
+| hasCancellationRecipients | Boolean | N | 취소된 행사: 취소 안내를 받을 사람이 있나. 취소 전 행사: 지금 취소하면 안내 대상이 생기나 | 계산: `cancellationRecipientCount > 0` |
+| cancellationRecipientCount | Integer | N | 취소된 행사: `CANCEL_REASON = EVENT_CANCELLED` 신청 중 계정이 남은 사람 수. 취소 전 행사: 확인 대기 + 참가 확정 신청 중 계정이 남은 사람 수 | 계산: `ClubEventRegistrationPort.countCancellationRecipients(eventId)` 한 쿼리가 두 뜻을 함께 센다 ([event-status S5](../event-status/spec.md#운영-상세에-더하는-판정-필드)) |
 | createdAt | String | N | | CLUB_EVENT.CREATED_AT |
 | updatedAt | String | N | | CLUB_EVENT.UPDATED_AT |
 
-- 모집 마감·재모집·행사 취소 가능 여부(`canClose` 등)도 화면에 필요하다. 이 판정 필드는 **상태 전환 스펙이 이 응답에 추가**한다. 지금 정하지 않는다
+- 모집 마감 · 재모집 · 행사 취소 판정 필드 여섯 개(`canClose` ~ `cancellationRecipientCount`)는 [event-status 「운영 상세에 더하는 판정 필드」](../event-status/spec.md#운영-상세에-더하는-판정-필드) 가 정본이다. 정의 · 버튼 표시 규칙 · 탈퇴 계정 세기(S5)는 그 절을 따르고, 이 표는 응답 모양을 한곳에서 보이려고 옮겨 적었다. 같은 본문을 쓰는 `POST /api/admin/events` · `PUT /api/admin/events/{eventId}` · `PATCH /api/admin/events/{eventId}/status` 응답에도 실린다. 운영 목록에는 넣지 않는다
+- 이 여섯 필드는 event-status 구현 PR 에서 응답에 더한다. 그 전까지 지금 응답에는 없다
 - 신청자 개인정보는 싣지 않는다. 참가자 탭은 별도 API
 
 ### Error Responses

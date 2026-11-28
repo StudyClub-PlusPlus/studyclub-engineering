@@ -607,6 +607,9 @@ export default function ComponentsCatalog() {
             <CapacityBar taken={4} total={20} showLabel />
             <CapacityBar taken={17} total={20} showLabel />
             <CapacityBar taken={20} total={20} showLabel />
+            <p className='type-label-sm text-fg-muted'>variant=&apos;goal&apos; — 목표 대비 진행. 경고색 없이, 채우면 success</p>
+            <CapacityBar variant='goal' taken={240} total={720} showLabel label='4시간 / 12시간' />
+            <CapacityBar variant='goal' taken={760} total={720} showLabel label='12시간 40분 / 12시간 — 달성' />
           </div>
         </Case>
 

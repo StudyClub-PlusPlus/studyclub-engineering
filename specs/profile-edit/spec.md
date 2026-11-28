@@ -1,5 +1,7 @@
 # 프로필 수정 — 닉네임·시간대·마케팅 수신 동의를 마이페이지에서 고친다
 
+> **시간대 확장 (2026-11-24):** `timeZone` 검증·선택기는 [timezone/spec.md](../timezone/spec.md) §3.1 이 정본이다. 아래 「넷만 받는다」 절은 **beta 구현** 설명이며 확장 후 삭제 예정.
+>
 > Story PRD: [크루는 프로필을 수정할 수 있다.](../../01-planning/stories/crew-edit-profile/PRD.md)
 
 마이페이지 내 정보 카드에서 **닉네임·시간대**를 고쳐 서버에 저장한다. 저장 API 는 `PATCH /api/me` 신규.
